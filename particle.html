@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Rekap Sampel</title>
+        <style>
+            body {
+                font-family: "Helvetica", "Arial", sans-serif;
+                font-size: 9px;
+            }
+
+            .header-table {
+                width: 100%;
+                margin-bottom: 10px;
+                border-collapse: collapse;
+            }
+
+            .header-table td {
+                vertical-align: top;
+                padding: 0;
+                border: none;
+            }
+
+            .logo {
+                width: 100%;
+                height: auto;
+            }
+
+            .header-text {
+                text-align: center;
+            }
+
+            .company-name {
+                font-size: 16px;
+                font-weight: bold;
+                line-height: 50px;
+                margin-bottom: 2px;
+            }
+
+            .department-name {
+                font-size: 12px;
+                font-weight: bold;
+            }
+
+            .report-title {
+                font-size: 14px;
+                font-weight: bold;
+                text-align: center;
+                margin-top: 14px;
+                margin-bottom: 24px;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 20px;
+                table-layout: fixed;
+            }
+
+            /* CSS untuk tabel utama dengan border */
+            .main-table th,
+            .main-table td {
+                border: 1px solid #333;
+                padding: 5px;
+                text-align: center;
+                vertical-align: middle;
+                word-wrap: break-word;
+            }
+
+            .info-table tr:last-child td {
+                border-bottom: 1px solid black;
+            }
+
+            thead th {
+                background-color: #f5e7b0;
+                font-weight: bold;
+            }
+
+            /* -- PERUBAHAN DI SINI -- */
+            /* CSS khusus untuk tabel informasi tanpa border */
+            .info-table {
+                margin-bottom: 24px;
+            }
+
+            .info-table td {
+                padding: 4px 8px; /* Atur padding agar lebih rapi */
+                border: none; /* Menghilangkan border */
+                vertical-align: top; /* Rata atas */
+                text-align: left; /* Rata kiri */
+            }
+
+            /* Kolom pertama (label seperti 'Nama Sampel') */
+            .info-table td:first-child {
+                font-weight: bold;
+                width: 25%; /* Atur lebar kolom label */
+            }
+
+            /* Kolom kedua (value seperti nama produknya) */
+            .info-table td:nth-child(2) {
+                background-color: #f8f9fa; /* Warna latar belakang abu-abu muda */
+                width: 75%; /* Atur lebar kolom value */
+            }
+            /* -- AKHIR PERUBAHAN -- */
+
+            .palette-header th {
+                background-color: #ddbe59;
+                color: #000;
+                font-weight: bold;
+            }
+
+            @media print {
+                body {
+                    margin: 0;
+                }
+                .table-responsive {
+                    overflow: visible;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div
+            style="border: 1px solid black; padding: 15px; margin-bottom: 20px"
+        >
+            <table class="info-table">
+                <tr>
+                    <td>Nama Sampel</td>
+                    <td>
+                        LIFECAT TUNA KITTEN 80GR ADULT-PRD0825-5-(Batch
+                        3)-AUTOCLAVE
+                    </td>
+                </tr>
+                <tr>
+                    <td>Tanggal Produksi</td>
+                    <td>29 Agustus 2025</td>
+                </tr>
+                <tr>
+                    <td>Tanggal Produksi</td>
+                    <td>29 Agustus 2025</td>
+                </tr>
+                <tr>
+                    <td>Produk</td>
+                    <td>LIFECAT TUNA KITTEN 80GR ADULT</td>
+                </tr>
+            </table>
+
+            <table class="main-table">
+                <thead>
+                    <tr>
+                        <th>Particle Size</th>
+                        <th>Percentage (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span> >4mm </span></td>
+                        <td>16,993</td>
+                    </tr>
+                    <tr>
+                        <td><span> >3.35mm</span></td>
+                        <td>18,617</td>
+                    </tr>
+                    <tr>
+                        <td><span> < 3.35mm </span></td>
+                        <td>18,617</td>
+                    </tr>
+                    <tr>
+                        <td><span>2-3.35mm </span></td>
+                        <td>1.010</td>
+                    </tr>
+                    <tr>
+                        <td><span>1-2mm</span></td>
+                        <td>1.623</td>
+                    </tr>
+                    <tr>
+                        <td><span>0.825-1mm</span></td>
+                        <td>2.277</td>
+                    </tr>
+                    <tr>
+                        <td><span>0.6-0.825mm</span></td>
+                        <td>5.376</td>
+                    </tr>
+                    <tr>
+                        <td><span>0.25-0.6mm</span></td>
+                        <td>15.480</td>
+                    </tr>
+                    <tr>
+                        <td><span>< 0.25mm</span></td>
+                        <td>11.767</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,25 @@
+APP_NAME="EMI LAB"
+APP_ENV=production
+APP_KEY=base64:He1YlHFLiRefYRshNbqsUW6V7Rhe+rqO6FDv6YLqAew=
+APP_DEBUG=false
+APP_URL=url dari cloud run
+URL_CLIENT=http://192.168.11.10:9778
+URL_TIMBANGAN=wss://localhost:9956
+EMILAB_VALID_ORIGINS=nama domain asli kita
+
+DB_CONNECTION=sqlsrv
+DB_HOST=host database
+DB_PORT=1433
+DB_DATABASE=nama database
+DB_USERNAME=username database
+DB_PASSWORD=password database (masukkan i secret)
+
+VITE_SECRET_KEY=bVfFUiQXLtTap1tO0RzvbASU1YD8R9Rg_jL_IDR4pP6Q
+CLOUDFLARE_TURNSTILE_SITEKEY=0x4AAAAAACZfoRIKKvOdpWgZ
+CLOUDFLARE_TURNSTILE_SECRET=0x4AAAAAACZfoVe30D8n3zZYVjYl4mjzmHA
+SALT_PREFIX=f4041aa19cff3f7568a5e4d73d507
+SALT_SUFFIX=fe07a85b3ad63f10d9cff3f7w0rsa
+LOG_VIEWER_API_STATEFUL_DOMAINS=domain dari cloud run
+
+#note:
+jika di rubah salt prefix atau suffix, berarti seluruh sandi di database emi_db_real harus di buat ulang passwordnya. karena di buat password selama ini makai salt yang sekarang

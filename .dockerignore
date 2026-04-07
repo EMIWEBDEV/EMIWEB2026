@@ -1,0 +1,54 @@
+# Dependencies (install inside container)
+/node_modules
+/vendor
+/public/build
+/public/hot
+
+# Storage symlink
+/public/storage
+
+# Ignore local application storage contents
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*.log
+/storage/*.key
+!/storage/.gitignore
+
+/storage/logs/*.log
+/bootstrap/cache/*.php  # <-- TAMBAHKAN BARIS INI
+!/storage/.gitignore
+
+# Deployment and Docker specific
+/deploy/docker-compose.yml
+/deploy/Dockerfile
+.dockerignore
+
+# Environment files (HIGHLY IMPORTANT)
+.env
+# .env.example JANGAN di-ignore agar bisa dipakai saat build
+
+# Local development config
+Homestead.json
+Homestead.yaml
+
+# Caching and log files
+.phpunit.cache
+.phpunit.result.cache
+npm-debug.log
+yarn-error.log
+
+# Credentials
+auth.json
+
+# IDE and OS specific
+/.fleet
+/.idea
+/.vscode
+.DS_Store
+
+# Git
+.git
+.gitignore
+
+*.zip
