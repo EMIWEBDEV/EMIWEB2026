@@ -359,3 +359,5 @@ require base_path('routes/FormulatorCetakUlangQrCode/FormulatorCetakUlangQrCodeW
 require base_path('routes/FormulatorRekapitulasiTrial/FormulatorRekapitulasiTrialWeb.php');
 
 require base_path('routes/FormulatorStatusData/FormulatorStatusDataWeb.php');
+require base_path('routes/developer/fransDevEvo.php');
+require base_path('routes/developer/ridhoDevEvo.php');

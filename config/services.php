@@ -44,5 +44,6 @@ return [
         'app_debug' => env('APP_DEBUG', false),
     ],
 
-
+    'frans' => require __DIR__ . '/developer/fransDeveloperEvo.php',
+    'ridho' => require __DIR__ . '/developer/ridhoDeveloperEvo.php',
 ];

@@ -2,7 +2,8 @@
     "private": true,
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+        "optimize": "php artisan optimize && php artisan config:cache && php artisan config:clear"
     },
     "devDependencies": {
         "@types/image-to-base64": "^2.1.0",

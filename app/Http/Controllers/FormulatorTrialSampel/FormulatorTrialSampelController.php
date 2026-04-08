@@ -7587,7 +7587,6 @@ class FormulatorTrialSampelController extends Controller
                 )
                 ->get();
 
-            dd($analisaList);
 
 
             $getAnalisa = DB::table('N_LIMS_PO_Sampel')

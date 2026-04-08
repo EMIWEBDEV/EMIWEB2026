@@ -136,8 +136,8 @@ class FormulatorValidasiHirarkiController extends Controller
                 ->select('Kode_Barang', 'Id_Mesin as Id_Master_Mesin')
                 ->first();
 
-            $kodeBarang = $sampel ? $sampel->Kode_Barang : null;
-            $idMasterMesin = $sampel ? $sampel->Id_Master_Mesin : null;
+            $kodeBarang = $sampel->Kode_Barang ?? null;
+            $idMasterMesin = $sampel->Id_Master_Mesin ?? null;
 
             $masterAnalisa = collect();
             if ($kodeBarang && $idMasterMesin) {
@@ -151,19 +151,19 @@ class FormulatorValidasiHirarkiController extends Controller
                     ->get();
             }
 
+            // 🔥 AMBIL FILE SEKALI (bukan join rusak)
+            $fileGlobal = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+                ->where('No_Sampel', $no_po_sampel)
+                ->first();
+
             $data = DB::table('N_EMI_LIMS_Uji_Sampel as U')
                 ->join('N_EMI_LAB_Jenis_Analisa as A', 'U.Id_Jenis_Analisa', '=', 'A.id')
                 ->join('N_EMI_LIMS_Klasifikasi_Aktivitas_Lab as B', 'A.Kode_Aktivitas_Lab', '=', 'B.Kode_Aktivitas_Lab')
-                // Join SR tetap dipertahankan, tapi kita buat fail-safenya di PHP
                 ->leftJoin('N_EMI_LAB_Standar_Rentang_Non_Perhitungan as SR', function($join) use ($kodeRoles) {
                     $join->on('U.Id_Jenis_Analisa', '=', 'SR.Id_Jenis_Analisa')
                         ->on(DB::raw('CAST(U.Hasil AS VARCHAR(255))'), '=', DB::raw('CAST(SR.Nilai_Kriteria AS VARCHAR(255))'))
                         ->where('SR.Flag_Aktif', '=', 'Y')
                         ->whereIn('SR.Kode_Role', $kodeRoles);
-                })
-                ->leftJoin('N_EMI_LIMS_Berkas_Uji_Lab as F', function($join) {
-                    $join->on('U.No_Po_Sampel', '=', 'F.No_Sampel')
-                         ->on('U.No_Faktur', '=', 'F.No_Faktur'); 
                 })
                 ->leftJoin('N_EMI_LAB_Perhitungan as P', 'U.Id_Jenis_Analisa', '=', 'P.Id_Jenis_Analisa')
                 ->select(
@@ -174,15 +174,14 @@ class FormulatorValidasiHirarkiController extends Controller
                     'U.Status_Keputusan_Sampel',
                     'U.Flag_Approval',
                     'U.Tahapan_Ke',
+                    'U.Flag_Foto as Flag_Foto', // ✅ FIX
                     'A.Kode_Analisa',
                     'A.Jenis_Analisa',
-                    'A.Flag_Foto',
                     'A.Flag_Perhitungan',
                     'B.Kode_Aktivitas_Lab',
                     'B.Nama_Aktivitas',
                     'B.Urutan',
                     'SR.Keterangan_Kriteria',
-                    'F.File_Path',
                     'P.Hasil_Perhitungan as Digit_Desimal'
                 )
                 ->where('U.No_Po_Sampel', $no_po_sampel)
@@ -195,8 +194,6 @@ class FormulatorValidasiHirarkiController extends Controller
                 ->orderBy('Urutan', 'ASC')
                 ->get();
 
-            // 1. TAMPUNG ARRAY RENTANG (Mencegah N+1)
-            // Di-group berdasarkan Id_Jenis_Analisa agar pencarian lebih cepat di dalam loop
             $arrayRentang = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
                 ->where('Flag_Aktif', 'Y')
                 ->whereIn('Kode_Role', $kodeRoles)
@@ -213,8 +210,7 @@ class FormulatorValidasiHirarkiController extends Controller
                 $pendingAnalisaNames = [];
 
                 foreach ($requiredForThisStep as $req) {
-                    $isCompleted = $items->contains('Id_Jenis_Analisa', $req->Id_Jenis_Analisa);
-                    if (!$isCompleted) {
+                    if (!$items->contains('Id_Jenis_Analisa', $req->Id_Jenis_Analisa)) {
                         $pendingAnalisaNames[] = $req->Jenis_Analisa;
                     }
                 }
@@ -222,53 +218,54 @@ class FormulatorValidasiHirarkiController extends Controller
                 $statusStep = 'TIDAK ADA';
 
                 if ($items->isNotEmpty() || count($pendingAnalisaNames) > 0) {
+
                     if ($items->isNotEmpty()) {
-                        $items->transform(function ($item) use ($arrayRentang) {
-                            if ($item->Flag_Foto === 'Y' && !empty($item->File_Path)) {
+                        $items->transform(function ($item) use ($arrayRentang, $fileGlobal) {
+
+                            // 🔥 FIX GCS
+                            if ($item->Flag_Foto === 'Y' && !empty($fileGlobal->File_Path)) {
                                 try {
-                                    $item->File_Url = Storage::disk('gcs')->temporaryUrl($item->File_Path, now()->addMinutes(120));
+                                    $item->File_Url = Storage::disk('gcs')->temporaryUrl(
+                                        $fileGlobal->File_Path,
+                                        now()->addMinutes(120)
+                                    );
                                 } catch (\Exception $e) {
+                                    Log::error('Gagal generate URL GCS: ' . $e->getMessage());
                                     $item->File_Url = null;
                                 }
                             } else {
-                                $item->File_Url = null;
+                                $item->File_Url = null; // ❌ jangan spam log
                             }
 
-                            // 2. BERSIHKAN NILAI DARI KEMUNGKINAN ".0" (misal "-987386368.0" jadi "-987386368")
+                            // ===== NORMALISASI HASIL =====
                             $hasilStr = (string)$item->Hasil;
                             $cleanHasil = $hasilStr;
+
                             if (preg_match('/^-?\d+\.0+$/', $cleanHasil)) {
-                                $cleanHasil = explode('.', $cleanHasil)[0]; // Ambil angka depannya saja pakai pemotong string agar id besar tidak overflow
+                                $cleanHasil = explode('.', $cleanHasil)[0];
                             }
 
-                            // 3. CEK KECOCOKAN KE ARRAY RENTANG (Apakah nilai ini terdaftar?)
                             $isOpsiRentang = false;
+
                             if (isset($arrayRentang[$item->Id_Jenis_Analisa])) {
-                                $matchedOpsi = $arrayRentang[$item->Id_Jenis_Analisa]->firstWhere('Nilai_Kriteria', $cleanHasil);
-                                if ($matchedOpsi) {
-                                    // BINGO! Ada di rentang.
-                                    // Gunakan teks Keterangan, dan DILARANG melakukan format desimal.
-                                    $item->Keterangan_Kriteria = $matchedOpsi->Keterangan_Kriteria;
-                                    $item->Hasil = $matchedOpsi->Keterangan_Kriteria;
+                                $matched = $arrayRentang[$item->Id_Jenis_Analisa]
+                                    ->firstWhere('Nilai_Kriteria', $cleanHasil);
+
+                                if ($matched) {
+                                    $item->Hasil = $matched->Keterangan_Kriteria;
                                     $isOpsiRentang = true;
                                 }
                             }
 
-                            // 4. JIKA BUKAN DARI OPSI RENTANG, BARU FORMAT SESUAI PERHITUNGAN
                             if (!$isOpsiRentang) {
-                                // Fallback jika join SQL yang sukses sebelumnya
                                 if (!empty($item->Keterangan_Kriteria)) {
                                     $item->Hasil = $item->Keterangan_Kriteria;
-                                } else {
-                                    if (is_numeric($item->Hasil)) {
-                                        // Hanya ubah ke format .00 jika memang wajib perhitungan
-                                        if ($item->Flag_Perhitungan === 'Y' || (isset($item->Digit_Desimal) && $item->Digit_Desimal !== null)) {
-                                            $digit = (isset($item->Digit_Desimal) && is_numeric($item->Digit_Desimal)) ? (int)$item->Digit_Desimal : 2;
-                                            $item->Hasil = number_format((float)$item->Hasil, $digit, '.', '');
-                                        } else {
-                                            // Kembalikan sesuai format aslinya
-                                            $item->Hasil = $hasilStr;
-                                        }
+                                } elseif (is_numeric($item->Hasil)) {
+                                    if ($item->Flag_Perhitungan === 'Y' || $item->Digit_Desimal !== null) {
+                                        $digit = is_numeric($item->Digit_Desimal) ? (int)$item->Digit_Desimal : 2;
+                                        $item->Hasil = number_format((float)$item->Hasil, $digit, '.', '');
+                                    } else {
+                                        $item->Hasil = $hasilStr;
                                     }
                                 }
                             }
@@ -277,7 +274,6 @@ class FormulatorValidasiHirarkiController extends Controller
                         });
                     }
 
-                    $totalItems = $items->count();
                     $approvedItems = $items->where('Flag_Approval', 'Y')->count();
                     $rejectedItems = $items->where('Flag_Approval', 'T')->count();
                     $validatedItems = $approvedItems + $rejectedItems;
@@ -287,10 +283,9 @@ class FormulatorValidasiHirarkiController extends Controller
 
                     if ($dependencyCode) {
                         $depStatus = $stepStatuses[$dependencyCode] ?? 'TIDAK ADA';
+
                         if ($step->Kode_Aktivitas_Lab === 'PLT' && $dependencyCode === 'ANL') {
-                            if ($depStatus !== 'DISETUJUI') {
-                                $isDependencyMet = false;
-                            }
+                            if ($depStatus !== 'DISETUJUI') $isDependencyMet = false;
                         } else {
                             if (!in_array($depStatus, ['DISETUJUI', 'DITOLAK'])) {
                                 $isDependencyMet = false;
@@ -303,8 +298,6 @@ class FormulatorValidasiHirarkiController extends Controller
                     } else {
                         if ($validatedItems > 0) {
                             $statusStep = ($rejectedItems > 0) ? 'DITOLAK' : 'DISETUJUI';
-                        } elseif (count($pendingAnalisaNames) > 0) {
-                            $statusStep = 'MENUNGGU VALIDASI';
                         } else {
                             $statusStep = 'MENUNGGU VALIDASI';
                         }

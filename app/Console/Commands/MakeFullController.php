@@ -7,78 +7,113 @@ use Illuminate\Support\Facades\File;
 
 class MakeFullController extends Command
 {
-    protected $signature = 'make:fullcontroller {name}';
-    protected $description = 'Membuat folder controller & routes sekaligus untuk resource & API. Nama folder harus diawali huruf besar.';
+    /**
+     * Nama dan signature dari command.
+     * {name}      : Nama Modul/Folder (Contoh: Packaging)
+     * {developer} : Nama Developer (Contoh: frans)
+     */
+    protected $signature = 'make:fullcontroller {name} {developer}';
+
+    /**
+     * Deskripsi command.
+     */
+    protected $description = 'Membuat controller & routes per modul, lalu mendaftarkan require-nya ke file developer di routes/developer/';
 
     public function handle()
     {
         $name = $this->argument('name');
+        $developer = $this->argument('developer');
 
-        // === Validasi huruf besar di awal ===
+        // === 1. Validasi Input ===
         if (!preg_match('/^[A-Z][A-Za-z0-9]*$/', $name)) {
-            $this->error("Nama folder harus diawali huruf besar dan hanya mengandung huruf/angka. Contoh: Packaging");
+            $this->error('Nama modul (name) harus diawali huruf besar (PascalCase). Contoh: Packaging');
             return 1;
         }
 
-        // === 1. Buat folder controller ===
+        // === 2. Buat Folder & File Controller ===
         $controllerFolder = app_path("Http/Controllers/{$name}");
-        if (!is_dir($controllerFolder)) mkdir($controllerFolder, 0755, true);
+        if (!is_dir($controllerFolder)) {
+            mkdir($controllerFolder, 0755, true);
+        }
 
-        // Buat controller
-        $this->call('make:controller', ['name' => "{$name}/{$name}Controller", '-r' => true]);
-        $this->call('make:controller', ['name' => "{$name}/{$name}Api", '--api' => true]);
+        // Buat Resource Controller (Web)
+        $this->call('make:controller', [
+            'name' => "{$name}/{$name}Controller",
+            '-r' => true,
+        ]);
 
-        $this->info("Controllers berhasil dibuat di {$controllerFolder}");
+        // Buat API Controller
+        $this->call('make:controller', [
+            'name' => "{$name}/{$name}Api",
+            '--api' => true,
+        ]);
 
-        // === 2. Buat folder routes ===
-        $routesFolder = base_path("routes/{$name}");
-        if (!is_dir($routesFolder)) mkdir($routesFolder, 0755, true);
+        $this->info("Controllers berhasil dibuat di: App\Http\Controllers\\{$name}");
 
-        // Buat file routes
-        $webRoutesFile = $routesFolder . "/{$name}Web.php";
-        $apiRoutesFile = $routesFolder . "/{$name}Api.php";
+        // === 3. Buat Folder & File Routes per Modul ===
+        $routesModulFolder = base_path("routes/{$name}");
+        if (!is_dir($routesModulFolder)) {
+            mkdir($routesModulFolder, 0755, true);
+        }
 
-        // Isi default routes resource
+        $webRoutesFile = $routesModulFolder . "/{$name}Web.php";
+        $apiRoutesFile = $routesModulFolder . "/{$name}Api.php";
+        $lowerName = strtolower($name);
+
+        // Template Web Routes
         if (!file_exists($webRoutesFile)) {
-            File::put($webRoutesFile, "<?php\n\nuse Illuminate\Support\Facades\Route;\nuse App\Http\Controllers\\{$name}\\{$name}Controller;\n\nRoute::resource('" . strtolower($name) . "', {$name}Controller::class);\n");
+            $webContent = "<?php\n\nuse Illuminate\Support\Facades\Route;\nuse App\Http\Controllers\\{$name}\\{$name}Controller;\n\nRoute::resource('{$lowerName}', {$name}Controller::class);\n";
+            File::put($webRoutesFile, $webContent);
         }
 
-        // Isi default API routes
+        // Template API Routes
         if (!file_exists($apiRoutesFile)) {
-            File::put($apiRoutesFile, "<?php\n\nuse Illuminate\Support\Facades\Route;\nuse App\Http\Controllers\\{$name}\\{$name}Api;\n\nRoute::prefix('" . strtolower($name) . "')->group(function() {\n    Route::apiResource('" . strtolower($name) . "', {$name}Api::class);\n});\n");
+            $apiContent = "<?php\n\nuse Illuminate\Support\Facades\Route;\nuse App\Http\Controllers\\{$name}\\{$name}Api;\n\nRoute::prefix('api')->group(function() {\n    Route::apiResource('{$lowerName}', {$name}Api::class)->names('api.{$lowerName}');\n});\n";
+            File::put($apiRoutesFile, $apiContent);
         }
 
-        // === 3. Tambahkan require otomatis ke routes utama ===
-        $this->appendRequireToMainRoutes('web.php', $name, $webRoutesFile);
-        $this->appendRequireToMainRoutes('api.php', $name, $apiRoutesFile);
+        $this->info("File routes modul berhasil dibuat di: routes/{$name}/");
 
-        $this->info("Routes berhasil dibuat di {$routesFolder}");
-        $this->info("✅ Selesai! Controller & routes lengkap siap digunakan.");
-    }
-
-    /**
-     * Tambahkan require ke file routes utama (web.php atau api.php)
-     */
-    protected function appendRequireToMainRoutes(string $mainRouteFile, string $name, string $routeFilePath)
-    {
-        $mainFile = base_path("routes/{$mainRouteFile}");
-        $requireLine = "require base_path('routes/{$name}/" . basename($routeFilePath) . "');";
-
-        // Pastikan file utama ada
-        if (!file_exists($mainFile)) {
-            $this->error("File routes/{$mainRouteFile} tidak ditemukan.");
-            return;
+        // === 4. Injeksi 'require' ke File Developer ===
+        $devFolder = base_path('routes/developer');
+        if (!is_dir($devFolder)) {
+            mkdir($devFolder, 0755, true);
         }
 
-        // Cek apakah sudah ada
-        $content = File::get($mainFile);
-        if (strpos($content, $requireLine) !== false) {
-            $this->line("⚠️  Baris require sudah ada di routes/{$mainRouteFile}, dilewati.");
-            return;
+        $routeFileName = "{$developer}DevEvo.php";
+        $devRouteFile = $devFolder . "/{$routeFileName}";
+
+        // Jika file developer belum ada, buat file baru
+        if (!file_exists($devRouteFile)) {
+            File::put($devRouteFile, "<?php\n\n// Routes milik {$developer}\n");
+            $this->info("File developer baru dibuat: routes/developer/{$routeFileName}");
         }
 
-        // Tambahkan baris require di akhir file
-        File::append($mainFile, "\n" . $requireLine . "\n");
-        $this->info("✅ Require ditambahkan ke routes/{$mainRouteFile}");
+        // Siapkan baris require
+        $requireWeb = "require base_path('routes/{$name}/{$name}Web.php');";
+        $requireApi = "require base_path('routes/{$name}/{$name}Api.php');";
+
+        $devRouteContent = File::get($devRouteFile);
+        $appended = false;
+
+        // Cek dan tambahkan Web Route
+        if (strpos($devRouteContent, $requireWeb) === false) {
+            File::append($devRouteFile, "\n" . $requireWeb);
+            $appended = true;
+        }
+
+        // Cek dan tambahkan API Route
+        if (strpos($devRouteContent, $requireApi) === false) {
+            File::append($devRouteFile, "\n" . $requireApi);
+            $appended = true;
+        }
+
+        if ($appended) {
+            $this->info("✅ Baris require berhasil ditambahkan ke routes/developer/{$routeFileName}");
+        } else {
+            $this->line("ℹ️ Require sudah ada di routes/developer/{$routeFileName}, melewati proses append.");
+        }
+
+        $this->info('🎉 Selesai! Modul ' . $name . ' siap dikerjakan.');
     }
 }

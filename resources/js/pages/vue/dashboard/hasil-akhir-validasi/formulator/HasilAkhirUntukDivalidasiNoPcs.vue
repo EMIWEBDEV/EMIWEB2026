@@ -39,111 +39,245 @@
                                 </div>
                             </div>
                         </div>
-                        <div
-                            v-else-if="listData.length > 0"
-                            class="table-responsive"
-                        >
-                            <table
-                                class="table table-bordered table-nowrap align-middle mb-0"
-                            >
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>No</th>
-                                        <th>No Transaksi</th>
-                                        <th>No Sampel</th>
-                                        <th>No PO</th>
-                                        <th>No Split Po</th>
-                                        <th>Batch</th>
-                                        <th>Tanggal</th>
-                                        <th
-                                            v-for="param in template.parameter"
-                                            :key="param.id_qc"
+                        <div v-else-if="listData.length > 0">
+                            <div class="table-responsive">
+                                <table
+                                    class="table table-bordered table-nowrap align-middle mb-0"
+                                >
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>No</th>
+                                            <th>No Transaksi</th>
+                                            <th>No Sampel</th>
+                                            <th>No PO</th>
+                                            <th>No Split Po</th>
+                                            <th>Batch</th>
+                                            <th>Tanggal</th>
+                                            <th
+                                                v-for="param in template.parameter"
+                                                :key="param.id_qc"
+                                            >
+                                                {{ param.nama_parameter }}
+                                            </th>
+                                            <th
+                                                v-for="(
+                                                    hitung, i
+                                                ) in template.formula"
+                                                :key="'hitung-header-' + i"
+                                            >
+                                                {{ hitung.nama_kolom }}
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            v-for="(row, rowIndex) in listData"
+                                            :key="rowIndex"
                                         >
-                                            {{ param.nama_parameter }}
-                                        </th>
-                                        <th
-                                            v-for="(
-                                                hitung, i
-                                            ) in template.formula"
-                                            :key="'hitung-header-' + i"
-                                        >
-                                            {{ hitung.nama_kolom }}
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr
-                                        v-for="(row, rowIndex) in listData"
-                                        :key="rowIndex"
-                                    >
-                                        <td>
-                                            {{ rowIndex + 1 }}
-                                        </td>
-                                        <td>
-                                            {{ row.No_Faktur }}
-                                        </td>
-                                        <td>{{ row.No_Po_Sampel }}</td>
-                                        <td>{{ row.No_Po }}</td>
-                                        <td>{{ row.No_Split_Po }}</td>
-                                        <td>Batch {{ row.No_Batch }}</td>
-                                        <td>
-                                            {{ formatTanggal(row.Tanggal) }}
-                                        </td>
-                                        <td
-                                            v-for="(
-                                                paramValue, pIndex
-                                            ) in row.parameters"
-                                            :key="`param-${rowIndex}-${pIndex}`"
-                                        >
-                                            {{ paramValue }}
-                                        </td>
-                                        <td
-                                            v-for="(
-                                                formula, fIndex
-                                            ) in template.formula"
-                                            :key="`formula-${rowIndex}-${fIndex}`"
-                                        >
-                                            {{
-                                                row.results[fIndex] &&
-                                                row.results[fIndex].value !==
-                                                    undefined &&
-                                                row.results[fIndex].value !==
-                                                    null
-                                                    ? row.results[fIndex].value
-                                                    : "-"
-                                            }}
-                                        </td>
-                                    </tr>
-                                    <tr
-                                        v-if="
-                                            template.formula &&
-                                            template.formula.length > 0 &&
-                                            formulaAverages.length > 0
-                                        "
-                                        class="table-warning fw-bold"
-                                    >
-                                        <td
-                                            :colspan="
-                                                7 +
-                                                (template.parameter
-                                                    ? template.parameter.length
-                                                    : 0)
+                                            <td>
+                                                {{ rowIndex + 1 }}
+                                            </td>
+                                            <td>
+                                                {{ row.No_Faktur }}
+                                            </td>
+                                            <td>{{ row.No_Po_Sampel }}</td>
+                                            <td>{{ row.No_Po }}</td>
+                                            <td>{{ row.No_Split_Po }}</td>
+                                            <td>Batch {{ row.No_Batch }}</td>
+                                            <td>
+                                                {{ formatTanggal(row.Tanggal) }}
+                                            </td>
+                                            <td
+                                                v-for="(
+                                                    paramValue, pIndex
+                                                ) in row.parameters"
+                                                :key="`param-${rowIndex}-${pIndex}`"
+                                            >
+                                                {{ paramValue }}
+                                            </td>
+                                            <td
+                                                v-for="(
+                                                    formula, fIndex
+                                                ) in template.formula"
+                                                :key="`formula-${rowIndex}-${fIndex}`"
+                                            >
+                                                {{
+                                                    row.results[fIndex] &&
+                                                    row.results[fIndex]
+                                                        .value !== undefined &&
+                                                    row.results[fIndex]
+                                                        .value !== null
+                                                        ? row.results[fIndex]
+                                                              .value
+                                                        : "-"
+                                                }}
+                                            </td>
+                                        </tr>
+                                        <tr
+                                            v-if="
+                                                template.formula &&
+                                                template.formula.length > 0 &&
+                                                formulaAverages.length > 0
                                             "
-                                            class="text-center"
+                                            class="table-warning fw-bold"
                                         >
-                                            <strong>Rata-Rata</strong>
-                                        </td>
-                                        <td
-                                            v-for="(
-                                                avg, fIndex
-                                            ) in formulaAverages"
-                                            :key="'avg-formula-' + fIndex"
+                                            <td
+                                                :colspan="
+                                                    7 +
+                                                    (template.parameter
+                                                        ? template.parameter
+                                                              .length
+                                                        : 0)
+                                                "
+                                                class="text-center"
+                                            >
+                                                <strong>Rata-Rata</strong>
+                                            </td>
+                                            <td
+                                                v-for="(
+                                                    avg, fIndex
+                                                ) in formulaAverages"
+                                                :key="'avg-formula-' + fIndex"
+                                            >
+                                                {{ avg }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div
+                                v-if="informasiData?.sesi_foto === 'Y'"
+                                class="mt-5 pt-3"
+                            >
+                                <div class="d-flex align-items-center mb-4">
+                                    <h4 class="fw-bold mb-0 text-dark">
+                                        Dokumentasi Hasil Analisa
+                                    </h4>
+                                    <div
+                                        class="flex-grow-1 border-top border-2 ms-4 border-light"
+                                    ></div>
+                                </div>
+
+                                <div
+                                    v-for="(item, index) in listData"
+                                    :key="index"
+                                    class="mb-5"
+                                >
+                                    <div
+                                        v-if="
+                                            item.foto_analisa &&
+                                            item.foto_analisa.length > 0
+                                        "
+                                        class="card border border-light shadow-sm rounded-4 overflow-hidden"
+                                    >
+                                        <div
+                                            class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center"
                                         >
-                                            {{ avg }}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                            <span
+                                                class="fw-bold text-secondary text-uppercase"
+                                                style="
+                                                    letter-spacing: 1px;
+                                                    font-size: 0.85rem;
+                                                "
+                                            >
+                                                <i
+                                                    class="fas fa-camera me-2 text-primary"
+                                                ></i>
+                                                Identitas Sampel
+                                            </span>
+                                            <span
+                                                class="badge bg-primary px-3 py-2 rounded-pill fs-6"
+                                                >{{ item.No_Po_Sampel }}</span
+                                            >
+                                        </div>
+                                        <div class="card-body p-0 bg-light">
+                                            <div class="row g-0">
+                                                <div
+                                                    v-for="foto in item.foto_analisa"
+                                                    :key="foto.Berkas_Key"
+                                                    class="col-12"
+                                                >
+                                                    <div
+                                                        v-if="
+                                                            !fotoBlobUrls[
+                                                                foto.Berkas_Key
+                                                            ]
+                                                        "
+                                                        class="d-flex justify-content-center align-items-center bg-light w-100"
+                                                        style="height: 500px"
+                                                    >
+                                                        <div
+                                                            class="spinner-grow text-primary"
+                                                            role="status"
+                                                        >
+                                                            <span
+                                                                class="visually-hidden"
+                                                                >Memuat
+                                                                Gambar...</span
+                                                            >
+                                                        </div>
+                                                    </div>
+                                                    <el-image
+                                                        v-else
+                                                        class="w-100 d-block"
+                                                        style="
+                                                            height: 500px;
+                                                            object-fit: contain;
+                                                            background-color: #f8f9fa;
+                                                        "
+                                                        :src="
+                                                            fotoBlobUrls[
+                                                                foto.Berkas_Key
+                                                            ]
+                                                        "
+                                                        :zoom-rate="1.2"
+                                                        :max-scale="7"
+                                                        :min-scale="0.2"
+                                                        :preview-src-list="
+                                                            item.foto_analisa
+                                                                .map(
+                                                                    (f) =>
+                                                                        fotoBlobUrls[
+                                                                            f
+                                                                                .Berkas_Key
+                                                                        ]
+                                                                )
+                                                                .filter(Boolean)
+                                                        "
+                                                        :initial-index="
+                                                            item.foto_analisa.findIndex(
+                                                                (f) =>
+                                                                    f.Berkas_Key ===
+                                                                    foto.Berkas_Key
+                                                            )
+                                                        "
+                                                        fit="contain"
+                                                        hide-on-click-modal
+                                                        @contextmenu.prevent
+                                                        @dragstart.prevent
+                                                    >
+                                                        <template #error>
+                                                            <div
+                                                                class="d-flex flex-column justify-content-center align-items-center bg-light text-muted w-100 h-100"
+                                                            >
+                                                                <i
+                                                                    class="fas fa-image-slash fa-3x mb-3 text-secondary"
+                                                                ></i>
+                                                                <span
+                                                                    class="fw-medium"
+                                                                    >Gambar
+                                                                    gagal
+                                                                    dimuat</span
+                                                                >
+                                                            </div>
+                                                        </template>
+                                                    </el-image>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div v-else class="text-center py-5 empty-state">
                             <div
@@ -175,6 +309,7 @@
 import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
 import axios from "axios";
 import vSelect from "vue-select";
+import { ElImage } from "element-plus";
 
 export default {
     props: {
@@ -189,7 +324,7 @@ export default {
     },
     components: {
         DotLottieVue,
-
+        ElImage,
         vSelect,
     },
     data() {
@@ -199,6 +334,7 @@ export default {
             informasiData: {},
             dataTracking: [],
             formulaAverages: [],
+            fotoBlobUrls: {},
             template: {
                 parameter: [],
                 formula: [],
@@ -238,6 +374,43 @@ export default {
         },
     },
     methods: {
+        async fetchBlobPhotos() {
+            if (this.informasiData?.sesi_foto !== "Y") return;
+
+            const allKeys = [];
+
+            this.listData.forEach((item) => {
+                item.foto_analisa?.forEach((f) => {
+                    allKeys.push(f.Berkas_Key);
+                });
+            });
+
+            if (allKeys.length === 0) return;
+
+            const tokenResponse = await axios.post(
+                `/api/v1/formulator/hasil-uji/berkas/foto/token/bulk`,
+                { keys: allKeys }
+            );
+
+            const tokenMap = tokenResponse.data;
+
+            for (const key of allKeys) {
+                const res = await axios.get(
+                    `/api/v1/formulator/berkas/stream/foto-uji/${key}?token=${tokenMap[key]}`,
+                    { responseType: "blob" }
+                );
+
+                this.fotoBlobUrls[key] = URL.createObjectURL(res.data);
+            }
+        },
+        hapusSemuaBlobMemori() {
+            if (this.fotoBlobUrls) {
+                Object.values(this.fotoBlobUrls).forEach((url) => {
+                    URL.revokeObjectURL(url);
+                });
+                this.fotoBlobUrls = {};
+            }
+        },
         getRowsForLog(idLog) {
             if (!this.dataTracking || this.dataTracking.length === 0) {
                 return [];
@@ -378,7 +551,7 @@ export default {
                         Tanggal: firstItemInGroup.Tanggal_Pengujian || "-",
                         parameters: parameterResults,
                         results: finalResults,
-                        // Simpan grup asli untuk referensi pembulatan nanti
+                        foto_analisa: firstItemInGroup.foto_analisa || [],
                         _originalGroup: group,
                     };
                 }
@@ -477,10 +650,10 @@ export default {
             try {
                 const [response, parameterResponse] = await Promise.all([
                     axios.get(
-                        `/api/v1/hasil-final-keputusan/${this.Id_Jenis_Analisa}/single-qrcode/${this.No_Sampel}`
+                        `/api/v1/formulator-final-keputusan/detail/${this.Id_Jenis_Analisa}/single-qrcode/${this.No_Sampel}/final`
                     ),
                     axios.get(
-                        `/fetch/lab/lama/${this.Id_Jenis_Analisa}/parameter-perhitungan-old`
+                        `/api/v1/formulator/uji-trial/${this.Id_Jenis_Analisa}/parameter-perhitungan-old`
                     ),
                 ]);
 
@@ -506,6 +679,7 @@ export default {
                     this.listData = data;
                     this.formulaAverages = formulaAverages;
                     this.informasiData = response.data.result.informasi;
+                    this.fetchBlobPhotos();
                 } else {
                     throw new Error(
                         "Respons API tidak valid atau data tidak ditemukan."
