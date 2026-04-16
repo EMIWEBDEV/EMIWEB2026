@@ -166,7 +166,8 @@ class TrackingController extends Controller
                 'hpp.Tanggal as hpp_tanggal',
                 'hpp.Jam as hpp_jam',
                 'hpp.Jumlah_Terpakai as hpp_jumlah_terpakai',
-                'hpp.Jumlah_Dosing_Pcs as hpp_jumlah_dosing_pcs'
+                'hpp.Jumlah_Dosing_Pcs as hpp_jumlah_dosing_pcs',
+                'spo.Flag_Hasil_Produksi_GR as flag_hasil_produksi_gr'
             ],
             'map' => [
                 'prd' => 'prd',
@@ -1130,6 +1131,13 @@ class TrackingController extends Controller
 
         $filtered = array_values(
             array_filter($records, function (array $record) use ($from, $to, $prd, $noSplit, $batch, $line, $status) {
+                // Hide records that have not entered any stage (no lanes)
+                $hasAnyStageData = collect($record['lanes'] ?? [])
+                    ->contains(fn($lane) => ($lane['qty'] ?? null) !== null);
+
+                if (!$hasAnyStageData) {
+                    return false;
+                }
                 if ($from && $record['date'] < $from) {
                     return false;
                 }
