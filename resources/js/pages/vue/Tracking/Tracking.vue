@@ -109,6 +109,7 @@ export default {
         return {
             loading: false,
             loadingMore: false,
+            isBackgroundRefreshing: false,
             errorMessage: "",
             requestSeq: 0,
             activeRequestSeq: 0,
@@ -360,18 +361,24 @@ export default {
             this.date = `${tanggal} ${namaBulan} ${tahun}`;
         },
 
-        async fetchTrackingData({ page = 1, append = false } = {}) {
+        async fetchTrackingData({
+            page = 1,
+            append = false,
+            silent = false,
+        } = {}) {
             const requestSeq = ++this.requestSeq;
             this.activeRequestSeq = requestSeq;
 
-            if (append) {
+            if (silent) {
+                this.isBackgroundRefreshing = true;
+            } else if (append) {
                 this.loadingMore = true;
             } else {
                 this.loading = true;
                 this.loadingMore = false;
             }
 
-            this.errorMessage = "";
+            if (!silent) this.errorMessage = "";
 
             try {
                 const response = await axios.get("/tracking/show", {
@@ -388,11 +395,19 @@ export default {
 
                 this.applyPayload(response.data, { append });
                 if (!append) {
-                    this.refreshIntervalMs = Number(
-                        response?.data?.meta?.refreshIntervalMs ||
-                            DEFAULT_REFRESH_INTERVAL_MS
+                    let newInterval = Number(
+                        response?.data?.meta?.refreshIntervalMs
                     );
-                    this.restartRefreshPolling();
+                    if (isNaN(newInterval) || newInterval <= 0) {
+                        newInterval = DEFAULT_REFRESH_INTERVAL_MS;
+                    }
+                    const intervalChanged =
+                        this.refreshIntervalMs !== newInterval;
+                    this.refreshIntervalMs = newInterval;
+
+                    if (!silent || intervalChanged) {
+                        this.restartRefreshPolling();
+                    }
                 }
                 this.$nextTick(() => {
                     this.maybeLoadMore();
@@ -403,38 +418,46 @@ export default {
                 }
 
                 // ... (handling fail state but keeping previous filters)
-                this.errorMessage =
-                    "Data tracking gagal dimuat dari controller.";
-                this.applyPayload(
-                    {
-                        meta: this.pageMeta,
-                        columns: [],
-                        records: [],
-                        options: {
-                            prd: [],
-                            no_split: [],
-                            no_split_by_prd: {},
-                            batch: [],
-                            line: [],
-                            status: [],
+                if (!silent) {
+                    this.errorMessage =
+                        "Data tracking gagal dimuat dari controller.";
+                    this.applyPayload(
+                        {
+                            meta: this.pageMeta,
+                            columns: [],
+                            records: [],
+                            options: {
+                                prd: [],
+                                no_split: [],
+                                no_split_by_prd: {},
+                                batch: [],
+                                line: [],
+                                status: [],
+                            },
+                            summary: {
+                                total: 0,
+                                done: 0,
+                                running: 0,
+                                pending: 0,
+                            },
+                            pagination: {
+                                page: 1,
+                                perPage: 10,
+                                total: 0,
+                                lastPage: 1,
+                                hasMore: false,
+                            },
+                            filters: { ...this.filters, page: 1, per_page: 10 },
                         },
-                        summary: { total: 0, done: 0, running: 0, pending: 0 },
-                        pagination: {
-                            page: 1,
-                            perPage: 10,
-                            total: 0,
-                            lastPage: 1,
-                            hasMore: false,
-                        },
-                        filters: { ...this.filters, page: 1, per_page: 10 },
-                    },
-                    { append: false }
-                );
+                        { append: false }
+                    );
+                }
                 console.error(error);
             } finally {
                 if (requestSeq === this.activeRequestSeq) {
                     this.loading = false;
                     this.loadingMore = false;
+                    this.isBackgroundRefreshing = false;
                 }
             }
         },
@@ -483,14 +506,15 @@ export default {
             this.stopRefreshPolling();
 
             const isHidden = typeof document !== "undefined" && document.hidden;
+
+            let intervalMs = Number(this.refreshIntervalMs);
+            if (isNaN(intervalMs) || intervalMs <= 0) {
+                intervalMs = DEFAULT_REFRESH_INTERVAL_MS;
+            }
+
             const interval = isHidden
                 ? INACTIVE_REFRESH_INTERVAL_MS
-                : Math.max(
-                      1000,
-                      Number(
-                          this.refreshIntervalMs || DEFAULT_REFRESH_INTERVAL_MS
-                      )
-                  );
+                : Math.max(1000, intervalMs);
 
             this.refreshTimerId = setInterval(() => {
                 this.autoRefreshTick();
@@ -509,7 +533,11 @@ export default {
         },
 
         autoRefreshTick() {
-            if (this.loading || this.loadingMore) {
+            if (
+                this.loading ||
+                this.loadingMore ||
+                this.isBackgroundRefreshing
+            ) {
                 return;
             }
 
@@ -518,11 +546,15 @@ export default {
                 return;
             }
 
-            this.fetchTrackingData({ page: 1, append: false });
+            this.fetchTrackingData({ page: 1, append: false, silent: true });
         },
 
         handleWindowScroll() {
-            if (this.loading || this.loadingMore) {
+            if (
+                this.loading ||
+                this.loadingMore ||
+                this.isBackgroundRefreshing
+            ) {
                 return;
             }
 
@@ -540,7 +572,11 @@ export default {
         },
 
         maybeLoadMore() {
-            if (this.loading || this.loadingMore) {
+            if (
+                this.loading ||
+                this.loadingMore ||
+                this.isBackgroundRefreshing
+            ) {
                 return;
             }
 
@@ -561,6 +597,7 @@ export default {
             if (
                 this.loading ||
                 this.loadingMore ||
+                this.isBackgroundRefreshing ||
                 !this.tracking.pagination.hasMore
             ) {
                 return;

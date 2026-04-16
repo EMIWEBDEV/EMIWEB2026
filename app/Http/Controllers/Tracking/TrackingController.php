@@ -119,7 +119,7 @@ class TrackingController extends Controller
             'joins' => [
                 [
                     'type' => 'inner',
-                    'table' => 'EMI_Production_Results_HPP',
+                    'table' => 'EMI_VW_Production_Results_HPP',
                     'alias' => 'hpp',
                     'first' => 'hpp.No_Transaksi',
                     'operator' => '=',
@@ -428,7 +428,7 @@ class TrackingController extends Controller
         );
         $filtered = $this->filterRecords($records, $request, $flowFilter, $runningScope);
         $page = max(1, (int) $request->input('page', 1));
-        $perPage = max(1, min(50, (int) $request->input('per_page', 10)));
+        $perPage = max(1, min(50, (int) $request->input('per_page', 1000)));
         $pagination = $this->paginateRecords($filtered, $page, $perPage);
         $refreshSeconds = max(
             1,
