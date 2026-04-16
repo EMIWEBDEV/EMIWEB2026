@@ -7,9 +7,14 @@
 
         <div class="batch-lbl">{{ card.batch }}</div>
 
-        <div :class="lane.unit === 'pcs' ? 'metric-row' : 'box-row'">
-            <div :class="lane.unit === 'pcs' ? 'mnum' : 'bnum'">{{ quantityLabel }}</div>
-            <div :class="lane.unit === 'pcs' ? 'mlbl' : 'blbl'">{{ unitLabel }}</div>
+        <!-- ✅ GLOBAL UNIT STYLE -->
+        <div :class="unitStyle.row">
+            <div :class="unitStyle.num">
+                {{ quantityLabel }}
+            </div>
+            <div :class="unitStyle.lbl">
+                {{ unitLabel }}
+            </div>
         </div>
 
         <div class="suhu-row">
@@ -22,12 +27,14 @@
         <div class="times">
             <div class="ti">
                 <div class="tl">Jam Awal</div>
-                <div class="tv time-compact">{{ lane.jam_awal || '—:——' }}</div>
+                <div class="tv time-compact">{{ lane.jam_awal || "—:——" }}</div>
             </div>
             <div class="arrow">→</div>
             <div class="ti">
                 <div class="tl">Jam Akhir</div>
-                <div class="tv time-compact">{{ lane.jam_akhir || '—:——' }}</div>
+                <div class="tv time-compact">
+                    {{ lane.jam_akhir || "—:——" }}
+                </div>
             </div>
         </div>
 
@@ -51,40 +58,81 @@ export default {
             return this.card.lane || {};
         },
 
+        // 🔥 GLOBAL UNIT STYLE
+        unitStyle() {
+            const unit = (this.lane.unit || "").toLowerCase();
+
+            const styles = {
+                pcs: {
+                    row: "metric-row",
+                    num: "mnum",
+                    lbl: "mlbl",
+                },
+                kg: {
+                    row: "metric-row",
+                    num: "mnum",
+                    lbl: "mlbl",
+                },
+                liter: {
+                    row: "metric-row",
+                    num: "mnum",
+                    lbl: "mlbl",
+                },
+                box: {
+                    row: "box-row",
+                    num: "bnum",
+                    lbl: "blbl",
+                },
+                default: {
+                    row: "box-row",
+                    num: "bnum",
+                    lbl: "blbl",
+                },
+            };
+
+            return styles[unit] || styles.default;
+        },
+
         progressState() {
-            return this.lane.progress_state || this.lane.status || 'not_started';
+            return (
+                this.lane.progress_state || this.lane.status || "not_started"
+            );
         },
 
         cardClass() {
             return {
                 completed: this.card.fullDone,
-                'not-started': this.progressState === 'not_started',
+                "not-started": this.progressState === "not_started",
             };
         },
 
         cardStyle() {
-            const accent = this.card.column?.indicator || '#38bdf8';
+            const accent = this.card.column?.indicator || "#38bdf8";
 
             return {
                 borderTop: this.card.fullDone
-                    ? '3px solid #22c55e'
-                    : this.progressState === 'not_started'
-                      ? '3px solid #94a3b8'
-                      : `3px solid ${accent}`,
+                    ? "3px solid #22c55e"
+                    : this.progressState === "not_started"
+                    ? "3px solid #94a3b8"
+                    : `3px solid ${accent}`,
             };
         },
 
+        // 🔥 UNIT LABEL GLOBAL
         unitLabel() {
-            return this.lane.unit === 'pcs' ? 'pcs' : 'box';
+            return (this.lane.unit || "box").toLowerCase();
         },
 
         quantityLabel() {
             if (this.lane.qty === null || this.lane.qty === undefined) {
-                return '—';
+                return "—";
             }
 
-            if (this.lane.unit === 'pcs') {
-                return new Intl.NumberFormat('id-ID').format(this.lane.qty);
+            const unit = (this.lane.unit || "").toLowerCase();
+
+            // metric → pakai format angka
+            if (["pcs", "kg", "liter"].includes(unit)) {
+                return new Intl.NumberFormat("id-ID").format(this.lane.qty);
             }
 
             return this.lane.qty;
@@ -92,105 +140,116 @@ export default {
 
         temperatureLabel() {
             if (this.lane.suhu === null || this.lane.suhu === undefined) {
-                return '—';
+                return "—";
             }
 
             return `${this.lane.suhu}°C`;
         },
 
         badgeText() {
-            if (this.progressState === 'not_started') {
-                return 'Belum Mulai';
+            if (this.progressState === "not_started") {
+                return "Belum Mulai";
             }
 
             if (this.card.fullDone) {
-                return 'Selesai';
+                return "Selesai";
             }
 
-            if (this.lane.status === 'run') {
-                return 'Running';
+            if (this.lane.status === "run") {
+                return "Running";
             }
 
-            if (this.lane.status === 'done') {
-                return 'Selesai';
+            if (this.lane.status === "done") {
+                return "Selesai";
             }
 
-            return 'Pending';
+            return "Pending";
         },
 
         badgeClass() {
-            if (this.progressState === 'not_started') {
-                return 'b-not-started';
+            if (this.progressState === "not_started") {
+                return "b-not-started";
             }
 
             if (this.card.fullDone) {
-                return 'b-full';
+                return "b-full";
             }
 
-            if (this.lane.status === 'run') {
-                return 'b-run';
+            if (this.lane.status === "run") {
+                return "b-run";
             }
 
-            if (this.lane.status === 'done') {
-                return 'b-done';
+            if (this.lane.status === "done") {
+                return "b-done";
             }
 
-            return 'b-wait';
+            return "b-wait";
         },
 
         durationLabel() {
-            return this.calculateDuration(this.lane.jam_awal, this.lane.jam_akhir);
+            return this.calculateDuration(
+                this.lane.jam_awal,
+                this.lane.jam_akhir
+            );
         },
 
         durationClass() {
-            if (this.progressState === 'not_started') {
-                return 'dv dv-not-started';
+            if (this.progressState === "not_started") {
+                return "dv dv-not-started";
             }
 
             if (this.card.fullDone) {
-                return 'dv';
+                return "dv";
             }
 
-            if (this.lane.status === 'run') {
-                return 'dv dv-run';
+            if (this.lane.status === "run") {
+                return "dv dv-run";
             }
 
-            if (this.lane.status === 'done') {
-                return 'dv dv-done';
+            if (this.lane.status === "done") {
+                return "dv dv-done";
             }
 
-            return 'dv dv-wait';
+            return "dv dv-wait";
         },
     },
+
     methods: {
         calculateDuration(startTime, endTime) {
-            if (!startTime || !endTime || startTime === '—:——' || endTime === '—:——') {
-                return '—';
+            if (
+                !startTime ||
+                !endTime ||
+                startTime === "—:——" ||
+                endTime === "—:——"
+            ) {
+                return "—";
             }
 
-            const startParts = startTime.split(' ');
-            const endParts = endTime.split(' ');
+            const startParts = startTime.split(" ");
+            const endParts = endTime.split(" ");
 
             if (startParts.length < 2 || endParts.length < 2) {
-                return '—';
+                return "—";
             }
 
-            const [startHour, startMinute] = startParts[1].split(':').map(Number);
-            const [endHour, endMinute] = endParts[1].split(':').map(Number);
+            const [startHour, startMinute] = startParts[1]
+                .split(":")
+                .map(Number);
+            const [endHour, endMinute] = endParts[1].split(":").map(Number);
 
-            let totalMinutes = endHour * 60 + endMinute - (startHour * 60 + startMinute);
+            let totalMinutes =
+                endHour * 60 + endMinute - (startHour * 60 + startMinute);
 
             if (totalMinutes < 0) totalMinutes += 1440;
 
             const hours = Math.floor(totalMinutes / 60);
-            const minutes = String(totalMinutes % 60).padStart(2, '0');
+            const minutes = String(totalMinutes % 60).padStart(2, "0");
 
             return `${hours}j ${minutes}m`;
         },
     },
 };
 </script>
-
 <style scoped>
 .card {
     background: #fff;

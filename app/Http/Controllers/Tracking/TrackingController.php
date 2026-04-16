@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\DateTime;
 use Illuminate\Support\Facades\DB;
+use carbon\Carbon;
 
 class TrackingController extends Controller
 {
@@ -25,9 +26,14 @@ class TrackingController extends Controller
 
     private const SOURCE_DEFINITIONS = [
         'rfid' => [
-            'table_by_view' => [
-                'active' => 'N_EMI_Pairing_RFID',
-                'history' => 'N_EMI_Pairing_RFID_Log',
+            // 'table_by_view' => [
+            //     'active' => 'N_EMI_Pairing_RFID',
+            //     'history' => 'N_EMI_Pairing_RFID_Log',
+            // ],
+            // 'alias' => 'r',
+            'table_union' => [
+                'N_EMI_Pairing_RFID',
+                'N_EMI_Pairing_RFID_Log',
             ],
             'alias' => 'r',
             'joins' => [
@@ -160,6 +166,7 @@ class TrackingController extends Controller
                 'hpp.Tanggal as hpp_tanggal',
                 'hpp.Jam as hpp_jam',
                 'hpp.Jumlah_Terpakai as hpp_jumlah_terpakai',
+                'hpp.Jumlah_Dosing_Pcs as hpp_jumlah_dosing_pcs'
             ],
             'map' => [
                 'prd' => 'prd',
@@ -171,6 +178,7 @@ class TrackingController extends Controller
                 'hpp_tanggal' => 'hpp_tanggal',
                 'hpp_jam' => 'hpp_jam',
                 'hpp_jumlah_terpakai' => 'hpp_jumlah_terpakai',
+                'hpp_jumlah_dosing_pcs' => 'hpp_jumlah_dosing_pcs',
             ],
             'transforms' => [
                 'prd' => 'trim',
@@ -369,12 +377,13 @@ class TrackingController extends Controller
             'label' => 'Autoclave',
             'icon' => '🔥',
             'indicator' => '#fbbf24',
-            'unitLabel' => 'box',
-            'summaryLabel' => 'Box',
+            'unitLabel' => 'pcs',
+            'summaryLabel' => 'Pcs',
             'source_keys' => ['production_autoclave'],
             'quantity' => [
-                'mode' => 'row_count',
+                'mode' => 'sum',
                 'source_key' => 'production_autoclave',
+                'field' => 'hpp_jumlah_dosing_pcs',
             ],
             'temperature' => '-',
             'entry_rules' => [
@@ -964,6 +973,7 @@ class TrackingController extends Controller
                     return null;
                 }
 
+                // dd($stage, $ruleType, $index, $rule, $matchedRows, $count);
                 return [
                     'key' => $stage . ':' . $ruleType . ':' . $index,
                     'label' => $this->formatRuleLocationLabel($stage, $rule),
@@ -1216,6 +1226,7 @@ class TrackingController extends Controller
                 return $group->pluck('prd')->filter()->unique()->values()->all();
             })
             ->all();
+        // dd($splitByPrd);
 
         return [
             'prd' => collect($recordsForPrd)->pluck('prd_order')->filter()->unique()->values()->all(),
@@ -1387,31 +1398,51 @@ class TrackingController extends Controller
             return collect();
         }
 
-        $table = $this->sourceTableForViewMode($definition, $viewMode);
-
-        if (!$table) {
-            return collect();
-        }
-
         $alias = (string) ($definition['alias'] ?? 't');
 
         try {
-            $query = DB::table($table . ' as ' . $alias);
-            $this->applySourceJoins($query, $definition['joins'] ?? []);
 
-            return $query
-                ->select($definition['select'] ?? [])
-                ->get()
+            if (!empty($definition['table_union'])) {
+
+                $unionQuery = $this->buildUnionQuery(
+                    $definition['table_union'],
+                    $alias,
+                    $definition
+                );
+
+                $rows = DB::query()
+                    ->fromSub($unionQuery, 'unioned')
+                    ->get();
+
+            } else {
+
+                $table = $this->sourceTableForViewMode($definition, $viewMode);
+
+                if (!$table) {
+                    return collect();
+                }
+
+                $query = DB::table($table . ' as ' . $alias);
+                $this->applySourceJoins($query, $definition['joins'] ?? []);
+
+                $rows = $query->select($definition['select'] ?? [])->get();
+                // if ($definition['table'] === 'EMI_VW_Production_Results') {
+                    // dd($sourceKey, $viewMode, $definition, $rows);
+                // }
+            }
+
+            return collect($rows)
                 ->values()
-                ->map(
-                    fn($row, int $index) => $this->normalizeSourceRow($row, $sourceKey, $definition, $index, $viewMode),
+                ->map(fn($row, int $index) =>
+                    $this->normalizeSourceRow($row, $sourceKey, $definition, $index, $viewMode)
                 )
                 ->values();
+
         } catch (Throwable $exception) {
+
             if (config('app.debug')) {
                 Log::warning('Tracking source query failed.', [
                     'source_key' => $sourceKey,
-                    'table' => $table,
                     'alias' => $alias,
                     'view_mode' => $viewMode,
                     'message' => $exception->getMessage(),
@@ -1440,6 +1471,12 @@ class TrackingController extends Controller
 
             if ($joinType === 'inner') {
                 $query->join($tableWithAlias, $first, $operator, $second);
+                continue;
+            }
+
+            if ($joinType === 'left') {
+                    $query->leftJoin($tableWithAlias, $first, $operator, $second
+                );
                 continue;
             }
 
@@ -1589,7 +1626,7 @@ class TrackingController extends Controller
                     'qty' => $stageQty,
                     'entry_breakdown' => $breakdown['entry_breakdown'],
                     'completion_breakdown' => $breakdown['completion_breakdown'],
-                    'unit' => 'box',
+                    'unit' => (string) ($this->stageDefinition($stage)['summaryLabel'] ?? 'Box'),
                     'suhu' => $this->defaultTemperature($stage, (int) ($stageQty ?? 0)),
                     'jam_awal' => $startAt ? Carbon::createFromTimestamp($startAt)->format('d/m H:i') : null,
                     'jam_akhir' => $endAt ? Carbon::createFromTimestamp($endAt)->format('d/m H:i') : null,
@@ -1990,6 +2027,20 @@ class TrackingController extends Controller
 
             return $stageRows->count();
         }
+        // dd($stage, $mode, $sourceKey, $stageRows->all());
+        if ($mode === 'sum') {
+
+            $field = (string) ($quantity['field'] ?? '');
+            // if($stageRows->first()['prd_order'] == 'PRD0426-00022'){
+
+            //     dd($stage, $mode, $sourceKey, $field, $stageRows);
+            // }
+            return $stageRows
+                ->filter(fn(array $row) =>
+                    $sourceKey === '' || (string) ($row['source_key'] ?? '') === $sourceKey
+                )
+                ->sum(fn(array $row) => (int) ($row[$field] ?? 0));
+        }
 
         if ($mode === 'matched_rules') {
             $rules = (array) ($quantity['rules'] ?? []);
@@ -2091,6 +2142,29 @@ class TrackingController extends Controller
         }
 
         return null;
+    }
+
+    private function buildUnionQuery(array $tables, string $alias, array $definition)
+    {
+        $queries = [];
+
+        foreach ($tables as $table) {
+            $q = DB::table($table . ' as ' . $alias);
+            $this->applySourceJoins($q, $definition['joins'] ?? []);
+            $q->select($definition['select'] ?? []);
+
+            $queries[] = $q;
+        }
+
+        // Ambil query pertama
+        $base = array_shift($queries);
+
+        // UNION ALL sisanya
+        foreach ($queries as $q) {
+            $base->unionAll($q);
+        }
+
+        return $base;
     }
 
     private function dateRange(array $records): array

@@ -12,19 +12,27 @@
                 stroke-linecap="round"
                 stroke-linejoin="round"
             >
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                <polygon
+                    points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"
+                ></polygon>
             </svg>
             Filter
         </button>
 
         <!-- Backdrop for off-canvas -->
-        <div class="filter-backdrop" :class="{ 'is-open': isMobileOpen }" @click="isMobileOpen = false"></div>
+        <div
+            class="filter-backdrop"
+            :class="{ 'is-open': isMobileOpen }"
+            @click="isMobileOpen = false"
+        ></div>
 
         <!-- Filter Bar -->
         <div class="filter-bar" :class="{ 'is-open': isMobileOpen }">
             <div class="filter-header-mobile">
                 <span class="f-title">Filter / Summary</span>
-                <button class="f-close" @click="isMobileOpen = false">&times;</button>
+                <button class="f-close" @click="isMobileOpen = false">
+                    &times;
+                </button>
             </div>
 
             <span class="filter-label hidden-mobile">Filter</span>
@@ -125,22 +133,44 @@
                     :disabled="loading"
                     @click="$emit('set-status', item.value)"
                 >
-                    {{ item.value === 'running' ? '● ' : item.value === 'selesai' ? '✓ ' : '' }}{{ item.label }}
+                    {{
+                        item.value === "running"
+                            ? "● "
+                            : item.value === "selesai"
+                            ? "✓ "
+                            : ""
+                    }}{{ item.label }}
                 </button>
             </div>
 
-            <button class="fbtn fbtn-apply" :disabled="loading" @click="applyAndClose">
+            <button
+                class="fbtn fbtn-apply"
+                :disabled="loading"
+                @click="applyAndClose"
+            >
                 <span v-if="loading" class="btn-spinner"></span>
-                {{ loading ? 'Memuat...' : 'Terapkan' }}
+                {{ loading ? "Memuat..." : "Terapkan" }}
             </button>
-            <button class="fbtn fbtn-reset" :disabled="loading" @click="resetAndClose">Reset</button>
+            <button
+                class="fbtn fbtn-reset"
+                :disabled="loading"
+                @click="resetAndClose"
+            >
+                Reset
+            </button>
 
             <!-- Summary Chips -->
             <div class="summary-chips" v-if="summary">
-                <div class="chip chip-blue">{{ totalChipLabel }}: {{ summary.total ?? 0 }}</div>
-                <div class="chip chip-teal">Selesai: {{ summary.done ?? 0 }}</div>
-                <div class="chip chip-green">Running: {{ summary.running ?? 0 }}</div>
-                <div class="chip chip-amber">Pending: {{ summary.pending ?? 0 }}</div>
+                <div class="chip chip-blue">
+                    {{ totalChipLabel }}: {{ summary.total ?? 0 }}
+                </div>
+                <div class="chip chip-teal">
+                    Selesai: {{ summary.done ?? 0 }}
+                </div>
+                <div class="chip chip-green">
+                    Running: {{ summary.running ?? 0 }}
+                </div>
+                <!-- <div class="chip chip-amber">Pending: {{ summary.pending ?? 0 }}</div> -->
             </div>
         </div>
     </div>
@@ -150,15 +180,15 @@
 export default {
     props: {
         filters: { type: Object, required: true },
-        flowFilter: { type: String, default: 'full_process' },
-        runningScope: { type: String, default: 'record' },
+        flowFilter: { type: String, default: "full_process" },
+        runningScope: { type: String, default: "record" },
         flowFilterModes: { type: Array, default: () => [] },
         prdOptions: { type: Array, default: () => [] },
         splitOptions: { type: Array, default: () => [] },
         lineOptions: { type: Array, default: () => [] },
         batchOptions: { type: Array, default: () => [] },
         statusOptions: { type: Array, default: () => [] },
-        activeStatus: { type: String, default: 'all' },
+        activeStatus: { type: String, default: "all" },
         loading: { type: Boolean, default: false },
         summary: { type: Object, required: false },
     },
@@ -167,33 +197,35 @@ export default {
             isMobileOpen: false,
         };
     },
-    emits: ['update-filter', 'set-status', 'apply', 'reset', 'set-flow-filter'],
+    emits: ["update-filter", "set-status", "apply", "reset", "set-flow-filter"],
     computed: {
         totalChipLabel() {
-            if (this.flowFilter !== 'live_running') {
-                return 'Total Record';
+            if (this.flowFilter !== "live_running") {
+                return "Total Record";
             }
 
-            return 'Total Mesin Running';
+            return "Total Mesin Running";
         },
     },
     methods: {
         emitFilter(field, value) {
-            this.$emit('update-filter', { field, value });
+            this.$emit("update-filter", { field, value });
         },
         statusButtonClass(value) {
             return {
-                'active-all': value === 'all' && this.activeStatus === 'all',
-                'active-running': value === 'running' && this.activeStatus === 'running',
-                'active-selesai': value === 'selesai' && this.activeStatus === 'selesai',
+                "active-all": value === "all" && this.activeStatus === "all",
+                "active-running":
+                    value === "running" && this.activeStatus === "running",
+                "active-selesai":
+                    value === "selesai" && this.activeStatus === "selesai",
             };
         },
         applyAndClose() {
-            this.$emit('apply');
+            this.$emit("apply");
             this.isMobileOpen = false;
         },
         resetAndClose() {
-            this.$emit('reset');
+            this.$emit("reset");
             this.isMobileOpen = false;
         },
     },
@@ -296,7 +328,7 @@ export default {
     border-radius: 6px;
     padding: 5px 10px;
     font-size: 12px;
-    font-family: 'Inter', sans-serif;
+    font-family: "Inter", sans-serif;
     color: #1e2330;
     background: #f9fafc;
     outline: none;
@@ -334,7 +366,7 @@ select.finput {
     border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
-    font-family: 'Inter', sans-serif;
+    font-family: "Inter", sans-serif;
     cursor: pointer;
     border: 1.5px solid transparent;
     transition: all 0.15s;
@@ -366,7 +398,7 @@ select.finput {
     border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
-    font-family: 'Inter', sans-serif;
+    font-family: "Inter", sans-serif;
     cursor: pointer;
     border: none;
     transition: all 0.15s;
@@ -474,9 +506,7 @@ select.finput {
         font-weight: 600;
         box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
         cursor: pointer;
-        transition:
-            transform 0.2s,
-            background 0.2s;
+        transition: transform 0.2s, background 0.2s;
     }
 
     .mobile-filter-fab:active {
