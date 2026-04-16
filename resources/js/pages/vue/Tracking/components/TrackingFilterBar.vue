@@ -52,74 +52,97 @@
                 </button>
             </div>
 
-            <div class="filter-group">
-                <span class="filter-text">Dari</span>
-                <input
-                    type="date"
-                    class="finput"
-                    :value="filters.from"
-                    :disabled="loading"
-                    @input="emitFilter('from', $event.target.value)"
-                />
-                <span class="filter-text">s/d</span>
-                <input
-                    type="date"
-                    class="finput"
-                    :value="filters.to"
-                    :disabled="loading"
-                    @input="emitFilter('to', $event.target.value)"
-                />
-            </div>
+            <el-date-picker
+                :model-value="[filters.from, filters.to]"
+                type="daterange"
+                range-separator="s/d"
+                start-placeholder="Dari"
+                end-placeholder="Sampai"
+                format="DD MMM YYYY"
+                value-format="YYYY-MM-DD"
+                size="small"
+                class="date-range-input"
+                :disabled="loading"
+                @update:model-value="handleDateRangeChange"
+            />
 
             <div class="filter-sep hidden-mobile"></div>
 
-            <select
-                class="finput f-select-prd"
-                :value="filters.prd"
+            <el-select
+                v-model="filters.prd"
+                class="f-select-prd tracking-el-select"
                 :disabled="loading"
-                @change="emitFilter('prd', $event.target.value)"
+                filterable
+                clearable
+                size="small"
+                placeholder="Semua Nomor PRD"
+                @update:model-value="emitFilter('prd', $event)"
             >
-                <option value="">Semua Nomor PRD</option>
-                <option v-for="item in prdOptions" :key="item" :value="item">
-                    {{ item }}
-                </option>
-            </select>
+                <el-option label="Semua Nomor PRD" value="" />
+                <el-option
+                    v-for="item in prdOptions"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                />
+            </el-select>
 
-            <select
-                class="finput f-select-prd"
-                :value="filters.no_split"
+            <el-select
+                v-model="filters.no_split"
+                class="f-select-prd tracking-el-select"
                 :disabled="loading"
-                @change="emitFilter('no_split', $event.target.value)"
+                filterable
+                clearable
+                size="small"
+                placeholder="Semua Nomor Split"
+                @update:model-value="emitFilter('no_split', $event)"
             >
-                <option value="">Semua Nomor Split</option>
-                <option v-for="item in splitOptions" :key="item" :value="item">
-                    {{ item }}
-                </option>
-            </select>
+                <el-option label="Semua Nomor Split" value="" />
+                <el-option
+                    v-for="item in splitOptions"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                />
+            </el-select>
 
-            <select
-                class="finput f-select-line"
-                :value="filters.line"
+            <el-select
+                v-model="filters.line"
+                class="f-select-line tracking-el-select"
                 :disabled="loading"
-                @change="emitFilter('line', $event.target.value)"
+                filterable
+                clearable
+                size="small"
+                placeholder="Semua Routing/Line"
+                @update:model-value="emitFilter('line', $event)"
             >
-                <option value="">Semua Routing/Line</option>
-                <option v-for="item in lineOptions" :key="item" :value="item">
-                    {{ item }}
-                </option>
-            </select>
+                <el-option label="Semua Routing/Line" value="" />
+                <el-option
+                    v-for="item in lineOptions"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                />
+            </el-select>
 
-            <select
-                class="finput f-select-batch"
-                :value="filters.batch"
+            <el-select
+                v-model="filters.batch"
+                class="f-select-batch tracking-el-select"
                 :disabled="loading"
-                @change="emitFilter('batch', $event.target.value)"
+                filterable
+                clearable
+                size="small"
+                placeholder="Semua Batch"
+                @update:model-value="emitFilter('batch', $event)"
             >
-                <option value="">Semua Batch</option>
-                <option v-for="item in batchOptions" :key="item" :value="item">
-                    {{ item }}
-                </option>
-            </select>
+                <el-option label="Semua Batch" value="" />
+                <el-option
+                    v-for="item in batchOptions"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                />
+            </el-select>
 
             <div class="filter-sep hidden-mobile"></div>
 
@@ -177,7 +200,14 @@
 </template>
 
 <script>
+import { ElSelect, ElOption, ElDatePicker } from "element-plus";
+
 export default {
+    components: {
+        ElSelect,
+        ElOption,
+        ElDatePicker,
+    },
     props: {
         filters: { type: Object, required: true },
         flowFilter: { type: String, default: "full_process" },
@@ -209,7 +239,19 @@ export default {
     },
     methods: {
         emitFilter(field, value) {
-            this.$emit("update-filter", { field, value });
+            // Normalize undefined/null to empty string for consistency
+            const normalizedValue =
+                value === null || value === undefined ? "" : value;
+            this.$emit("update-filter", { field, value: normalizedValue });
+        },
+        handleDateRangeChange(dateRange) {
+            if (!dateRange || dateRange.length < 2) {
+                this.emitFilter("from", "");
+                this.emitFilter("to", "");
+                return;
+            }
+            this.emitFilter("from", dateRange[0]);
+            this.emitFilter("to", dateRange[1]);
         },
         statusButtonClass(value) {
             return {
@@ -233,6 +275,10 @@ export default {
 </script>
 
 <style scoped>
+.date-range-input {
+    width: 280px;
+}
+
 /* BASE STYLES */
 .filter-bar {
     background: #fff;
@@ -349,11 +395,66 @@ select.finput {
     background-position: right 8px center;
 }
 
+/* Element Plus Select Styling */
+.tracking-el-select {
+    font-size: 12px;
+    width: auto;
+}
+
+.tracking-el-select:deep(.el-input) {
+    width: 100%;
+}
+
+.tracking-el-select:deep(.el-input__wrapper) {
+    background: #f9fafc;
+    border: 1px solid #e8eaf0;
+    box-shadow: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+}
+
+.tracking-el-select:deep(.el-input__inner) {
+    color: #1e2330;
+    font-size: 12px;
+}
+
+.tracking-el-select:deep(.el-input.is-focus .el-input__wrapper) {
+    border-color: #a5b4fc;
+    background: #fff;
+    box-shadow: none;
+}
+
+/* Element Plus DatePicker Styling */
+:deep(.el-date-picker) {
+    font-size: 12px;
+}
+
+:deep(.el-date-picker .el-input__wrapper) {
+    background: #f9fafc;
+    border: 1px solid #e8eaf0;
+    box-shadow: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+}
+
+:deep(.el-date-picker .el-input__inner) {
+    color: #1e2330;
+    font-size: 12px;
+}
+
+:deep(.el-date-picker .el-input.is-focus .el-input__wrapper) {
+    border-color: #a5b4fc;
+    background: #fff;
+    box-shadow: none;
+}
+
 .f-select-prd {
     min-width: 170px;
+    width: 170px;
 }
 .f-select-batch {
     min-width: 120px;
+    width: 120px;
 }
 
 .filter-group-btn {
@@ -485,6 +586,9 @@ select.finput {
         padding-top: 5px;
         border-top: 1px dashed #e8eaf0;
     }
+    .date-range-input {
+        width: fit-content;
+    }
 }
 
 /* OFF-CANVAS MOBILE STYLING */
@@ -586,12 +690,29 @@ select.finput {
         display: none;
     }
 
-    .finput,
-    .f-select-prd,
-    .f-select-batch {
+    .finput {
         width: 100% !important;
         min-width: 100% !important;
         padding: 10px 14px;
+        font-size: 14px;
+    }
+
+    .f-select-prd,
+    .f-select-batch,
+    .tracking-el-select {
+        width: 100% !important;
+        min-width: 100% !important;
+    }
+
+    :deep(.el-date-picker) {
+        width: 100% !important;
+    }
+
+    :deep(.el-date-picker .el-input__wrapper) {
+        padding: 10px 14px;
+    }
+
+    :deep(.el-date-picker .el-input__inner) {
         font-size: 14px;
     }
 
