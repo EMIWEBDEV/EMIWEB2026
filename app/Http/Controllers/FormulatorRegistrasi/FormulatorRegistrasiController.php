@@ -117,8 +117,8 @@ class FormulatorRegistrasiController extends Controller
                         ->where('Flag_Close_Po', 'Y');
                 })
                 ->where('po.Flag_Release', 'Y')
-                ->orderBy('po.Tanggal', 'asc')
-                ->orderBy('po.No_Faktur', 'asc')
+                ->orderBy('po.Tanggal', 'desc')
+                ->orderBy('po.No_Faktur', 'desc')
                 ->get();
 
             if ($poList->isEmpty()) {

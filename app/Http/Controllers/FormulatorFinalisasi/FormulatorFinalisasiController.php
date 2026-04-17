@@ -163,16 +163,16 @@ class FormulatorFinalisasiController extends Controller
         }
     }
 
-     public function viewDataHasilAnalisaValidasiR($no_sampel, $no_fak_sub_sampel, $id_jenis_analisa)
+    public function viewDataHasilAnalisaValidasiR($no_sampel, $no_fak_sub_sampel, $id_jenis_analisa)
     {
         // dd($no_fak_sub_sampel);
         if($no_fak_sub_sampel === null || $no_fak_sub_sampel === "null"){
-            return inertia('vue/dashboard/hasil-akhir-validasi/HasilAkhirUntukDivalidasiNoPcs', [
+            return inertia('vue/dashboard/hasil-akhir-validasi/formulator/HasilAkhirUntukDivalidasiNoPcs', [
                 'No_Sampel' => $no_sampel,
                 'Id_Jenis_Analisa' => $id_jenis_analisa
             ]);
         }else {
-            return inertia('vue/dashboard/hasil-akhir-validasi/HasilAkhirUntukDivalidasi', [
+            return inertia('vue/dashboard/hasil-akhir-validasi/formulator/HasilAkhirUntukDivalidasi', [
                 'No_Sampel' => $no_sampel,
                 'No_Fak_Sub_Sampel' => $no_fak_sub_sampel,
                 'Id_Jenis_Analisa' => $id_jenis_analisa
