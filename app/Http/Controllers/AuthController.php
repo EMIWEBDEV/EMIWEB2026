@@ -78,11 +78,14 @@ class AuthController extends Controller
     
     public function proses_login(Request $request)
     {
-        // if (!$this->verifyCloudflareCaptcha($request)) {
-        //      return back()
-        //          ->withErrors(['captcha' => 'Please complete the security check'])
-        //          ->withInput($request->except('password'));
-        // }
+
+        if (app()->environment('production')) {
+            if (!$this->verifyCloudflareCaptcha($request)) {
+                return back()
+                    ->withErrors(['captcha' => 'Please complete the security check'])
+                    ->withInput($request->except('password'));
+            }
+        }
 
         $request->validate([
             'UserId' => 'required|string',
@@ -100,9 +103,11 @@ class AuthController extends Controller
             return back()->with('error', "Akun Anda Telah Di Nonaktifkan, Silahkan Hubungi IT Pusat PT EVO Manufacturing");
         }
 
-        // if (!Hash::check(env('SALT_PREFIX') . $request->Password . env('SALT_SUFFIX'), $user->Password)) {
-        //     return back()->with('error', "Password Anda Salah");
-        // }
+        if (app()->environment('production')) {
+            if (!Hash::check(env('SALT_PREFIX') . $request->Password . env('SALT_SUFFIX'), $user->Password)) {
+                return back()->with('error', "Password Anda Salah");
+            }
+        }
 
         try {
             Auth::login($user);
@@ -117,6 +122,14 @@ class AuthController extends Controller
                         ->toArray();
 
             $request->session()->put('User_Roles', $userRoles);
+
+            $hasRole3 = collect($userRoles)->contains(function ($role) {
+                return $role->Id_Role == 3;
+            });
+
+            if ($hasRole3) {
+                return redirect('/tracking');
+            }
 
             $hasDashboardAccess = DB::table('N_EMI_LAB_Role_Menu')
                 ->join('N_EMI_LAB_Menus', 'N_EMI_LAB_Role_Menu.Id_Menu', '=', 'N_EMI_LAB_Menus.Id_Menu')

@@ -116,7 +116,7 @@ class FormulatorStatusDataController extends Controller
                 $statusUtama = '';
                 
                 if ($ujiList->isEmpty()) {
-                    $statusUtama = 'Belum Mulai Trial';
+                    $statusUtama = 'Menunggu Analisa';
                 } else {
                     $hasResampling = $ujiList->contains('Flag_Resampling', 'Y');
                     $hasApprovalNull = $ujiList->containsStrict('Flag_Approval', null);

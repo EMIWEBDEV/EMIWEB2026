@@ -7575,10 +7575,10 @@ class FormulatorTrialSampelController extends Controller
                 ->leftJoin('N_EMI_LAB_Mesin_Analisa as ma', 'ja.Id_Mesin', '=', 'ma.No_Urut')
                 ->where('ba.Kode_Barang', $sampelRow->Kode_Barang)
                 ->where('ba.Id_Master_Mesin', $sampelRow->Id_Mesin)
-                // ->where('ba.Id_User', Auth::user()->UserId)
+                ->where('ba.Id_User', Auth::user()->UserId)
                 ->where('ba.Flag_Aktif', 'Y')
                 ->where('ba.Kode_Role', 'FLM')
-                // ->where('ja.Kode_Role', 'FLM')
+                ->where('ja.Kode_Role', 'FLM')
                 ->select(
                     'ja.id as analisa_id',
                     'ja.Kode_Analisa',
