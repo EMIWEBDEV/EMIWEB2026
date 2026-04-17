@@ -1,5 +1,9 @@
 <template>
     <div class="tracking-page">
+        <div
+            class="global-progress-bar"
+            :class="{ 'is-loading': isBackgroundRefreshing }"
+        ></div>
         <TrackingHeader
             class="pg-header"
             :title="pageMeta.title"
@@ -66,6 +70,12 @@
             :loading="loading"
         />
 
+        <div
+            ref="loadMoreTrigger"
+            class="load-more-trigger"
+            style="height: 1px; width: 100%"
+        ></div>
+
         <transition name="fade-up">
             <div
                 v-if="loadingMore"
@@ -120,6 +130,7 @@ export default {
             refreshIntervalMs: DEFAULT_REFRESH_INTERVAL_MS,
             scrollHandlerId: null,
             visibilityHandler: null,
+            observer: null,
             pageMeta: {
                 title: "Production Tracking",
                 subtitle: "Tracking produksi berbasis data controller",
@@ -303,12 +314,13 @@ export default {
         this.scrollHandlerId = () => {
             this.handleWindowScroll();
         };
+        this.setupIntersectionObserver();
         this.visibilityHandler = () => this.handleVisibilityChange();
         document.addEventListener("visibilitychange", this.visibilityHandler);
-        window.addEventListener("scroll", this.scrollHandlerId, {
-            passive: true,
-        });
-        window.addEventListener("resize", this.scrollHandlerId);
+        // window.addEventListener("scroll", this.scrollHandlerId, {
+        //     passive: true,
+        // });
+        // window.addEventListener("resize", this.scrollHandlerId);
     },
     beforeUnmount() {
         if (this.clockTimerId) {
@@ -317,9 +329,13 @@ export default {
 
         this.stopRefreshPolling();
 
-        if (this.scrollHandlerId) {
-            window.removeEventListener("scroll", this.scrollHandlerId);
-            window.removeEventListener("resize", this.scrollHandlerId);
+        // if (this.scrollHandlerId) {
+        //     window.removeEventListener("scroll", this.scrollHandlerId);
+        //     window.removeEventListener("resize", this.scrollHandlerId);
+        // }
+
+        if (this.observer) {
+            this.observer.disconnect();
         }
 
         if (this.visibilityHandler) {
@@ -330,6 +346,31 @@ export default {
         }
     },
     methods: {
+        setupIntersectionObserver() {
+            // Konfigurasi observer
+            const options = {
+                root: null, // menggunakan viewport browser
+                // rootMargin '800px' artinya: trigger fungsi loadMoreTrackingData
+                // SAAT elemen trigger masih berjarak 800 pixel di bawah layar.
+                // Semakin besar angkanya, semakin awal dia nge-load sebelum Anda mentok.
+                rootMargin: "800px",
+                threshold: 0,
+            };
+
+            this.observer = new IntersectionObserver((entries) => {
+                const target = entries[0];
+                // Jika elemen trigger mendekati layar DAN masih ada sisa page
+                if (target.isIntersecting && this.tracking.pagination.hasMore) {
+                    // Panggil fungsi load more yang sudah Anda buat
+                    this.loadMoreTrackingData();
+                }
+            }, options);
+
+            // Pasangkan observer ke elemen ref="loadMoreTrigger"
+            if (this.$refs.loadMoreTrigger) {
+                this.observer.observe(this.$refs.loadMoreTrigger);
+            }
+        },
         syncClock() {
             const now = new Date();
             this.clock = [now.getHours(), now.getMinutes(), now.getSeconds()]
@@ -361,10 +402,113 @@ export default {
             this.date = `${tanggal} ${namaBulan} ${tahun}`;
         },
 
+        // async fetchTrackingData({
+        //     page = 1,
+        //     append = false,
+        //     silent = false,
+        // } = {}) {
+        //     const requestSeq = ++this.requestSeq;
+        //     this.activeRequestSeq = requestSeq;
+
+        //     if (silent) {
+        //         this.isBackgroundRefreshing = true;
+        //     } else if (append) {
+        //         this.loadingMore = true;
+        //     } else {
+        //         this.loading = true;
+        //         this.loadingMore = false;
+        //     }
+
+        //     if (!silent) this.errorMessage = "";
+
+        //     try {
+        //         const response = await axios.get("/tracking/show", {
+        //             params: {
+        //                 ...this.filters,
+        //                 page,
+        //                 per_page: 10,
+        //             },
+        //         });
+
+        //         if (requestSeq !== this.activeRequestSeq) {
+        //             return;
+        //         }
+
+        //         this.applyPayload(response.data, { append });
+        //         if (!append) {
+        //             let newInterval = Number(
+        //                 response?.data?.meta?.refreshIntervalMs
+        //             );
+        //             if (isNaN(newInterval) || newInterval <= 0) {
+        //                 newInterval = DEFAULT_REFRESH_INTERVAL_MS;
+        //             }
+        //             const intervalChanged =
+        //                 this.refreshIntervalMs !== newInterval;
+        //             this.refreshIntervalMs = newInterval;
+
+        //             if (!silent || intervalChanged) {
+        //                 this.restartRefreshPolling();
+        //             }
+        //         }
+        //         this.$nextTick(() => {
+        //             this.maybeLoadMore();
+        //         });
+        //     } catch (error) {
+        //         if (requestSeq !== this.activeRequestSeq) {
+        //             return;
+        //         }
+
+        //         // ... (handling fail state but keeping previous filters)
+        //         if (!silent) {
+        //             this.errorMessage =
+        //                 "Data tracking gagal dimuat dari controller.";
+        //             this.applyPayload(
+        //                 {
+        //                     meta: this.pageMeta,
+        //                     columns: [],
+        //                     records: [],
+        //                     options: {
+        //                         prd: [],
+        //                         no_split: [],
+        //                         no_split_by_prd: {},
+        //                         batch: [],
+        //                         line: [],
+        //                         status: [],
+        //                     },
+        //                     summary: {
+        //                         total: 0,
+        //                         done: 0,
+        //                         running: 0,
+        //                         pending: 0,
+        //                     },
+        //                     pagination: {
+        //                         page: 1,
+        //                         perPage: 10,
+        //                         total: 0,
+        //                         lastPage: 1,
+        //                         hasMore: false,
+        //                     },
+        //                     filters: { ...this.filters, page: 1, per_page: 10 },
+        //                 },
+        //                 { append: false }
+        //             );
+        //         }
+        //         console.error(error);
+        //     } finally {
+        //         if (requestSeq === this.activeRequestSeq) {
+        //             this.loading = false;
+        //             this.loadingMore = false;
+        //             this.isBackgroundRefreshing = false;
+        //         }
+        //     }
+        // },
+
         async fetchTrackingData({
             page = 1,
+            perPage = 10,
             append = false,
             silent = false,
+            restorePage = null,
         } = {}) {
             const requestSeq = ++this.requestSeq;
             this.activeRequestSeq = requestSeq;
@@ -385,7 +529,8 @@ export default {
                     params: {
                         ...this.filters,
                         page,
-                        per_page: 10,
+                        per_page: perPage,
+                        _t: silent ? Date.now() : undefined,
                     },
                 });
 
@@ -393,7 +538,21 @@ export default {
                     return;
                 }
 
-                this.applyPayload(response.data, { append });
+                // 1. Simpan posisi scroll sebelum data baru memodifikasi DOM
+                const savedScrollPosition = window.scrollY;
+
+                this.applyPayload(response.data, { append, restorePage });
+
+                // 2. Kembalikan posisi scroll secara instan setelah Vue selesai merender DOM
+                if (silent) {
+                    this.$nextTick(() => {
+                        window.scrollTo({
+                            top: savedScrollPosition,
+                            behavior: "auto", // 'auto' membuatnya berpindah seketika tanpa animasi smooth
+                        });
+                    });
+                }
+
                 if (!append) {
                     let newInterval = Number(
                         response?.data?.meta?.refreshIntervalMs
@@ -409,15 +568,14 @@ export default {
                         this.restartRefreshPolling();
                     }
                 }
-                this.$nextTick(() => {
-                    this.maybeLoadMore();
-                });
+                // this.$nextTick(() => {
+                //     this.maybeLoadMore();
+                // });
             } catch (error) {
                 if (requestSeq !== this.activeRequestSeq) {
                     return;
                 }
 
-                // ... (handling fail state but keeping previous filters)
                 if (!silent) {
                     this.errorMessage =
                         "Data tracking gagal dimuat dari controller.";
@@ -461,8 +619,47 @@ export default {
                 }
             }
         },
+        // applyPayload(payload, { append = false } = {}) {
+        //     this.pageMeta = {
+        //         ...this.pageMeta,
+        //         ...(payload.meta || {}),
+        //     };
 
-        applyPayload(payload, { append = false } = {}) {
+        //     const nextRecords = payload.records || [];
+        //     const existingRecords = append ? this.tracking.records : [];
+
+        //     this.tracking = {
+        //         columns: payload.columns || [],
+        //         records: [...existingRecords, ...nextRecords],
+        //         options: payload.options || {
+        //             prd: [],
+        //             no_split: [],
+        //             no_split_by_prd: {},
+        //             batch: [],
+        //             line: [],
+        //             status: [],
+        //         },
+        //         summary: payload.summary || {
+        //             total: 0,
+        //             done: 0,
+        //             running: 0,
+        //             pending: 0,
+        //         },
+        //         pagination: payload.pagination || {
+        //             page: 1,
+        //             perPage: 10,
+        //             total: 0,
+        //             lastPage: 1,
+        //             hasMore: false,
+        //         },
+        //     };
+
+        //     if (payload.filters) {
+        //         this.filters = { ...payload.filters };
+        //     }
+        // },
+
+        applyPayload(payload, { append = false, restorePage = null } = {}) {
             this.pageMeta = {
                 ...this.pageMeta,
                 ...(payload.meta || {}),
@@ -496,6 +693,22 @@ export default {
                     hasMore: false,
                 },
             };
+
+            // --- TAMBAHKAN LOGIKA INI ---
+            // Jika ini hasil background refresh, kembalikan posisi halaman & hitung ulang sisa halamannya
+            if (restorePage !== null) {
+                const total = this.tracking.pagination.total || 0;
+                const standardPerPage = 10;
+                const recalculatedLastPage =
+                    total > 0 ? Math.ceil(total / standardPerPage) : 1;
+
+                this.tracking.pagination.page = restorePage;
+                this.tracking.pagination.perPage = standardPerPage;
+                this.tracking.pagination.lastPage = recalculatedLastPage;
+                this.tracking.pagination.hasMore =
+                    restorePage < recalculatedLastPage;
+            }
+            // -----------------------------
 
             if (payload.filters) {
                 this.filters = { ...payload.filters };
@@ -532,6 +745,23 @@ export default {
             this.restartRefreshPolling();
         },
 
+        // autoRefreshTick() {
+        //     if (
+        //         this.loading ||
+        //         this.loadingMore ||
+        //         this.isBackgroundRefreshing
+        //     ) {
+        //         return;
+        //     }
+
+        //     // Keep lazy-load pages stable; refresh live feed from first page only.
+        //     if ((this.tracking.pagination.page || 1) > 1) {
+        //         return;
+        //     }
+
+        //     this.fetchTrackingData({ page: 1, append: false, silent: true });
+        // },
+
         autoRefreshTick() {
             if (
                 this.loading ||
@@ -541,14 +771,22 @@ export default {
                 return;
             }
 
-            // Keep lazy-load pages stable; refresh live feed from first page only.
-            if ((this.tracking.pagination.page || 1) > 1) {
-                return;
-            }
+            // HAPUS KODE INI: if ((this.tracking.pagination.page || 1) > 1) { return; }
 
-            this.fetchTrackingData({ page: 1, append: false, silent: true });
+            // Ambil jumlah page saat ini
+            const currentPage = this.tracking.pagination.page || 1;
+            const currentPerPage = 10; // Default per_page standar aplikasi Anda
+            // Fetch dari page 1, tapi tarik semua data yang sudah terbuka/diload
+            const totalToFetch = currentPage * currentPerPage;
+
+            this.fetchTrackingData({
+                page: 1,
+                perPage: totalToFetch,
+                append: false,
+                silent: true,
+                restorePage: currentPage, // Parameter bantuan untuk menjaga state pagination
+            });
         },
-
         handleWindowScroll() {
             if (
                 this.loading ||
@@ -730,6 +968,54 @@ body {
 </style>
 
 <style scoped>
+/* --- LOADING BAR TIPIS DI ATAS LAYAR --- */
+.global-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: transparent;
+    z-index: 9999; /* Pastikan di atas segalanya */
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none; /* Agar tidak menghalangi klik */
+}
+
+.global-progress-bar.is-loading {
+    opacity: 1;
+    visibility: visible;
+}
+
+.global-progress-bar::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 30%; /* Lebar garis yang jalan */
+    /* Menggunakan warna gradien agar lebih halus */
+    background: linear-gradient(
+        90deg,
+        transparent,
+        #4f46e5,
+        #4f46e5,
+        transparent
+    );
+    animation: running-line 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes running-line {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        /* Pindah sejauh 300% dari lebar layar */
+        transform: translateX(400%);
+    }
+}
 .tracking-page {
     font-family: "Inter", sans-serif;
     background: #f5f6fa;

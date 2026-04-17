@@ -135,9 +135,18 @@ class TrackingController extends Controller
                     'type' => 'left',
                     'table' => 'Emi_Split_Production_Order',
                     'alias' => 'spo',
-                    'first' => 'spo.No_Transaksi',
-                    'operator' => '=',
-                    'second' => 'pr.No_Production_Order',
+                    'conditions' => [
+                        [
+                            'first' => 'spo.No_Transaksi',
+                            'operator' => '=',
+                            'second' => 'pr.No_Production_Order',
+                        ],
+                        // [
+                        //     'first' => 'hpp.Proses',
+                        //     'operator' => '=',
+                        //     'second' => 'spo.No_Batch',
+                        // ],
+                    ]
                 ],
                 [
                     'type' => 'left',
@@ -180,6 +189,7 @@ class TrackingController extends Controller
                 'hpp_jam' => 'hpp_jam',
                 'hpp_jumlah_terpakai' => 'hpp_jumlah_terpakai',
                 'hpp_jumlah_dosing_pcs' => 'hpp_jumlah_dosing_pcs',
+                'flag_hasil_produksi_gr' => 'flag_hasil_produksi_gr',
             ],
             'transforms' => [
                 'prd' => 'trim',
@@ -202,7 +212,6 @@ class TrackingController extends Controller
                     'date_field' => 'hpp_tanggal',
                     'time_field' => 'hpp_jam',
                 ],
-                'flag_hasil_produksi_gr' => ['type' => 'constant', 'value' => null],
                 'is_history' => ['type' => 'constant', 'value' => false],
                 'sequence_at' => ['type' => 'first_non_null', 'fields' => ['source_at']],
             ],
@@ -438,7 +447,7 @@ class TrackingController extends Controller
         );
         $filtered = $this->filterRecords($records, $request, $flowFilter, $runningScope);
         $page = max(1, (int) $request->input('page', 1));
-        $perPage = max(1, min(50, (int) $request->input('per_page', 1000)));
+        $perPage = max(1, min(10, (int) $request->input('per_page', 10)));
         $pagination = $this->paginateRecords($filtered, $page, $perPage);
         $refreshSeconds = max(
             1,
@@ -1072,6 +1081,53 @@ class TrackingController extends Controller
         ];
     }
 
+    // private function records(): array
+    // {
+    //     $rows = $this->trackingSourceRows();
+
+    //     if ($rows->isEmpty()) {
+    //         return [];
+    //     }
+
+    //     $dataGrouped = $rows
+    //         ->groupBy(fn(array $row) => $this->recordGroupKey($row))
+    //         ->map(function (Collection $group) {
+    //             $totalBoxes = $group->pluck('event_token')->filter()->unique()->count();
+    //             $blueprint = $this->resolveRouteBlueprint($group);
+    //             $lanes = $this->buildLaneMetrics($group, $blueprint, $totalBoxes);
+    //             $isClosed = $this->isRecordClosed($lanes, $blueprint);
+    //             $firstRow = $group->first() ?? [];
+    //             $noSplit = trim((string) ($firstRow['prd'] ?? ''));
+    //             $prdOrder = trim((string) ($firstRow['prd_order'] ?? ''));
+    //             $groupBatch = $this->normalizeGroupBatch($firstRow['batch'] ?? null);
+    //             $groupKey = $this->recordCompositeId($noSplit, $groupBatch);
+
+    //             return [
+    //                 'id' => $noSplit,
+    //                 'group_key' => $groupKey,
+    //                 'prd' => $noSplit,
+    //                 'prd_order' => $prdOrder !== '' ? $prdOrder : $noSplit,
+    //                 'no_po' => trim((string) ($firstRow['no_po'] ?? '')),
+    //                 'routing_id' => trim((string) ($firstRow['routing_id'] ?? '')),
+    //                 'routing_line' => trim((string) ($firstRow['routing_line'] ?? '')),
+    //                 'source' => 'live',
+    //                 'batch' => $this->formatBatch($groupBatch),
+    //                 'batch_raw' => [$groupBatch],
+    //                 'date' => $this->resolveRecordDate($group),
+    //                 'full_done' => $isClosed,
+    //                 'is_closed' => $isClosed,
+    //                 'route_key' => $blueprint['route_key'] ?? '*',
+    //                 'applicable_stage_keys' => $blueprint['active_stages'] ?? [],
+    //                 'lanes' => $lanes,
+    //             ];
+    //         })
+    //         ->sortBy([['is_closed', 'asc'], ['date', 'desc'], ['id', 'asc'], ['batch', 'asc']])
+    //         ->values()
+    //         ->all();
+    //     // dd($dataGrouped);
+    //     return $dataGrouped;
+    // }
+
     private function records(): array
     {
         $rows = $this->trackingSourceRows();
@@ -1093,6 +1149,17 @@ class TrackingController extends Controller
                 $groupBatch = $this->normalizeGroupBatch($firstRow['batch'] ?? null);
                 $groupKey = $this->recordCompositeId($noSplit, $groupBatch);
 
+                // --- LOGIKA PRIORITAS TANGGAL BERDASARKAN JAM AWAL & AKHIR ---
+                $lastActivityDate = $this->resolveLastActivityDate($group);
+                $today = Carbon::today();
+                
+                $datePriority = 3; // Default (older / lebih lama)
+                if ($lastActivityDate->isSameDay($today)) {
+                    $datePriority = 1; // Prioritas 1: Hari Ini
+                } elseif ($lastActivityDate->clone()->startOfDay()->greaterThanOrEqualTo($today->clone()->subDays(2))) {
+                    $datePriority = 2; // Prioritas 2: 2 Hari Kebelakang
+                }
+
                 return [
                     'id' => $noSplit,
                     'group_key' => $groupKey,
@@ -1110,12 +1177,21 @@ class TrackingController extends Controller
                     'route_key' => $blueprint['route_key'] ?? '*',
                     'applicable_stage_keys' => $blueprint['active_stages'] ?? [],
                     'lanes' => $lanes,
+                    // Field bantuan untuk sorting
+                    'date_priority' => $datePriority, 
+                    'last_activity_timestamp' => $lastActivityDate->timestamp, 
                 ];
             })
-            ->sortBy([['is_closed', 'asc'], ['date', 'desc'], ['id', 'asc'], ['batch', 'asc']])
+            ->sortBy([
+                ['date_priority', 'asc'],            // 1. Hari ini dulu, lalu 2 hari kemarin, lalu lainnya
+                ['is_closed', 'asc'],                // 2. Yang masih running (belum closed) naik ke atas (opsional)
+                ['last_activity_timestamp', 'desc'], // 3. Urutkan berdasarkan jam aktivitas terbaru (descending)
+                ['id', 'asc'],                       // 4. Fallback sort
+                ['batch', 'asc']                     // 5. Fallback sort
+            ])
             ->values()
             ->all();
-        // dd($dataGrouped);
+
         return $dataGrouped;
     }
 
@@ -1433,11 +1509,15 @@ class TrackingController extends Controller
                 $query = DB::table($table . ' as ' . $alias);
                 $this->applySourceJoins($query, $definition['joins'] ?? []);
 
+
+                // dd(
+                //     $query->toSql(),
+                //     $query->getBindings()
+                // );
                 $rows = $query->select($definition['select'] ?? [])->get();
-                // if ($definition['table'] === 'EMI_VW_Production_Results') {
-                    // dd($sourceKey, $viewMode, $definition, $rows);
-                // }
-            }
+                // dd($sourceKey, $viewMode, $definition, $rows->first());
+                // dd($rows->where('prd', 'PR0425-00028-1'));
+            } 
 
             return collect($rows)
                 ->values()
@@ -1461,34 +1541,82 @@ class TrackingController extends Controller
         }
     }
 
+    // private function applySourceJoins($query, array $joins): void
+    // {
+    //     foreach ($joins as $join) {
+    //         $joinType = (string) ($join['type'] ?? 'left');
+    //         $joinTable = (string) ($join['table'] ?? '');
+    //         $joinAlias = (string) ($join['alias'] ?? '');
+    //         $first = (string) ($join['first'] ?? '');
+    //         $operator = (string) ($join['operator'] ?? '=');
+    //         $second = (string) ($join['second'] ?? '');
+
+    //         if ($joinTable === '' || $joinAlias === '' || $first === '' || $second === '') {
+    //             continue;
+    //         }
+
+    //         $tableWithAlias = $joinTable . ' as ' . $joinAlias;
+
+    //         if ($joinType === 'inner') {
+    //             $query->join($tableWithAlias, $first, $operator, $second);
+    //             continue;
+    //         }
+
+    //         if ($joinType === 'left') {
+    //                 $query->leftJoin($tableWithAlias, $first, $operator, $second
+    //             );
+    //             continue;
+    //         }
+
+    //         $query->leftJoin($tableWithAlias, $first, $operator, $second);
+    //     }
+    // }
+
     private function applySourceJoins($query, array $joins): void
     {
         foreach ($joins as $join) {
             $joinType = (string) ($join['type'] ?? 'left');
             $joinTable = (string) ($join['table'] ?? '');
             $joinAlias = (string) ($join['alias'] ?? '');
-            $first = (string) ($join['first'] ?? '');
-            $operator = (string) ($join['operator'] ?? '=');
-            $second = (string) ($join['second'] ?? '');
 
-            if ($joinTable === '' || $joinAlias === '' || $first === '' || $second === '') {
+            if ($joinTable === '' || $joinAlias === '') {
                 continue;
             }
 
             $tableWithAlias = $joinTable . ' as ' . $joinAlias;
+            $conditions = $join['conditions'] ?? null;
+
+            if (is_array($conditions) && count($conditions) > 0) {
+                $joinMethod = $joinType === 'inner' ? 'join' : 'leftJoin';
+
+                $query->$joinMethod($tableWithAlias, function ($joinClause) use ($conditions) {
+                    foreach ($conditions as $cond) {
+                        $first = $cond['first'] ?? null;
+                        $operator = $cond['operator'] ?? '=';
+                        $second = $cond['second'] ?? null;
+
+                        if ($first && $second) {
+                            $joinClause->on($first, $operator, $second);
+                        }
+                    }
+                });
+
+                continue;
+            }
+
+            $first = (string) ($join['first'] ?? '');
+            $operator = (string) ($join['operator'] ?? '=');
+            $second = (string) ($join['second'] ?? '');
+
+            if ($first === '' || $second === '') {
+                continue;
+            }
 
             if ($joinType === 'inner') {
                 $query->join($tableWithAlias, $first, $operator, $second);
-                continue;
+            } else {
+                $query->leftJoin($tableWithAlias, $first, $operator, $second);
             }
-
-            if ($joinType === 'left') {
-                    $query->leftJoin($tableWithAlias, $first, $operator, $second
-                );
-                continue;
-            }
-
-            $query->leftJoin($tableWithAlias, $first, $operator, $second);
         }
     }
 
@@ -1572,6 +1700,10 @@ class TrackingController extends Controller
         array $row,
         string $sourceKey,
     ) {
+        // dd($normalized, $computedType, $payload, $index, $viewMode, $row, $sourceKey);
+        // if($sourceKey == 'flag_hasil_produksi_gr') {
+        //     dd($normalized, $computedType, $payload, $index, $viewMode, $row, $sourceKey);
+        // }
         return match ($computedType) {
             'constant' => $payload['value'] ?? null,
             'index_token' => (string) ($payload['prefix'] ?? $sourceKey . '_row_') . $index,
@@ -1825,6 +1957,7 @@ class TrackingController extends Controller
 
         $completionRules = $this->stagePolicyRules($stage, 'completion_rules');
 
+        // dd($stage, $completionRules);
         if (empty($completionRules)) {
             return false;
         }
@@ -1970,12 +2103,19 @@ class TrackingController extends Controller
         $operator = $rule['operator'] ?? 'equals';
         $value = $rule['value'] ?? null;
         $source = $field !== null ? (string) ($row[$field] ?? '') : '';
+        
+        // dd($row, $rule, $source);
+
+        // if($rule['field'] == 'flag_hasil_produksi_gr' && $row['prd'] == 'PR0425-00028-1'){
+        //     dd($row, $rule, $source);
+        // }
 
         if (in_array($operator, ['equals', 'contains', 'starts_with'], true) && is_array($value)) {
             return false;
         }
+        
 
-        return match ($operator) {
+        $result = match ($operator) {
             'equals' => $source === (string) $value,
             'contains' => $value !== null && str_contains($source, (string) $value),
             'in' => in_array($source, (array) $value, true),
@@ -1983,6 +2123,24 @@ class TrackingController extends Controller
             'not_null' => !blank($row[$field] ?? null),
             default => false,
         };
+        // if($rule['field'] == 'flag_hasil_produksi_gr' && $row['prd'] == 'PR0425-00028-1'){
+        //     dd($row, $rule, $source,$result);
+        // }
+        return $result;
+    }
+
+    private function resolveLastActivityDate(Collection $group): Carbon
+    {
+        $timestamps = $group
+            ->flatMap(function (array $row) {
+                // Mengambil semua timestamp yang ada (jam awal/jam akhir dari semua mesin)
+                return array_filter([$row['pairing_at'], $row['in_at'], $row['source_at'] ?? null]);
+            })
+            ->filter();
+
+        return $timestamps->isEmpty()
+            ? now()
+            : Carbon::createFromTimestamp($timestamps->max(fn(Carbon $timestamp) => $timestamp->timestamp));
     }
 
     private function resolveRecordDate(Collection $group): string
