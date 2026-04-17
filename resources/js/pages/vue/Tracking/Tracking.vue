@@ -94,6 +94,19 @@
             </div>
         </transition>
 
+        <transition name="fade-up">
+            <div
+                v-if="
+                    !loadingMore &&
+                    tracking.records.length > 0 &&
+                    !tracking.pagination.hasMore
+                "
+                class="tracking-end-message"
+            >
+                Semua data telah ditampilkan
+            </div>
+        </transition>
+
         <TrackingFooter class="pg-footer" :meta="pageMeta" />
     </div>
 </template>
@@ -543,15 +556,31 @@ export default {
 
                 this.applyPayload(response.data, { append, restorePage });
 
-                // 2. Kembalikan posisi scroll secara instan setelah Vue selesai merender DOM
-                if (silent) {
-                    this.$nextTick(() => {
+                // 2. Atur pergerakan scroll setelah Vue merender DOM
+                this.$nextTick(() => {
+                    if (silent) {
+                        // Auto-refresh: Kunci layar persis di posisi semula (tanpa animasi)
                         window.scrollTo({
                             top: savedScrollPosition,
-                            behavior: "auto", // 'auto' membuatnya berpindah seketika tanpa animasi smooth
+                            behavior: "auto",
                         });
-                    });
+                    }
+
+                    if (append) {
+                        // Load Data Baru: Geser layar ke bawah sedikit dengan mulus
+                        window.scrollBy({
+                            top: 350, // Akan mendorong layar sejauh 350px ke bawah
+                            behavior: "smooth",
+                        });
+                    }
+                });
+
+                if (this.observer && this.$refs.loadMoreTrigger) {
+                    this.observer.unobserve(this.$refs.loadMoreTrigger);
+                    this.observer.observe(this.$refs.loadMoreTrigger);
                 }
+
+                // this.applyPayload(response.data, { append, restorePage });
 
                 if (!append) {
                     let newInterval = Number(
@@ -968,6 +997,37 @@ body {
 </style>
 
 <style scoped>
+/* --- PESAN AKHIR DATA --- */
+.tracking-end-message {
+    margin: 24px 24px 30px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b; /* Warna abu-abu yang kalem */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* Garis tipis estetis di kiri dan kanan teks */
+.tracking-end-message::before,
+.tracking-end-message::after {
+    content: "";
+    height: 1px;
+    width: 40px;
+    background: #cbd5e1;
+    border-radius: 2px;
+}
+.load-more-trigger,
+.tracking-load-more {
+    overflow-anchor: none;
+}
+
+/* Memastikan area list utama menjadi jangkar scroll yang stabil */
+.pg-board {
+    overflow-anchor: auto;
+}
 /* --- LOADING BAR TIPIS DI ATAS LAYAR --- */
 .global-progress-bar {
     position: fixed;

@@ -62,6 +62,10 @@ class TrackingController extends Controller
                     'second' => 'op.Id_Routing',
                 ],
             ],
+            'where' => [
+                ['spo.Status', '=', null],
+                ['op.Status', '=', null],
+            ],
             'select' => [
                 'r.No_Split_Production_Order as prd',
                 'op.No_Faktur as prd_order',
@@ -177,6 +181,11 @@ class TrackingController extends Controller
                 'hpp.Jumlah_Terpakai as hpp_jumlah_terpakai',
                 'hpp.Jumlah_Dosing_Pcs as hpp_jumlah_dosing_pcs',
                 'spo.Flag_Hasil_Produksi_GR as flag_hasil_produksi_gr'
+            ],
+            'where' => [
+                ['pr.Status', '=', null],
+                ['spo.Status', '=', null],
+                ['op.Status', '=', null],
             ],
             'map' => [
                 'prd' => 'prd',
@@ -447,7 +456,8 @@ class TrackingController extends Controller
         );
         $filtered = $this->filterRecords($records, $request, $flowFilter, $runningScope);
         $page = max(1, (int) $request->input('page', 1));
-        $perPage = max(1, min(10, (int) $request->input('per_page', 10)));
+        // $perPage = max(1, min(10, (int) $request->input('per_page', 10)));
+        $perPage = max(1, min(1000, (int) $request->input('per_page', 10)));
         $pagination = $this->paginateRecords($filtered, $page, $perPage);
         $refreshSeconds = max(
             1,
@@ -1508,7 +1518,9 @@ class TrackingController extends Controller
 
                 $query = DB::table($table . ' as ' . $alias);
                 $this->applySourceJoins($query, $definition['joins'] ?? []);
-
+                if (!empty($definition['where'])) {
+                    $query->where($definition['where']);
+                }
 
                 // dd(
                 //     $query->toSql(),
@@ -1518,6 +1530,8 @@ class TrackingController extends Controller
                 // dd($sourceKey, $viewMode, $definition, $rows->first());
                 // dd($rows->where('prd', 'PR0425-00028-1'));
             } 
+
+            
 
             return collect($rows)
                 ->values()
@@ -2317,6 +2331,9 @@ class TrackingController extends Controller
         foreach ($tables as $table) {
             $q = DB::table($table . ' as ' . $alias);
             $this->applySourceJoins($q, $definition['joins'] ?? []);
+            if (!empty($definition['where'])) {
+                $q->where($definition['where']);
+            }
             $q->select($definition['select'] ?? []);
 
             $queries[] = $q;
