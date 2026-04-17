@@ -456,7 +456,8 @@ class TrackingController extends Controller
         );
         $filtered = $this->filterRecords($records, $request, $flowFilter, $runningScope);
         $page = max(1, (int) $request->input('page', 1));
-        $perPage = max(1, min(10, (int) $request->input('per_page', 10)));
+        // $perPage = max(1, min(10, (int) $request->input('per_page', 10)));
+        $perPage = max(1, min(1000, (int) $request->input('per_page', 10)));
         $pagination = $this->paginateRecords($filtered, $page, $perPage);
         $refreshSeconds = max(
             1,
