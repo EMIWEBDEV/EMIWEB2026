@@ -50,7 +50,9 @@
                 <span>Memuat Data...</span>
             </div>
 
-            <div v-if="!loading && !columns.length" class="no-result">Tidak ada data</div>
+            <div v-if="!loading && !columns.length" class="no-result">
+                Tidak ada data
+            </div>
 
             <template v-if="localColumns.length">
                 <TrackingColumn
@@ -59,6 +61,7 @@
                     :column="column"
                     :is-first="index === 0"
                     :is-last="index === localColumns.length - 1"
+                    :flow-mode="flowMode"
                     draggable="true"
                     class="sortable-column"
                     :class="{ 'is-dragging': draggedColumnIndex === index }"
@@ -75,7 +78,7 @@
 </template>
 
 <script>
-import TrackingColumn from './TrackingColumn.vue';
+import TrackingColumn from "./TrackingColumn.vue";
 
 export default {
     components: {
@@ -89,6 +92,10 @@ export default {
         loading: {
             type: Boolean,
             default: false,
+        },
+        flowMode: {
+            type: String,
+            default: "full_process",
         },
     },
     data() {
@@ -118,7 +125,7 @@ export default {
     },
     mounted() {
         this.checkScroll();
-        window.addEventListener('resize', this.checkScroll);
+        window.addEventListener("resize", this.checkScroll);
     },
     updated() {
         // Use nextTick to ensure the DOM is painted before checking structural width
@@ -127,32 +134,37 @@ export default {
         });
     },
     beforeUnmount() {
-        window.removeEventListener('resize', this.checkScroll);
+        window.removeEventListener("resize", this.checkScroll);
     },
     methods: {
         checkScroll() {
             const el = this.$refs.boardScroll;
             if (!el) return;
             this.canScrollLeft = el.scrollLeft > 5;
-            this.canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 5;
+            this.canScrollRight =
+                el.scrollLeft + el.clientWidth < el.scrollWidth - 5;
         },
         scrollBoard(direction) {
             const el = this.$refs.boardScroll;
             if (!el) return;
             const amount = el.clientWidth * 0.7; // scroll by 70% of screen
             el.scrollBy({
-                left: direction === 'left' ? -amount : amount,
-                behavior: 'smooth',
+                left: direction === "left" ? -amount : amount,
+                behavior: "smooth",
             });
         },
         onDragStart(index, event) {
             this.draggedColumnIndex = index;
-            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.effectAllowed = "move";
             // Drag transparency effect is handled via css class 'is-dragging'
             // which dynamically applies opacity: 0.4
         },
         onDragEnter(targetIndex) {
-            if (this.draggedColumnIndex === null || this.draggedColumnIndex === targetIndex) return;
+            if (
+                this.draggedColumnIndex === null ||
+                this.draggedColumnIndex === targetIndex
+            )
+                return;
 
             const draggedItem = this.localColumns[this.draggedColumnIndex];
             this.localColumns.splice(this.draggedColumnIndex, 1);
@@ -164,7 +176,8 @@ export default {
         },
         moveColumn(index, direction) {
             const targetIndex = index + direction;
-            if (targetIndex < 0 || targetIndex >= this.localColumns.length) return;
+            if (targetIndex < 0 || targetIndex >= this.localColumns.length)
+                return;
 
             const item = this.localColumns[index];
             this.localColumns.splice(index, 1);
@@ -240,9 +253,7 @@ export default {
 /* Draggable Overrides */
 .sortable-column {
     cursor: grab;
-    transition:
-        transform 0.2s cubic-bezier(0.2, 0, 0, 1),
-        opacity 0.2s;
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s;
 }
 
 .sortable-column:active {

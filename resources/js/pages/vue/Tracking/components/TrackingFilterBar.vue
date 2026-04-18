@@ -771,3 +771,32 @@ select.finput {
     }
 }
 </style>
+
+<style>
+.el-select__wrapper {
+    border-radius: 6px !important;
+    padding: 5px 14px !important;
+    /* border: 0.0112px solid #e8eaf0 !important; */
+}
+.el-input__wrapper {
+    border-radius: 6px !important;
+}
+.el-range-editor.el-input__wrapper {
+    padding: 15px 14px !important;
+}
+.el-select.is-focus .el-input__wrapper {
+    border-color: #4f46e5 !important;
+    box-shadow: 0 0 0 1.8px #4f46e5 !important;
+    opacity: 0.7;
+}
+.el-date-editor.is-active {
+    border-color: #4f46e5 !important;
+    box-shadow: 0 0 0 1.8px #4f46e5 !important;
+    opacity: 0.7;
+}
+.el-select__wrapper.is-focused {
+    border-color: #4f46e5 !important;
+    box-shadow: 0 0 0 1.8px #4f46e5 !important;
+    opacity: 0.7;
+}
+</style>

@@ -319,19 +319,19 @@ class TrackingController extends Controller
                     'operator' => 'equals',
                     'value' => 'GRINDER_IN',
                     'timestamp' => 'in_at',
-                ],
-                [
-                    'field' => 'lokasi_pairing',
-                    'operator' => 'equals',
-                    'value' => 'GRINDER_OUT',
-                    'timestamp' => 'pairing_at',
-                ],
+                ]
+                // [
+                //     'field' => 'lokasi_pairing',
+                //     'operator' => 'equals',
+                //     'value' => 'GRINDER_OUT',
+                //     'timestamp' => 'pairing_at',
+                // ],
             ],
             'completion_rules' => [
                 [
                     'field' => 'lokasi_in',
                     'operator' => 'in',
-                    'value' => ['MIXER_POUCH_IN', 'MIXER_CAN_IN'],
+                    'value' => ['GRINDER_OUT'],
                     'timestamp' => 'in_at',
                 ],
             ],

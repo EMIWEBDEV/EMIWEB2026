@@ -2,25 +2,26 @@
     <footer>
         <div class="legend">
             <div class="leg">
-                <div class="ldot" style="background:#22c55e"></div>
+                <div class="ldot" style="background: #22c55e"></div>
                 Running
             </div>
             <div class="leg">
-                <div class="ldot" style="background:#94a3b8"></div>
+                <div class="ldot" style="background: #94a3b8"></div>
                 Selesai (sebagian)
             </div>
             <div class="leg">
-                <div class="ldot" style="background:#f59e0b"></div>
+                <div class="ldot" style="background: #f59e0b"></div>
                 Pending
             </div>
             <div class="leg">
-                <div class="ldot" style="background:#4ade80;border:1px solid #bbf7d0"></div>
-                Selesai Semua Lane
+                <div
+                    class="ldot"
+                    style="background: #4ade80; border: 1px solid #bbf7d0"
+                ></div>
+                Selesai Semua Line
             </div>
         </div>
-        <div class="foot-meta">
-            Supervisor: {{ meta.supervisor || '—' }} · {{ meta.shift || '—' }} · {{ meta.line || '—' }}
-        </div>
+        <div class="foot-meta">Monitoring Production Real Time</div>
     </footer>
 </template>
 
@@ -49,7 +50,7 @@ footer {
     margin-top: auto;
     flex-wrap: wrap;
     gap: 12px;
-    
+
     position: fixed;
     bottom: 0;
     left: 0;
