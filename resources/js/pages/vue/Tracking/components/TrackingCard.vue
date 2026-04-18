@@ -201,6 +201,10 @@ export default {
                 return "Running";
             }
 
+            if (this.lane.status === "pending") {
+                return "Menunggu";
+            }
+
             if (this.lane.status === "done") {
                 return "Selesai";
             }
@@ -219,6 +223,10 @@ export default {
 
             if (this.lane.status === "run") {
                 return "b-run";
+            }
+
+            if (this.lane.status === "pending") {
+                return "b-pending";
             }
 
             if (this.lane.status === "done") {
@@ -246,6 +254,10 @@ export default {
 
             if (this.lane.status === "run") {
                 return "dv dv-run";
+            }
+
+            if (this.lane.status === "pending") {
+                return "dv dv-pending";
             }
 
             if (this.lane.status === "done") {
@@ -587,6 +599,11 @@ export default {
     color: #d97706;
 }
 
+.b-pending {
+    background: #fef3c7;
+    color: #b45309;
+}
+
 .b-not-started {
     background: #e2e8f0;
     color: #475569;
@@ -747,6 +764,10 @@ export default {
 
 .dv-wait {
     color: #f59e0b;
+}
+
+.dv-pending {
+    color: #d97706;
 }
 
 .dv-not-started {

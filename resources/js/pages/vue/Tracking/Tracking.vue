@@ -207,8 +207,8 @@ export default {
         emptyStateTitle() {
             if (this.filters.flow_filter === "live_running") {
                 return this.filters.running_scope === "lane"
-                    ? "Tidak ada mesin yang sedang running"
-                    : "Tidak ada nomor yang sedang running";
+                    ? "Tidak ada mesin running atau menunggu"
+                    : "Tidak ada nomor running atau menunggu";
             }
 
             return "Tidak ada data tracking";
@@ -217,10 +217,10 @@ export default {
         emptyStateDescription() {
             if (this.filters.flow_filter === "live_running") {
                 if (this.filters.running_scope === "lane") {
-                    return "Tidak ada lane berstatus running untuk filter saat ini. Coba ubah periode, line, atau status.";
+                    return "Tidak ada lane berstatus running atau menunggu untuk filter saat ini. Coba ubah periode, line, atau status.";
                 }
 
-                return "Tidak ada record dengan lane berstatus running untuk filter saat ini. Coba ubah periode, PRD order, atau status.";
+                return "Tidak ada record dengan lane berstatus running atau menunggu untuk filter saat ini. Coba ubah periode, PRD order, atau status.";
             }
 
             return "Tidak ada record yang cocok dengan filter saat ini. Coba ubah periode, PRD, batch, atau status untuk melihat data lain.";
@@ -284,13 +284,37 @@ export default {
                     })
                     .filter(Boolean);
 
-                const quantity = cards.reduce((sum, card) => {
+                const sortedCards =
+                    this.filters.flow_filter === "live_running"
+                        ? [...cards].sort((left, right) => {
+                              const statusRank = {
+                                  run: 1,
+                                  pending: 2,
+                                  done: 3,
+                                  wait: 4,
+                              };
+                              const leftRank = statusRank[left.lane.status] ?? 9;
+                              const rightRank =
+                                  statusRank[right.lane.status] ?? 9;
+
+                              if (leftRank !== rightRank) {
+                                  return leftRank - rightRank;
+                              }
+
+                              return (
+                                  Number(right.lane.activity_timestamp || 0) -
+                                  Number(left.lane.activity_timestamp || 0)
+                              );
+                          })
+                        : cards;
+
+                const quantity = sortedCards.reduce((sum, card) => {
                     const value = Number(card.lane.qty || 0);
 
                     return sum + value;
                 }, 0);
 
-                const temperatureCards = cards.filter(
+                const temperatureCards = sortedCards.filter(
                     (card) =>
                         card.lane.suhu !== null && card.lane.suhu !== undefined
                 );
@@ -312,8 +336,8 @@ export default {
 
                 return {
                     ...column,
-                    cards,
-                    count: cards.length,
+                    cards: sortedCards,
+                    count: sortedCards.length,
                     meta:
                         column.unitLabel === "box"
                             ? `Box: <b>${quantityLabel}</b> · Suhu avg: <b>${temperatureLabel}</b>`

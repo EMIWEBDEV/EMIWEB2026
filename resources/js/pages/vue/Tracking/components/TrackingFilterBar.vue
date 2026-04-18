@@ -146,25 +146,23 @@
 
             <div class="filter-sep hidden-mobile"></div>
 
-            <div class="filter-group-btn">
-                <button
+            <el-select
+                :model-value="activeStatus"
+                class="f-select-batch tracking-el-select"
+                :disabled="loading"
+                filterable
+                clearable
+                size="small"
+                placeholder="Semua Status"
+                @update:model-value="$emit('set-status', $event || 'all')"
+            >
+                <el-option
                     v-for="item in statusOptions"
                     :key="item.value"
-                    type="button"
-                    class="stbtn"
-                    :class="statusButtonClass(item.value)"
-                    :disabled="loading"
-                    @click="$emit('set-status', item.value)"
-                >
-                    {{
-                        item.value === "running"
-                            ? "● "
-                            : item.value === "selesai"
-                            ? "✓ "
-                            : ""
-                    }}{{ item.label }}
-                </button>
-            </div>
+                    :label="item.label"
+                    :value="item.value"
+                />
+            </el-select>
 
             <button
                 class="fbtn fbtn-apply"
@@ -193,7 +191,9 @@
                 <div class="chip chip-green">
                     Running: {{ summary.running ?? 0 }}
                 </div>
-                <!-- <div class="chip chip-amber">Pending: {{ summary.pending ?? 0 }}</div> -->
+                <div class="chip chip-amber">
+                    Menunggu: {{ summary.pending ?? 0 }}
+                </div>
             </div>
         </div>
     </div>
@@ -234,7 +234,7 @@ export default {
                 return "Total Record";
             }
 
-            return "Total Mesin Running";
+            return "Total Aktivitas";
         },
     },
     methods: {
@@ -253,15 +253,6 @@ export default {
             this.emitFilter("from", dateRange[0]);
             this.emitFilter("to", dateRange[1]);
         },
-        statusButtonClass(value) {
-            return {
-                "active-all": value === "all" && this.activeStatus === "all",
-                "active-running":
-                    value === "running" && this.activeStatus === "running",
-                "active-selesai":
-                    value === "selesai" && this.activeStatus === "selesai",
-            };
-        },
         applyAndClose() {
             this.$emit("apply");
             this.isMobileOpen = false;
@@ -276,7 +267,7 @@ export default {
 
 <style scoped>
 .date-range-input {
-    width: 280px;
+    width: 150px !important;
 }
 
 /* BASE STYLES */
@@ -455,6 +446,10 @@ select.finput {
 .f-select-batch {
     min-width: 120px;
     width: 120px;
+}
+.f-select-status {
+    min-width: 140px;
+    width: 140px;
 }
 
 .filter-group-btn {
