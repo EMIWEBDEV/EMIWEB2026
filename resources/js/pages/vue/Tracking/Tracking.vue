@@ -67,6 +67,7 @@
             v-else
             class="pg-board"
             :columns="boardColumns"
+            :flow-mode="flowModes"
             :loading="loading"
         />
 
@@ -144,6 +145,7 @@ export default {
             scrollHandlerId: null,
             visibilityHandler: null,
             observer: null,
+            hasUserScrolledPage: false,
             pageMeta: {
                 title: "Production Tracking",
                 subtitle: "Tracking produksi berbasis data controller",
@@ -199,12 +201,14 @@ export default {
                 this.tracking.records.length === 0
             );
         },
-
+        flowModes() {
+            return this.filters.flow_filter ?? "full_process";
+        },
         emptyStateTitle() {
             if (this.filters.flow_filter === "live_running") {
                 return this.filters.running_scope === "lane"
-                    ? "Tidak ada mesin yang sedang running"
-                    : "Tidak ada nomor yang sedang running";
+                    ? "Tidak ada mesin running atau menunggu"
+                    : "Tidak ada nomor running atau menunggu";
             }
 
             return "Tidak ada data tracking";
@@ -213,10 +217,10 @@ export default {
         emptyStateDescription() {
             if (this.filters.flow_filter === "live_running") {
                 if (this.filters.running_scope === "lane") {
-                    return "Tidak ada lane berstatus running untuk filter saat ini. Coba ubah periode, line, atau status.";
+                    return "Tidak ada lane berstatus running atau menunggu untuk filter saat ini. Coba ubah periode, line, atau status.";
                 }
 
-                return "Tidak ada record dengan lane berstatus running untuk filter saat ini. Coba ubah periode, PRD order, atau status.";
+                return "Tidak ada record dengan lane berstatus running atau menunggu untuk filter saat ini. Coba ubah periode, PRD order, atau status.";
             }
 
             return "Tidak ada record yang cocok dengan filter saat ini. Coba ubah periode, PRD, batch, atau status untuk melihat data lain.";
@@ -280,13 +284,37 @@ export default {
                     })
                     .filter(Boolean);
 
-                const quantity = cards.reduce((sum, card) => {
+                const sortedCards =
+                    this.filters.flow_filter === "live_running"
+                        ? [...cards].sort((left, right) => {
+                              const statusRank = {
+                                  run: 1,
+                                  pending: 2,
+                                  done: 3,
+                                  wait: 4,
+                              };
+                              const leftRank = statusRank[left.lane.status] ?? 9;
+                              const rightRank =
+                                  statusRank[right.lane.status] ?? 9;
+
+                              if (leftRank !== rightRank) {
+                                  return leftRank - rightRank;
+                              }
+
+                              return (
+                                  Number(right.lane.activity_timestamp || 0) -
+                                  Number(left.lane.activity_timestamp || 0)
+                              );
+                          })
+                        : cards;
+
+                const quantity = sortedCards.reduce((sum, card) => {
                     const value = Number(card.lane.qty || 0);
 
                     return sum + value;
                 }, 0);
 
-                const temperatureCards = cards.filter(
+                const temperatureCards = sortedCards.filter(
                     (card) =>
                         card.lane.suhu !== null && card.lane.suhu !== undefined
                 );
@@ -308,8 +336,8 @@ export default {
 
                 return {
                     ...column,
-                    cards,
-                    count: cards.length,
+                    cards: sortedCards,
+                    count: sortedCards.length,
                     meta:
                         column.unitLabel === "box"
                             ? `Box: <b>${quantityLabel}</b> · Suhu avg: <b>${temperatureLabel}</b>`
@@ -330,10 +358,10 @@ export default {
         this.setupIntersectionObserver();
         this.visibilityHandler = () => this.handleVisibilityChange();
         document.addEventListener("visibilitychange", this.visibilityHandler);
-        // window.addEventListener("scroll", this.scrollHandlerId, {
-        //     passive: true,
-        // });
-        // window.addEventListener("resize", this.scrollHandlerId);
+        window.addEventListener("scroll", this.scrollHandlerId, {
+            passive: true,
+        });
+        window.addEventListener("resize", this.scrollHandlerId);
     },
     beforeUnmount() {
         if (this.clockTimerId) {
@@ -342,10 +370,10 @@ export default {
 
         this.stopRefreshPolling();
 
-        // if (this.scrollHandlerId) {
-        //     window.removeEventListener("scroll", this.scrollHandlerId);
-        //     window.removeEventListener("resize", this.scrollHandlerId);
-        // }
+        if (this.scrollHandlerId) {
+            window.removeEventListener("scroll", this.scrollHandlerId);
+            window.removeEventListener("resize", this.scrollHandlerId);
+        }
 
         if (this.observer) {
             this.observer.disconnect();
@@ -360,26 +388,24 @@ export default {
     },
     methods: {
         setupIntersectionObserver() {
-            // Konfigurasi observer
             const options = {
-                root: null, // menggunakan viewport browser
-                // rootMargin '800px' artinya: trigger fungsi loadMoreTrackingData
-                // SAAT elemen trigger masih berjarak 800 pixel di bawah layar.
-                // Semakin besar angkanya, semakin awal dia nge-load sebelum Anda mentok.
-                rootMargin: "800px",
-                threshold: 0,
+                root: null,
+                rootMargin: "0px",
+                threshold: 1,
             };
 
             this.observer = new IntersectionObserver((entries) => {
                 const target = entries[0];
-                // Jika elemen trigger mendekati layar DAN masih ada sisa page
-                if (target.isIntersecting && this.tracking.pagination.hasMore) {
-                    // Panggil fungsi load more yang sudah Anda buat
+                if (
+                    target.isIntersecting &&
+                    this.hasUserScrolledPage &&
+                    this.isAtPageBottom() &&
+                    this.tracking.pagination.hasMore
+                ) {
                     this.loadMoreTrackingData();
                 }
             }, options);
 
-            // Pasangkan observer ke elemen ref="loadMoreTrigger"
             if (this.$refs.loadMoreTrigger) {
                 this.observer.observe(this.$refs.loadMoreTrigger);
             }
@@ -566,13 +592,7 @@ export default {
                         });
                     }
 
-                    if (append) {
-                        // Load Data Baru: Geser layar ke bawah sedikit dengan mulus
-                        window.scrollBy({
-                            top: 350, // Akan mendorong layar sejauh 350px ke bawah
-                            behavior: "smooth",
-                        });
-                    }
+                    // Append data tidak menggeser layar. User tetap di posisi baca saat ini.
                 });
 
                 if (this.observer && this.$refs.loadMoreTrigger) {
@@ -817,6 +837,10 @@ export default {
             });
         },
         handleWindowScroll() {
+            if (window.scrollY > 0) {
+                this.hasUserScrolledPage = true;
+            }
+
             if (
                 this.loading ||
                 this.loadingMore ||
@@ -829,11 +853,7 @@ export default {
                 return;
             }
 
-            const threshold = 320;
-            const viewportBottom = window.scrollY + window.innerHeight;
-            const documentBottom = document.documentElement.scrollHeight;
-
-            if (viewportBottom >= documentBottom - threshold) {
+            if (this.hasUserScrolledPage && this.isAtPageBottom()) {
                 this.loadMoreTrackingData();
             }
         },
@@ -851,13 +871,19 @@ export default {
                 return;
             }
 
-            const threshold = 320;
-            const viewportBottom = window.scrollY + window.innerHeight;
-            const documentBottom = document.documentElement.scrollHeight;
-
-            if (documentBottom <= viewportBottom + threshold) {
+            if (this.hasUserScrolledPage && this.isAtPageBottom()) {
                 this.loadMoreTrackingData();
             }
+        },
+
+        isAtPageBottom(threshold = 24) {
+            const viewportBottom = window.scrollY + window.innerHeight;
+            const documentBottom = Math.max(
+                document.body.scrollHeight,
+                document.documentElement.scrollHeight
+            );
+
+            return viewportBottom >= documentBottom - threshold;
         },
 
         loadMoreTrackingData() {
@@ -885,6 +911,7 @@ export default {
                 running_scope: mode === "live_running" ? "lane" : "record",
             };
             this.tracking.records = [];
+            this.hasUserScrolledPage = false;
             this.fetchTrackingData({ page: 1, append: false });
         },
 
@@ -955,6 +982,7 @@ export default {
 
         applyFilter() {
             this.tracking.records = [];
+            this.hasUserScrolledPage = false;
             this.fetchTrackingData({ page: 1, append: false });
         },
 
@@ -971,6 +999,7 @@ export default {
                 running_scope: "record",
             };
             this.tracking.records = [];
+            this.hasUserScrolledPage = false;
             this.fetchTrackingData({ page: 1, append: false });
         },
 
@@ -1311,6 +1340,16 @@ body {
     .pg-board {
         order: 5;
         flex: 1;
+    }
+    .tracking-empty-wrap {
+        order: 5;
+    }
+    .load-more-trigger {
+        order: 6;
+    }
+    .tracking-load-more,
+    .tracking-end-message {
+        order: 7;
     }
 
     .tracking-empty-wrap {

@@ -18,11 +18,34 @@ class TrackingController extends Controller
     private const RUNNING_SCOPE_RECORD = 'record';
     private const RUNNING_SCOPE_LANE = 'lane';
     private const DEFAULT_REFRESH_INTERVAL_SECONDS = 5;
+    private const LANE_STATUS_WAIT = 'wait';
+    private const LANE_STATUS_PENDING = 'pending';
+    private const LANE_STATUS_RUNNING = 'run';
+    private const LANE_STATUS_DONE = 'done';
+    private const LANE_PROGRESS_NOT_STARTED = 'not_started';
+    private const LANE_PROGRESS_PENDING = 'pending';
+    private const LANE_PROGRESS_IN_PROGRESS = 'in_progress';
+    private const LANE_PROGRESS_COMPLETED = 'completed';
 
     private const RECORD_CLOSE_POLICY_FINAL_STAGE_ONLY = 'final_stage_only';
     private const RECORD_CLOSE_POLICY_ALL_APPLICABLE_STAGES = 'all_applicable_stages';
     private const DEFAULT_RECORD_CLOSE_POLICY = self::RECORD_CLOSE_POLICY_ALL_APPLICABLE_STAGES;
     private const MERGE_POLICY_ALL_DEPENDENCIES = 'all_dependencies';
+    private const RECORD_ORDERING_BY_FLOW_FILTER = [
+        self::FLOW_FILTER_FULL_PROCESS => [
+            ['field' => 'last_activity_timestamp', 'direction' => 'desc'],
+            ['field' => 'is_closed', 'direction' => 'asc'],
+            ['field' => 'id', 'direction' => 'asc'],
+            ['field' => 'batch', 'direction' => 'asc'],
+        ],
+        self::FLOW_FILTER_LIVE_RUNNING => [
+            ['field' => 'active_lane_status_rank', 'direction' => 'asc'],
+            ['field' => 'active_lane_activity_timestamp', 'direction' => 'desc'],
+            ['field' => 'active_stage_index', 'direction' => 'asc'],
+            ['field' => 'id', 'direction' => 'asc'],
+            ['field' => 'batch', 'direction' => 'asc'],
+        ],
+    ];
 
     private const SOURCE_DEFINITIONS = [
         'rfid' => [
@@ -180,7 +203,9 @@ class TrackingController extends Controller
                 'hpp.Jam as hpp_jam',
                 'hpp.Jumlah_Terpakai as hpp_jumlah_terpakai',
                 'hpp.Jumlah_Dosing_Pcs as hpp_jumlah_dosing_pcs',
-                'spo.Flag_Hasil_Produksi_GR as flag_hasil_produksi_gr'
+                'spo.Flag_Hasil_Produksi_GR as flag_hasil_produksi_gr',
+                'spo.Tgl_Hasil_Produksi_GR as tgl_hasil_produksi_gr',
+                'spo.Jam_Hasil_Produksi_GR as jam_hasil_produksi_gr',
             ],
             'where' => [
                 ['pr.Status', '=', null],
@@ -199,6 +224,8 @@ class TrackingController extends Controller
                 'hpp_jumlah_terpakai' => 'hpp_jumlah_terpakai',
                 'hpp_jumlah_dosing_pcs' => 'hpp_jumlah_dosing_pcs',
                 'flag_hasil_produksi_gr' => 'flag_hasil_produksi_gr',
+                'tgl_hasil_produksi_gr' => 'tgl_hasil_produksi_gr',
+                'jam_hasil_produksi_gr' => 'jam_hasil_produksi_gr',
             ],
             'transforms' => [
                 'prd' => 'trim',
@@ -221,8 +248,13 @@ class TrackingController extends Controller
                     'date_field' => 'hpp_tanggal',
                     'time_field' => 'hpp_jam',
                 ],
+                'hasil_produksi_gr_at' => [
+                    'type' => 'combine_datetime',
+                    'date_field' => 'tgl_hasil_produksi_gr',
+                    'time_field' => 'jam_hasil_produksi_gr',
+                ],
                 'is_history' => ['type' => 'constant', 'value' => false],
-                'sequence_at' => ['type' => 'first_non_null', 'fields' => ['source_at']],
+                'sequence_at' => ['type' => 'first_non_null', 'fields' => ['hasil_produksi_gr_at', 'source_at']],
             ],
         ],
     ];
@@ -319,19 +351,19 @@ class TrackingController extends Controller
                     'operator' => 'equals',
                     'value' => 'GRINDER_IN',
                     'timestamp' => 'in_at',
-                ],
-                [
-                    'field' => 'lokasi_pairing',
-                    'operator' => 'equals',
-                    'value' => 'GRINDER_OUT',
-                    'timestamp' => 'pairing_at',
-                ],
+                ]
+                // [
+                //     'field' => 'lokasi_pairing',
+                //     'operator' => 'equals',
+                //     'value' => 'GRINDER_OUT',
+                //     'timestamp' => 'pairing_at',
+                // ],
             ],
             'completion_rules' => [
                 [
                     'field' => 'lokasi_in',
                     'operator' => 'in',
-                    'value' => ['MIXER_POUCH_IN', 'MIXER_CAN_IN'],
+                    'value' => ['GRINDER_OUT'],
                     'timestamp' => 'in_at',
                 ],
             ],
@@ -351,6 +383,14 @@ class TrackingController extends Controller
             ],
             // 'temperature' => '-',
             'merge_from' => ['premix', 'grinder'],
+            'pending_rules' => [
+                [
+                    'field' => 'lokasi_pairing',
+                    'operator' => 'equals',
+                    'value' => 'GRINDER_OUT',
+                    'timestamp' => 'pairing_at',
+                ],
+            ],
             'entry_rules' => [
                 [
                     'field' => 'lokasi_in',
@@ -417,7 +457,19 @@ class TrackingController extends Controller
                     'field' => 'flag_hasil_produksi_gr',
                     'operator' => 'equals',
                     'value' => 'Y',
+                    'timestamp' => 'hasil_produksi_gr_at',
+                ],
+            ],
+            'time' => [
+                'start' => [
+                    'rules' => 'entry_rules',
                     'timestamp' => 'source_at',
+                    'aggregate' => 'min',
+                ],
+                'end' => [
+                    'rules' => 'completion_rules',
+                    'timestamp' => 'hasil_produksi_gr_at',
+                    'aggregate' => 'max',
                 ],
             ],
         ],
@@ -685,7 +737,9 @@ class TrackingController extends Controller
         return collect($this->stageKeys())
             ->filter(function (string $stage) use ($group) {
                 return $group->contains(function (array $row) use ($stage) {
-                    return $this->rowEnteredStage($row, $stage) || $this->rowCompletedStage($row, $stage);
+                    return $this->rowEnteredStage($row, $stage) ||
+                        $this->rowCompletedStage($row, $stage) ||
+                        $this->rowPendingStage($row, $stage);
                 });
             })
             ->values()
@@ -1159,16 +1213,8 @@ class TrackingController extends Controller
                 $groupBatch = $this->normalizeGroupBatch($firstRow['batch'] ?? null);
                 $groupKey = $this->recordCompositeId($noSplit, $groupBatch);
 
-                // --- LOGIKA PRIORITAS TANGGAL BERDASARKAN JAM AWAL & AKHIR ---
                 $lastActivityDate = $this->resolveLastActivityDate($group);
-                $today = Carbon::today();
-                
-                $datePriority = 3; // Default (older / lebih lama)
-                if ($lastActivityDate->isSameDay($today)) {
-                    $datePriority = 1; // Prioritas 1: Hari Ini
-                } elseif ($lastActivityDate->clone()->startOfDay()->greaterThanOrEqualTo($today->clone()->subDays(2))) {
-                    $datePriority = 2; // Prioritas 2: 2 Hari Kebelakang
-                }
+                $activeLaneSort = $this->resolveRecordActiveLaneSort($lanes);
 
                 return [
                     'id' => $noSplit,
@@ -1187,18 +1233,12 @@ class TrackingController extends Controller
                     'route_key' => $blueprint['route_key'] ?? '*',
                     'applicable_stage_keys' => $blueprint['active_stages'] ?? [],
                     'lanes' => $lanes,
-                    // Field bantuan untuk sorting
-                    'date_priority' => $datePriority, 
-                    'last_activity_timestamp' => $lastActivityDate->timestamp, 
+                    'last_activity_timestamp' => $lastActivityDate->timestamp,
+                    'active_lane_status_rank' => $activeLaneSort['status_rank'],
+                    'active_lane_activity_timestamp' => $activeLaneSort['activity_timestamp'],
+                    'active_stage_index' => $activeLaneSort['stage_index'],
                 ];
             })
-            ->sortBy([
-                ['date_priority', 'asc'],            // 1. Hari ini dulu, lalu 2 hari kemarin, lalu lainnya
-                ['is_closed', 'asc'],                // 2. Yang masih running (belum closed) naik ke atas (opsional)
-                ['last_activity_timestamp', 'desc'], // 3. Urutkan berdasarkan jam aktivitas terbaru (descending)
-                ['id', 'asc'],                       // 4. Fallback sort
-                ['batch', 'asc']                     // 5. Fallback sort
-            ])
             ->values()
             ->all();
 
@@ -1219,7 +1259,14 @@ class TrackingController extends Controller
             array_filter($records, function (array $record) use ($from, $to, $prd, $noSplit, $batch, $line, $status) {
                 // Hide records that have not entered any stage (no lanes)
                 $hasAnyStageData = collect($record['lanes'] ?? [])
-                    ->contains(fn($lane) => ($lane['qty'] ?? null) !== null);
+                    ->contains(function (array $lane) {
+                        return ($lane['qty'] ?? null) !== null ||
+                            in_array(
+                                (string) ($lane['status'] ?? ''),
+                                [self::LANE_STATUS_PENDING, self::LANE_STATUS_RUNNING, self::LANE_STATUS_DONE],
+                                true,
+                            );
+                    });
 
                 if (!$hasAnyStageData) {
                     return false;
@@ -1253,9 +1300,21 @@ class TrackingController extends Controller
                 }
 
                 if ($status === 'running') {
-                    $hasRunningLane = collect($record['lanes'])->contains(fn(array $lane) => $lane['status'] === 'run');
+                    $hasRunningLane = collect($record['lanes'])->contains(
+                        fn(array $lane) => ($lane['status'] ?? '') === self::LANE_STATUS_RUNNING,
+                    );
 
                     if ($record['full_done'] || !$hasRunningLane) {
+                        return false;
+                    }
+                }
+
+                if ($status === 'pending') {
+                    $hasPendingLane = collect($record['lanes'])->contains(
+                        fn(array $lane) => ($lane['status'] ?? '') === self::LANE_STATUS_PENDING,
+                    );
+
+                    if ($record['full_done'] || !$hasPendingLane) {
                         return false;
                     }
                 }
@@ -1265,27 +1324,36 @@ class TrackingController extends Controller
         );
 
         if ($flowFilter === self::FLOW_FILTER_LIVE_RUNNING) {
-            $filtered = $this->applyLiveRunningFilter($filtered, $runningScope);
+            $filtered = $this->applyLiveRunningFilter($filtered, $runningScope, $status);
         }
 
-        return $filtered;
+        return $this->sortRecordsForFlowFilter($filtered, $flowFilter);
     }
 
-    private function applyLiveRunningFilter(array $records, string $runningScope): array
+    private function applyLiveRunningFilter(array $records, string $runningScope, string $status): array
     {
+        $visibleStatuses = $this->liveVisibleLaneStatuses($status);
+
         if ($runningScope === self::RUNNING_SCOPE_LANE) {
             return array_values(
                 array_filter(
-                    array_map(function (array $record) {
+                    array_map(function (array $record) use ($visibleStatuses) {
                         $runningLanes = array_values(
-                            array_filter($record['lanes'] ?? [], fn(array $lane) => ($lane['status'] ?? '') === 'run'),
+                            array_filter(
+                                $record['lanes'] ?? [],
+                                fn(array $lane) => $this->laneIsLiveVisible($lane, $visibleStatuses),
+                            ),
                         );
 
                         if (empty($runningLanes)) {
                             return null;
                         }
 
-                        $record['lanes'] = $runningLanes;
+                        $record['lanes'] = $this->sortLiveLanes($runningLanes);
+                        $activeLaneSort = $this->resolveRecordActiveLaneSort($record['lanes']);
+                        $record['active_lane_status_rank'] = $activeLaneSort['status_rank'];
+                        $record['active_lane_activity_timestamp'] = $activeLaneSort['activity_timestamp'];
+                        $record['active_stage_index'] = $activeLaneSort['stage_index'];
 
                         return $record;
                     }, $records),
@@ -1294,10 +1362,177 @@ class TrackingController extends Controller
         }
 
         return array_values(
-            array_filter($records, function (array $record) {
-                return collect($record['lanes'] ?? [])->contains(fn(array $lane) => ($lane['status'] ?? '') === 'run');
-            }),
+            array_filter(
+                array_map(function (array $record) use ($status, $visibleStatuses) {
+                    $hasVisibleLane = collect($record['lanes'] ?? [])->contains(
+                        fn(array $lane) => $this->laneIsLiveVisible($lane, $visibleStatuses),
+                    );
+
+                    if (!$hasVisibleLane) {
+                        return null;
+                    }
+
+                    if (in_array($status, ['running', 'pending'], true)) {
+                        $record['lanes'] = $this->sortLiveLanes(
+                            array_values(
+                                array_filter(
+                                    $record['lanes'] ?? [],
+                                    fn(array $lane) => $this->laneIsLiveVisible($lane, $visibleStatuses),
+                                ),
+                            ),
+                        );
+                    }
+
+                    return $record;
+                }, $records),
+            ),
         );
+    }
+
+    private function liveVisibleLaneStatuses(string $status): array
+    {
+        return match ($status) {
+            'running' => [self::LANE_STATUS_RUNNING],
+            'pending' => [self::LANE_STATUS_PENDING],
+            default => [self::LANE_STATUS_RUNNING, self::LANE_STATUS_PENDING],
+        };
+    }
+
+    private function laneIsLiveVisible(array $lane, ?array $visibleStatuses = null): bool
+    {
+        return in_array(
+            (string) ($lane['status'] ?? ''),
+            $visibleStatuses ?? [self::LANE_STATUS_RUNNING, self::LANE_STATUS_PENDING],
+            true,
+        );
+    }
+
+    private function sortLiveLanes(array $lanes): array
+    {
+        return collect($lanes)
+            ->sort(function (array $left, array $right) {
+                $leftRank = $this->laneStatusRank($left);
+                $rightRank = $this->laneStatusRank($right);
+
+                if ($leftRank !== $rightRank) {
+                    return $leftRank <=> $rightRank;
+                }
+
+                $leftActivity = (int) ($left['activity_timestamp'] ?? 0);
+                $rightActivity = (int) ($right['activity_timestamp'] ?? 0);
+
+                if ($leftActivity !== $rightActivity) {
+                    return $rightActivity <=> $leftActivity;
+                }
+
+                return $this->stageIndex((string) ($left['column_key'] ?? '')) <=>
+                    $this->stageIndex((string) ($right['column_key'] ?? ''));
+            })
+            ->values()
+            ->all();
+    }
+
+    private function laneStatusRank(array $lane): int
+    {
+        return match ((string) ($lane['status'] ?? '')) {
+            self::LANE_STATUS_RUNNING => 1,
+            self::LANE_STATUS_PENDING => 2,
+            self::LANE_STATUS_DONE => 3,
+            default => 4,
+        };
+    }
+
+    private function resolveRecordActiveLaneSort(array $lanes): array
+    {
+        $activeLanes = collect($lanes)
+            ->filter(fn(array $lane) => $this->laneIsLiveVisible($lane))
+            ->values();
+
+        if ($activeLanes->isEmpty()) {
+            $activeLanes = collect($lanes)
+                ->filter(fn(array $lane) => (string) ($lane['status'] ?? '') !== self::LANE_STATUS_WAIT)
+                ->values();
+        }
+
+        if ($activeLanes->isEmpty()) {
+            return [
+                'status_rank' => 9,
+                'activity_timestamp' => 0,
+                'stage_index' => 999,
+            ];
+        }
+
+        $sorted = $this->sortLiveLanes($activeLanes->all());
+        $first = $sorted[0] ?? [];
+
+        return [
+            'status_rank' => $this->laneStatusRank($first),
+            'activity_timestamp' => (int) ($first['activity_timestamp'] ?? 0),
+            'stage_index' => $this->stageIndex((string) ($first['column_key'] ?? '')),
+        ];
+    }
+
+    private function sortRecordsForFlowFilter(array $records, string $flowFilter): array
+    {
+        $ordering = self::RECORD_ORDERING_BY_FLOW_FILTER[$flowFilter]
+            ?? self::RECORD_ORDERING_BY_FLOW_FILTER[self::FLOW_FILTER_FULL_PROCESS];
+
+        return collect($records)
+            ->sort(fn(array $left, array $right) => $this->compareRecordsByOrdering($left, $right, $ordering))
+            ->values()
+            ->all();
+    }
+
+    private function compareRecordsByOrdering(array $left, array $right, array $ordering): int
+    {
+        foreach ($ordering as $rule) {
+            $field = (string) ($rule['field'] ?? '');
+
+            if ($field === '') {
+                continue;
+            }
+
+            $direction = strtolower((string) ($rule['direction'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+            $result = $this->compareSortValues($left[$field] ?? null, $right[$field] ?? null);
+
+            if ($result !== 0) {
+                return $direction === 'desc' ? -$result : $result;
+            }
+        }
+
+        return 0;
+    }
+
+    private function compareSortValues($left, $right): int
+    {
+        if ($left === $right) {
+            return 0;
+        }
+
+        if ($left === null) {
+            return 1;
+        }
+
+        if ($right === null) {
+            return -1;
+        }
+
+        if (is_bool($left) || is_bool($right)) {
+            return ((int) $left) <=> ((int) $right);
+        }
+
+        if (is_numeric($left) && is_numeric($right)) {
+            return ((float) $left) <=> ((float) $right);
+        }
+
+        return strcmp((string) $left, (string) $right);
+    }
+
+    private function stageIndex(string $stage): int
+    {
+        $index = array_search($stage, $this->stageKeys(), true);
+
+        return $index === false ? 999 : (int) $index;
     }
 
     private function options(array $records, Request $request): array
@@ -1336,6 +1571,7 @@ class TrackingController extends Controller
             'status' => [
                 ['label' => 'Semua', 'value' => 'all'],
                 ['label' => 'Running', 'value' => 'running'],
+                ['label' => 'Menunggu', 'value' => 'pending'],
                 ['label' => 'Selesai', 'value' => 'selesai'],
             ],
             'flow_filter_modes' => [
@@ -1403,16 +1639,17 @@ class TrackingController extends Controller
             'running' => collect($records)
                 ->filter(function (array $record) {
                     return !$record['full_done'] &&
-                        $this->applicableLanes($record)->contains(fn(array $lane) => ($lane['status'] ?? '') === 'run');
+                        $this->applicableLanes($record)->contains(
+                            fn(array $lane) => ($lane['status'] ?? '') === self::LANE_STATUS_RUNNING,
+                        );
                 })
                 ->count(),
             'pending' => collect($records)
                 ->filter(function (array $record) {
-                    $applicableLanes = $this->applicableLanes($record);
-
-                    return $applicableLanes->isNotEmpty() && $applicableLanes->every(
-                        fn(array $lane) => ($lane['progress_state'] ?? 'not_started') === 'not_started',
-                    );
+                    return !$record['full_done'] &&
+                        $this->applicableLanes($record)->contains(
+                            fn(array $lane) => ($lane['status'] ?? '') === self::LANE_STATUS_PENDING,
+                        );
                 })
                 ->count(),
         ];
@@ -1682,6 +1919,9 @@ class TrackingController extends Controller
             'hpp_jam' => null,
             'hpp_jumlah_terpakai' => null,
             'flag_hasil_produksi_gr' => null,
+            'tgl_hasil_produksi_gr' => null,
+            'jam_hasil_produksi_gr' => null,
+            'hasil_produksi_gr_at' => null,
             'batch' => '',
             'is_history' => false,
             'sequence_at' => null,
@@ -1763,17 +2003,28 @@ class TrackingController extends Controller
         $metrics = collect($this->stageKeys())
             ->map(function (string $stage) use ($group, $blueprint) {
                 $stageRows = $group->filter(fn(array $row) => $this->rowEnteredStage($row, $stage))->values();
-                $entryTimestamps = $stageRows
-                    ->map(fn(array $row) => $this->stageEntryTimestamp($row, $stage))
-                    ->filter();
-                $latestActivity = $stageRows
-                    ->map(fn(array $row) => $this->stageLatestTimestamp($row, $stage))
-                    ->filter();
-                $startAt = $entryTimestamps->min(fn(Carbon $timestamp) => $timestamp->timestamp);
-                $endAt = $latestActivity->max(fn(Carbon $timestamp) => $timestamp->timestamp);
+                $pendingRows = $this->resolveStagePendingRows($stage, $group);
+                $startAt = $this->resolveStageBoundaryTimestamp($stage, $group, 'start', $stageRows);
+                $endAt = $this->resolveStageBoundaryTimestamp($stage, $group, 'end', $stageRows);
+                $pendingAt = $pendingRows
+                    ->map(fn(array $row) => $this->stagePendingTimestamp($row, $stage))
+                    ->filter()
+                    ->max(fn(Carbon $timestamp) => $timestamp->timestamp);
                 $hasRows = $stageRows->isNotEmpty();
-                $stageQty = $hasRows ? $this->resolveStageQuantity($stage, $stageRows) : null;
+                $hasPendingRows = $pendingRows->isNotEmpty();
+                $stageQty = $hasRows
+                    ? $this->resolveStageQuantity($stage, $stageRows)
+                    : ($hasPendingRows ? $this->countUniqueEventTokens($pendingRows) : null);
                 $breakdown = $this->buildLaneBreakdown($stage, $stageRows);
+                $pendingStartAt = $hasPendingRows ? $this->resolveStagePendingBoundaryTimestamp($stage, $pendingRows, 'min') : null;
+                $pendingEndAt = $hasPendingRows ? $this->resolveStagePendingBoundaryTimestamp($stage, $pendingRows, 'max') : null;
+                $displayStartAt = $startAt ?? $pendingStartAt;
+                $displayEndAt = $endAt ?? ($hasRows ? null : $pendingEndAt);
+                $activityTimestamp = collect([
+                    $displayEndAt?->timestamp,
+                    $displayStartAt?->timestamp,
+                    $pendingAt,
+                ])->filter()->max();
 
                 return [
                     'column_key' => $stage,
@@ -1782,11 +2033,14 @@ class TrackingController extends Controller
                     'completion_breakdown' => $breakdown['completion_breakdown'],
                     'unit' => (string) ($this->stageDefinition($stage)['summaryLabel'] ?? 'Box'),
                     'suhu' => $this->defaultTemperature($stage, (int) ($stageQty ?? 0)),
-                    'jam_awal' => $startAt ? Carbon::createFromTimestamp($startAt)->format('d/m H:i') : null,
-                    'jam_akhir' => $endAt ? Carbon::createFromTimestamp($endAt)->format('d/m H:i') : null,
-                    'status' => 'wait',
-                    'progress_state' => 'not_started',
+                    'jam_awal' => $displayStartAt ? $displayStartAt->format('d/m H:i') : null,
+                    'jam_akhir' => $displayEndAt ? $displayEndAt->format('d/m H:i') : null,
+                    'pending_at' => $pendingAt ? Carbon::createFromTimestamp($pendingAt)->format('d/m H:i') : null,
+                    'activity_timestamp' => $activityTimestamp,
+                    'status' => self::LANE_STATUS_WAIT,
+                    'progress_state' => self::LANE_PROGRESS_NOT_STARTED,
                     'has_rows' => $hasRows,
+                    'has_pending_rows' => $hasPendingRows,
                     'is_applicable' => $this->stageIsApplicable($stage, $blueprint),
                 ];
             })
@@ -1816,7 +2070,7 @@ class TrackingController extends Controller
                 $completed = ((bool) ($completionResult['completed'] ?? false)) && $dependenciesSatisfied;
             }
 
-            if (!(bool) ($lane['has_rows'] ?? false)) {
+            if (!(bool) ($lane['has_rows'] ?? false) && !(bool) ($lane['has_pending_rows'] ?? false)) {
                 $fallbackQty = $this->resolveFallbackMergeQuantity($stage, $resolvedCollection, $blueprint);
 
                 if ($fallbackQty !== null) {
@@ -1826,17 +2080,20 @@ class TrackingController extends Controller
             }
 
             if ($completed) {
-                $lane['progress_state'] = 'completed';
-                $lane['status'] = 'done';
+                $lane['progress_state'] = self::LANE_PROGRESS_COMPLETED;
+                $lane['status'] = self::LANE_STATUS_DONE;
             } elseif ((bool) ($lane['has_rows'] ?? false)) {
-                $lane['progress_state'] = 'in_progress';
-                $lane['status'] = 'run';
+                $lane['progress_state'] = self::LANE_PROGRESS_IN_PROGRESS;
+                $lane['status'] = self::LANE_STATUS_RUNNING;
+            } elseif ((bool) ($lane['has_pending_rows'] ?? false)) {
+                $lane['progress_state'] = self::LANE_PROGRESS_PENDING;
+                $lane['status'] = self::LANE_STATUS_PENDING;
             } else {
-                $lane['progress_state'] = 'not_started';
-                $lane['status'] = 'wait';
+                $lane['progress_state'] = self::LANE_PROGRESS_NOT_STARTED;
+                $lane['status'] = self::LANE_STATUS_WAIT;
             }
 
-            unset($lane['has_rows'], $lane['is_applicable']);
+            unset($lane['has_rows'], $lane['has_pending_rows'], $lane['is_applicable']);
 
             $resolvedLanes[$stage] = $lane;
         }
@@ -2058,6 +2315,15 @@ class TrackingController extends Controller
         return $this->matchesStageRules($row, $this->stageRules($stage, 'completion_rules'));
     }
 
+    private function rowPendingStage(array $row, string $stage): bool
+    {
+        if (!$this->rowMatchesStageSource($row, $stage)) {
+            return false;
+        }
+
+        return $this->matchesStageRules($row, $this->stageRules($stage, 'pending_rules'));
+    }
+
     private function rowMatchesStageSource(array $row, string $stage): bool
     {
         $sourceKeys = $this->stageSourceKeys($stage);
@@ -2069,6 +2335,101 @@ class TrackingController extends Controller
         return in_array((string) ($row['source_key'] ?? ''), $sourceKeys, true);
     }
 
+    private function stageTimeConfig(string $stage, string $boundary): array
+    {
+        $definition = $this->stageDefinition($stage);
+        $configured = is_array($definition['time'][$boundary] ?? null)
+            ? $definition['time'][$boundary]
+            : [];
+        $isConfigured = !empty($configured);
+        $defaults = $boundary === 'end'
+            ? [
+                'rules' => 'completion_rules',
+                'timestamp' => null,
+                'aggregate' => 'max',
+                'fallback_to_entry' => true,
+            ]
+            : [
+                'rules' => 'entry_rules',
+                'timestamp' => null,
+                'aggregate' => 'min',
+                'fallback_to_entry' => false,
+            ];
+
+        $config = array_replace($defaults, $configured);
+        $config['rules'] = in_array($config['rules'], ['entry_rules', 'completion_rules'], true)
+            ? $config['rules']
+            : $defaults['rules'];
+        $config['aggregate'] = in_array($config['aggregate'], ['min', 'max'], true)
+            ? $config['aggregate']
+            : $defaults['aggregate'];
+
+        if ($isConfigured && !array_key_exists('fallback_to_entry', $configured)) {
+            $config['fallback_to_entry'] = false;
+        }
+
+        $config['is_configured'] = $isConfigured;
+
+        return $config;
+    }
+
+    private function resolveStageBoundaryTimestamp(
+        string $stage,
+        Collection $rows,
+        string $boundary,
+        ?Collection $defaultRows = null,
+    ): ?Carbon {
+        $config = $this->stageTimeConfig($stage, $boundary);
+        $rules = $this->stageRules($stage, (string) ($config['rules'] ?? ''));
+        $candidateRows = (bool) ($config['is_configured'] ?? false) || $defaultRows === null
+            ? $rows
+            : $defaultRows;
+        $matchedRows = $this->stageRowsMatchingRules($stage, $candidateRows, $rules);
+        $timestampField = trim((string) ($config['timestamp'] ?? ''));
+        $timestamps = $matchedRows
+            ->map(function (array $row) use ($rules, $timestampField) {
+                if ($timestampField !== '') {
+                    return $row[$timestampField] ?? null;
+                }
+
+                $matchedRule = $this->firstMatchingStageRule($row, $rules);
+
+                if (!$matchedRule) {
+                    return null;
+                }
+
+                return $row[$matchedRule['timestamp'] ?? 'pairing_at'] ?? null;
+            })
+            ->filter();
+
+        if ($timestamps->isEmpty() && (bool) ($config['fallback_to_entry'] ?? false)) {
+            return $this->resolveStageBoundaryTimestamp($stage, $rows, 'start', $defaultRows);
+        }
+
+        if ($timestamps->isEmpty()) {
+            return null;
+        }
+
+        $resolvedTimestamp = (string) ($config['aggregate'] ?? 'max') === 'min'
+            ? $timestamps->min(fn(Carbon $timestamp) => $timestamp->timestamp)
+            : $timestamps->max(fn(Carbon $timestamp) => $timestamp->timestamp);
+
+        return Carbon::createFromTimestamp($resolvedTimestamp);
+    }
+
+    private function stageRowsMatchingRules(string $stage, Collection $rows, array $rules): Collection
+    {
+        if (empty($rules)) {
+            return collect();
+        }
+
+        return $rows
+            ->filter(function (array $row) use ($stage, $rules) {
+                return $this->rowMatchesStageSource($row, $stage) && $this->matchesStageRules($row, $rules);
+            })
+            ->values();
+    }
+
     private function stageEntryTimestamp(array $row, string $stage): ?Carbon
     {
         $matchedRule = $this->firstMatchingStageRule($row, $this->stageRules($stage, 'entry_rules'));
@@ -2078,6 +2439,41 @@ class TrackingController extends Controller
         }
 
         return $row[$matchedRule['timestamp'] ?? 'pairing_at'] ?? null;
+    }
+
+    private function stagePendingTimestamp(array $row, string $stage): ?Carbon
+    {
+        $matchedRule = $this->firstMatchingStageRule($row, $this->stageRules($stage, 'pending_rules'));
+
+        if (!$matchedRule) {
+            return null;
+        }
+
+        return $row[$matchedRule['timestamp'] ?? 'pairing_at'] ?? null;
+    }
+
+    private function resolveStagePendingRows(string $stage, Collection $rows): Collection
+    {
+        return $rows
+            ->filter(fn(array $row) => $this->rowPendingStage($row, $stage))
+            ->values();
+    }
+
+    private function resolveStagePendingBoundaryTimestamp(string $stage, Collection $rows, string $aggregate): ?Carbon
+    {
+        $timestamps = $rows
+            ->map(fn(array $row) => $this->stagePendingTimestamp($row, $stage))
+            ->filter();
+
+        if ($timestamps->isEmpty()) {
+            return null;
+        }
+
+        $timestamp = $aggregate === 'min'
+            ? $timestamps->min(fn(Carbon $timestamp) => $timestamp->timestamp)
+            : $timestamps->max(fn(Carbon $timestamp) => $timestamp->timestamp);
+
+        return Carbon::createFromTimestamp($timestamp);
     }
 
     private function stageLatestTimestamp(array $row, string $stage): ?Carbon
@@ -2148,7 +2544,12 @@ class TrackingController extends Controller
         $timestamps = $group
             ->flatMap(function (array $row) {
                 // Mengambil semua timestamp yang ada (jam awal/jam akhir dari semua mesin)
-                return array_filter([$row['pairing_at'], $row['in_at'], $row['source_at'] ?? null]);
+                return array_filter([
+                    $row['pairing_at'],
+                    $row['in_at'],
+                    $row['source_at'] ?? null,
+                    $row['hasil_produksi_gr_at'] ?? null,
+                ]);
             })
             ->filter();
 
@@ -2161,7 +2562,12 @@ class TrackingController extends Controller
     {
         $timestamps = $group
             ->flatMap(function (array $row) {
-                return array_filter([$row['pairing_at'], $row['in_at'], $row['source_at'] ?? null]);
+                return array_filter([
+                    $row['pairing_at'],
+                    $row['in_at'],
+                    $row['source_at'] ?? null,
+                    $row['hasil_produksi_gr_at'] ?? null,
+                ]);
             })
             ->filter();
 

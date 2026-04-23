@@ -1,7 +1,34 @@
 <template>
     <article class="card" :class="cardClass" :style="cardStyle">
         <div class="card-head">
-            <div class="prd">{{ card.prd }}</div>
+            <div class="prd-wrap">
+                <div class="prd">{{ card.prd }}</div>
+                <button
+                    type="button"
+                    class="copy-prd-btn"
+                    :class="{ 'is-copied': copyState === 'copied' }"
+                    :title="copyButtonTitle"
+                    :aria-label="copyButtonTitle"
+                    @click.stop="copyPrd"
+                >
+                    <svg
+                        v-if="copyState !== 'copied'"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                    >
+                        <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+                        <path d="M5 15V6.8C5 5.8 5.8 5 6.8 5H15"></path>
+                    </svg>
+                    <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 6 9 17l-5-5"></path>
+                    </svg>
+                </button>
+                <transition name="copy-pop" style="z-index: 999 !important">
+                    <div v-if="copyMessage" class="copy-message">
+                        {{ copyMessage }}
+                    </div>
+                </transition>
+            </div>
             <div class="badge" :class="badgeClass">{{ badgeText }}</div>
         </div>
 
@@ -53,9 +80,24 @@ export default {
             required: true,
         },
     },
+    data() {
+        return {
+            copyMessage: "",
+            copyState: "idle",
+            copyTimerId: null,
+        };
+    },
     computed: {
         lane() {
             return this.card.lane || {};
+        },
+
+        prdNumber() {
+            return String(this.card.prd || "").trim();
+        },
+
+        copyButtonTitle() {
+            return this.prdNumber ? `Copy PRD ${this.prdNumber}` : "Copy PRD";
         },
 
         // 🔥 GLOBAL UNIT STYLE
@@ -159,6 +201,10 @@ export default {
                 return "Running";
             }
 
+            if (this.lane.status === "pending") {
+                return "Menunggu";
+            }
+
             if (this.lane.status === "done") {
                 return "Selesai";
             }
@@ -177,6 +223,10 @@ export default {
 
             if (this.lane.status === "run") {
                 return "b-run";
+            }
+
+            if (this.lane.status === "pending") {
+                return "b-pending";
             }
 
             if (this.lane.status === "done") {
@@ -206,6 +256,10 @@ export default {
                 return "dv dv-run";
             }
 
+            if (this.lane.status === "pending") {
+                return "dv dv-pending";
+            }
+
             if (this.lane.status === "done") {
                 return "dv dv-done";
             }
@@ -214,7 +268,73 @@ export default {
         },
     },
 
+    beforeUnmount() {
+        if (this.copyTimerId) {
+            clearTimeout(this.copyTimerId);
+        }
+    },
+
     methods: {
+        async copyPrd() {
+            if (!this.prdNumber) {
+                return;
+            }
+
+            try {
+                await this.writeClipboardText(this.prdNumber);
+                this.showCopyMessage(
+                    `Selesai menyalin PRD ${this.prdNumber}`,
+                    "copied"
+                );
+            } catch (error) {
+                this.showCopyMessage("Gagal menyalin PRD", "error");
+                console.error(error);
+            }
+        },
+
+        async writeClipboardText(value) {
+            if (
+                typeof navigator !== "undefined" &&
+                navigator.clipboard?.writeText
+            ) {
+                await navigator.clipboard.writeText(value);
+                return;
+            }
+
+            const input = document.createElement("textarea");
+            input.value = value;
+            input.setAttribute("readonly", "");
+            input.style.position = "fixed";
+            input.style.top = "-999px";
+            input.style.opacity = "0";
+
+            document.body.appendChild(input);
+            input.select();
+            input.setSelectionRange(0, value.length);
+
+            const copied = document.execCommand("copy");
+            document.body.removeChild(input);
+
+            if (!copied) {
+                throw new Error("Clipboard copy failed");
+            }
+        },
+
+        showCopyMessage(message, state) {
+            this.copyMessage = message;
+            this.copyState = state;
+
+            if (this.copyTimerId) {
+                clearTimeout(this.copyTimerId);
+            }
+
+            this.copyTimerId = setTimeout(() => {
+                this.copyMessage = "";
+                this.copyState = "idle";
+                this.copyTimerId = null;
+            }, 1600);
+        },
+
         calculateDuration(startTime, endTime) {
             if (
                 !startTime ||
@@ -354,12 +474,100 @@ export default {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
     margin-bottom: 4px;
+}
+
+.prd-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 5px;
 }
 
 .prd {
     font-size: 11px;
     font-weight: 700;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.copy-prd-btn {
+    width: 22px;
+    height: 22px;
+    border: 1px solid #dbe2ef;
+    border-radius: 5px;
+    background: #fff;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    flex: 0 0 auto;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+        transform 0.15s ease;
+}
+
+.copy-prd-btn:hover,
+.copy-prd-btn:focus-visible {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+    color: #4f46e5;
+    outline: none;
+}
+
+.copy-prd-btn:active {
+    transform: scale(0.94);
+}
+
+.copy-prd-btn.is-copied {
+    background: #dcfce7;
+    border-color: #bbf7d0;
+    color: #16a34a;
+}
+
+.copy-prd-btn svg {
+    width: 13px;
+    height: 13px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.copy-message {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 6px);
+    z-index: 20;
+    max-width: 210px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #111827;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.35;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+    pointer-events: none;
+    white-space: normal;
+}
+
+.copy-pop-enter-active,
+.copy-pop-leave-active {
+    transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.copy-pop-enter-from,
+.copy-pop-leave-to {
+    opacity: 0;
+    transform: translateY(-3px);
 }
 
 .batch-lbl {
@@ -373,6 +581,7 @@ export default {
     font-weight: 600;
     padding: 2px 7px;
     border-radius: 99px;
+    flex: 0 0 auto;
 }
 
 .b-run {
@@ -388,6 +597,11 @@ export default {
 .b-wait {
     background: #fffbeb;
     color: #d97706;
+}
+
+.b-pending {
+    background: #fef3c7;
+    color: #b45309;
 }
 
 .b-not-started {
@@ -550,6 +764,10 @@ export default {
 
 .dv-wait {
     color: #f59e0b;
+}
+
+.dv-pending {
+    color: #d97706;
 }
 
 .dv-not-started {

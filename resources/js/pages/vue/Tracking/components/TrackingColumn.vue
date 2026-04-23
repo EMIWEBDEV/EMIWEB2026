@@ -41,7 +41,9 @@
                         <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
                 </button>
-                <span class="tooltip">Tahan bar untuk geser. Tap panah pindah urutan.</span>
+                <span class="tooltip"
+                    >Tahan bar untuk geser. Tap panah pindah urutan.</span
+                >
             </div>
 
             <div class="col-head">
@@ -50,21 +52,45 @@
                         <div class="indicator" :style="indicatorStyle"></div>
                         {{ column.icon }} {{ column.label }}
                     </div>
-                    <div class="col-count">{{ column.count || 0 }}</div>
+                    <!-- <div class="col-count">{{ column.count || 0 }}</div> -->
+                    <div
+                        class="col-count"
+                        v-if="
+                            flowMode?.trim().toLowerCase() == 'live_running' &&
+                            column?.count > 0
+                        "
+                    >
+                        Sedang Berjalan
+                    </div>
+                    <div
+                        v-else-if="
+                            flowMode?.trim().toLowerCase() == 'live_running' &&
+                            column?.count <= 0
+                        "
+                        class="col-count"
+                    >
+                        Tidak Ada Aktivitas
+                    </div>
                 </div>
                 <div class="col-meta" v-html="column.meta || '—'"></div>
             </div>
         </div>
 
         <div class="col-body">
-            <TrackingCard v-for="card in column.cards" :key="`${card.recordId}-${card.lane.column_key}`" :card="card" />
-            <div v-if="!column.cards.length" class="empty">Tidak ada card</div>
+            <TrackingCard
+                v-for="card in column.cards"
+                :key="`${card.recordId}-${card.lane.column_key}`"
+                :card="card"
+            />
+            <div v-if="!column.cards.length" class="empty">
+                Tidak ada Aktivitas
+            </div>
         </div>
     </div>
 </template>
 
 <script>
-import TrackingCard from './TrackingCard.vue';
+import TrackingCard from "./TrackingCard.vue";
 
 export default {
     components: {
@@ -83,11 +109,15 @@ export default {
             type: Boolean,
             default: false,
         },
+        flowMode: {
+            type: String,
+            default: "full_process",
+        },
     },
     computed: {
         indicatorStyle() {
             return {
-                background: this.column.indicator || '#38bdf8',
+                background: this.column.indicator || "#38bdf8",
             };
         },
     },
@@ -140,9 +170,7 @@ export default {
     align-items: center;
     justify-content: center;
     border-radius: 4px;
-    transition:
-        background 0.2s,
-        color 0.2s;
+    transition: background 0.2s, color 0.2s;
 }
 
 .move-btn.invisible {
@@ -192,7 +220,7 @@ export default {
 }
 
 .tooltip::after {
-    content: '';
+    content: "";
     position: absolute;
     bottom: 100%;
     left: 50%;
