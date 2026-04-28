@@ -169,7 +169,6 @@
                                                             }}
                                                         </h6>
                                                     </div>
-
                                                     <div class="card-body p-0">
                                                         <template
                                                             v-if="
@@ -246,7 +245,6 @@
                                                                         </p>
                                                                     </div>
                                                                 </div>
-
                                                                 <div
                                                                     v-else-if="
                                                                         currentStepData.pending_analisa &&
@@ -335,7 +333,6 @@
                                                                         </div>
                                                                     </div>
                                                                 </div>
-
                                                                 <div
                                                                     v-else
                                                                     class="alert alert-info shadow-sm border-0 border-start border-info border-4 d-flex align-items-center mb-0"
@@ -381,657 +378,170 @@
                                                                         .length >
                                                                         0
                                                                 "
-                                                                class="p-3"
+                                                                class="table-responsive"
+                                                                style="
+                                                                    max-height: 400px;
+                                                                    overflow-y: auto;
+                                                                "
                                                             >
-                                                                <div
-                                                                    v-if="
-                                                                        currentStepData.Kode_Aktivitas_Lab ===
-                                                                        'ANL'
-                                                                    "
-                                                                    class="accordion custom-accordionwithicon"
-                                                                    id="accordionANL"
+                                                                <table
+                                                                    class="table table-hover align-middle mb-0 text-center"
                                                                 >
-                                                                    <div
-                                                                        class="accordion-item border mb-3 rounded overflow-hidden shadow-sm"
-                                                                        v-for="(
-                                                                            group,
-                                                                            gIdx
-                                                                        ) in groupedANLData"
-                                                                        :key="
-                                                                            gIdx
+                                                                    <thead
+                                                                        class="table-light"
+                                                                        style="
+                                                                            position: sticky;
+                                                                            top: 0;
+                                                                            z-index: 1;
                                                                         "
                                                                     >
-                                                                        <h2
-                                                                            class="accordion-header"
-                                                                            :id="
-                                                                                'headingANL' +
-                                                                                gIdx
+                                                                        <tr>
+                                                                            <th>
+                                                                                No
+                                                                            </th>
+                                                                            <th>
+                                                                                No
+                                                                                Sub
+                                                                                Sampel
+                                                                            </th>
+                                                                            <th>
+                                                                                Jenis
+                                                                                Analisa
+                                                                            </th>
+                                                                            <th>
+                                                                                Hasil
+                                                                                /
+                                                                                Keterangan
+                                                                            </th>
+                                                                            <th>
+                                                                                Status
+                                                                            </th>
+                                                                            <th>
+                                                                                Foto
+                                                                            </th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        <tr
+                                                                            v-for="(
+                                                                                item,
+                                                                                idx
+                                                                            ) in currentStepData.data_analisa"
+                                                                            :key="
+                                                                                idx
                                                                             "
                                                                         >
-                                                                            <button
-                                                                                class="accordion-button collapsed p-3 bg-white shadow-none"
-                                                                                type="button"
-                                                                                data-bs-toggle="collapse"
-                                                                                :data-bs-target="
-                                                                                    '#collapseANL' +
-                                                                                    gIdx
-                                                                                "
-                                                                                aria-expanded="false"
-                                                                                :aria-controls="
-                                                                                    'collapseANL' +
-                                                                                    gIdx
-                                                                                "
+                                                                            <td>
+                                                                                {{
+                                                                                    idx +
+                                                                                    1
+                                                                                }}
+                                                                            </td>
+                                                                            <td
+                                                                                class="fw-medium text-muted"
                                                                             >
-                                                                                <div
-                                                                                    class="d-flex align-items-center w-100 pe-3"
-                                                                                >
-                                                                                    <div
-                                                                                        class="me-3"
-                                                                                    >
-                                                                                        <div
-                                                                                            class="d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded"
-                                                                                            style="
-                                                                                                width: 48px;
-                                                                                                height: 48px;
-                                                                                            "
-                                                                                        >
-                                                                                            <i
-                                                                                                class="ri-flask-line fs-24"
-                                                                                            ></i>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div
-                                                                                        class="flex-grow-1"
-                                                                                    >
-                                                                                        <h6
-                                                                                            class="mb-1 fw-bolder text-dark"
-                                                                                            style="
-                                                                                                font-size: 15px;
-                                                                                            "
-                                                                                        >
-                                                                                            {{
-                                                                                                group.Jenis_Analisa
-                                                                                            }}
-                                                                                        </h6>
-                                                                                        <div
-                                                                                            class="d-flex align-items-center gap-2 mt-2"
-                                                                                        >
-                                                                                            <span
-                                                                                                class="badge bg-light text-dark border"
-                                                                                            >
-                                                                                                <i
-                                                                                                    class="ri-list-check me-1 text-muted"
-                                                                                                ></i
-                                                                                                >{{
-                                                                                                    group
-                                                                                                        .items
-                                                                                                        .length
-                                                                                                }}
-                                                                                                Sub
-                                                                                                Sampel
-                                                                                            </span>
-
-                                                                                            <span
-                                                                                                class="badge bg-light text-dark border"
-                                                                                                v-if="
-                                                                                                    group.Flag_Perhitungan ===
-                                                                                                    'Y'
-                                                                                                "
-                                                                                            >
-                                                                                                <i
-                                                                                                    class="ri-calculator-line me-1 text-muted"
-                                                                                                ></i
-                                                                                                >Perhitungan
-                                                                                            </span>
-                                                                                            <span
-                                                                                                class="badge bg-light text-dark border"
-                                                                                                v-else
-                                                                                            >
-                                                                                                <i
-                                                                                                    class="ri-eye-line me-1 text-muted"
-                                                                                                ></i
-                                                                                                >Non-Perhitungan
-                                                                                            </span>
-
-                                                                                            <span
-                                                                                                :class="[
-                                                                                                    'badge border',
-                                                                                                    group.is_layak
-                                                                                                        ? 'bg-success-subtle text-success border-success'
-                                                                                                        : 'bg-danger-subtle text-danger border-danger',
-                                                                                                ]"
-                                                                                            >
-                                                                                                <i
-                                                                                                    :class="[
-                                                                                                        group.is_layak
-                                                                                                            ? 'ri-checkbox-circle-line'
-                                                                                                            : 'ri-close-circle-line',
-                                                                                                        'me-1',
-                                                                                                    ]"
-                                                                                                ></i>
-                                                                                                {{
-                                                                                                    group.is_layak
-                                                                                                        ? "Layak"
-                                                                                                        : "Tidak Layak"
-                                                                                                }}
-                                                                                            </span>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div
-                                                                                        class="text-end"
-                                                                                        v-if="
-                                                                                            group.Flag_Perhitungan ===
-                                                                                            'Y'
-                                                                                        "
-                                                                                    >
-                                                                                        <span
-                                                                                            class="text-muted d-block mb-1"
-                                                                                            style="
-                                                                                                font-size: 0.7rem;
-                                                                                                font-weight: 700;
-                                                                                                text-transform: uppercase;
-                                                                                                letter-spacing: 0.5px;
-                                                                                            "
-                                                                                            >Rata-Rata
-                                                                                            Hasil</span
-                                                                                        >
-                                                                                        <h4
-                                                                                            class="mb-0 fw-bolder text-primary"
-                                                                                        >
-                                                                                            {{
-                                                                                                group.RataRataHasil
-                                                                                            }}
-                                                                                        </h4>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </button>
-                                                                        </h2>
-                                                                        <div
-                                                                            :id="
-                                                                                'collapseANL' +
-                                                                                gIdx
-                                                                            "
-                                                                            class="accordion-collapse collapse"
-                                                                            :aria-labelledby="
-                                                                                'headingANL' +
-                                                                                gIdx
-                                                                            "
-                                                                            data-bs-parent="#accordionANL"
-                                                                        >
-                                                                            <div
-                                                                                class="accordion-body p-0 border-top"
+                                                                                {{
+                                                                                    item.No_Fak_Sub_Po &&
+                                                                                    item.No_Fak_Sub_Po !==
+                                                                                        item.No_Po_Sampel
+                                                                                        ? item.No_Fak_Sub_Po
+                                                                                        : "-"
+                                                                                }}
+                                                                            </td>
+                                                                            <td
+                                                                                class="fw-medium"
                                                                             >
-                                                                                <div
-                                                                                    class="table-responsive"
-                                                                                >
-                                                                                    <table
-                                                                                        class="table table-bordered align-middle mb-0 text-center text-nowrap"
-                                                                                    >
-                                                                                        <thead
-                                                                                            class="table-light"
-                                                                                        >
-                                                                                            <tr>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    No
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    No
-                                                                                                    Sampel
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    No
-                                                                                                    PO
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    No
-                                                                                                    Split
-                                                                                                    PO
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    Batch
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    Tanggal
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                    v-for="(
-                                                                                                        header,
-                                                                                                        hIdx
-                                                                                                    ) in group.paramHeaders"
-                                                                                                    :key="
-                                                                                                        'h-' +
-                                                                                                        hIdx
-                                                                                                    "
-                                                                                                >
-                                                                                                    {{
-                                                                                                        header
-                                                                                                    }}
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    Hasil
-                                                                                                    /
-                                                                                                    Keterangan
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    Status
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    Foto
-                                                                                                </th>
-                                                                                            </tr>
-                                                                                        </thead>
-                                                                                        <tbody>
-                                                                                            <tr
-                                                                                                v-for="(
-                                                                                                    item,
-                                                                                                    idx
-                                                                                                ) in group.items"
-                                                                                                :key="
-                                                                                                    idx
-                                                                                                "
-                                                                                                :class="{
-                                                                                                    'table-success':
-                                                                                                        item.Flag_Layak ===
-                                                                                                        'Y',
-                                                                                                    'table-danger':
-                                                                                                        item.Flag_Layak ===
-                                                                                                            'T' ||
-                                                                                                        item.Flag_Layak ===
-                                                                                                            'N',
-                                                                                                }"
-                                                                                            >
-                                                                                                <td>
-                                                                                                    {{
-                                                                                                        idx +
-                                                                                                        1
-                                                                                                    }}
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="fw-medium text-dark"
-                                                                                                >
-                                                                                                    {{
-                                                                                                        item.No_Fak_Sub_Po &&
-                                                                                                        item.No_Fak_Sub_Po !==
-                                                                                                            item.No_Po_Sampel
-                                                                                                            ? item.No_Fak_Sub_Po
-                                                                                                            : item.No_Po_Sampel
-                                                                                                    }}
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    {{
-                                                                                                        item.No_Po
-                                                                                                    }}
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    {{
-                                                                                                        item.No_Split_Po
-                                                                                                    }}
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    Batch
-                                                                                                    {{
-                                                                                                        item.No_Batch
-                                                                                                    }}
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    {{
-                                                                                                        formatTanggal(
-                                                                                                            item.Tanggal_Registrasi
-                                                                                                        )
-                                                                                                    }}
-                                                                                                </td>
-
-                                                                                                <td
-                                                                                                    v-for="(
-                                                                                                        param,
-                                                                                                        pIdx
-                                                                                                    ) in item.parameters"
-                                                                                                    :key="
-                                                                                                        'p-' +
-                                                                                                        pIdx
-                                                                                                    "
-                                                                                                >
-                                                                                                    {{
-                                                                                                        param.Hasil_Analisa
-                                                                                                    }}
-                                                                                                </td>
-
-                                                                                                <td
-                                                                                                    class="fw-bolder fs-14"
-                                                                                                >
-                                                                                                    <span
-                                                                                                        v-if="
-                                                                                                            item.Flag_Perhitungan !==
-                                                                                                                'Y' &&
-                                                                                                            item.Keterangan_Kriteria
-                                                                                                        "
-                                                                                                        class="text-primary"
-                                                                                                    >
-                                                                                                        {{
-                                                                                                            item.Keterangan_Kriteria
-                                                                                                        }}
-                                                                                                    </span>
-                                                                                                    <span
-                                                                                                        v-else
-                                                                                                    >
-                                                                                                        {{
-                                                                                                            item.Hasil ??
-                                                                                                            "-"
-                                                                                                        }}
-                                                                                                    </span>
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    <span
-                                                                                                        class="badge bg-success"
-                                                                                                        v-if="
-                                                                                                            item.Flag_Approval ===
-                                                                                                            'Y'
-                                                                                                        "
-                                                                                                        >Disetujui</span
-                                                                                                    >
-                                                                                                    <span
-                                                                                                        class="badge bg-danger"
-                                                                                                        v-else-if="
-                                                                                                            item.Flag_Approval ===
-                                                                                                            'T'
-                                                                                                        "
-                                                                                                        >Ditolak</span
-                                                                                                    >
-                                                                                                    <span
-                                                                                                        class="badge bg-warning text-dark"
-                                                                                                        v-else
-                                                                                                        >Menunggu</span
-                                                                                                    >
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    <template
-                                                                                                        v-if="
-                                                                                                            item.Flag_Foto ===
-                                                                                                            'Y'
-                                                                                                        "
-                                                                                                    >
-                                                                                                        <button
-                                                                                                            v-if="
-                                                                                                                item.File_Url
-                                                                                                            "
-                                                                                                            @click="
-                                                                                                                lihatFoto(
-                                                                                                                    item.File_Url
-                                                                                                                )
-                                                                                                            "
-                                                                                                            class="btn btn-sm btn-outline-info rounded-pill px-3"
-                                                                                                        >
-                                                                                                            <i
-                                                                                                                class="ri-image-line align-middle me-1"
-                                                                                                            ></i>
-                                                                                                            Lihat
-                                                                                                        </button>
-                                                                                                        <span
-                                                                                                            v-else
-                                                                                                            class="text-danger small fst-italic"
-                                                                                                            >Belum</span
-                                                                                                        >
-                                                                                                    </template>
-                                                                                                    <span
-                                                                                                        v-else
-                                                                                                        class="text-muted small"
-                                                                                                        >-</span
-                                                                                                    >
-                                                                                                </td>
-                                                                                            </tr>
-                                                                                            <tr
-                                                                                                v-if="
-                                                                                                    group.Flag_Perhitungan ===
-                                                                                                    'Y'
-                                                                                                "
-                                                                                                class="table-warning"
-                                                                                            >
-                                                                                                <td
-                                                                                                    :colspan="
-                                                                                                        6 +
-                                                                                                        group
-                                                                                                            .paramHeaders
-                                                                                                            .length
-                                                                                                    "
-                                                                                                    class="text-center fw-bolder text-dark fs-14"
-                                                                                                >
-                                                                                                    Rata-Rata
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="fw-bolder text-dark fs-14"
-                                                                                                >
-                                                                                                    {{
-                                                                                                        group.RataRataHasil
-                                                                                                    }}
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    colspan="2"
-                                                                                                ></td>
-                                                                                            </tr>
-                                                                                        </tbody>
-                                                                                    </table>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div
-                                                                    v-else
-                                                                    class="table-responsive border rounded"
-                                                                    style="
-                                                                        max-height: 400px;
-                                                                        overflow-y: auto;
-                                                                    "
-                                                                >
-                                                                    <table
-                                                                        class="table table-bordered align-middle mb-0 text-center text-nowrap"
-                                                                    >
-                                                                        <thead
-                                                                            class="table-light"
-                                                                            style="
-                                                                                position: sticky;
-                                                                                top: 0;
-                                                                                z-index: 1;
-                                                                            "
-                                                                        >
-                                                                            <tr>
-                                                                                <th
-                                                                                    class="fw-semibold"
-                                                                                >
-                                                                                    No
-                                                                                </th>
-                                                                                <th
-                                                                                    class="fw-semibold"
-                                                                                >
-                                                                                    No
-                                                                                    Sub
-                                                                                    Sampel
-                                                                                </th>
-                                                                                <th
-                                                                                    class="fw-semibold"
-                                                                                >
-                                                                                    Jenis
-                                                                                    Analisa
-                                                                                </th>
-                                                                                <th
-                                                                                    class="fw-semibold"
-                                                                                >
-                                                                                    Hasil
-                                                                                    Akhir
-                                                                                </th>
-                                                                                <th
-                                                                                    class="fw-semibold"
-                                                                                >
-                                                                                    Status
-                                                                                </th>
-                                                                                <th
-                                                                                    class="fw-semibold"
-                                                                                >
-                                                                                    Foto
-                                                                                </th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody>
-                                                                            <tr
-                                                                                v-for="(
-                                                                                    item,
-                                                                                    idx
-                                                                                ) in currentStepData.data_analisa"
-                                                                                :key="
-                                                                                    idx
-                                                                                "
-                                                                                :class="{
-                                                                                    'table-success':
-                                                                                        item.Flag_Layak ===
-                                                                                        'Y',
-                                                                                    'table-danger':
-                                                                                        item.Flag_Layak ===
-                                                                                            'T' ||
-                                                                                        item.Flag_Layak ===
-                                                                                            'N',
-                                                                                }"
+                                                                                {{
+                                                                                    item.Jenis_Analisa
+                                                                                }}
+                                                                            </td>
+                                                                            <td
+                                                                                class="fw-bold"
                                                                             >
-                                                                                <td>
-                                                                                    {{
-                                                                                        idx +
-                                                                                        1
-                                                                                    }}
-                                                                                </td>
-                                                                                <td
-                                                                                    class="fw-medium text-dark"
+                                                                                <span
+                                                                                    v-if="
+                                                                                        item.Flag_Perhitungan !==
+                                                                                            'Y' &&
+                                                                                        item.Keterangan_Kriteria
+                                                                                    "
+                                                                                    class="text-primary"
                                                                                 >
                                                                                     {{
-                                                                                        item.No_Fak_Sub_Po &&
-                                                                                        item.No_Fak_Sub_Po !==
-                                                                                            item.No_Po_Sampel
-                                                                                            ? item.No_Fak_Sub_Po
-                                                                                            : "-"
+                                                                                        item.Keterangan_Kriteria
                                                                                     }}
-                                                                                </td>
-                                                                                <td
-                                                                                    class="fw-medium"
+                                                                                </span>
+                                                                                <span
+                                                                                    v-else
                                                                                 >
                                                                                     {{
-                                                                                        item.Jenis_Analisa
+                                                                                        item.Hasil ??
+                                                                                        "-"
                                                                                     }}
-                                                                                </td>
-                                                                                <td
-                                                                                    class="fw-bolder fs-14"
+                                                                                </span>
+                                                                            </td>
+                                                                            <td>
+                                                                                <span
+                                                                                    class="badge bg-success"
+                                                                                    v-if="
+                                                                                        item.Flag_Approval ===
+                                                                                        'Y'
+                                                                                    "
+                                                                                    >Disetujui</span
                                                                                 >
-                                                                                    <span
+                                                                                <span
+                                                                                    class="badge bg-danger"
+                                                                                    v-else-if="
+                                                                                        item.Flag_Approval ===
+                                                                                        'T'
+                                                                                    "
+                                                                                    >Ditolak</span
+                                                                                >
+                                                                                <span
+                                                                                    class="badge bg-warning text-dark"
+                                                                                    v-else
+                                                                                    >Menunggu</span
+                                                                                >
+                                                                            </td>
+                                                                            <td>
+                                                                                <template
+                                                                                    v-if="
+                                                                                        item.Flag_Foto ===
+                                                                                        'Y'
+                                                                                    "
+                                                                                >
+                                                                                    <button
                                                                                         v-if="
-                                                                                            item.Flag_Perhitungan !==
-                                                                                                'Y' &&
-                                                                                            item.Keterangan_Kriteria
+                                                                                            item.File_Url
                                                                                         "
-                                                                                        class="text-primary"
+                                                                                        @click="
+                                                                                            lihatFoto(
+                                                                                                item.File_Url
+                                                                                            )
+                                                                                        "
+                                                                                        class="btn btn-sm btn-outline-info rounded-pill px-3"
                                                                                     >
-                                                                                        {{
-                                                                                            item.Keterangan_Kriteria
-                                                                                        }}
-                                                                                    </span>
+                                                                                        <i
+                                                                                            class="ri-image-line align-middle me-1"
+                                                                                        ></i>
+                                                                                        Lihat
+                                                                                        Foto
+                                                                                    </button>
                                                                                     <span
                                                                                         v-else
+                                                                                        class="text-danger small fst-italic"
+                                                                                        >Belum
+                                                                                        Diupload</span
                                                                                     >
-                                                                                        {{
-                                                                                            item.Hasil ??
-                                                                                            "-"
-                                                                                        }}
-                                                                                    </span>
-                                                                                </td>
-                                                                                <td>
-                                                                                    <span
-                                                                                        class="badge bg-success"
-                                                                                        v-if="
-                                                                                            item.Flag_Approval ===
-                                                                                            'Y'
-                                                                                        "
-                                                                                        >Disetujui</span
-                                                                                    >
-                                                                                    <span
-                                                                                        class="badge bg-danger"
-                                                                                        v-else-if="
-                                                                                            item.Flag_Approval ===
-                                                                                            'T'
-                                                                                        "
-                                                                                        >Ditolak</span
-                                                                                    >
-                                                                                    <span
-                                                                                        class="badge bg-warning text-dark"
-                                                                                        v-else
-                                                                                        >Menunggu</span
-                                                                                    >
-                                                                                </td>
-                                                                                <td>
-                                                                                    <template
-                                                                                        v-if="
-                                                                                            item.Flag_Foto ===
-                                                                                            'Y'
-                                                                                        "
-                                                                                    >
-                                                                                        <button
-                                                                                            v-if="
-                                                                                                item.foto_list &&
-                                                                                                item
-                                                                                                    .foto_list
-                                                                                                    .length >
-                                                                                                    0
-                                                                                            "
-                                                                                            @click="
-                                                                                                bukaModalFoto(
-                                                                                                    item.foto_list
-                                                                                                )
-                                                                                            "
-                                                                                            class="btn btn-sm btn-outline-info rounded-pill px-3"
-                                                                                        >
-                                                                                            <i
-                                                                                                class="ri-image-line align-middle me-1"
-                                                                                            ></i
-                                                                                            >Lihat
-                                                                                            Foto
-                                                                                            ({{
-                                                                                                item
-                                                                                                    .foto_list
-                                                                                                    .length
-                                                                                            }})
-                                                                                        </button>
-                                                                                        <span
-                                                                                            v-else
-                                                                                            class="text-danger small fst-italic"
-                                                                                            >Belum
-                                                                                            Diupload</span
-                                                                                        >
-                                                                                    </template>
-                                                                                    <span
-                                                                                        v-else
-                                                                                        class="text-muted small"
-                                                                                        >-</span
-                                                                                    >
-                                                                                </td>
-                                                                            </tr>
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
+                                                                                </template>
+                                                                                <span
+                                                                                    v-else
+                                                                                    class="text-muted small"
+                                                                                    >-</span
+                                                                                >
+                                                                            </td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
                                                             </div>
                                                         </template>
                                                         <template v-else>
@@ -1056,7 +566,6 @@
                                                         </template>
                                                     </div>
                                                 </div>
-
                                                 <div
                                                     v-else
                                                     class="card border shadow-none mb-4"
@@ -2496,149 +2005,6 @@
                 </div>
             </div>
         </div>
-        <!-- end modal -->
-
-        <!-- modal foto -->
-        <div
-            class="modal fade"
-            id="modalGaleriFoto"
-            tabindex="-1"
-            aria-labelledby="modalGaleriFotoLabel"
-            aria-hidden="true"
-        >
-            <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
-                <div class="modal-content bg-black text-white">
-                    <div class="modal-header border-secondary bg-black">
-                        <h5
-                            class="modal-title fw-bold text-white"
-                            id="modalGaleriFotoLabel"
-                        >
-                            Galeri Foto Analisa
-                        </h5>
-                        <button
-                            type="button"
-                            class="btn-close btn-close-white"
-                            data-bs-dismiss="modal"
-                            aria-label="Close"
-                        ></button>
-                    </div>
-                    <div class="modal-body p-4 p-md-5 bg-black">
-                        <div v-if="selectedPhotos.length > 0" class="row g-4">
-                            <div
-                                v-for="(foto, index) in selectedPhotos"
-                                :key="index"
-                                class="col-12 col-md-6"
-                            >
-                                <div
-                                    class="card h-100 border-0 shadow-lg rounded"
-                                    style="background-color: #ffffff"
-                                >
-                                    <div
-                                        class="card-body p-3 d-flex flex-column"
-                                    >
-                                        <div
-                                            class="bg-light rounded d-flex align-items-center justify-content-center"
-                                            style="
-                                                height: 400px;
-                                                border: 1px solid #e9ecef;
-                                                overflow: hidden;
-                                            "
-                                        >
-                                            <el-image
-                                                :src="foto.url"
-                                                :preview-src-list="allPhotoUrls"
-                                                :initial-index="index"
-                                                fit="contain"
-                                                style="
-                                                    width: 100%;
-                                                    height: 100%;
-                                                    cursor: pointer;
-                                                "
-                                                hide-on-click-modal
-                                            >
-                                                <template #placeholder>
-                                                    <div
-                                                        class="d-flex justify-content-center align-items-center w-100 h-100"
-                                                    >
-                                                        <div
-                                                            class="spinner-border text-primary"
-                                                            role="status"
-                                                        >
-                                                            <span
-                                                                class="visually-hidden"
-                                                                >Loading...</span
-                                                            >
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                                <template #error>
-                                                    <div
-                                                        class="d-flex justify-content-center align-items-center w-100 h-100 bg-light text-muted flex-column"
-                                                    >
-                                                        <i
-                                                            class="ri-image-line fs-1 mb-2"
-                                                        ></i>
-                                                        <span
-                                                            >Gagal memuat
-                                                            gambar</span
-                                                        >
-                                                    </div>
-                                                </template>
-                                            </el-image>
-                                        </div>
-                                        <div
-                                            class="mt-4 flex-grow-1 overflow-auto pe-2"
-                                            style="max-height: 250px"
-                                        >
-                                            <h6
-                                                class="fw-bolder text-dark mb-2 text-uppercase"
-                                                style="
-                                                    letter-spacing: 0.5px;
-                                                    border-bottom: 2px solid
-                                                        #f0f0f0;
-                                                    padding-bottom: 8px;
-                                                "
-                                            >
-                                                Keterangan Catatan
-                                            </h6>
-                                            <p
-                                                class="mb-0 text-dark"
-                                                style="
-                                                    white-space: pre-wrap;
-                                                    line-height: 1.7;
-                                                    font-size: 15px;
-                                                    font-weight: 500;
-                                                "
-                                            >
-                                                {{
-                                                    foto.keterangan ||
-                                                    "Tidak ada keterangan untuk foto ini."
-                                                }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div v-else class="text-center py-5">
-                            <p class="text-muted">
-                                Tidak ada foto untuk ditampilkan.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="modal-footer border-secondary bg-black">
-                        <button
-                            type="button"
-                            class="btn btn-outline-light px-4 rounded-pill"
-                            data-bs-dismiss="modal"
-                        >
-                            Tutup Galeri
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- end modal foto -->
     </div>
 </template>
 
@@ -2654,7 +2020,6 @@ import {
     ElSteps,
     ElMessageBox,
     ElNotification,
-    ElImage,
 } from "element-plus";
 
 export default {
@@ -2666,7 +2031,6 @@ export default {
         ElNotification,
         ElSelect,
         ElOption,
-        ElImage,
     },
     data() {
         return {
@@ -2678,7 +2042,7 @@ export default {
             selectedJenisPrint: "",
             selectedSampel: "",
             activeStep: 0,
-            selectedPhotos: [],
+
             formTolak: { alasan: "" },
             formBatal: { noPo: "", alasan: "" },
             loading: {
@@ -2702,14 +2066,9 @@ export default {
             selectedPrintSample: null,
             exportFormat: "excel",
             acknowledgementChecked: false,
-
-            templateDataMap: {},
         };
     },
     computed: {
-        allPhotoUrls() {
-            return this.selectedPhotos.map((foto) => foto.url);
-        },
         currentStepData() {
             if (!this.detailValidasiData.length || !this.listKlasifikasi.length)
                 return null;
@@ -2722,85 +2081,6 @@ export default {
             return this.detailValidasiData.find(
                 (item) => item.Kode_Aktivitas_Lab === currentAktivitas
             );
-        },
-        groupedANLData() {
-            if (
-                !this.currentStepData ||
-                this.currentStepData.Kode_Aktivitas_Lab !== "ANL"
-            )
-                return [];
-
-            const groups = {};
-
-            this.currentStepData.data_analisa.forEach((item) => {
-                if (!groups[item.Jenis_Analisa]) {
-                    groups[item.Jenis_Analisa] = {
-                        Id_Jenis_Analisa: item.Id_Jenis_Analisa,
-                        Id_Jenis_Analisa_Hash: item.Id_Jenis_Analisa_Hash,
-                        Jenis_Analisa: item.Jenis_Analisa,
-                        Flag_Perhitungan: item.Flag_Perhitungan,
-                        Digit_Desimal:
-                            item.Digit_Desimal !== null
-                                ? parseInt(item.Digit_Desimal)
-                                : 2,
-                        items: [],
-                        paramHeaders: [],
-                        is_layak: true,
-                    };
-                }
-
-                if (
-                    item.Id_Jenis_Analisa_Hash &&
-                    this.templateDataMap[item.Id_Jenis_Analisa_Hash]
-                ) {
-                    const templateParams =
-                        this.templateDataMap[item.Id_Jenis_Analisa_Hash];
-                    if (
-                        groups[item.Jenis_Analisa].paramHeaders.length === 0 &&
-                        templateParams.length > 0
-                    ) {
-                        groups[item.Jenis_Analisa].paramHeaders =
-                            templateParams.map((p) => p.nama_parameter);
-                    }
-                } else if (
-                    groups[item.Jenis_Analisa].paramHeaders.length === 0 &&
-                    item.parameters
-                ) {
-                    groups[item.Jenis_Analisa].paramHeaders =
-                        item.parameters.map((_, i) => `Param ${i + 1}`);
-                }
-
-                groups[item.Jenis_Analisa].items.push(item);
-
-                if (item.Flag_Layak === "T" || item.Flag_Layak === "N") {
-                    groups[item.Jenis_Analisa].is_layak = false;
-                }
-            });
-
-            return Object.values(groups).map((group) => {
-                if (group.Flag_Perhitungan === "Y") {
-                    let totalHasil = 0;
-                    let countHasil = 0;
-
-                    group.items.forEach((i) => {
-                        let val = parseFloat(i.Hasil);
-                        if (!isNaN(val)) {
-                            totalHasil += val;
-                            countHasil++;
-                        }
-                    });
-
-                    group.RataRataHasil =
-                        countHasil > 0
-                            ? (totalHasil / countHasil).toFixed(
-                                  group.Digit_Desimal
-                              )
-                            : "-";
-                } else {
-                    group.RataRataHasil = null;
-                }
-                return group;
-            });
         },
         isStepTerkunci() {
             return (
@@ -2861,30 +2141,6 @@ export default {
         },
     },
     methods: {
-        bukaModalFoto(fotoList) {
-            this.selectedPhotos = fotoList;
-            const modalElement = document.getElementById("modalGaleriFoto");
-            const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
-            modal.show();
-        },
-        async fetchTemplateParameter(idHash) {
-            if (!idHash || this.templateDataMap[idHash]) return;
-            try {
-                const response = await axios.get(
-                    `/fetch/lab/lama/${idHash}/parameter-perhitungan-old`
-                );
-                if (
-                    response.data &&
-                    response.data.success &&
-                    response.data.result
-                ) {
-                    this.templateDataMap[idHash] =
-                        response.data.result.parameter || [];
-                }
-            } catch (e) {
-                console.error("Gagal fetch parameter:", e);
-            }
-        },
         switchTab(tab) {
             this.activeTab = tab;
             this.searchQuery = "";
@@ -3075,24 +2331,6 @@ export default {
                 );
                 if (response.status === 200 && response.data.result?.steps) {
                     this.detailValidasiData = response.data.result.steps;
-
-                    // 🔥 TRIGGER FETCH TEMPLATE PARAMETER KALO ADA STEP ANL
-                    const anlStep = this.detailValidasiData.find(
-                        (s) => s.Kode_Aktivitas_Lab === "ANL"
-                    );
-                    if (anlStep && anlStep.data_analisa) {
-                        const uniqueHashes = [
-                            ...new Set(
-                                anlStep.data_analisa
-                                    .map((d) => d.Id_Jenis_Analisa_Hash)
-                                    .filter(Boolean)
-                            ),
-                        ];
-                        uniqueHashes.forEach((hash) => {
-                            this.fetchTemplateParameter(hash);
-                        });
-                    }
-
                     const activeIndex = this.detailValidasiData.findIndex(
                         (step) => step.status_step === "MENUNGGU VALIDASI"
                     );
@@ -3111,7 +2349,7 @@ export default {
                     }
                 }
             } catch (error) {
-                ElNotification.error("Gagal memuat detail.");
+                ElMessage.error("Gagal memuat detail.");
             } finally {
                 this.loading.loadingModal = false;
             }
@@ -3338,13 +2576,6 @@ export default {
             } finally {
                 this.loading.loadingDesktop = false;
             }
-        },
-        formatTanggal(tanggalString) {
-            if (!tanggalString) return "-";
-            const date = new Date(tanggalString);
-            if (isNaN(date.getTime())) return tanggalString;
-            const options = { day: "2-digit", month: "short", year: "numeric" };
-            return date.toLocaleDateString("en-GB", options);
         },
         nextPageDesktop() {
             if (this.paginationDesktop.page < this.paginationDesktop.totalPage)

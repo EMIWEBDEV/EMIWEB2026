@@ -157,7 +157,7 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get('/api/v1/lab/hasil-analisa/sub/{id_jenis_analisa}/{no_po_sampel}', [UjiSampelController::class, 'getDataHasilAnalisaSubPoByJenisAnalisa']);
     Route::get('/api/v1/lab/confirmed-selesai/uji-sampel/by/{id_analisa}', [UjiSampelController::class, 'getDataConfirmedSelesaiByJenisAnalisa']);
     Route::get('/api/v2/lab/confirmed-selesai/uji-sampel/by/{id_analisa}', [UjiSampelController::class, 'getDataConfirmedSelesaiByJenisAnalisaV2']);
-    Route::get('/api/v1/lab/no-uji/sampel/sub/all/{no_sampel}/{id_jenis_analisa}', [UjiSampelController::class, 'getDataSubSampelCurrentV1']);
+    Route::get('/api/v1/lab/laboratorium/no-uji/sampel/sub/all/{no_sampel}/{id_jenis_analisa}', [UjiSampelController::class, 'getDataSubSampelCurrentV1']);
     Route::post('/api/v1/lab/resampeling/reanalisis', [UjiSampelController::class, 'resampelingAnalisa']);
     Route::post('/api/v1/lab/resampling-single/reanalisis', [UjiSampelController::class, 'resampelingAnalisaSingle']);
     Route::get('/fetch/lab/{id_mesin}/{id_analisa}/parameter-perhitungan', [UjiSampelController::class, 'getParameterAndPerhitungan']);
@@ -330,6 +330,7 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::post("/api/v1/standar-hasil-analisa/store", [StandarRentangController::class, 'store']);
     Route::get("/api/v1/standar-rentang-analisa/current", [StandarRentangController::class, 'getAllCurrent']);
     Route::get("/api/v1/jenis-analisa/standar", [StandarRentangController::class, 'getJenisAnalisa']);
+    Route::get("/api/v1/jenis-analisa/komponen/{id}", [StandarRentangController::class, 'getKomponenAnalisa']);
     Route::get("/api/v1/daftar-barang/standar/{id_jenis_analisa}", [StandarRentangController::class, 'getBarangStandarRentang']);
     Route::get("/api/v1/list-mesin/standar/{id_jenis_analisa}", [StandarRentangController::class, 'getDaftarMesinStandar']);
     Route::get("/api/v1/list-kolom-perhitungan/standar/{id_jenis_analisa}", [StandarRentangController::class, 'getPerhitunganListStandar']);

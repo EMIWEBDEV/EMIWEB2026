@@ -403,42 +403,89 @@
                                             </button>
                                         </div>
                                         <div class="row">
-                                            <div class="col-md-6 mb-3">
+                                            <div
+                                                class="col-md-12 mb-3"
+                                                v-if="isSwitchMode"
+                                            >
                                                 <label
                                                     class="form-label fw-semibold"
                                                 >
-                                                    Nilai Kriteria (Value)
+                                                    Pilih Kriteria (Switch)
                                                     <span class="text-danger"
                                                         >*</span
                                                     >
                                                 </label>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
+                                                <el-select
                                                     v-model="
-                                                        item.Nilai_Kriteria
+                                                        item.Selected_Switch
                                                     "
-                                                    placeholder="Contoh: -999999 atau Text"
-                                                />
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label
-                                                    class="form-label fw-semibold"
+                                                    placeholder="--- Pilih Kriteria (Switch) ---"
+                                                    class="w-100"
+                                                    filterable
+                                                    value-key="Id_Switch"
+                                                    @change="
+                                                        (val) =>
+                                                            handleSwitchChange(
+                                                                val,
+                                                                item
+                                                            )
+                                                    "
+                                                    :loading="
+                                                        loading.loadingKomponenAnalisa
+                                                    "
                                                 >
-                                                    Keterangan Kriteria (Label)
-                                                    <span class="text-danger"
-                                                        >*</span
-                                                    >
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    v-model="
-                                                        item.Keterangan_Kriteria
-                                                    "
-                                                    placeholder="Contoh: Negatif / Positif"
-                                                />
+                                                    <el-option
+                                                        v-for="opt in optionsSwitch"
+                                                        :key="opt.Id_Switch"
+                                                        :label="
+                                                            opt.Label_Keterangan
+                                                        "
+                                                        :value="opt"
+                                                    />
+                                                </el-select>
                                             </div>
+
+                                            <template v-else>
+                                                <div class="col-md-6 mb-3">
+                                                    <label
+                                                        class="form-label fw-semibold"
+                                                    >
+                                                        Nilai Kriteria (Value)
+                                                        <span
+                                                            class="text-danger"
+                                                            >*</span
+                                                        >
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        class="form-control"
+                                                        v-model="
+                                                            item.Nilai_Kriteria
+                                                        "
+                                                        placeholder="Contoh: -999999 atau Text"
+                                                    />
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label
+                                                        class="form-label fw-semibold"
+                                                    >
+                                                        Keterangan Kriteria
+                                                        (Label)
+                                                        <span
+                                                            class="text-danger"
+                                                            >*</span
+                                                        >
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        class="form-control"
+                                                        v-model="
+                                                            item.Keterangan_Kriteria
+                                                        "
+                                                        placeholder="Contoh: Negatif / Positif"
+                                                    />
+                                                </div>
+                                            </template>
                                         </div>
                                         <div class="mb-3">
                                             <label
@@ -557,12 +604,15 @@ export default {
             optionsDaftarBarangList: [],
             optionsMesinList: [],
             optionsPerhitunganList: [],
+            isSwitchMode: false,
+            optionsSwitch: [],
             loading: {
                 loadingOptionJenisAnalisaList: false,
                 loadingOptionMesinList: false,
                 loadingOptionDaftarBarangList: false,
                 loadingOptionPerhitunganList: false,
                 loadingSaveToDatabase: false,
+                loadingKomponenAnalisa: false,
             },
             formPerhitunganList: [
                 {
@@ -578,6 +628,7 @@ export default {
                     Nilai_Kriteria: "",
                     Keterangan_Kriteria: "",
                     Flag_Layak: "",
+                    Selected_Switch: null,
                 },
             ],
         };
@@ -589,6 +640,8 @@ export default {
                 if (this.mode === "perhitungan") {
                     this.fetchDaftarNamaPerhitungan();
                     this.fetchDaftarMesin();
+                } else if (this.mode === "non") {
+                    this.fetchKomponenAnalisa(newVal.value);
                 }
             } else {
                 this.resetDependentOptions();
@@ -596,10 +649,48 @@ export default {
         },
     },
     methods: {
+        async fetchKomponenAnalisa(idJenisAnalisa) {
+            this.loading.loadingKomponenAnalisa = true;
+            this.isSwitchMode = false;
+            this.optionsSwitch = [];
+
+            this.formNonList = [
+                {
+                    Nilai_Kriteria: "",
+                    Keterangan_Kriteria: "",
+                    Flag_Layak: "",
+                    Selected_Switch: null,
+                },
+            ];
+
+            try {
+                const response = await axios.get(
+                    `/api/v1/jenis-analisa/komponen/${idJenisAnalisa}`
+                );
+                if (response.status === 200 && response.data?.success) {
+                    this.isSwitchMode = response.data.is_switch;
+                    this.optionsSwitch = response.data.options || [];
+                }
+            } catch (error) {
+                console.error("Gagal mengambil komponen analisa", error);
+            } finally {
+                this.loading.loadingKomponenAnalisa = false;
+            }
+        },
         selectMode(selectedMode) {
             this.mode = selectedMode;
             this.resetForm();
             this.fetchJenisAnalisaList();
+        },
+        handleSwitchChange(val, item) {
+            if (val) {
+                // Mapping otomatis ke kolom database yang sesungguhnya
+                item.Nilai_Kriteria = val.Keterangan;
+                item.Keterangan_Kriteria = val.Label_Keterangan;
+            } else {
+                item.Nilai_Kriteria = "";
+                item.Keterangan_Kriteria = "";
+            }
         },
         resetMode() {
             this.mode = null;
@@ -617,11 +708,13 @@ export default {
                     Range_Akhir: "",
                 },
             ];
+            this.isSwitchMode = false;
             this.formNonList = [
                 {
                     Nilai_Kriteria: "",
                     Keterangan_Kriteria: "",
                     Flag_Layak: "",
+                    Selected_Switch: null,
                 },
             ];
         },
@@ -649,6 +742,7 @@ export default {
                 Nilai_Kriteria: "",
                 Keterangan_Kriteria: "",
                 Flag_Layak: "",
+                Selected_Switch: null,
             });
         },
         removeNonRow(index) {

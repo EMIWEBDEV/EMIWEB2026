@@ -187,91 +187,116 @@
                                             </span>
                                             <span
                                                 class="badge bg-primary px-3 py-2 rounded-pill fs-6"
-                                                >{{ item.No_Po_Sampel }}</span
                                             >
+                                                {{ item.No_Po_Sampel }}
+                                            </span>
                                         </div>
-                                        <div class="card-body p-0 bg-light">
-                                            <div class="row g-0">
+
+                                        <div class="card-body p-3 bg-light">
+                                            <div class="row g-3">
                                                 <div
                                                     v-for="foto in item.foto_analisa"
                                                     :key="foto.Berkas_Key"
-                                                    class="col-12"
+                                                    class="col-12 col-md-6"
                                                 >
                                                     <div
-                                                        v-if="
-                                                            !fotoBlobUrls[
-                                                                foto.Berkas_Key
-                                                            ]
-                                                        "
-                                                        class="d-flex justify-content-center align-items-center bg-light w-100"
-                                                        style="height: 500px"
+                                                        class="bg-white border rounded shadow-sm p-2 h-100 d-flex flex-column"
                                                     >
                                                         <div
-                                                            class="spinner-grow text-primary"
-                                                            role="status"
+                                                            v-if="
+                                                                !fotoBlobUrls[
+                                                                    foto
+                                                                        .Berkas_Key
+                                                                ]
+                                                            "
+                                                            class="d-flex justify-content-center align-items-center bg-light w-100 rounded"
+                                                            style="
+                                                                height: 250px;
+                                                            "
                                                         >
-                                                            <span
-                                                                class="visually-hidden"
-                                                                >Memuat
-                                                                Gambar...</span
-                                                            >
-                                                        </div>
-                                                    </div>
-                                                    <el-image
-                                                        v-else
-                                                        class="w-100 d-block"
-                                                        style="
-                                                            height: 500px;
-                                                            object-fit: contain;
-                                                            background-color: #f8f9fa;
-                                                        "
-                                                        :src="
-                                                            fotoBlobUrls[
-                                                                foto.Berkas_Key
-                                                            ]
-                                                        "
-                                                        :zoom-rate="1.2"
-                                                        :max-scale="7"
-                                                        :min-scale="0.2"
-                                                        :preview-src-list="
-                                                            item.foto_analisa
-                                                                .map(
-                                                                    (f) =>
-                                                                        fotoBlobUrls[
-                                                                            f
-                                                                                .Berkas_Key
-                                                                        ]
-                                                                )
-                                                                .filter(Boolean)
-                                                        "
-                                                        :initial-index="
-                                                            item.foto_analisa.findIndex(
-                                                                (f) =>
-                                                                    f.Berkas_Key ===
-                                                                    foto.Berkas_Key
-                                                            )
-                                                        "
-                                                        fit="contain"
-                                                        hide-on-click-modal
-                                                        @contextmenu.prevent
-                                                        @dragstart.prevent
-                                                    >
-                                                        <template #error>
                                                             <div
-                                                                class="d-flex flex-column justify-content-center align-items-center bg-light text-muted w-100 h-100"
+                                                                class="spinner-grow text-primary"
+                                                                role="status"
                                                             >
-                                                                <i
-                                                                    class="fas fa-image-slash fa-3x mb-3 text-secondary"
-                                                                ></i>
                                                                 <span
-                                                                    class="fw-medium"
-                                                                    >Gambar
-                                                                    gagal
-                                                                    dimuat</span
+                                                                    class="visually-hidden"
+                                                                    >Memuat
+                                                                    Gambar...</span
                                                                 >
                                                             </div>
-                                                        </template>
-                                                    </el-image>
+                                                        </div>
+                                                        <el-image
+                                                            v-else
+                                                            class="w-100 d-block rounded"
+                                                            style="
+                                                                height: 250px;
+                                                                object-fit: contain;
+                                                                background-color: #f8f9fa;
+                                                            "
+                                                            :src="
+                                                                fotoBlobUrls[
+                                                                    foto
+                                                                        .Berkas_Key
+                                                                ]
+                                                            "
+                                                            :zoom-rate="1.2"
+                                                            :max-scale="7"
+                                                            :min-scale="0.2"
+                                                            :preview-src-list="
+                                                                item.foto_analisa
+                                                                    .map(
+                                                                        (f) =>
+                                                                            fotoBlobUrls[
+                                                                                f
+                                                                                    .Berkas_Key
+                                                                            ]
+                                                                    )
+                                                                    .filter(
+                                                                        Boolean
+                                                                    )
+                                                            "
+                                                            :initial-index="
+                                                                item.foto_analisa.findIndex(
+                                                                    (f) =>
+                                                                        f.Berkas_Key ===
+                                                                        foto.Berkas_Key
+                                                                )
+                                                            "
+                                                            fit="contain"
+                                                            hide-on-click-modal
+                                                            @contextmenu.prevent
+                                                            @dragstart.prevent
+                                                        >
+                                                            <template #error>
+                                                                <div
+                                                                    class="d-flex flex-column justify-content-center align-items-center bg-light text-muted w-100 h-100 rounded"
+                                                                >
+                                                                    <i
+                                                                        class="fas fa-image-slash fa-3x mb-3 text-secondary"
+                                                                    ></i>
+                                                                    <span
+                                                                        class="fw-medium"
+                                                                        >Gambar
+                                                                        gagal
+                                                                        dimuat</span
+                                                                    >
+                                                                </div>
+                                                            </template>
+                                                        </el-image>
+
+                                                        <div
+                                                            class="mt-2 text-center flex-grow-1 d-flex align-items-center justify-content-center"
+                                                        >
+                                                            <span
+                                                                class="text-secondary small fw-medium"
+                                                            >
+                                                                {{
+                                                                    foto.Keterangan ||
+                                                                    "Tidak ada keterangan"
+                                                                }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

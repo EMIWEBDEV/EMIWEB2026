@@ -174,6 +174,35 @@ class StandarRentangController extends Controller
         ]);
     }
 
+    public function getKomponenAnalisa($id)
+    {
+        $decodedId = Hashids::connection('custom')->decode($id)[0] ?? $id;
+
+        $qc = DB::table('N_EMI_LAB_Binding_Jenis_Analisa as binding')
+            ->join('EMI_Quality_Control as qc', 'binding.Id_Quality_Control', '=', 'qc.Id_QC_Formula')
+            ->join('EMI_Kategori_Komponen as kat', 'qc.Id_Kategori_Komponen', '=', 'kat.Id_Kategori_Komponen')
+            ->where('binding.Id_Jenis_Analisa', $decodedId)
+            ->select('kat.Keterangan as Tipe_Komponen', 'qc.Id_QC_Formula')
+            ->first();
+
+        $isSwitch = false;
+        $options = [];
+
+        if ($qc && strtolower(trim($qc->Tipe_Komponen)) === 'switch') {
+            $isSwitch = true;
+            $options = DB::table('EMI_Switch')
+                ->where('Id_QC_Formula', $qc->Id_QC_Formula)
+                ->get();
+        }
+
+        return response()->json([
+            'success' => true,
+            'status' => 200,
+            'is_switch' => $isSwitch,
+            'options' => $options
+        ]);
+    }
+
     public function getBarangStandarRentang($id_jenis_analisa)
     {
         try {

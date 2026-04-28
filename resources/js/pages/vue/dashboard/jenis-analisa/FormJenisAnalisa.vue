@@ -409,7 +409,10 @@
                                     </div>
 
                                     <div
-                                        v-if="isFLM"
+                                        v-if="
+                                            isFLM &&
+                                            item.Kode_Aktivitas_Lab === 'LCKV'
+                                        "
                                         class="toggle-card border rounded p-3 mb-3"
                                         :class="{
                                             'active-toggle':
@@ -709,7 +712,10 @@ export default {
                         Kode_Aktivitas_Lab: this.isFLM
                             ? item.Kode_Aktivitas_Lab
                             : null,
-                        Flag_Foto: this.isFLM ? item.Flag_Foto : "T",
+                        Flag_Foto:
+                            this.isFLM && item.Kode_Aktivitas_Lab === "LCKV"
+                                ? item.Flag_Foto
+                                : "T",
                     })),
                 };
 

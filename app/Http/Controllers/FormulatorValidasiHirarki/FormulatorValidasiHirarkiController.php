@@ -126,6 +126,218 @@ class FormulatorValidasiHirarkiController extends Controller
         }
     }
 
+    // public function getDetailValidasi($no_po_sampel)
+    // {
+    //     try {
+    //         $kodeRoles = collect(Session::get('User_Roles', []))->pluck('Kode_Role')->toArray();
+
+    //         $sampel = DB::table('N_LIMS_PO_Sampel')
+    //             ->where('No_Sampel', $no_po_sampel)
+    //             ->select('Kode_Barang', 'Id_Mesin as Id_Master_Mesin')
+    //             ->first();
+
+    //         $kodeBarang = $sampel->Kode_Barang ?? null;
+    //         $idMasterMesin = $sampel->Id_Master_Mesin ?? null;
+
+    //         $masterAnalisa = collect();
+    //         if ($kodeBarang && $idMasterMesin) {
+    //             $masterAnalisa = DB::table('N_EMI_LAB_Barang_Analisa as BA')
+    //                 ->join('N_EMI_LAB_Jenis_Analisa as JA', 'BA.Id_Jenis_Analisa', '=', 'JA.id')
+    //                 ->where('BA.Kode_Barang', $kodeBarang)
+    //                 ->where('BA.Id_Master_Mesin', $idMasterMesin)
+    //                 ->where('BA.Kode_Role', 'FLM')
+    //                 ->select('JA.Kode_Aktivitas_Lab', 'BA.Id_Jenis_Analisa', 'JA.Jenis_Analisa')
+    //                 ->groupBy('JA.Kode_Aktivitas_Lab', 'BA.Id_Jenis_Analisa', 'JA.Jenis_Analisa')
+    //                 ->get();
+    //         }
+
+    //         // 🔥 AMBIL FILE SEKALI (bukan join rusak)
+    //         $fileGlobal = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+    //             ->where('No_Sampel', $no_po_sampel)
+    //             ->first();
+
+    //         $data = DB::table('N_EMI_LIMS_Uji_Sampel as U')
+    //             ->join('N_EMI_LAB_Jenis_Analisa as A', 'U.Id_Jenis_Analisa', '=', 'A.id')
+    //             ->join('N_EMI_LIMS_Klasifikasi_Aktivitas_Lab as B', 'A.Kode_Aktivitas_Lab', '=', 'B.Kode_Aktivitas_Lab')
+    //             ->leftJoin('N_EMI_LAB_Standar_Rentang_Non_Perhitungan as SR', function($join) use ($kodeRoles) {
+    //                 $join->on('U.Id_Jenis_Analisa', '=', 'SR.Id_Jenis_Analisa')
+    //                     ->on(DB::raw('CAST(U.Hasil AS VARCHAR(255))'), '=', DB::raw('CAST(SR.Nilai_Kriteria AS VARCHAR(255))'))
+    //                     ->where('SR.Flag_Aktif', '=', 'Y')
+    //                     ->whereIn('SR.Kode_Role', $kodeRoles);
+    //             })
+    //             ->leftJoin('N_EMI_LAB_Perhitungan as P', 'U.Id_Jenis_Analisa', '=', 'P.Id_Jenis_Analisa')
+    //             ->select(
+    //                 'U.No_Fak_Sub_Po',
+    //                 'U.No_Po_Sampel',
+    //                 'U.Id_Jenis_Analisa',
+    //                 'U.Hasil',
+    //                 'U.Status_Keputusan_Sampel',
+    //                 'U.Flag_Approval',
+    //                 'U.Tahapan_Ke',
+    //                 'U.Flag_Foto as Flag_Foto', // ✅ FIX
+    //                 'A.Kode_Analisa',
+    //                 'A.Jenis_Analisa',
+    //                 'A.Flag_Perhitungan',
+    //                 'B.Kode_Aktivitas_Lab',
+    //                 'B.Nama_Aktivitas',
+    //                 'B.Urutan',
+    //                 'SR.Keterangan_Kriteria',
+    //                 'P.Hasil_Perhitungan as Digit_Desimal'
+    //             )
+    //             ->where('U.No_Po_Sampel', $no_po_sampel)
+    //             ->where('U.Flag_Selesai', 'Y')
+    //             ->whereNull('U.Flag_Resampling')
+    //             ->orderBy('B.Urutan', 'ASC')
+    //             ->get();
+
+    //         $allSteps = DB::table('N_EMI_LIMS_Klasifikasi_Aktivitas_Lab')
+    //             ->orderBy('Urutan', 'ASC')
+    //             ->get();
+
+    //         $arrayRentang = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
+    //             ->where('Flag_Aktif', 'Y')
+    //             ->whereIn('Kode_Role', $kodeRoles)
+    //             ->select('Id_Jenis_Analisa', 'Nilai_Kriteria', 'Keterangan_Kriteria')
+    //             ->get()
+    //             ->groupBy('Id_Jenis_Analisa');
+
+    //         $groupedData = [];
+    //         $stepStatuses = [];
+
+    //         foreach ($allSteps as $step) {
+    //             $items = $data->where('Kode_Aktivitas_Lab', $step->Kode_Aktivitas_Lab)->values();
+    //             $requiredForThisStep = $masterAnalisa->where('Kode_Aktivitas_Lab', $step->Kode_Aktivitas_Lab);
+    //             $pendingAnalisaNames = [];
+
+    //             foreach ($requiredForThisStep as $req) {
+    //                 if (!$items->contains('Id_Jenis_Analisa', $req->Id_Jenis_Analisa)) {
+    //                     $pendingAnalisaNames[] = $req->Jenis_Analisa;
+    //                 }
+    //             }
+
+    //             $statusStep = 'TIDAK ADA';
+
+    //             if ($items->isNotEmpty() || count($pendingAnalisaNames) > 0) {
+
+    //                 if ($items->isNotEmpty()) {
+    //                     $items->transform(function ($item) use ($arrayRentang, $fileGlobal) {
+
+    //                         // 🔥 FIX GCS
+    //                         if ($item->Flag_Foto === 'Y' && !empty($fileGlobal->File_Path)) {
+    //                             try {
+    //                                 $item->File_Url = Storage::disk('gcs')->temporaryUrl(
+    //                                     $fileGlobal->File_Path,
+    //                                     now()->addMinutes(120)
+    //                                 );
+    //                             } catch (\Exception $e) {
+    //                                 Log::error('Gagal generate URL GCS: ' . $e->getMessage());
+    //                                 $item->File_Url = null;
+    //                             }
+    //                         } else {
+    //                             $item->File_Url = null; // ❌ jangan spam log
+    //                         }
+
+    //                         // ===== NORMALISASI HASIL =====
+    //                         $hasilStr = (string)$item->Hasil;
+    //                         $cleanHasil = $hasilStr;
+
+    //                         if (preg_match('/^-?\d+\.0+$/', $cleanHasil)) {
+    //                             $cleanHasil = explode('.', $cleanHasil)[0];
+    //                         }
+
+    //                         $isOpsiRentang = false;
+
+    //                         if (isset($arrayRentang[$item->Id_Jenis_Analisa])) {
+    //                             $matched = $arrayRentang[$item->Id_Jenis_Analisa]
+    //                                 ->firstWhere('Nilai_Kriteria', $cleanHasil);
+
+    //                             if ($matched) {
+    //                                 $item->Hasil = $matched->Keterangan_Kriteria;
+    //                                 $isOpsiRentang = true;
+    //                             }
+    //                         }
+
+    //                         if (!$isOpsiRentang) {
+    //                             if (!empty($item->Keterangan_Kriteria)) {
+    //                                 $item->Hasil = $item->Keterangan_Kriteria;
+    //                             } elseif (is_numeric($item->Hasil)) {
+    //                                 if ($item->Flag_Perhitungan === 'Y' || $item->Digit_Desimal !== null) {
+    //                                     $digit = is_numeric($item->Digit_Desimal) ? (int)$item->Digit_Desimal : 2;
+    //                                     $item->Hasil = number_format((float)$item->Hasil, $digit, '.', '');
+    //                                 } else {
+    //                                     $item->Hasil = $hasilStr;
+    //                                 }
+    //                             }
+    //                         }
+
+    //                         return $item;
+    //                     });
+    //                 }
+
+    //                 $approvedItems = $items->where('Flag_Approval', 'Y')->count();
+    //                 $rejectedItems = $items->where('Flag_Approval', 'T')->count();
+    //                 $validatedItems = $approvedItems + $rejectedItems;
+
+    //                 $dependencyCode = $step->Butuh_Hasil_Dari;
+    //                 $isDependencyMet = true;
+
+    //                 if ($dependencyCode) {
+    //                     $depStatus = $stepStatuses[$dependencyCode] ?? 'TIDAK ADA';
+
+    //                     if ($step->Kode_Aktivitas_Lab === 'PLT' && $dependencyCode === 'ANL') {
+    //                         if ($depStatus !== 'DISETUJUI') $isDependencyMet = false;
+    //                     } else {
+    //                         if (!in_array($depStatus, ['DISETUJUI', 'DITOLAK'])) {
+    //                             $isDependencyMet = false;
+    //                         }
+    //                     }
+    //                 }
+
+    //                 if (!$isDependencyMet) {
+    //                     $statusStep = 'TERKUNCI';
+    //                 } else {
+    //                     if ($validatedItems > 0) {
+    //                         $statusStep = ($rejectedItems > 0) ? 'DITOLAK' : 'DISETUJUI';
+    //                     } else {
+    //                         $statusStep = 'MENUNGGU VALIDASI';
+    //                     }
+    //                 }
+    //             }
+
+    //             $stepStatuses[$step->Kode_Aktivitas_Lab] = $statusStep;
+
+    //             if ($items->isNotEmpty() || count($pendingAnalisaNames) > 0) {
+    //                 $groupedData[] = [
+    //                     'Urutan' => $step->Urutan,
+    //                     'Kode_Aktivitas_Lab' => $step->Kode_Aktivitas_Lab,
+    //                     'Nama_Aktivitas' => $step->Nama_Aktivitas,
+    //                     'status_step' => $statusStep,
+    //                     'pending_analisa' => $pendingAnalisaNames,
+    //                     'data_analisa' => $items
+    //                 ];
+    //             }
+    //         }
+
+    //         if (empty($groupedData)) {
+    //             return ResponseHelper::error('Data tidak ditemukan.', 404);
+    //         }
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'status' => 200,
+    //             'message' => 'Detail Data Ditemukan',
+    //             'result' => [
+    //                 'No_Po_Sampel' => $no_po_sampel,
+    //                 'steps' => $groupedData
+    //             ]
+    //         ]);
+
+    //     } catch (\Exception $e) {
+    //         Log::error($e->getMessage());
+    //         return ResponseHelper::error('Terjadi kesalahan pada server', 500);
+    //     }
+    // }
+
     public function getDetailValidasi($no_po_sampel)
     {
         try {
@@ -151,12 +363,12 @@ class FormulatorValidasiHirarkiController extends Controller
                     ->get();
             }
 
-            // 🔥 AMBIL FILE SEKALI (bukan join rusak)
-            $fileGlobal = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+            $filesGlobal = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
                 ->where('No_Sampel', $no_po_sampel)
-                ->first();
+                ->get();
 
             $data = DB::table('N_EMI_LIMS_Uji_Sampel as U')
+                ->join('N_LIMS_PO_Sampel as PO', 'U.No_Po_Sampel', '=', 'PO.No_Sampel')
                 ->join('N_EMI_LAB_Jenis_Analisa as A', 'U.Id_Jenis_Analisa', '=', 'A.id')
                 ->join('N_EMI_LIMS_Klasifikasi_Aktivitas_Lab as B', 'A.Kode_Aktivitas_Lab', '=', 'B.Kode_Aktivitas_Lab')
                 ->leftJoin('N_EMI_LAB_Standar_Rentang_Non_Perhitungan as SR', function($join) use ($kodeRoles) {
@@ -167,14 +379,20 @@ class FormulatorValidasiHirarkiController extends Controller
                 })
                 ->leftJoin('N_EMI_LAB_Perhitungan as P', 'U.Id_Jenis_Analisa', '=', 'P.Id_Jenis_Analisa')
                 ->select(
+                    'U.No_Faktur',
                     'U.No_Fak_Sub_Po',
                     'U.No_Po_Sampel',
+                    'PO.No_Po',
+                    'PO.No_Split_Po',
+                    'PO.No_Batch',
+                    'PO.tanggal as Tanggal_Registrasi',
                     'U.Id_Jenis_Analisa',
                     'U.Hasil',
                     'U.Status_Keputusan_Sampel',
                     'U.Flag_Approval',
                     'U.Tahapan_Ke',
-                    'U.Flag_Foto as Flag_Foto', // ✅ FIX
+                    'U.Flag_Foto as Flag_Foto',
+                    'U.Flag_Layak',
                     'A.Kode_Analisa',
                     'A.Jenis_Analisa',
                     'A.Flag_Perhitungan',
@@ -189,6 +407,16 @@ class FormulatorValidasiHirarkiController extends Controller
                 ->whereNull('U.Flag_Resampling')
                 ->orderBy('B.Urutan', 'ASC')
                 ->get();
+
+            $fakturList = $data->pluck('No_Faktur')->filter()->unique()->toArray();
+            $parameterRaw = collect();
+            if (!empty($fakturList)) {
+                $parameterRaw = DB::table('N_EMI_LIMS_Uji_Sampel_Detail')
+                    ->select('No_Faktur_Uji_Sample', 'Value_Parameter as Hasil_Analisa')
+                    ->whereIn('No_Faktur_Uji_Sample', $fakturList)
+                    ->get()
+                    ->groupBy('No_Faktur_Uji_Sample');
+            }
 
             $allSteps = DB::table('N_EMI_LIMS_Klasifikasi_Aktivitas_Lab')
                 ->orderBy('Urutan', 'ASC')
@@ -218,26 +446,34 @@ class FormulatorValidasiHirarkiController extends Controller
                 $statusStep = 'TIDAK ADA';
 
                 if ($items->isNotEmpty() || count($pendingAnalisaNames) > 0) {
-
                     if ($items->isNotEmpty()) {
-                        $items->transform(function ($item) use ($arrayRentang, $fileGlobal) {
-
-                            // 🔥 FIX GCS
-                            if ($item->Flag_Foto === 'Y' && !empty($fileGlobal->File_Path)) {
-                                try {
-                                    $item->File_Url = Storage::disk('gcs')->temporaryUrl(
-                                        $fileGlobal->File_Path,
-                                        now()->addMinutes(120)
-                                    );
-                                } catch (\Exception $e) {
-                                    Log::error('Gagal generate URL GCS: ' . $e->getMessage());
-                                    $item->File_Url = null;
-                                }
-                            } else {
-                                $item->File_Url = null; // ❌ jangan spam log
+                        $items->transform(function ($item) use ($arrayRentang, $filesGlobal, $parameterRaw) {
+                            try {
+                                $item->Id_Jenis_Analisa_Hash = \Hashids::connection('custom')->encode($item->Id_Jenis_Analisa);
+                            } catch (\Exception $e) {
+                                $item->Id_Jenis_Analisa_Hash = null;
                             }
 
-                            // ===== NORMALISASI HASIL =====
+                            $item->foto_list = [];
+                            if ($item->Flag_Foto === 'Y' && $filesGlobal->isNotEmpty()) {
+                                foreach ($filesGlobal as $file) {
+                                    try {
+                                        if (!empty($file->File_Path)) {
+                                            $url = Storage::disk('gcs')->temporaryUrl(
+                                                $file->File_Path,
+                                                now()->addMinutes(120)
+                                            );
+                                            $item->foto_list[] = [
+                                                'url' => $url,
+                                                'keterangan' => $file->Keterangan ?? 'Dokumen Uji Lab'
+                                            ];
+                                        }
+                                    } catch (\Exception $e) {
+                                    }
+                                }
+                            }
+                            $item->File_Url = count($item->foto_list) > 0 ? $item->foto_list[0]['url'] : null;
+
                             $hasilStr = (string)$item->Hasil;
                             $cleanHasil = $hasilStr;
 
@@ -269,6 +505,18 @@ class FormulatorValidasiHirarkiController extends Controller
                                     }
                                 }
                             }
+
+                            $params = $parameterRaw->get($item->No_Faktur);
+                            $transformedParameters = [];
+
+                            if ($params) {
+                                foreach ($params as $param) {
+                                    $transformedParameters[] = [
+                                        'Hasil_Analisa' => round((float)$param->Hasil_Analisa, 4)
+                                    ];
+                                }
+                            }
+                            $item->parameters = $transformedParameters;
 
                             return $item;
                         });
@@ -302,6 +550,14 @@ class FormulatorValidasiHirarkiController extends Controller
                             $statusStep = 'MENUNGGU VALIDASI';
                         }
                     }
+                    
+                    $isLayakStep = true;
+                    foreach ($items as $itm) {
+                        if (isset($itm->Flag_Layak) && in_array($itm->Flag_Layak, ['T', 'N'])) {
+                            $isLayakStep = false;
+                            break;
+                        }
+                    }
                 }
 
                 $stepStatuses[$step->Kode_Aktivitas_Lab] = $statusStep;
@@ -312,6 +568,7 @@ class FormulatorValidasiHirarkiController extends Controller
                         'Kode_Aktivitas_Lab' => $step->Kode_Aktivitas_Lab,
                         'Nama_Aktivitas' => $step->Nama_Aktivitas,
                         'status_step' => $statusStep,
+                        'is_layak' => $isLayakStep ?? true,
                         'pending_analisa' => $pendingAnalisaNames,
                         'data_analisa' => $items
                     ];

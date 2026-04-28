@@ -1546,33 +1546,35 @@
             </div>
 
             <div class="form-actions" v-if="!isEditing">
-                <button
-                    :disabled="loading.saveToDatabase"
-                    class="action-button secondary"
-                    @click="submitAnalysisSementara"
-                    v-if="!dataSampel.length"
-                >
-                    <i class="fas fa-save"></i>
-                    {{
-                        loading.saveToDatabase
-                            ? "Loading..."
-                            : "Simpan As Draft"
-                    }}
-                </button>
+                <template v-if="Flag_Foto !== 'Y'">
+                    <button
+                        :disabled="loading.saveToDatabase"
+                        class="action-button secondary"
+                        @click="submitAnalysisSementara"
+                        v-if="!dataSampel.length"
+                    >
+                        <i class="fas fa-save"></i>
+                        {{
+                            loading.saveToDatabase
+                                ? "Loading..."
+                                : "Simpan As Draft"
+                        }}
+                    </button>
 
-                <button
-                    :disabled="!isSubmitDone"
-                    class="action-button secondary"
-                    @click="submitAnalysisSementara"
-                    v-else
-                >
-                    <i class="fas fa-save"></i>
-                    {{
-                        loading.saveToDatabase
-                            ? "Loading..."
-                            : "Simpan As Draft"
-                    }}
-                </button>
+                    <button
+                        :disabled="!isSubmitDone"
+                        class="action-button secondary"
+                        @click="submitAnalysisSementara"
+                        v-else
+                    >
+                        <i class="fas fa-save"></i>
+                        {{
+                            loading.saveToDatabase
+                                ? "Loading..."
+                                : "Simpan As Draft"
+                        }}
+                    </button>
+                </template>
 
                 <button
                     data-bs-toggle="modal"
@@ -1742,6 +1744,7 @@ export default {
             hapuskey: "",
 
             isPhotoCompleted: false,
+            photoList: [],
         };
     },
     watch: {
@@ -1772,7 +1775,6 @@ export default {
             ) {
                 return [];
             }
-
             const sourceData = this.currentDataSubmitAnalisa[0];
             const numParamsInTemplate =
                 this.selectedTemplating?.parameter?.length ?? 0;
@@ -1809,7 +1811,7 @@ export default {
                     const results = log.hasil || [];
 
                     const normalizedParams = parameters.map((param) => ({
-                        Value_Parameter: param?.Value_Parameter ?? null, // Ganti 0 dengan null agar lebih jelas jika data kosong
+                        Value_Parameter: param?.Value_Parameter ?? null,
                     }));
 
                     const normalizedResults = results.map((res) => ({
@@ -1823,12 +1825,10 @@ export default {
                 });
             }
         },
-
         series() {
             return this.rawData.map((item) => {
                 const jamPO = this.jamKeMenit(item.Jam_Po_Sampel);
                 const jamAnalisa = this.jamKeMenit(item.Jam_Pengujian_Sampel);
-
                 return {
                     name: item.No_Po_Sampel,
                     data: [jamPO, jamAnalisa],
@@ -2286,28 +2286,20 @@ export default {
                 return (0).toFixed(decimalPlaces); // Kembali ke nilai default jika ada error
             }
         },
-        handleStatusPhoto(data) {
-            if (data && data.status) {
-                this.isPhotoCompleted = true;
-                this.photoFile = data.file; // Simpan blob file-nya di data()
-                this.photoFileName = data.fileName; // Simpan namanya
-            } else {
-                this.isPhotoCompleted = false;
-                this.photoFile = null;
-                this.photoFileName = "";
-            }
+        handleStatusPhoto(photos) {
+            this.photoList = photos;
+            this.isPhotoCompleted = this.photoList.length > 0;
         },
         async submitAnalysis() {
             if (this.Flag_Foto === "Y" && !this.isPhotoCompleted) {
                 Swal.fire({
                     icon: "warning",
                     title: "Foto Wajib!",
-                    text: "Sesi ini mewajibkan Anda melampirkan foto hasil uji produk sebelum submit.",
+                    text: "Sesi ini mewajibkan Anda melampirkan minimal 1 foto hasil uji produk sebelum submit.",
                 });
                 return;
             }
             this.loading.saveToDatabase = true;
-
             const isMulti = (this.is_multi_print || "").toString().trim();
 
             try {
@@ -2317,7 +2309,6 @@ export default {
                     ).map((param) => {
                         const value = row.inputValues?.[param.id_qc];
                         const detail = row.draftDetails?.[param.id_qc];
-
                         return {
                             Id_Quality_Control: param.id_qc,
                             Value_Parameter:
@@ -2332,7 +2323,6 @@ export default {
                         (isMulti === "Y"
                             ? this.selectedTemplating?.formula
                             : this.selectedTemplating?.parameter) || [];
-
                     const formattedFormulas = formulas.map((item) => {
                         const key = isMulti === "Y" ? item.rumus : item.id_qc;
                         const value =
@@ -2377,7 +2367,6 @@ export default {
                     if (isMulti === "Y") {
                         result.No_Po_Multi_Sampel = this.No_Fak_Sub_Po;
                     }
-
                     return result;
                 });
 
@@ -2390,17 +2379,20 @@ export default {
                 formData.append("flag_foto", this.Flag_Foto);
                 formData.append("analyses", JSON.stringify(payload));
 
-                if (this.Flag_Foto === "Y" && this.photoFile) {
-                    formData.append(
-                        "photo_data",
-                        this.photoFile,
-                        this.photoFileName
-                    );
+                if (this.Flag_Foto === "Y" && this.photoList.length > 0) {
+                    this.photoList.forEach((photo, index) => {
+                        formData.append(
+                            `photos[${index}]`,
+                            photo.file,
+                            photo.fileName
+                        );
+                        formData.append(`notes[${index}]`, photo.note || "");
+                    });
                 }
 
                 const response = await axios.post(endpoint, formData, {
                     headers: {
-                        "Content-Type": "multipart/form-data", // Wajib untuk kirim File
+                        "Content-Type": "multipart/form-data",
                         "X-CSRF-TOKEN": document
                             .querySelector('meta[name="csrf-token"]')
                             .getAttribute("content"),
