@@ -1301,7 +1301,7 @@ export default {
             this.loading.listData = true;
             try {
                 const response = await axios.get(
-                    `/api/v1/lab/no-uji/sampel/sub/all/${this.form.No_Po_Sampel}/${this.Id_Jenis_Analisa}`
+                    `/api/v1/lab/laboratorium/no-uji/sampel/sub/all/${this.form.No_Po_Sampel}/${this.Id_Jenis_Analisa}`
                 );
                 if (response.status === 200 && response.data?.result) {
                     this.listDataResampling = response.data.result.map(

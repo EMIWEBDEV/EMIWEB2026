@@ -10205,15 +10205,16 @@ class UjiSampelController extends Controller
 
         try {
             $getDataSubPo = DB::table('N_EMI_LAB_PO_Sampel_Multi_QrCode as multi')
-            ->select('No_Po_Sampel','No_Po_Multi')
-            ->where('multi.No_Po_Sampel', $no_Sampel)
-            ->whereNotIn('multi.No_Po_Multi', function($query) use ($no_Sampel, $id_jenis_analisa) {
-                $query->select('No_Fak_Sub_Po')
-                    ->from('N_EMI_LAB_Uji_Sampel')
-                    ->where('No_Po_Sampel', $no_Sampel)
-                    ->where('Id_Jenis_Analisa', $id_jenis_analisa);
-            })
-            ->get();
+                ->select('No_Po_Sampel','No_Po_Multi')
+                ->where('multi.No_Po_Sampel', $no_Sampel)
+                ->whereNotExists(function ($query) use ($no_Sampel, $id_jenis_analisa) {
+                    $query->select(DB::raw(1))
+                        ->from('N_EMI_LAB_Uji_Sampel as uji')
+                        ->whereColumn('uji.No_Fak_Sub_Po', 'multi.No_Po_Multi')
+                        ->where('uji.No_Po_Sampel', $no_Sampel)
+                        ->where('uji.Id_Jenis_Analisa', $id_jenis_analisa);
+                })
+                ->get();
 
             return response()->json([
                 'success' => true,

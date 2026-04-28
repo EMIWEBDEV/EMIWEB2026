@@ -2170,21 +2170,29 @@ class FormulatorTrialSampelController extends Controller
 
             $idLogActivity = DB::table('N_EMI_LIMS_Activity_Uji_Sampel')->insertGetId($payloadActivityUjiSampel, 'Id_Log_Activity');
 
-            $gcsFilePath = null;
-            if ($request->hasFile('photo_data') && $request->flag_foto === 'Y') {
-                $file = $request->file('photo_data');
-                $extension = $file->getClientOriginalExtension() ?: 'png';
-                $receivedSizeMB = number_format($file->getSize() / 1048576, 2);
-                Log::channel('FormulatorTrialSampelController')->info("📥 [UPLOAD FOTO] Menerima file murni dari Frontend. Ukuran: {$receivedSizeMB} MB");
+            $uploadedFilesData = [];
+            if ($request->hasFile('photos') && $request->flag_foto === 'Y') {
+                foreach ($request->file('photos') as $index => $file) {
+                    $extension = $file->getClientOriginalExtension() ?: 'png';
+                    $receivedSizeMB = number_format($file->getSize() / 1048576, 2);
+                    Log::channel('FormulatorTrialSampelController')->info("📥 [UPLOAD FOTO MULTIPLE] Menerima file indeks {$index} murni dari Frontend. Ukuran: {$receivedSizeMB} MB");
 
-                $fileName = 'formulator_' . Str::random(5) . '_' . time() . '.' . $extension;
-                $gcsFilePath = 'berkas/formulator/' . $fileName;
-                
-                Storage::disk('gcs')->put($gcsFilePath, file_get_contents($file));
+                    $fileName = 'formulator_' . Str::random(5) . '_' . time() . '_' . $index . '.' . $extension;
+                    $gcsFilePath = 'berkas/formulator/' . $fileName;
+                    
+                    Storage::disk('gcs')->put($gcsFilePath, file_get_contents($file));
 
-                $gcsFileSize = Storage::disk('gcs')->size($gcsFilePath);
-                $gcsSizeMB = number_format($gcsFileSize / 1048576, 2);
-                Log::channel('FormulatorTrialSampelController')->info("☁️ [GCS UPLOAD] Berhasil disimpan ke Cloud. Ukuran final: {$gcsSizeMB} MB | Path: {$gcsFilePath}");
+                    $gcsFileSize = Storage::disk('gcs')->size($gcsFilePath);
+                    $gcsSizeMB = number_format($gcsFileSize / 1048576, 2);
+                    Log::channel('FormulatorTrialSampelController')->info("☁️ [GCS UPLOAD MULTIPLE] Berhasil disimpan ke Cloud (Indeks {$index}). Ukuran final: {$gcsSizeMB} MB | Path: {$gcsFilePath}");
+
+                    $note = $request->input("notes.$index") ?? '';
+
+                    $uploadedFilesData[] = [
+                        'File_Path' => $gcsFilePath,
+                        'Keterangan' => $note
+                    ];
+                }
             }
 
             foreach ($request->analyses as $analysisData) {
@@ -2448,13 +2456,18 @@ class FormulatorTrialSampelController extends Controller
                 DB::table('N_EMI_LIMS_Activity_Uji_Sampel_Hasil_Detail')->insert($payloadActivityUjiSampelHasil);
                 DB::table('N_EMI_LIMS_Activity_Uji_Sampel_Parameter_Detail')->insert($payloadActiviyUjiSampelDetail);
 
-                if ($gcsFilePath) {
-                    DB::table('N_EMI_LIMS_Berkas_Uji_Lab')->insert([
-                        'No_Faktur' => $newNumber,
-                        'No_Sampel' => $sumberData->No_Po_Sampel,
-                        'Berkas_Key' => Str::random(32),
-                        'File_Path' => $gcsFilePath
-                    ]);
+                if (!empty($uploadedFilesData)) {
+                    $berkasPayload = [];
+                    foreach ($uploadedFilesData as $fileData) {
+                        $berkasPayload[] = [
+                            'No_Faktur' => $newNumber,
+                            'No_Sampel' => $analysisData['No_Po_Sampel'],
+                            'Berkas_Key' => Str::random(32),
+                            'File_Path' => $fileData['File_Path'],
+                            'Keterangan' => $fileData['Keterangan'] 
+                        ];
+                    }
+                    DB::table('N_EMI_LIMS_Berkas_Uji_Lab')->insert($berkasPayload);
                 }
 
                 if ($isFromSementara) {
@@ -2478,8 +2491,13 @@ class FormulatorTrialSampelController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            if (isset($gcsFilePath) && Storage::disk('gcs')->exists($gcsFilePath)) {
-                Storage::disk('gcs')->delete($gcsFilePath);
+            if (!empty($uploadedFilesData)) {
+                foreach ($uploadedFilesData as $fileData) {
+                    if (Storage::disk('gcs')->exists($fileData['File_Path'])) {
+                        Storage::disk('gcs')->delete($fileData['File_Path']);
+                        Log::channel('FormulatorTrialSampelController')->info("🗑️ [GCS ROLLBACK] File dihapus karena proses DB gagal: {$fileData['File_Path']}");
+                    }
+                }
             }
             Log::channel('FormulatorTrialSampelController')->error('Error: ' . $e->getMessage());
             return response()->json([
@@ -2514,10 +2532,12 @@ class FormulatorTrialSampelController extends Controller
         ]);
         
         DB::beginTransaction();
+
+        $berkasInsertsTemplate = []; 
+        $oldFilesToDeleteGcs = [];   
         
         try {
             $results = [];
-            $oldFilesToDeleteGcs = [];
             $pengguna = Auth::user();
             $userId = $pengguna->UserId;
 
@@ -2550,6 +2570,41 @@ class FormulatorTrialSampelController extends Controller
             $firstAnalysis = $request->analyses[0];
             $idDecoded = Hashids::connection('custom')->decode($firstAnalysis['Id_Jenis_Analisa']);
             $jenisAnalisaId = isset($idDecoded[0]) ? $idDecoded[0] : null;
+            $noPoSampel = $firstAnalysis['No_Po_Sampel'];
+
+            $oldBerkasRecords = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+                    ->where('No_Sampel', $noPoSampel)
+                    ->get();
+
+                foreach ($oldBerkasRecords as $berkas) {
+                    if (!empty($berkas->File_Path)) {
+                        $oldFilesToDeleteGcs[] = $berkas->File_Path; // Simpan path untuk dihapus di GCS nanti
+                    }
+                }
+            if ($oldBerkasRecords->count() > 0) {
+                DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+                    ->where('No_Sampel', $noPoSampel)
+                    ->delete();
+            }
+
+            if ($request->hasFile('photos') && $request->flag_foto === 'Y') {
+                $photos = $request->file('photos');
+                $notes = $request->input('notes', []);
+
+                foreach ($photos as $index => $file) {
+                    $extension = $file->getClientOriginalExtension() ?: 'png';
+                    $fileName = 'formulator_' . Str::random(5) . '_' . time() . '_' . $index . '.' . $extension;
+                    $gcsFilePath = 'berkas/formulator/' . $fileName;
+                    Storage::disk('gcs')->put($gcsFilePath, file_get_contents($file));
+                    $note = isset($notes[$index]) && !empty($notes[$index]) ? $notes[$index] : '-';
+                    $berkasInsertsTemplate[] = [
+                        'No_Sampel' => $noPoSampel,
+                        'Berkas_Key' => Str::random(32),
+                        'File_Path' => $gcsFilePath,
+                        'Keterangan' => $note
+                    ];
+                }
+            }
 
             $dataResampling = DB::table('N_EMI_LIMS_Uji_Sampel_Resampling_Log')
                 ->where('No_Po_Sampel', $firstAnalysis['No_Po_Sampel'])
@@ -2587,27 +2642,7 @@ class FormulatorTrialSampelController extends Controller
 
             $isPerhitungan = $jenisAnalisaRecord && $jenisAnalisaRecord->Flag_Perhitungan === 'Y';
             $flagPerhitunganVal = $isPerhitungan ? 'Y' : null;
-            $gcsFilePath = null;
-            if ($request->hasFile('photo_data') && $request->flag_foto === 'Y') {
-                $file = $request->file('photo_data');
-                $extension = $file->getClientOriginalExtension() ?: 'png';
-                
-                // Hitung ukuran file yang baru saja tiba di server (sebelum masuk GCS)
-                $receivedSizeMB = number_format($file->getSize() / 1048576, 2);
-                Log::channel('FormulatorTrialSampelController')->info("📥 [UPLOAD FOTO] Menerima file murni dari Frontend. Ukuran: {$receivedSizeMB} MB");
-
-                $fileName = 'formulator_' . Str::random(5) . '_' . time() . '.' . $extension;
-                $gcsFilePath = 'berkas/formulator/' . $fileName;
-                
-                // Lempar ke GCS
-                Storage::disk('gcs')->put($gcsFilePath, file_get_contents($file));
-
-                // Hitung ulang ukuran file yang sudah sukses nongkrong di GCS
-                $gcsFileSize = Storage::disk('gcs')->size($gcsFilePath);
-                $gcsSizeMB = number_format($gcsFileSize / 1048576, 2);
-                Log::channel('FormulatorTrialSampelController')->info("☁️ [GCS UPLOAD] Berhasil disimpan ke Cloud. Ukuran final: {$gcsSizeMB} MB | Path: {$gcsFilePath}");
-            }
-
+           
             foreach ($request->analyses as $analysisData) {
                 $noSementara = $analysisData['No_Sementara'] ?? null;
                 $sumberData = (object) $analysisData;
@@ -2866,35 +2901,14 @@ class FormulatorTrialSampelController extends Controller
                 DB::table('N_EMI_LIMS_Uji_Sampel_Detail')->insert($payloadUjiSampleDetailData);
                 DB::table('N_EMI_LIMS_Activity_Uji_Sampel_Hasil_Detail')->insert($payloadActivityUjiSampelHasil);
                 DB::table('N_EMI_LIMS_Activity_Uji_Sampel_Parameter_Detail')->insert($payloadActiviyUjiSampelDetail);
-                if ($gcsFilePath) {
-                    $oldFakturs = DB::table('N_EMI_LIMS_Uji_Sampel')
-                        ->where('No_Po_Sampel', $sumberData->No_Po_Sampel)
-                        ->where('No_Fak_Sub_Po', $sumberData->No_Po_Multi_Sampel)
-                        ->where('Id_Jenis_Analisa', $sumberData->Id_Jenis_Analisa)
-                        ->pluck('No_Faktur')
-                        ->toArray();
+                if (!empty($berkasInsertsTemplate)) {
+                    $berkasToInsert = array_map(function($item) use ($newNumber) {
+                        $item['No_Faktur'] = $newNumber;
+                        $item['Berkas_Key'] = Str::random(32); // Pastikan key unik per baris (jika multi analisis)
+                        return $item;
+                    }, $berkasInsertsTemplate);
 
-                    if (!empty($oldFakturs)) {
-                        $oldBerkasRecords = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
-                            ->whereIn('No_Faktur', $oldFakturs)
-                            ->get();
-
-                        foreach ($oldBerkasRecords as $berkas) {
-                            if (!empty($berkas->File_Path)) {
-                                $oldFilesToDeleteGcs[] = $berkas->File_Path;
-                            }
-                        }
-
-                        DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
-                            ->whereIn('No_Faktur', $oldFakturs)
-                            ->delete();
-                    }
-                    DB::table('N_EMI_LIMS_Berkas_Uji_Lab')->insert([
-                        'No_Faktur' => $newNumber,
-                        'No_Sampel' => $sumberData->No_Po_Sampel,
-                        'Berkas_Key' => Str::random(32),
-                        'File_Path' => $gcsFilePath
-                    ]);
+                    DB::table('N_EMI_LIMS_Berkas_Uji_Lab')->insert($berkasToInsert);
                 }
                 if ($isFromSementara) {
                     DB::table('N_EMI_LIMS_Uji_Sampel_Detail_Sementara')->where('No_Sementara', $noSementara)->delete();
@@ -2932,8 +2946,12 @@ class FormulatorTrialSampelController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            if (isset($gcsFilePath) && Storage::disk('gcs')->exists($gcsFilePath)) {
-                Storage::disk('gcs')->delete($gcsFilePath);
+            if (!empty($berkasInsertsTemplate)) {
+                foreach ($berkasInsertsTemplate as $berkasItem) {
+                    if (Storage::disk('gcs')->exists($berkasItem['File_Path'])) {
+                        Storage::disk('gcs')->delete($berkasItem['File_Path']);
+                    }
+                }
             }
             Log::channel('FormulatorTrialSampelController')->error('Error: ' . $e->getMessage());
             return response()->json([
@@ -3882,25 +3900,29 @@ class FormulatorTrialSampelController extends Controller
                 ->selectRaw("MAX(CAST(SUBSTRING(No_Faktur, ? + 2, 10) AS INT)) as max_number", [$prefixLength])
                 ->value('max_number') ?? 0;
             
-            $gcsFilePath = null;
-            if ($request->hasFile('photo_data') && $request->flag_foto === 'Y') {
-                $file = $request->file('photo_data');
-                $extension = $file->getClientOriginalExtension() ?: 'png';
-                
-                // Hitung ukuran file yang baru saja tiba di server (sebelum masuk GCS)
-                $receivedSizeMB = number_format($file->getSize() / 1048576, 2);
-                Log::channel('FormulatorTrialSampelController')->info("📥 [UPLOAD FOTO] Menerima file murni dari Frontend. Ukuran: {$receivedSizeMB} MB");
+            $uploadedFilesData = [];
+            if ($request->hasFile('photos') && $request->flag_foto === 'Y') {
+                foreach ($request->file('photos') as $index => $file) {
+                    $extension = $file->getClientOriginalExtension() ?: 'png';
+                    $receivedSizeMB = number_format($file->getSize() / 1048576, 2);
+                    Log::channel('FormulatorTrialSampelController')->info("📥 [UPLOAD FOTO MULTIPLE] Menerima file indeks {$index} murni dari Frontend. Ukuran: {$receivedSizeMB} MB");
 
-                $fileName = 'formulator_' . Str::random(5) . '_' . time() . '.' . $extension;
-                $gcsFilePath = 'berkas/formulator/' . $fileName;
-                
-                // Lempar ke GCS
-                Storage::disk('gcs')->put($gcsFilePath, file_get_contents($file));
+                    $fileName = 'formulator_' . Str::random(5) . '_' . time() . '_' . $index . '.' . $extension;
+                    $gcsFilePath = 'berkas/formulator/' . $fileName;
+                    
+                    Storage::disk('gcs')->put($gcsFilePath, file_get_contents($file));
 
-                // Hitung ulang ukuran file yang sudah sukses nongkrong di GCS
-                $gcsFileSize = Storage::disk('gcs')->size($gcsFilePath);
-                $gcsSizeMB = number_format($gcsFileSize / 1048576, 2);
-                Log::channel('FormulatorTrialSampelController')->info("☁️ [GCS UPLOAD] Berhasil disimpan ke Cloud. Ukuran final: {$gcsSizeMB} MB | Path: {$gcsFilePath}");
+                    $gcsFileSize = Storage::disk('gcs')->size($gcsFilePath);
+                    $gcsSizeMB = number_format($gcsFileSize / 1048576, 2);
+                    Log::channel('FormulatorTrialSampelController')->info("☁️ [GCS UPLOAD MULTIPLE] Berhasil disimpan ke Cloud (Indeks {$index}). Ukuran final: {$gcsSizeMB} MB | Path: {$gcsFilePath}");
+
+                    $note = $request->input("notes.$index") ?? '';
+
+                    $uploadedFilesData[] = [
+                        'File_Path' => $gcsFilePath,
+                        'Keterangan' => $note
+                    ];
+                }
             }
 
             foreach ($request->analyses as $analysisData) {
@@ -4107,13 +4129,18 @@ class FormulatorTrialSampelController extends Controller
                     ];
                 }
 
-                if ($gcsFilePath) {
-                    DB::table('N_EMI_LIMS_Berkas_Uji_Lab')->insert([
-                        'No_Faktur' => $newNumber,
-                        'No_Sampel' => $sumberData->No_Po_Sampel,
-                        'Berkas_Key' => Str::random(32),
-                        'File_Path' => $gcsFilePath
-                    ]);
+                if (!empty($uploadedFilesData)) {
+                    $berkasPayload = [];
+                    foreach ($uploadedFilesData as $fileData) {
+                        $berkasPayload[] = [
+                            'No_Faktur' => $newNumber,
+                            'No_Sampel' => $analysisData['No_Po_Sampel'],
+                            'Berkas_Key' => Str::random(32),
+                            'File_Path' => $fileData['File_Path'],
+                            'Keterangan' => $fileData['Keterangan'] 
+                        ];
+                    }
+                    DB::table('N_EMI_LIMS_Berkas_Uji_Lab')->insert($berkasPayload);
                 }
 
                 if (!empty($payloadUjiSampleData)) {
@@ -4145,8 +4172,13 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            if (isset($gcsFilePath) && Storage::disk('gcs')->exists($gcsFilePath)) {
-                Storage::disk('gcs')->delete($gcsFilePath);
+            if (!empty($uploadedFilesData)) {
+                foreach ($uploadedFilesData as $fileData) {
+                    if (Storage::disk('gcs')->exists($fileData['File_Path'])) {
+                        Storage::disk('gcs')->delete($fileData['File_Path']);
+                        Log::channel('FormulatorTrialSampelController')->info("🗑️ [GCS ROLLBACK] File dihapus karena proses DB gagal: {$fileData['File_Path']}");
+                    }
+                }
             }
             Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
             return response()->json([
@@ -4179,6 +4211,9 @@ class FormulatorTrialSampelController extends Controller
         ]);
 
         DB::beginTransaction();
+        
+        $berkasInsertsTemplate = []; // Penampung untuk insert berkas (Multiple foto)
+        $oldFilesToDeleteGcs = [];   // Penampung path GCS file lama yang akan didelete
 
         try {
             $waktuServer = DB::select("SELECT dbo.Get_Date_Time() as DateTimeNow");
@@ -4186,7 +4221,6 @@ class FormulatorTrialSampelController extends Controller
             $tanggalSqlServer = date('Y-m-d', strtotime($dt));
             $jamSqlServer = date('H:i:s', strtotime($dt));
             $pengguna = Auth::user();
-            $oldFilesToDeleteGcs = [];
             $userId = $pengguna->UserId;
 
             if (!DB::table('N_EMI_LAB_Users')->where('UserId', $userId)->exists()) {
@@ -4220,9 +4254,53 @@ class FormulatorTrialSampelController extends Controller
 
             $firstAnalysisHash = $request->analyses[0]['Id_Jenis_Analisa'];
             $firstIdDecoded = Hashids::connection('custom')->decode($firstAnalysisHash)[0] ?? null;
+            $noPoSampel = $request->analyses[0]['No_Po_Sampel']; // Nomor Sampel Utama
+
+            // 1. CARI & HAPUS BERKAS LAMA BERDASARKAN No_Sampel (Agar tidak duplikat)
+            $oldBerkasRecords = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+                ->where('No_Sampel', $noPoSampel)
+                ->get();
+
+            foreach ($oldBerkasRecords as $berkas) {
+                if (!empty($berkas->File_Path)) {
+                    $oldFilesToDeleteGcs[] = $berkas->File_Path;
+                }
+            }
+
+            // Langsung hapus dari Database sebelum proses insert baru dimulai
+            if ($oldBerkasRecords->count() > 0) {
+                DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+                    ->where('No_Sampel', $noPoSampel)
+                    ->delete();
+            }
+
+            // 2. PROSES MULTIPLE UPLOAD FOTO BARU KE GCS
+            if ($request->hasFile('photos') && $request->flag_foto === 'Y') {
+                $photos = $request->file('photos');
+                $notes = $request->input('notes', []);
+
+                foreach ($photos as $index => $file) {
+                    $extension = $file->getClientOriginalExtension() ?: 'png';
+                    $fileName = 'formulator_' . Str::random(5) . '_' . time() . '_' . $index . '.' . $extension;
+                    $gcsFilePath = 'berkas/formulator/' . $fileName;
+                    
+                    // Lempar ke GCS
+                    Storage::disk('gcs')->put($gcsFilePath, file_get_contents($file));
+
+                    $note = isset($notes[$index]) && !empty($notes[$index]) ? $notes[$index] : '-';
+
+                    $berkasInsertsTemplate[] = [
+                        'No_Sampel' => $noPoSampel,
+                        'Berkas_Key' => Str::random(32),
+                        'File_Path' => $gcsFilePath,
+                        'Id_Jenis_Analisa' => null, 
+                        'Keterangan' => $note
+                    ];
+                }
+            }
 
             $dataResamplingFirst = DB::table('N_EMI_LIMS_Uji_Sampel_Resampling_Log')
-                ->where('No_Po_Sampel', $request->analyses[0]['No_Po_Sampel'])
+                ->where('No_Po_Sampel', $noPoSampel)
                 ->where('Id_Jenis_Analisa', $firstIdDecoded)
                 ->whereNull('Flag_Selesai_Resampling') 
                 ->orderByDesc('Tanggal')
@@ -4230,16 +4308,15 @@ class FormulatorTrialSampelController extends Controller
                 ->orderByDesc('Id_Resampling')
                 ->first();
 
-            
             if (!$dataResamplingFirst) {
                 throw new \Exception("Data Resampling Aktif tidak ditemukan.");
             }
 
             $payloadActivityUjiSampel = [
                 'Kode_Perusahaan' => '001',
-                'No_Po_Sampel' => $request->analyses[0]['No_Po_Sampel'],
+                'No_Po_Sampel' => $noPoSampel,
                 'Jenis_Aktivitas' => 'save_submit',
-                'Keterangan' => $pengguna->Nama . ' Berhasil Mengirimkan Data Analisa',
+                'Keterangan' => $pengguna->Nama . ' Berhasil Mengirimkan Data Analisa Resampling',
                 'Id_User' => $userId,
                 'Tanggal' => $tanggalSqlServer,
                 'Jam' => $jamSqlServer,
@@ -4261,27 +4338,6 @@ class FormulatorTrialSampelController extends Controller
                 ->selectRaw("MAX(CAST(SUBSTRING(No_Faktur, ? + 2, 10) AS INT)) as max_number", [$prefixLength])
                 ->value('max_number') ?? 0;
 
-            $gcsFilePath = null;
-            if ($request->hasFile('photo_data') && $request->flag_foto === 'Y') {
-                $file = $request->file('photo_data');
-                $extension = $file->getClientOriginalExtension() ?: 'png';
-                
-                // Hitung ukuran file yang baru saja tiba di server (sebelum masuk GCS)
-                $receivedSizeMB = number_format($file->getSize() / 1048576, 2);
-                Log::channel('FormulatorTrialSampelController')->info("📥 [UPLOAD FOTO] Menerima file murni dari Frontend. Ukuran: {$receivedSizeMB} MB");
-
-                $fileName = 'formulator_' . Str::random(5) . '_' . time() . '.' . $extension;
-                $gcsFilePath = 'berkas/formulator/' . $fileName;
-                
-                // Lempar ke GCS
-                Storage::disk('gcs')->put($gcsFilePath, file_get_contents($file));
-
-                // Hitung ulang ukuran file yang sudah sukses nongkrong di GCS
-                $gcsFileSize = Storage::disk('gcs')->size($gcsFilePath);
-                $gcsSizeMB = number_format($gcsFileSize / 1048576, 2);
-                Log::channel('FormulatorTrialSampelController')->info("☁️ [GCS UPLOAD] Berhasil disimpan ke Cloud. Ukuran final: {$gcsSizeMB} MB | Path: {$gcsFilePath}");
-            }
-
             foreach ($request->analyses as $analysisData) {
                 $idJenisAnalisa = Hashids::connection('custom')->decode($analysisData['Id_Jenis_Analisa'])[0] ?? null;
 
@@ -4290,15 +4346,12 @@ class FormulatorTrialSampelController extends Controller
                 }
                 
                 $infoAnalisa = $masterJenisAnalisa[$idJenisAnalisa];
-
-                
                 $dataResampling = $dataResamplingFirst;
-                     
+                    
                 if (!$dataResampling) {
                     throw new \Exception("Data Resampling Aktif tidak ditemukan untuk analisa: " . $analysisData['No_Po_Sampel']);
                 }
 
-           
                 $isFlagKhusus = DB::table('N_LIMS_PO_Sampel')
                     ->where('No_Sampel', $analysisData['No_Po_Sampel'])
                     ->where('Flag_Khusus', 'Y')
@@ -4442,7 +4495,6 @@ class FormulatorTrialSampelController extends Controller
                         "Kode_Perusahaan" => "001",
                         "Id_Jenis_Analisa" => $result['Id_Jenis_Analisa'],
                         "Hasil" => $hasilFloat,
-                        "Flag_Foto" => $request->flag_foto,
                         "Flag_Perhitungan" => $flagPerhitunganValue,
                         "Flag_Multi_QrCode" => null,
                         "Status" => null,
@@ -4509,35 +4561,15 @@ class FormulatorTrialSampelController extends Controller
                     DB::table('N_EMI_LIMS_Activity_Uji_Sampel_Parameter_Detail')->insert($payloadActiviyUjiSampelDetail);
                 }
 
-                if ($gcsFilePath) {
-                    $oldFakturs = DB::table('N_EMI_LIMS_Uji_Sampel')
-                        ->where('No_Po_Sampel', $sumberData->No_Po_Sampel)
-                        ->where('Id_Jenis_Analisa', $sumberData->Id_Jenis_Analisa)
-                        ->pluck('No_Faktur')
-                        ->toArray();
+                // 3. Masukkan data berkas foto uji lab dengan No_Faktur saat ini
+                if (!empty($berkasInsertsTemplate)) {
+                    $berkasToInsert = array_map(function($item) use ($newNumber) {
+                        $item['No_Faktur'] = $newNumber;
+                        $item['Berkas_Key'] = Str::random(32); // Pastikan key unik per baris (jika ada multi analisis)
+                        return $item;
+                    }, $berkasInsertsTemplate);
 
-                    if (!empty($oldFakturs)) {
-                        $oldBerkasRecords = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
-                            ->whereIn('No_Faktur', $oldFakturs)
-                            ->get();
-
-                        foreach ($oldBerkasRecords as $berkas) {
-                            if (!empty($berkas->File_Path)) {
-                                $oldFilesToDeleteGcs[] = $berkas->File_Path;
-                            }
-                        }
-
-                        DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
-                            ->whereIn('No_Faktur', $oldFakturs)
-                            ->delete();
-                    }
-
-                    DB::table('N_EMI_LIMS_Berkas_Uji_Lab')->insert([
-                        'No_Faktur' => $newNumber,
-                        'No_Sampel' => $sumberData->No_Po_Sampel,
-                        'Berkas_Key' => Str::random(32),
-                        'File_Path' => $gcsFilePath
-                    ]);
+                    DB::table('N_EMI_LIMS_Berkas_Uji_Lab')->insert($berkasToInsert);
                 }
 
                 if ($isFromSementara) {
@@ -4551,13 +4583,24 @@ class FormulatorTrialSampelController extends Controller
                 ];
             }
 
-              DB::table("N_EMI_LIMS_Uji_Sampel_Resampling_Log")
-                    ->where('Id_Resampling', $dataResampling->Id_Resampling) 
-                    ->update([
-                        'Flag_Selesai_Resampling' => 'Y'
-                    ]);
+            DB::table("N_EMI_LIMS_Uji_Sampel_Resampling_Log")
+                ->where('Id_Resampling', $dataResamplingFirst->Id_Resampling) 
+                ->update([
+                    'Flag_Selesai_Resampling' => 'Y'
+                ]);
 
+            // 4. COMMIT DATABASE
             DB::commit();
+
+            // Penghapusan Fisik GCS dilakukan SETELAH commit agar aman
+            if (!empty($oldFilesToDeleteGcs)) {
+                $uniqueFilesToDelete = array_unique($oldFilesToDeleteGcs);
+                foreach ($uniqueFilesToDelete as $oldPath) {
+                    if (Storage::disk('gcs')->exists($oldPath)) {
+                        Storage::disk('gcs')->delete($oldPath);
+                    }
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -4568,14 +4611,21 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            if (isset($gcsFilePath) && Storage::disk('gcs')->exists($gcsFilePath)) {
-                Storage::disk('gcs')->delete($gcsFilePath);
+            
+            // Bersihkan bucket GCS apabila database gagal di commit (Rollback foto baru)
+            if (!empty($berkasInsertsTemplate)) {
+                foreach ($berkasInsertsTemplate as $berkasItem) {
+                    if (Storage::disk('gcs')->exists($berkasItem['File_Path'])) {
+                        Storage::disk('gcs')->delete($berkasItem['File_Path']);
+                    }
+                }
             }
+
             Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'status' => 500,
-                'message' => "Terjadi Kesalahan"
+                'message' => "Terjadi Kesalahan: " . $e->getMessage()
             ], 500);
         }
     }
@@ -10256,7 +10306,7 @@ class FormulatorTrialSampelController extends Controller
             ->join('N_EMI_LIMS_Uji_Pra_Final as pra', 'uji.No_Po_Sampel', '=', 'pra.No_Sampel')
             ->select(
                 'uji.No_Po_Sampel',
-                'uji.Tanggal',
+                DB::raw('MAX(uji.Tanggal) as Tanggal'),
                 DB::raw('MAX(uji.Jam) as Jam'),
                 'uji.Flag_Multi_QrCode',
                 'po.No_Po',
@@ -10301,14 +10351,13 @@ class FormulatorTrialSampelController extends Controller
 
         $query->groupBy(
             'uji.No_Po_Sampel',
-            'uji.Tanggal',
             'uji.Flag_Multi_QrCode',
             'po.No_Po',
             'po.No_Split_Po',
             'po.Kode_Barang',
             'brg.Nama'
         )
-        ->orderByDesc('uji.Tanggal')
+        ->orderByDesc(DB::raw('MAX(uji.Tanggal)'))
         ->orderByDesc(DB::raw('MAX(uji.Jam)'));
 
         $paginated = $query->paginate($perPage, ['*'], 'page', $page);
@@ -11277,8 +11326,9 @@ class FormulatorTrialSampelController extends Controller
             $fakturList = $ujiSampel->pluck('No_Faktur')->unique()->toArray();
 
             // Pengambilan data Berkas / Foto
+            // PERUBAHAN: Menambahkan 'Keterangan' pada select
             $berkasRaw = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
-                ->select('Id_Berkas_Uji_Lab', 'No_Faktur', 'Berkas_Key')
+                ->select('Id_Berkas_Uji_Lab', 'No_Faktur', 'Berkas_Key', 'Keterangan')
                 ->whereIn('No_Faktur', $fakturList)
                 ->get()
                 ->groupBy('No_Faktur');
@@ -11357,8 +11407,10 @@ class FormulatorTrialSampelController extends Controller
 
                 if ($berkas) {
                     foreach ($berkas as $file) {
+                        // PERUBAHAN: Menambahkan 'Keterangan' ke array respons
                         $fotoList[] = [
                             'Berkas_Key' => $file->Berkas_Key,
+                            'Keterangan' => $file->Keterangan,
                         ];
                     }
                 }
@@ -11489,7 +11541,7 @@ class FormulatorTrialSampelController extends Controller
             $fakturList = $ujiSampel->pluck('No_Faktur')->unique()->toArray();
 
             $berkasRaw = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
-                ->select('Id_Berkas_Uji_Lab', 'No_Faktur', 'Berkas_Key')
+                ->select('Id_Berkas_Uji_Lab', 'No_Faktur', 'Berkas_Key', 'Keterangan')
                 ->whereIn('No_Faktur', $fakturList)
                 ->get()
                 ->groupBy('No_Faktur');
@@ -11567,7 +11619,7 @@ class FormulatorTrialSampelController extends Controller
                     foreach ($berkas as $file) {
                         $fotoList[] = [
                             'Berkas_Key' => $file->Berkas_Key,
-                            
+                            'Keterangan' => $file->Keterangan ?? 'Tidak Ada Keterangan'
                         ];
                     }
                 }
@@ -11727,7 +11779,7 @@ class FormulatorTrialSampelController extends Controller
             $fakturList = $ujiSampel->pluck('No_Faktur')->unique()->toArray();
 
             $berkasRaw = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
-                ->select('Id_Berkas_Uji_Lab', 'No_Faktur', 'Berkas_Key')
+                ->select('Id_Berkas_Uji_Lab', 'No_Faktur', 'Berkas_Key', 'Keterangan')
                 ->whereIn('No_Faktur', $fakturList)
                 ->get()
                 ->groupBy('No_Faktur');
@@ -11801,6 +11853,7 @@ class FormulatorTrialSampelController extends Controller
                     foreach ($berkas as $file) {
                         $fotoList[] = [
                             'Berkas_Key' => $file->Berkas_Key,
+                            'Keterangan' => $file->Keterangan ?? 'Tidak Ada Keterangan',
                         ];
                     }
                 }
@@ -12070,8 +12123,9 @@ class FormulatorTrialSampelController extends Controller
             $hasSesiFoto = $ujiSampel->contains('Flag_Foto', 'Y') ? 'Y' : 'T';
             $fakturList = $ujiSampel->pluck('No_Faktur')->unique()->toArray();
 
+            // PERUBAHAN DISINI: Tambahkan kolom 'Keterangan' pada metode select
             $berkasRaw = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
-                ->select('Id_Berkas_Uji_Lab', 'No_Faktur', 'Berkas_Key')
+                ->select('Id_Berkas_Uji_Lab', 'No_Faktur', 'Berkas_Key', 'Keterangan') 
                 ->whereIn('No_Faktur', $fakturList)
                 ->get()
                 ->groupBy('No_Faktur');
@@ -12150,6 +12204,8 @@ class FormulatorTrialSampelController extends Controller
                     foreach ($berkas as $file) {
                         $fotoList[] = [
                             'Berkas_Key' => $file->Berkas_Key,
+                            // PERUBAHAN DISINI: Mapping data Keterangan ke dalam array
+                            'Keterangan' => $file->Keterangan ?? null,
                         ];
                     }
                 }
@@ -12377,7 +12433,7 @@ class FormulatorTrialSampelController extends Controller
 
             // Pengambilan data Berkas / Foto
             $berkasRaw = DB::table('N_EMI_LIMS_Berkas_Uji_Lab') 
-                ->select('Id_Berkas_Uji_Lab', 'No_Faktur', 'Berkas_Key')
+                ->select('Id_Berkas_Uji_Lab', 'No_Faktur', 'Berkas_Key', 'Keterangan')
                 ->whereIn('No_Faktur', $fakturList)
                 ->get()
                 ->groupBy('No_Faktur');
@@ -12435,6 +12491,7 @@ class FormulatorTrialSampelController extends Controller
                     foreach ($berkas as $file) {
                         $fotoList[] = [
                             'Berkas_Key' => $file->Berkas_Key,
+                            'Keterangan' => $file->Keterangan ?? 'Tidak Ada Keterangan',
                         ];
                     }
                 }

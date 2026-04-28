@@ -841,6 +841,7 @@ export default {
             hapuskey: "",
 
             isPhotoCompleted: false,
+            photoList: [],
         };
     },
     watch: {
@@ -1262,19 +1263,17 @@ export default {
                 return (0).toFixed(decimalPlaces);
             } catch (e) {
                 console.error("Error saat menghitung rumus:", e);
-                return (0).toFixed(decimalPlaces); // Kembali ke nilai default jika ada error
+                return (0).toFixed(decimalPlaces);
             }
         },
 
         handleStatusPhoto(data) {
-            if (data && data.status) {
+            if (data && data.length > 0) {
                 this.isPhotoCompleted = true;
-                this.photoFile = data.file; // Simpan blob file-nya di data()
-                this.photoFileName = data.fileName; // Simpan namanya
+                this.photoList = data;
             } else {
                 this.isPhotoCompleted = false;
-                this.photoFile = null;
-                this.photoFileName = "";
+                this.photoList = [];
             }
         },
 
@@ -1283,13 +1282,12 @@ export default {
                 Swal.fire({
                     icon: "warning",
                     title: "Foto Wajib!",
-                    text: "Sesi ini mewajibkan Anda melampirkan foto hasil uji produk sebelum submit.",
+                    text: "Sesi ini mewajibkan Anda melampirkan minimal 1 foto hasil uji produk sebelum submit.",
                 });
                 return;
             }
 
             this.loading.saveToDatabase = true;
-
             const isMulti = (this.is_multi_print || "").toString().trim();
 
             try {
@@ -1299,7 +1297,6 @@ export default {
                     ).map((param) => {
                         const value = row.inputValues?.[param.id_qc];
                         const detail = row.draftDetails?.[param.id_qc];
-
                         return {
                             Id_Quality_Control: param.id_qc,
                             Value_Parameter:
@@ -1359,10 +1356,10 @@ export default {
                     if (isMulti === "Y") {
                         result.No_Po_Multi_Sampel = this.No_Fak_Sub_Po;
                     }
-
                     return result;
                 });
 
+                // Gunakan endpoint yang sesuai dengan request awalmu (ini disesuaikan dengan contoh di prompt awal)
                 const endpoint =
                     isMulti === "Y"
                         ? "/api/v1/formulator/resampling/hasil-trial/multi-qr-code/not-rumus/store"
@@ -1372,12 +1369,20 @@ export default {
                 formData.append("flag_foto", this.Flag_Foto);
                 formData.append("analyses", JSON.stringify(payload));
 
-                if (this.Flag_Foto === "Y" && this.photoFile) {
-                    formData.append(
-                        "photo_data",
-                        this.photoFile,
-                        this.photoFileName
-                    );
+                // Append semua foto yang ada di photoList beserta keterangannya
+                if (
+                    this.Flag_Foto === "Y" &&
+                    this.photoList &&
+                    this.photoList.length > 0
+                ) {
+                    this.photoList.forEach((photo, index) => {
+                        formData.append(
+                            `photos[${index}]`,
+                            photo.file,
+                            photo.fileName
+                        );
+                        formData.append(`notes[${index}]`, photo.note || "-"); // Sesuai contoh tabel di database (isi '-' jika kosong)
+                    });
                 }
 
                 const response = await axios.post(endpoint, formData, {
@@ -1406,6 +1411,7 @@ export default {
                     );
                 }
             } catch (error) {
+                console.error(error);
                 let errorMessage = "Terjadi Kesalahan";
                 if (error.response?.data) {
                     errorMessage =
