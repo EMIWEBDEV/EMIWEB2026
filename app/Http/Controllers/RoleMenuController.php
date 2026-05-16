@@ -158,6 +158,7 @@ class RoleMenuController extends Controller
             'data' => 'required|array',
             'data.*.Id_Menu' => 'required',
             'data.*.Id_User' => 'required',
+            'data.*.Urutan_Menu' => 'required'
         ]);
 
         DB::beginTransaction();
@@ -174,30 +175,36 @@ class RoleMenuController extends Controller
                     ], 400);
                 }
 
-                $payload = [
+                // Kriteria pencarian data (Kombinasi Unik)
+                $conditions = [
                     'Kode_Perusahaan' => '001',
-                    'Id_Menu' => $Id_Menu,
-                    'Id_User' => $row['Id_User'],
-                    'Id_Sub_Menu' => $row['Id_Sub_Menu'],
+                    'Id_Menu'         => $Id_Menu,
+                    'Id_User'         => $row['Id_User'],
                 ];
 
-                DB::table('N_EMI_LAB_Role_Menu')->insert($payload);
+                // Data yang akan disisipkan jika baru, atau diperbarui jika sudah ada
+                $updates = [
+                    'Urutan_Menu'     => $row['Urutan_Menu'],
+                ];
+
+                // Gunakan updateOrInsert sebagai pengganti insert
+                DB::table('N_EMI_LAB_Page_Access_2')->updateOrInsert($conditions, $updates);
             }
 
             DB::commit();
             return response()->json([
                 'success' => true,
                 'status' => 201,
-                'message' => 'Data Berhasil Disimpan'
+                'message' => 'Data Akses Menu Berhasil Disimpan/Diperbarui'
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::channel('RoleMenuController')->error('Error: ' . $e->getMessage());
             return response()->json([
-                    'success' => true,
-                    'status' => 500,
-                    'message' => "Terjadi Kesalahan",
+                'success' => false, // Diubah menjadi false karena ini blok error
+                'status' => 500,
+                'message' => "Terjadi Kesalahan Internal Server",
             ], 500); 
         }
     }

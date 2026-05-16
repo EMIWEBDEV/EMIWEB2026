@@ -84,6 +84,18 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => 30,
         ],
+        'RoleMenuController' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/RoleMenuController.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+        ],
+        'FinalisasiLabProduksiTrialController' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/FinalisasiLabProduksiTrialController.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+        ],
         'UjiSampelController' => [
             'driver' => 'daily',
             'path' => storage_path('logs/UjiSampelController.log'),

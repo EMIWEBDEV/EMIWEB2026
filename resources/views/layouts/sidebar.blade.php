@@ -44,153 +44,136 @@
             <i class="fas fa-circle"></i>
         </button>
     </div>
-
+    {{-- start --}}
     <div id="scrollbar">
         <div class="container-fluid">
             @php
-                $menus = DB::table('N_EMI_LAB_Role_Menu')
-                    ->select(
-                        'N_EMI_LAB_Menus.Nama_Menu',
-                        'N_EMI_LAB_Menus.Url_Menu',
-                        'N_EMI_LAB_Menus.Icon_Menu',
-                        'N_EMI_LAB_Sub_Menus.Nama_Sub_Menu',
-                        'N_EMI_LAB_Role_Menu.Id_User',
-                    )
-                    ->join('N_EMI_LAB_Menus', 'N_EMI_LAB_Role_Menu.Id_Menu', '=', 'N_EMI_LAB_Menus.Id_Menu')
-                    ->leftJoin(
-                        'N_EMI_LAB_Sub_Menus',
-                        'N_EMI_LAB_Role_Menu.Id_Sub_Menu',
-                        '=',
-                        'N_EMI_LAB_Sub_Menus.Id_Sub_Menu',
-                    )
-                    ->where('N_EMI_LAB_Role_Menu.Id_User', Auth::user()->UserId)
-                    ->get()
-                    ->groupBy('Nama_Menu');
+                $idUser = auth()->check() ? auth()->user()->UserId : '';
 
+                $allMenus = DB::table('N_EMI_LAB_Menus as m')
+                    ->join('N_EMI_LAB_Page_Access_2 as pa', 'm.Id_Menu', '=', 'pa.Id_Menu')
+                    ->where('m.Kode_Perusahaan', '001')
+                    ->where('pa.Id_User', $idUser)
+                    ->select('m.*', 'pa.Urutan_Menu')
+                    ->orderBy('pa.Urutan_Menu', 'asc')
+                    ->get();
+
+                $dashboardMenu = $allMenus->where('Nama_Menu', 'Dashboard')->first();
+                $headerMenus = $allMenus->whereNotNull('Nama_Header')->groupBy('Nama_Header');
+                $bottomMenus = $allMenus->whereNull('Nama_Header')->where('Nama_Menu', '!=', 'Dashboard');
             @endphp
+
             <ul class="navbar-nav" id="navbar-nav">
-     {{-- Header utama --}}
-     <li class="menu-title"><span>menu</span></li>
+                
+                <li class="menu-title"><span data-key="t-menu">Menu</span></li>
+                
+                @if ($dashboardMenu)
+                    @php
+                        $urlDash = ltrim($dashboardMenu->Url_Menu, '/');
+                        $isActiveDash = request()->is($urlDash . '*') || request()->is($dashboardMenu->Url_Menu . '*') ? 'active' : '';
+                    @endphp
+                    <li class="nav-item">
+                        <a href="{{ url($dashboardMenu->Url_Menu) }}" class="nav-link menu-link {{ $isActiveDash }}">
+                            <i class="{{ $dashboardMenu->Icon_Menu }}"></i>
+                            <span data-key="t-dashboard">{{ $dashboardMenu->Nama_Menu }}</span>
+                        </a>
+                    </li>
+                @endif
 
-     {{-- 1. Dashboard paling atas --}}
-     @foreach ($menus as $menuName => $items)
-         @php
-             $firstItem = $items->first();
-             $isActive = request()->is($firstItem->Url_Menu . '*') ? 'active' : '';
-         @endphp
+                <li class="menu-title"><span data-key="t-laboratorium">Laboratorium</span></li>
 
-         @if ($firstItem->Url_Menu === 'dashboard')
-             <li class="nav-item">
-                 <a href="{{ url($firstItem->Url_Menu) }}" class="nav-link {{ $isActive }}">
-                     <i class="{{ $firstItem->Icon_Menu }}"></i>
-                     <span>{{ $menuName }}</span>
-                 </a>
-             </li>
-         @endif
-     @endforeach
+                @foreach ($headerMenus as $headerName => $menusInHeader)
+                    @php
+                        $headerId = 'sidebar' . \Str::slug($headerName);
+                        
+                        $isHeaderActive = $menusInHeader->contains(function ($value) {
+                            $urlCheck = ltrim($value->Url_Menu, '/');
+                            return request()->is($urlCheck . '*') || request()->is($value->Url_Menu . '*');
+                        });
 
-    
-     @php
-         $produkUrls = ['hasil-analisa/produk-rilis-all', '/pembatalan-po/selesai-diclose'];
-         $produkHeaderPrinted = false;
-     @endphp
+                        $groupedBySub = $menusInHeader->groupBy('Sub_Header');
+                    @endphp
 
-     @foreach ($menus as $menuName => $items)
-         @php
-             $firstItem = $items->first();
-         @endphp
+                    <li class="nav-item">
+                        <a class="nav-link menu-link {{ $isHeaderActive ? 'active' : '' }}" href="#{{ $headerId }}" data-bs-toggle="collapse" role="button" aria-expanded="{{ $isHeaderActive ? 'true' : 'false' }}" aria-controls="{{ $headerId }}">
+                            <i class="{{ $headerName == 'Master Data' ? 'ri-database-2-line' : 'ri-flask-line' }}"></i>
+                            <span data-key="t-{{ \Str::slug($headerName) }}">{{ $headerName }}</span>
+                        </a>
+                        
+                        <div class="collapse menu-dropdown {{ $isHeaderActive ? 'show' : '' }}" id="{{ $headerId }}">
+                            <ul class="nav nav-sm flex-column">
+                                @foreach ($groupedBySub as $subHeaderName => $menusInSub)
+                                    @if (empty($subHeaderName))
+                                        @foreach ($menusInSub as $menu)
+                                            @php
+                                                $urlMenu = ltrim($menu->Url_Menu, '/');
+                                                $isActive = request()->is($urlMenu . '*') || request()->is($menu->Url_Menu . '*') ? 'active' : '';
+                                            @endphp
+                                            <li class="nav-item">
+                                                <a href="{{ url($menu->Url_Menu) }}" class="nav-link {{ $isActive }}" data-key="t-{{ \Str::slug($menu->Nama_Menu) }}">
+                                                    <i class="{{ $menu->Icon_Menu }}"></i> {{ $menu->Nama_Menu }}
+                                                </a>
+                                            </li>
+                                        @endforeach
+                                    @else
+                                        @php
+                                            $subHeaderId = 'sidebar' . \Str::slug($headerName) . \Str::slug($subHeaderName);
+                                            $isSubActive = $menusInSub->contains(function ($value) {
+                                                $urlCheck = ltrim($value->Url_Menu, '/');
+                                                return request()->is($urlCheck . '*') || request()->is($value->Url_Menu . '*');
+                                            });
+                                        @endphp
+                                        <li class="nav-item">
+                                            <a href="#{{ $subHeaderId }}" class="nav-link {{ $isSubActive ? 'active' : '' }}" data-bs-toggle="collapse" role="button" aria-expanded="{{ $isSubActive ? 'true' : 'false' }}" aria-controls="{{ $subHeaderId }}" data-key="t-{{ \Str::slug($subHeaderName) }}">
+                                                {{ $subHeaderName }}
+                                            </a>
+                                            <div class="collapse menu-dropdown {{ $isSubActive ? 'show' : '' }}" id="{{ $subHeaderId }}">
+                                                <ul class="nav nav-sm flex-column">
+                                                    @foreach ($menusInSub as $menu)
+                                                        @php
+                                                            $urlSubMenu = ltrim($menu->Url_Menu, '/');
+                                                            $isMenuActive = request()->is($urlSubMenu . '*') || request()->is($menu->Url_Menu . '*') ? 'active' : '';
+                                                        @endphp
+                                                        <li class="nav-item">
+                                                            <a href="{{ url($menu->Url_Menu) }}" class="nav-link {{ $isMenuActive }}" data-key="t-{{ \Str::slug($menu->Nama_Menu) }}">
+                                                                <i class="{{ $menu->Icon_Menu }}"></i> {{ $menu->Nama_Menu }}
+                                                            </a>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        </li>
+                                    @endif
+                                @endforeach
+                            </ul>
+                        </div>
+                    </li>
+                @endforeach
 
-         @if (in_array($firstItem->Url_Menu, $produkUrls))
-             @if (!$produkHeaderPrinted)
-                 <li class="menu-title"><span>Produk</span></li>
-                 @php $produkHeaderPrinted = true; @endphp
-             @endif
+                @if ($bottomMenus->count() > 0)
+                    <li class="menu-title"><span data-key="t-lainnya">Lainnya</span></li>
+                    
+                    @foreach ($bottomMenus as $menu)
+                        @php
+                            $urlBottom = ltrim($menu->Url_Menu, '/');
+                            $isActiveBottom = request()->is($urlBottom . '*') || request()->is($menu->Url_Menu . '*') ? 'active' : '';
+                        @endphp
+                        <li class="nav-item">
+                            <a href="{{ url($menu->Url_Menu) }}" class="nav-link menu-link {{ $isActiveBottom }}">
+                                <i class="{{ $menu->Icon_Menu }}"></i>
+                                <span data-key="t-{{ \Str::slug($menu->Nama_Menu) }}">{{ $menu->Nama_Menu }}</span>
 
-             @php
-                 $isActive = request()->is($firstItem->Url_Menu . '*') ? 'active' : '';
-             @endphp
-             <li class="nav-item">
-                 <a href="{{ url($firstItem->Url_Menu) }}" class="nav-link {{ $isActive }}">
-                     <i class="{{ $firstItem->Icon_Menu }}"></i>
-                     <span>{{ $menuName }}</span>
-                 </a>
-             </li>
-         @endif
-     @endforeach
-
-
-     @foreach ($menus as $menuName => $items)
-         @php
-             $firstItem = $items->first();
-         @endphp
-
-         @if ($firstItem->Url_Menu === 'mesin-analisa')
-             <li class="menu-title"><span>Laboratorium</span></li>
-         @endif
-     @endforeach
-
-     {{-- 2.1 Sub menu untuk Produk --}}
-
-     {{-- 3. Render menu lainnya (selain dashboard & produk) --}}
-     @foreach ($menus as $menuName => $items)
-         @php
-             $firstItem = $items->first();
-             $isActive = request()->is($firstItem->Url_Menu . '*') ? 'active' : '';
-             // PENAMBAHAN LOGIKA: URL yang sudah ditampilkan di section lain dikecualikan
-             $excludeUrls = ['dashboard', 'hasil-analisa/produk-rilis-all', '/pembatalan-po/selesai-diclose'];
-         @endphp
-
-         @if (!in_array($firstItem->Url_Menu, $excludeUrls))
-             <li class="nav-item">
-                 <a href="{{ url($firstItem->Url_Menu) }}" class="nav-link {{ $isActive }}">
-                     <i class="{{ $firstItem->Icon_Menu }}"></i>
-                     <span>{{ $menuName }}</span>
-
-                     {{-- Badge kondisi --}}
-                     @if ($firstItem->Url_Menu === 'tentang')
-                         <span class="badge badge-pill bg-danger" data-key="t-hot">🚀 Baru</span>
-                         {{-- @elseif ($firstItem->Url_Menu === 'lab/confirmed-analisis')
-                             <span class="badge badge-pill bg-beta" title="Fitur ini sudah bisa digunakan, namun belum versi final.">🔄 Beta</span>
-                         @elseif ($firstItem->Url_Menu === 'hasil-analisa/validasi-close-sampel')
-                             <div class="ms-1">
-                                 <span class="badge badge-pill bg-beta" title="Fitur ini sudah bisa digunakan, namun belum versi final.">🔄 Beta</span>
-                             </div>
-                         @elseif ($firstItem->Url_Menu === 'lab/resampling/current')
-                             <div class="ms-2">
-                                 <span class="badge badge-pill bg-expreimental" title="Experimental Terhadap Fitur ini masih dalam tahap uji coba. Bisa berubah drastis.">🚧 EXP</span>
-                             </div>
-                         @elseif ($firstItem->Url_Menu === 'progress-sistem/uji-analisa')
-                             <div class="ms-2">
-                                 <span class="badge badge-pill bg-expreimental" title="Experimental Terhadap Fitur ini masih dalam tahap uji coba. Bisa berubah drastis.">🚧 EXP</span>
-                             </div>
-                         @elseif ($firstItem->Url_Menu === '/pengajuan-uji-buka-sampel/current')
-                             <div class="ms-2">
-                                 <span class="badge badge-pill bg-beta" title="Fitur ini sudah bisa digunakan, namun belum versi final.">🔄 Beta</span>
-                             </div> --}}
-                     @endif
-                 </a>
-
-                 {{-- Sub Menu --}}
-                 @if ($items->whereNotNull('Nama_Sub_Menu')->count())
-                     <ul class="nav-submenu">
-                         @foreach ($items->whereNotNull('Nama_Sub_Menu') as $sub)
-                             @php
-                                 $isSubActive = request()->is($sub->Url_Sub_Menu . '*') ? 'active' : '';
-                             @endphp
-                             <li>
-                                 <a href="{{ url($sub->Url_Sub_Menu) }}" class="{{ $isSubActive }}">
-                                     {{ $sub->Nama_Sub_Menu }}
-                                 </a>
-                             </li>
-                         @endforeach
-                     </ul>
-                 @endif
-             </li>
-         @endif
-     @endforeach
- </ul>
+                                @if ($menu->Url_Menu === '/tentang')
+                                    <span class="badge badge-pill bg-danger" data-key="t-hot">Baru</span>
+                                @endif
+                            </a>
+                        </li>
+                    @endforeach
+                @endif
+            </ul>
         </div>
     </div>
+    {{-- end --}}
     <div class="sidebar-background"></div>
 </div>
 

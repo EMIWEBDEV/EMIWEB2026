@@ -92,7 +92,6 @@
 
                                         <div class="d-flex flex-wrap gap-2">
                                             <span
-                                                v-if="isFLM"
                                                 class="badge rounded-pill px-3 py-2"
                                                 :class="
                                                     item.Nama_Aktivitas
@@ -137,7 +136,6 @@
                                             </span>
 
                                             <span
-                                                v-if="isFLM"
                                                 class="badge rounded-pill px-3 py-2"
                                                 :class="
                                                     item.Flag_Foto === 'Y'

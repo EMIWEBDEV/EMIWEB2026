@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FormulatorTrialSampel\FormulatorTrialSampelController;
 
-Route::get('/trial-sampel', [FormulatorTrialSampelController::class, "index"]);
+Route::get('/trial-sampel', [FormulatorTrialSampelController::class, "index"])->middleware('autotrack', 'permission:Trial_Sampel,VIEW');
 Route::get('/trial-sampel-testing', [FormulatorTrialSampelController::class, "indexTesting"]);
 Route::get('/api/v1/formulator/{no_PO_Multiqr}/multi-print/{id_jenis_analisa}/resampling', [FormulatorTrialSampelController::class, 'getPoSampelMultiQrDetail']);
 Route::get('/api/v1/formulator/detail-data-sampel/{no_sampel}', [FormulatorTrialSampelController::class, 'getDetailSampelUjiV2']);
@@ -40,7 +40,7 @@ Route::post('/api/v1/formulator/hasil-trial/multi-qr-code/not-perhitungan', [For
 Route::post('/api/v1/formulator/hasil-trial/single-qr-code/not-perhitungan', [FormulatorTrialSampelController::class, 'storeNoRumusNotMultiQrCode']);
 
 // validasi 
-Route::get('/validasi-hasil/uji-trial', [FormulatorTrialSampelController::class, 'viewConfirmedAnalisis'])->middleware('autotrack');
+Route::get('/validasi-hasil/uji-trial', [FormulatorTrialSampelController::class, 'viewConfirmedAnalisis'])->middleware('autotrack', 'permission:Validasi_Hasil_Trial,VIEW');
 Route::get('/validasi/hasil/uji-trial/confirmed-analisis/{no_sub_sampel}/multi/{id_jenis_analisa}', [FormulatorTrialSampelController::class, 'viewInformasiMultiQr'])->middleware('autotrack');
 Route::get('/validasi/hasil/uji-trial/confirmed-analisis/{no_sampel}/single-qrCode', [FormulatorTrialSampelController::class, 'viewInformasiJenisAnalisaSingleQr'])->middleware('autotrack');
 Route::get('/validasi/hasil/uji-trial/{no_sampel}/multi/{no_sub_sampel}/{id_jenis_analisa}/confirmed', [FormulatorTrialSampelController::class, 'viewInformasiJenisAnalisaMultiQr'])->middleware('autotrack');
@@ -60,7 +60,7 @@ Route::post('/api/v1/formulator/hasil-uji/berkas/foto/token/bulk', [FormulatorTr
 Route::get('/api/v1/formulator/berkas/stream/foto-uji/{key}', [FormulatorTrialSampelController::class, 'streamFoto']);
 
 // uji ulang
-Route::get("/uji-ulang/hasil-trial", [FormulatorTrialSampelController::class, "viewResamplingHomes"])->middleware('autotrack');
+Route::get("/uji-ulang/hasil-trial", [FormulatorTrialSampelController::class, "viewResamplingHomes"])->middleware('autotrack', 'permission:Resampling_Trial,VIEW');
 Route::get('/api/v1/formulator/resampling/current', [FormulatorTrialSampelController::class, 'getDataResamplingCurrent']);
 Route::get('/uji-ulang/hasil-trial/resampling/reanalisa/{no_sampel}/{no_sub_sampel}/{id_jenis_analisa}/{no_resampling}/form', [FormulatorTrialSampelController::class, 'ViewUjiResampling'])->middleware('autotrack');
 Route::get('/api/v1/lab/resampling/detail-data-sampel/{no_sampel}/{no_sub_sampel}/{no_resampling}/{id_jenis_analisa}/formulator', [FormulatorTrialSampelController::class, 'getDetailResamplingV1']);
@@ -77,7 +77,7 @@ Route::get('/api/v1/formualtor/finalisasi/hasil-uji-trial/{no_sampel}', [Formula
 Route::get('/api/v1/formulator-final-keputusan/detail/{id_jenis_analisa}/{no_po_sampel}/{no_sub}', [FormulatorTrialSampelController::class, 'getVerifikasiHasilAnalisaFinalKeputusanV1']);
 Route::get('/api/v1/formulator-final-keputusan/detail/{id_jenis_analisa}/single-qrcode/{no_sampel}/final', [FormulatorTrialSampelController::class, 'getVerifikasiHasilAnalisaFinalKeputusanV1NoPcs']);
 
-Route::get('/formulator/hasil-trial', [FormulatorTrialSampelController::class, 'viewHasilAnalisa'])->middleware('autotrack', 'menu_access');
+Route::get('/formulator/hasil-trial', [FormulatorTrialSampelController::class, 'viewHasilAnalisa'])->middleware('autotrack','permission:Hasil_Trial,VIEW');
 Route::get('/formulator/hasil-trial/multi/{id_jenis_analisa}/{no_po_sampel}/{flag_multi}/{no_sub}', [FormulatorTrialSampelController::class, 'viewDetaiHasilMulti'])->middleware('autotrack');
 Route::get('/formulator/hasil-trial/{id_jenis_analisa}/{no_po_sampel}/{flag_multi}', [FormulatorTrialSampelController::class, 'viewNestedSubHasilAnalisa']);
 Route::get('/formulator/hasil-analisa/{id_jenis_analisa}', [FormulatorTrialSampelController::class, 'viewSubHasilAnalisa']);

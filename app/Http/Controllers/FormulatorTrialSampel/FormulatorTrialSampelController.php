@@ -2572,20 +2572,59 @@ class FormulatorTrialSampelController extends Controller
             $jenisAnalisaId = isset($idDecoded[0]) ? $idDecoded[0] : null;
             $noPoSampel = $firstAnalysis['No_Po_Sampel'];
 
-            $oldBerkasRecords = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
-                    ->where('No_Sampel', $noPoSampel)
+            // =========================================================================================
+            // PERBAIKAN: PINDAHKAN PENGECEKAN RESAMPLING KE ATAS UNTUK MENDAPATKAN TAHAPAN_KE 
+            // =========================================================================================
+            $dataResampling = DB::table('N_EMI_LIMS_Uji_Sampel_Resampling_Log')
+                ->where('No_Po_Sampel', $firstAnalysis['No_Po_Sampel'])
+                ->where('Id_Jenis_Analisa', $jenisAnalisaId)
+                ->whereNull('Flag_Selesai_Resampling') 
+                ->orderBy('Tanggal', 'desc') 
+                ->first();
+
+            if (!$dataResampling) {
+                throw new \Exception("Data Resampling Aktif tidak ditemukan untuk Sampel ini. Pastikan proses resampling sudah dibuat.");
+            }
+
+            $fixedNoFakSubPo = $dataResampling->No_Sampel_Resampling;
+            $fixedTahapanKe = $dataResampling->Tahapan_Ke;
+
+            // =========================================================================================
+            // PERBAIKAN: CARI NO FAKTUR LAMA BERDASARKAN SAMPEL, ANALISA, DAN TAHAPAN YANG SESUAI
+            // =========================================================================================
+            $oldFakturRecords = DB::table('N_EMI_LIMS_Uji_Sampel')
+                ->where('No_Po_Sampel', $noPoSampel)
+                ->where('Id_Jenis_Analisa', $jenisAnalisaId)
+                ->where('Flag_Resampling', 'Y')
+                ->where('Status_Keputusan_Sampel', 'tolak')
+                ->pluck('No_Faktur')
+                ->toArray();
+
+            // Ambil semua No_Sementara dari request jika user menimpa data draft/sementara
+            $noSementaraList = collect($request->analyses)->pluck('No_Sementara')->filter()->toArray();
+            
+            // Gabungkan No_Faktur asli dan No_Sementara (jika ada) yang ingin dihapus file-nya
+            $allFakturToDelete = array_unique(array_merge($oldFakturRecords, $noSementaraList));
+
+            // Eksekusi penghapusan HANYA MENGGUNAKAN NO FAKTUR, BUKAN NO SAMPEL
+            if (!empty($allFakturToDelete)) {
+                $oldBerkasRecords = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+                    ->whereIn('No_Faktur', $allFakturToDelete)
                     ->get();
 
                 foreach ($oldBerkasRecords as $berkas) {
                     if (!empty($berkas->File_Path)) {
-                        $oldFilesToDeleteGcs[] = $berkas->File_Path; // Simpan path untuk dihapus di GCS nanti
+                        $oldFilesToDeleteGcs[] = $berkas->File_Path;
                     }
                 }
-            if ($oldBerkasRecords->count() > 0) {
-                DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
-                    ->where('No_Sampel', $noPoSampel)
-                    ->delete();
+
+                if ($oldBerkasRecords->count() > 0) {
+                    DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+                        ->whereIn('No_Faktur', $allFakturToDelete)
+                        ->delete();
+                }
             }
+            // =========================================================================================
 
             if ($request->hasFile('photos') && $request->flag_foto === 'Y') {
                 $photos = $request->file('photos');
@@ -2605,20 +2644,6 @@ class FormulatorTrialSampelController extends Controller
                     ];
                 }
             }
-
-            $dataResampling = DB::table('N_EMI_LIMS_Uji_Sampel_Resampling_Log')
-                ->where('No_Po_Sampel', $firstAnalysis['No_Po_Sampel'])
-                ->where('Id_Jenis_Analisa', $jenisAnalisaId)
-                ->whereNull('Flag_Selesai_Resampling') 
-                ->orderBy('Tanggal', 'desc') 
-                ->first();
-
-            if (!$dataResampling) {
-                throw new \Exception("Data Resampling Aktif tidak ditemukan untuk Sampel ini. Pastikan proses resampling sudah dibuat.");
-            }
-
-            $fixedNoFakSubPo = $dataResampling->No_Sampel_Resampling;
-            $fixedTahapanKe = $dataResampling->Tahapan_Ke;
 
             $payloadActivityUjiSampel = [
                 'Kode_Perusahaan' => '001',
@@ -2642,7 +2667,7 @@ class FormulatorTrialSampelController extends Controller
 
             $isPerhitungan = $jenisAnalisaRecord && $jenisAnalisaRecord->Flag_Perhitungan === 'Y';
             $flagPerhitunganVal = $isPerhitungan ? 'Y' : null;
-           
+            
             foreach ($request->analyses as $analysisData) {
                 $noSementara = $analysisData['No_Sementara'] ?? null;
                 $sumberData = (object) $analysisData;
@@ -2728,8 +2753,8 @@ class FormulatorTrialSampelController extends Controller
                         $isFromSementara = true;
 
                         $detailsSementara = DB::table('N_EMI_LIMS_Uji_Sampel_Detail_Sementara')
-                                                    ->where('No_Sementara', $noSementara)
-                                                    ->get();
+                                                                    ->where('No_Sementara', $noSementara)
+                                                                    ->get();
 
                         $requestParams = collect($analysisData['parameters'])->keyBy('Id_Quality_Control');
 
@@ -2904,7 +2929,7 @@ class FormulatorTrialSampelController extends Controller
                 if (!empty($berkasInsertsTemplate)) {
                     $berkasToInsert = array_map(function($item) use ($newNumber) {
                         $item['No_Faktur'] = $newNumber;
-                        $item['Berkas_Key'] = Str::random(32); // Pastikan key unik per baris (jika multi analisis)
+                        $item['Berkas_Key'] = Str::random(32); 
                         return $item;
                     }, $berkasInsertsTemplate);
 
@@ -4062,8 +4087,6 @@ class FormulatorTrialSampelController extends Controller
                         }
                     }
 
-                    // dd($flagLayak);
-
                     $payloadUjiSampleData[] = [
                         "No_Faktur" => $newNumber,
                         "Kode_Perusahaan" => "001",
@@ -4256,23 +4279,60 @@ class FormulatorTrialSampelController extends Controller
             $firstIdDecoded = Hashids::connection('custom')->decode($firstAnalysisHash)[0] ?? null;
             $noPoSampel = $request->analyses[0]['No_Po_Sampel']; // Nomor Sampel Utama
 
-            // 1. CARI & HAPUS BERKAS LAMA BERDASARKAN No_Sampel (Agar tidak duplikat)
-            $oldBerkasRecords = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
-                ->where('No_Sampel', $noPoSampel)
-                ->get();
+            // =========================================================================================
+            // PERBAIKAN: PINDAHKAN PENGECEKAN RESAMPLING KE ATAS UNTUK MENDAPATKAN TAHAPAN_KE
+            // =========================================================================================
+            $dataResamplingFirst = DB::table('N_EMI_LIMS_Uji_Sampel_Resampling_Log')
+                ->where('No_Po_Sampel', $noPoSampel)
+                ->where('Id_Jenis_Analisa', $firstIdDecoded)
+                ->whereNull('Flag_Selesai_Resampling') 
+                ->orderByDesc('Tanggal')
+                ->orderByDesc('Jam')
+                ->orderByDesc('Id_Resampling')
+                ->first();
 
-            foreach ($oldBerkasRecords as $berkas) {
-                if (!empty($berkas->File_Path)) {
-                    $oldFilesToDeleteGcs[] = $berkas->File_Path;
+            if (!$dataResamplingFirst) {
+                throw new \Exception("Data Resampling Aktif tidak ditemukan.");
+            }
+
+            $fixedTahapanKe = $dataResamplingFirst->Tahapan_Ke ?? 1;
+
+            // =========================================================================================
+            // PERBAIKAN: CARI NO FAKTUR LAMA BERDASARKAN SAMPEL, ARRAY ANALISA, DAN TAHAPAN YANG SESUAI
+            // =========================================================================================
+            $oldFakturRecords = DB::table('N_EMI_LIMS_Uji_Sampel')
+                ->where('No_Po_Sampel', $noPoSampel)
+                ->whereIn('Id_Jenis_Analisa', $decodedIds)
+                ->where('Flag_Resampling', 'Y')
+                ->where('Status_Keputusan_Sampel', 'tolak')
+                ->pluck('No_Faktur')
+                ->toArray();
+
+            // Ambil semua No_Sementara dari request jika user menimpa data draft/sementara
+            $noSementaraList = collect($request->analyses)->pluck('No_Sementara')->filter()->toArray();
+            
+            // Gabungkan No_Faktur asli dan No_Sementara (jika ada) yang ingin dihapus file-nya
+            $allFakturToDelete = array_unique(array_merge($oldFakturRecords, $noSementaraList));
+
+            // Eksekusi penghapusan HANYA MENGGUNAKAN NO FAKTUR, BUKAN NO SAMPEL
+            if (!empty($allFakturToDelete)) {
+                $oldBerkasRecords = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+                    ->whereIn('No_Faktur', $allFakturToDelete)
+                    ->get();
+
+                foreach ($oldBerkasRecords as $berkas) {
+                    if (!empty($berkas->File_Path)) {
+                        $oldFilesToDeleteGcs[] = $berkas->File_Path;
+                    }
+                }
+
+                if ($oldBerkasRecords->count() > 0) {
+                    DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+                        ->whereIn('No_Faktur', $allFakturToDelete)
+                        ->delete();
                 }
             }
-
-            // Langsung hapus dari Database sebelum proses insert baru dimulai
-            if ($oldBerkasRecords->count() > 0) {
-                DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
-                    ->where('No_Sampel', $noPoSampel)
-                    ->delete();
-            }
+            // =========================================================================================
 
             // 2. PROSES MULTIPLE UPLOAD FOTO BARU KE GCS
             if ($request->hasFile('photos') && $request->flag_foto === 'Y') {
@@ -4297,19 +4357,6 @@ class FormulatorTrialSampelController extends Controller
                         'Keterangan' => $note
                     ];
                 }
-            }
-
-            $dataResamplingFirst = DB::table('N_EMI_LIMS_Uji_Sampel_Resampling_Log')
-                ->where('No_Po_Sampel', $noPoSampel)
-                ->where('Id_Jenis_Analisa', $firstIdDecoded)
-                ->whereNull('Flag_Selesai_Resampling') 
-                ->orderByDesc('Tanggal')
-                ->orderByDesc('Jam')
-                ->orderByDesc('Id_Resampling')
-                ->first();
-
-            if (!$dataResamplingFirst) {
-                throw new \Exception("Data Resampling Aktif tidak ditemukan.");
             }
 
             $payloadActivityUjiSampel = [
@@ -10080,11 +10127,40 @@ class FormulatorTrialSampelController extends Controller
 
     public function getDataConfirmedSelesaiV2(Request $request)
     {
+        $checkedAkses = Session::get("user_permissions");
+        $permissionKonten = $checkedAkses['permission_konten'] ?? [];
+        
+        $allowedAnalisaIds = [];
+        if (isset($permissionKonten['Validasi Hasil Trial']) && is_array($permissionKonten['Validasi Hasil Analisa'])) {
+                foreach ($permissionKonten['Validasi Hasil Trial'] as $akses) {
+                    if (isset($akses['flag']) && $akses['flag'] === 'Y' && isset($akses['id_jenis_analisa'])) {
+                        $allowedAnalisaIds[] = $akses['id_jenis_analisa'];
+                    }
+                }
+        }
+
         $searchQuery = $request->input('q', '');
         $limit = $request->input('limit', 10);
         $filterTanggalMulai = $request->input('tanggal_mulai');
         $filterTanggalSelesai = $request->input('tanggal_selesai');
         $filterQrCode = $request->input('qrcode');
+
+        if (empty($allowedAnalisaIds)) {
+                return response()->json([
+                    'success' => true,
+                    'status'  => 200,
+                    'message' => "Data tidak ditemukan (Tidak ada akses jenis analisa yang valid).",
+                    'result'  => [
+                        'data' => [],
+                        'pagination' => [
+                            'page'      => 1,
+                            'limit'     => (int)$limit,
+                            'totalPage' => 0,
+                            'totalData' => 0,
+                        ]
+                    ]
+                ], 200);
+        }
 
         // 1. Base Query: Grouping by Sample & Analysis Type
         $baseQuery = DB::table('N_EMI_LIMS_Uji_Sampel')
@@ -10098,6 +10174,7 @@ class FormulatorTrialSampelController extends Controller
                 'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa',
                 'N_EMI_LAB_Jenis_Analisa.Kode_Analisa'
             )
+            ->whereIn('N_EMI_LAB_Jenis_Analisa.id', $allowedAnalisaIds)
             ->where('N_EMI_LAB_Jenis_Analisa.Kode_Role', 'FLM')
             ->whereNull('N_EMI_LIMS_Uji_Sampel.Status')
             ->whereNull('N_EMI_LIMS_Uji_Sampel.Flag_Selesai')
@@ -10293,12 +10370,41 @@ class FormulatorTrialSampelController extends Controller
 
     public function getDataValidasiHasilAkhirDanCloseSampel(Request $request)
     {
+        $checkedAkses = Session::get("user_permissions");
+        $permissionKonten = $checkedAkses['permission_konten'] ?? [];
+        
+        $allowedAnalisaIds = [];
+        if (isset($permissionKonten['Finalisasi Trial']) && is_array($permissionKonten['Validasi Hasil Analisa'])) {
+                foreach ($permissionKonten['Finalisasi Trial'] as $akses) {
+                    if (isset($akses['flag']) && $akses['flag'] === 'Y' && isset($akses['id_jenis_analisa'])) {
+                        $allowedAnalisaIds[] = $akses['id_jenis_analisa'];
+                    }
+                }
+        }
+
         $perPage = $request->input('limit', 10);
         $page = $request->input('page', 1);
         $search = $request->input('search');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $qrType = $request->input('qr_type'); 
+
+        if (empty($allowedAnalisaIds)) {
+                return response()->json([
+                    'success' => true,
+                    'status'  => 200,
+                    'message' => "Data tidak ditemukan (Tidak ada akses jenis analisa yang valid).",
+                    'result'  => [
+                        'data' => [],
+                        'pagination' => [
+                            'page'      => 1,
+                            'limit'     => (int)$perPage,
+                            'totalPage' => 0,
+                            'totalData' => 0,
+                        ]
+                    ]
+                ], 200);
+        }
 
         $query = DB::table('N_EMI_LIMS_Uji_Sampel as uji')
             ->join('N_LIMS_PO_Sampel as po', 'uji.No_Po_Sampel', '=', 'po.No_Sampel')
@@ -10314,6 +10420,7 @@ class FormulatorTrialSampelController extends Controller
                 'po.Kode_Barang',
                 'brg.Nama as Nama_Barang'
             )
+            ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->whereNull('uji.Status')
             ->where('uji.Flag_Selesai', 'Y')
             ->whereNull('uji.Flag_Final')

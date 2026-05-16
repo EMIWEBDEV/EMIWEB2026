@@ -159,36 +159,6 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- <div
-                                v-if="summary.show"
-                                :class="[
-                                    'alert',
-                                    summary.alertClass,
-                                    'alert-dismissible',
-                                    'fade',
-                                    'show',
-                                ]"
-                                role="alert"
-                            >
-                                <div class="d-flex align-items-center">
-                                    <i :class="[summary.icon, 'fs-2 me-3']"></i>
-                                    <div>
-                                        <h5 class="alert-heading">
-                                            {{ summary.title }}
-                                        </h5>
-                                        <p class="mb-0">
-                                            {{ summary.message }}
-                                        </p>
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    class="btn-close"
-                                    @click="summary.show = false"
-                                    aria-label="Close"
-                                ></button>
-                            </div> -->
                             <div class="table-responsive">
                                 <table
                                     class="table table-bordered table-nowrap align-middle mb-0"
@@ -324,6 +294,164 @@
                                         </tr>
                                     </tbody>
                                 </table>
+                            </div>
+                            <div
+                                v-if="informasiData?.sesi_foto === 'Y'"
+                                class="mt-5 pt-3"
+                            >
+                                <div class="d-flex align-items-center mb-4">
+                                    <h4 class="fw-bold mb-0 text-dark">
+                                        Dokumentasi Hasil Analisa
+                                    </h4>
+                                    <div
+                                        class="flex-grow-1 border-top border-2 ms-4 border-light"
+                                    ></div>
+                                </div>
+
+                                <div
+                                    v-for="(item, index) in listData"
+                                    :key="index"
+                                    class="mb-5"
+                                >
+                                    <div
+                                        v-if="
+                                            item.foto_analisa &&
+                                            item.foto_analisa.length > 0
+                                        "
+                                        class="card border border-light shadow-sm rounded-4 overflow-hidden"
+                                    >
+                                        <div
+                                            class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center"
+                                        >
+                                            <span
+                                                class="fw-bold text-secondary text-uppercase"
+                                                style="
+                                                    letter-spacing: 1px;
+                                                    font-size: 0.85rem;
+                                                "
+                                            >
+                                                <i
+                                                    class="fas fa-camera me-2 text-primary"
+                                                ></i>
+                                                Identitas Sampel
+                                            </span>
+                                            <span
+                                                class="badge bg-primary px-3 py-2 rounded-pill fs-6"
+                                            >
+                                                {{ item.No_Po_Sampel }}
+                                            </span>
+                                        </div>
+
+                                        <div class="card-body p-3 bg-light">
+                                            <div class="row g-3">
+                                                <div
+                                                    v-for="foto in item.foto_analisa"
+                                                    :key="foto.Berkas_Key"
+                                                    class="col-12 col-md-6"
+                                                >
+                                                    <div
+                                                        class="bg-white border rounded shadow-sm p-2 h-100 d-flex flex-column"
+                                                    >
+                                                        <div
+                                                            v-if="
+                                                                !fotoBlobUrls[
+                                                                    foto
+                                                                        .Berkas_Key
+                                                                ]
+                                                            "
+                                                            class="d-flex justify-content-center align-items-center bg-light w-100 rounded"
+                                                            style="
+                                                                height: 250px;
+                                                            "
+                                                        >
+                                                            <div
+                                                                class="spinner-grow text-primary"
+                                                                role="status"
+                                                            >
+                                                                <span
+                                                                    class="visually-hidden"
+                                                                    >Memuat
+                                                                    Gambar...</span
+                                                                >
+                                                            </div>
+                                                        </div>
+                                                        <el-image
+                                                            v-else
+                                                            class="w-100 d-block rounded"
+                                                            style="
+                                                                height: 250px;
+                                                                object-fit: contain;
+                                                                background-color: #f8f9fa;
+                                                            "
+                                                            :src="
+                                                                fotoBlobUrls[
+                                                                    foto
+                                                                        .Berkas_Key
+                                                                ]
+                                                            "
+                                                            :zoom-rate="1.2"
+                                                            :max-scale="7"
+                                                            :min-scale="0.2"
+                                                            :preview-src-list="
+                                                                item.foto_analisa
+                                                                    .map(
+                                                                        (f) =>
+                                                                            fotoBlobUrls[
+                                                                                f
+                                                                                    .Berkas_Key
+                                                                            ]
+                                                                    )
+                                                                    .filter(
+                                                                        Boolean
+                                                                    )
+                                                            "
+                                                            :initial-index="
+                                                                item.foto_analisa.findIndex(
+                                                                    (f) =>
+                                                                        f.Berkas_Key ===
+                                                                        foto.Berkas_Key
+                                                                )
+                                                            "
+                                                            fit="contain"
+                                                            hide-on-click-modal
+                                                            @contextmenu.prevent
+                                                            @dragstart.prevent
+                                                        >
+                                                            <template #error>
+                                                                <div
+                                                                    class="d-flex flex-column justify-content-center align-items-center bg-light text-muted w-100 h-100 rounded"
+                                                                >
+                                                                    <i
+                                                                        class="fas fa-image-slash fa-3x mb-3 text-secondary"
+                                                                    ></i>
+                                                                    <span
+                                                                        class="fw-medium"
+                                                                        >Gambar
+                                                                        gagal
+                                                                        dimuat</span
+                                                                    >
+                                                                </div>
+                                                            </template>
+                                                        </el-image>
+
+                                                        <div
+                                                            class="mt-2 text-center flex-grow-1 d-flex align-items-center justify-content-center"
+                                                        >
+                                                            <span
+                                                                class="text-secondary small fw-medium"
+                                                            >
+                                                                {{
+                                                                    foto.Keterangan ||
+                                                                    "Tidak ada keterangan"
+                                                                }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <hr class="mb-2" />
                             <div class="row">
@@ -480,6 +608,7 @@ import ApexChart from "vue3-apexcharts";
 import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
 import axios from "axios";
 import vSelect from "vue-select";
+import { ElImage } from "element-plus";
 
 export default {
     props: {
@@ -501,6 +630,7 @@ export default {
         DotLottieVue,
         apexchart: ApexChart,
         vSelect,
+        ElImage,
     },
     data() {
         return {
@@ -509,6 +639,7 @@ export default {
             informasiData: {},
             dataTracking: [],
             formulaAverages: [],
+            fotoBlobUrls: {},
             template: {
                 parameter: [],
                 formula: [],
@@ -900,6 +1031,43 @@ export default {
         },
     },
     methods: {
+        async fetchBlobPhotos() {
+            if (this.informasiData?.sesi_foto !== "Y") return;
+
+            const allKeys = [];
+
+            this.listData.forEach((item) => {
+                item.foto_analisa?.forEach((f) => {
+                    allKeys.push(f.Berkas_Key);
+                });
+            });
+
+            if (allKeys.length === 0) return;
+
+            const tokenResponse = await axios.post(
+                `/api/v1/lab/hasil-uji/berkas/foto/token/bulk`,
+                { keys: allKeys }
+            );
+
+            const tokenMap = tokenResponse.data;
+
+            for (const key of allKeys) {
+                const res = await axios.get(
+                    `/api/v1/lab/berkas/stream/foto-uji/${key}?token=${tokenMap[key]}`,
+                    { responseType: "blob" }
+                );
+
+                this.fotoBlobUrls[key] = URL.createObjectURL(res.data);
+            }
+        },
+        hapusSemuaBlobMemori() {
+            if (this.fotoBlobUrls) {
+                Object.values(this.fotoBlobUrls).forEach((url) => {
+                    URL.revokeObjectURL(url);
+                });
+                this.fotoBlobUrls = {};
+            }
+        },
         getRowsForLog(idLog) {
             if (!this.dataTracking || this.dataTracking.length === 0) {
                 return [];
@@ -1045,6 +1213,7 @@ export default {
                         results: finalResults,
                         Range_Awal: firstItemInGroup.Range_Awal,
                         Range_Akhir: firstItemInGroup.Range_Akhir,
+                        foto_analisa: firstItemInGroup.foto_analisa || [],
                         _originalGroup: group,
                     };
                 }
@@ -1172,6 +1341,7 @@ export default {
                     this.listData = data;
                     this.formulaAverages = formulaAverages;
                     this.informasiData = response.data.result.informasi;
+                    this.fetchBlobPhotos();
                 } else {
                     throw new Error(
                         "Respons API tidak valid atau data tidak ditemukan."
@@ -1338,6 +1508,9 @@ export default {
     },
     mounted() {
         this.fetchHasilAnalisaByJenisAnalisa();
+    },
+    beforeUnmount() {
+        this.hapusSemuaBlobMemori();
     },
 };
 </script>

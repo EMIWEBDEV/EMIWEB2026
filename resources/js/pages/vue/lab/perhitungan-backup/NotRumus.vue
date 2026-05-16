@@ -933,6 +933,7 @@
                                 <td
                                     v-for="param in selectedTemplating.parameter"
                                     :key="param.id_qc"
+                                    :data-label="param.nama_parameter"
                                 >
                                     <div
                                         v-if="param.type_inputan === 'Input'"
@@ -1557,38 +1558,50 @@
                     tindakan yang saya ambil dan memahami konsekuensinya
                 </label>
             </div>
+            <div v-if="Flag_Foto === 'Y'" class="mb-4">
+                <CameraCapture
+                    :storageKey="photoStorageKey"
+                    :sampleNumber="sampleNumber"
+                    @status-photo="handleStatusPhoto"
+                />
+            </div>
             <div class="form-actions" v-if="!isEditing">
-                <button
-                    :disabled="loading.saveToDatabase"
-                    class="action-button secondary"
-                    @click="submitAnalysisSementara"
-                    v-if="!dataSampel.length"
-                >
-                    <i class="fas fa-save"></i>
-                    {{
-                        loading.saveToDatabase
-                            ? "Loading..."
-                            : "Simpan As Draft"
-                    }}
-                </button>
-                <button
-                    :disabled="!isSubmitDone"
-                    class="action-button secondary"
-                    @click="submitAnalysisSementara"
-                    v-else
-                >
-                    <i class="fas fa-save"></i>
-                    {{
-                        loading.saveToDatabase
-                            ? "Loading..."
-                            : "Simpan As Draft"
-                    }}
-                </button>
+                <template v-if="Flag_Foto !== 'Y'">
+                    <button
+                        :disabled="loading.saveToDatabase"
+                        class="action-button secondary"
+                        @click="submitAnalysisSementara"
+                        v-if="!dataSampel.length"
+                    >
+                        <i class="fas fa-save"></i>
+                        {{
+                            loading.saveToDatabase
+                                ? "Loading..."
+                                : "Simpan As Draft"
+                        }}
+                    </button>
+
+                    <button
+                        :disabled="!isSubmitDone"
+                        class="action-button secondary"
+                        @click="submitAnalysisSementara"
+                        v-else
+                    >
+                        <i class="fas fa-save"></i>
+                        {{
+                            loading.saveToDatabase
+                                ? "Loading..."
+                                : "Simpan As Draft"
+                        }}
+                    </button>
+                </template>
+
                 <button
                     data-bs-toggle="modal"
                     data-bs-target="#myModalInformasiSubmit"
                     class="action-button primary"
                     v-if="!dataSampel.length"
+                    :disabled="Flag_Foto === 'Y' && !isPhotoCompleted"
                 >
                     <i class="fas fa-paper-plane"></i>
                     {{
@@ -1597,12 +1610,16 @@
                             : "Submit Analysis"
                     }}
                 </button>
+
                 <button
                     data-bs-toggle="modal"
                     data-bs-target="#myModalInformasiSubmit"
                     class="action-button primary"
                     v-else
-                    :disabled="!isSubmitDone"
+                    :disabled="
+                        !isSubmitDone ||
+                        (Flag_Foto === 'Y' && !isPhotoCompleted)
+                    "
                 >
                     <i class="fas fa-paper-plane"></i>
                     {{
@@ -1622,11 +1639,13 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import ApexChart from "vue3-apexcharts";
 import { evaluate, round } from "mathjs";
+import CameraCapture from "./components/HalamanFoto.vue";
 
 export default {
     components: {
         apexchart: ApexChart,
         DotLottieVue,
+        CameraCapture,
     },
     props: {
         selectedTemplating: Object,
@@ -1645,6 +1664,18 @@ export default {
         },
         Id_Jenis_Analisa: [Number, String],
         Id_Mesin: [Number, String],
+        Flag_Foto: {
+            type: [String, Number],
+            default: "T",
+        },
+        sampleNumber: {
+            type: [String, Number],
+            default: null,
+        },
+        kodeAnalisa: {
+            type: String,
+            default: null,
+        },
     },
     data() {
         return {
@@ -1731,6 +1762,9 @@ export default {
             deleteRowIndex: null,
             deleteNoSementara: null,
             hapuskey: "",
+
+            isPhotoCompleted: false,
+            photoList: [],
         };
     },
     watch: {
@@ -1746,6 +1780,14 @@ export default {
         this.fetchDraftData();
     },
     computed: {
+        photoStorageKey() {
+            const keyAnalisa = this.kodeAnalisa || this.Id_Jenis_Analisa;
+            const no_sub_sampel = this.No_Fak_Sub_Po || this.no_ticket || "";
+            if (this.is_multi_print === "Y") {
+                return `produksi_lab_photo_${this.sampleNumber}_${keyAnalisa}_${no_sub_sampel}_notRumus`;
+            }
+            return `produksi_lab_photo_${this.sampleNumber}_${keyAnalisa}_notRumus`;
+        },
         formattedCurrentDataSubmitAnalisa() {
             if (
                 !this.currentDataSubmitAnalisa ||
@@ -1908,7 +1950,6 @@ export default {
                 ];
             }
         },
-
         async fetchDraftData() {
             const isMulti = (this.is_multi_print || "").toString().trim();
             this.loading.currentDataSubmitAnalisa = true;
@@ -2038,7 +2079,6 @@ export default {
                 this.loading.dataTracking = false;
             }
         },
-
         getActivityStyle(jenis) {
             if (jenis === "save_draft") {
                 return {
@@ -2088,7 +2128,6 @@ export default {
             }
             return date.toISOString().split("T")[0];
         },
-
         initializeRows() {
             this.rows = [];
             if (this.selectedTemplating && this.selectedTemplating.parameter) {
@@ -2130,7 +2169,6 @@ export default {
             }
             this.rows.push(newRow);
         },
-
         unlockInput(rowIndex, id_qc) {
             this.isEditing = true;
             this.rows[rowIndex].lockedInputs[id_qc] = false;
@@ -2285,8 +2323,20 @@ export default {
                 return (0).toFixed(decimalPlaces); // Kembali ke nilai default jika ada error
             }
         },
-
+        handleStatusPhoto(photos) {
+            this.photoList = photos;
+            this.isPhotoCompleted = this.photoList.length > 0;
+        },
         async submitAnalysis() {
+            if (this.Flag_Foto === "Y" && !this.isPhotoCompleted) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Foto Wajib!",
+                    text: "Sesi ini mewajibkan Anda melampirkan minimal 1 foto hasil uji produk sebelum submit.",
+                });
+                return;
+            }
+
             this.loading.saveToDatabase = true;
 
             const isMulti = (this.is_multi_print || "").toString().trim();
@@ -2367,19 +2417,33 @@ export default {
                         ? "/uji-sampel/store-multi-qrcode-not-rumus-perhitungan"
                         : "/uji-sampel/store-not-rumus-not-multipleqr";
 
-                const response = await axios.post(
-                    endpoint,
-                    { analyses: payload },
-                    {
-                        headers: {
-                            "X-CSRF-TOKEN": document
-                                .querySelector('meta[name="csrf-token"]')
-                                ?.getAttribute("content"),
-                        },
-                    }
-                );
+                const formData = new FormData();
+                formData.append("flag_foto", this.Flag_Foto);
+                formData.append("analyses", JSON.stringify(payload));
+
+                if (this.Flag_Foto === "Y" && this.photoList.length > 0) {
+                    this.photoList.forEach((photo, index) => {
+                        formData.append(
+                            `photos[${index}]`,
+                            photo.file,
+                            photo.fileName
+                        );
+                        formData.append(`notes[${index}]`, photo.note || "");
+                    });
+                }
+                const response = await axios.post(endpoint, formData, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                        "X-CSRF-TOKEN": document
+                            .querySelector('meta[name="csrf-token"]')
+                            .getAttribute("content"),
+                    },
+                });
 
                 if (response.status === 201 && response.data.success) {
+                    if (this.Flag_Foto === "Y") {
+                        localStorage.removeItem(this.photoStorageKey);
+                    }
                     Swal.fire({
                         icon: "success",
                         title: "Berhasil",
@@ -2411,16 +2475,9 @@ export default {
                 this.loading.saveToDatabase = false;
             }
         },
-
         async submitAnalysisSementara() {
             this.loading.saveToDatabase = true;
             const isMulti = (this.is_multi_print || "").toString().trim();
-
-            if (isMulti === "Y") {
-                console.log("Masuk ke blok multi Y");
-            } else {
-                console.log("Masuk ke blok non-multi");
-            }
 
             for (const [index, row] of this.rows.entries()) {
                 const isAnyInputFilled = this.selectedTemplating.parameter.some(
@@ -2622,7 +2679,6 @@ export default {
                 this.loading.saveToDatabase = false;
             }
         },
-
         async updateAnalysisSementaraForDraft() {
             this.loading.editForDatabase = true;
 
@@ -2808,7 +2864,6 @@ export default {
                 this.loading.editForDatabase = false;
             }
         },
-
         async deleteAnalysisSementaraForDraft() {
             const rowIndex = this.deleteRowIndex;
             const nomorSementara = this.deleteNoSementara;
@@ -3032,7 +3087,6 @@ export default {
                 }
             }
         },
-
         checkDigit(event) {
             const allowedKeys = [
                 "Backspace",
@@ -3878,6 +3932,98 @@ export default {
 @media (min-width: 1200px) {
     .calculation-container {
         grid-template-columns: 2fr 1fr;
+    }
+}
+</style>
+
+<style>
+/* ==========================================================================
+   PERBAIKAN LAYOUT KHUSUS MOBILE (Max 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* 1. Paksa Tombol Atas Menjadi Susun Atas-Bawah */
+    .panel-body
+        > .analysis-table-container
+        > .d-flex.justify-content-between.p-2 {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        padding: 0 !important;
+        margin-bottom: 1rem !important;
+    }
+
+    .panel-body
+        > .analysis-table-container
+        > .d-flex.justify-content-between.p-2
+        button {
+        width: 100% !important;
+        padding: 10px !important;
+        font-size: 0.9rem !important;
+        margin: 0 !important;
+    }
+
+    /* 2. Perkecil Header (Judul & Subjudul) */
+    .panel-header {
+        padding: 1rem 0.5rem !important;
+        text-align: center;
+    }
+    .panel-header h2 {
+        font-size: 1.25rem !important;
+        justify-content: center;
+    }
+    .subtitle {
+        font-size: 0.85rem !important;
+        margin-bottom: 0;
+    }
+
+    /* 3. Rampingkan Kotak Alert (Peringatan & Info) */
+    .alert {
+        padding: 10px 12px !important;
+        font-size: 0.85rem !important;
+        line-height: 1.4 !important;
+        display: flex;
+        align-items: flex-start;
+    }
+    .alert .label-icon {
+        font-size: 1.2rem !important;
+        margin-top: 2px;
+    }
+    .alert-dismissible .btn-close {
+        padding: 10px !important;
+    }
+
+    /* 4. Rampingkan Card Input (Tabel yang jadi Card) */
+    .modern-analysis-table tr {
+        padding: 12px 10px !important;
+        margin-bottom: 1rem !important;
+        border-radius: 8px !important;
+    }
+
+    .modern-analysis-table td {
+        padding: 6px 0 !important;
+    }
+
+    .modern-analysis-table td::before {
+        font-size: 0.75rem !important;
+        margin-bottom: 4px !important;
+        color: #64748b;
+    }
+
+    /* 5. Perkecil Kolom Input/Select */
+    .input-container input,
+    .input-container select {
+        padding: 8px 10px !important;
+        font-size: 0.85rem !important;
+        height: auto !important;
+    }
+
+    /* 6. Perkecil Tombol Hapus / Bawah */
+    .modern-delete-btn {
+        width: 32px !important;
+        height: 32px !important;
+    }
+    .modern-delete-btn i {
+        font-size: 12px !important;
     }
 }
 </style>

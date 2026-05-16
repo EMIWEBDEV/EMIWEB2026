@@ -671,6 +671,13 @@
                     tindakan yang saya ambil dan memahami konsekuensinya
                 </label>
             </div>
+            <div v-if="Flag_Foto === 'Y'" class="mb-4">
+                <CameraCapture
+                    :storageKey="photoStorageKey"
+                    :sampleNumber="sampleNumber"
+                    @status-photo="handleStatusPhoto"
+                />
+            </div>
             <div class="form-actions" v-if="!isEditing">
                 <button
                     data-bs-toggle="modal"
@@ -710,11 +717,13 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import ApexChart from "vue3-apexcharts";
 import { evaluate, round } from "mathjs";
+import CameraCapture from "./components/HalamanFoto.vue";
 
 export default {
     components: {
         apexchart: ApexChart,
         DotLottieVue,
+        CameraCapture,
     },
     props: {
         selectedTemplating: Object,
@@ -733,6 +742,18 @@ export default {
         },
         Id_Jenis_Analisa: [Number, String],
         Id_Mesin: [Number, String],
+        Flag_Foto: {
+            type: [String, Number],
+            default: "T",
+        },
+        sampleNumber: {
+            type: [String, Number],
+            default: null,
+        },
+        kodeAnalisa: {
+            type: String,
+            default: null,
+        },
     },
     data() {
         return {
@@ -818,6 +839,8 @@ export default {
             deleteRowIndex: null,
             deleteNoSementara: null,
             hapuskey: "",
+            isPhotoCompleted: false,
+            photoList: [],
         };
     },
     watch: {
@@ -829,10 +852,15 @@ export default {
             immediate: true,
         },
     },
-    // mounted() {
-    //     this.fetchDraftData();
-    // },
     computed: {
+        photoStorageKey() {
+            const keyAnalisa = this.kodeAnalisa || this.Id_Jenis_Analisa;
+            const no_sub_sampel = this.No_Fak_Sub_Po || this.no_ticket || "";
+            if (this.is_multi_print === "Y") {
+                return `resampling_produksi_lab_photo_${this.sampleNumber}_${keyAnalisa}_${no_sub_sampel}_notRumus`;
+            }
+            return `resampling_produksi_lab_photo_${this.sampleNumber}_${keyAnalisa}_notRumus`;
+        },
         formattedCurrentDataSubmitAnalisa() {
             if (
                 !this.currentDataSubmitAnalisa ||
@@ -994,235 +1022,6 @@ export default {
                 ];
             }
         },
-        // async fetchDraftData() {
-        //     const isMulti = (this.is_multi_print || "").toString().trim();
-
-        //     if (isMulti === "Y") {
-        //         if (!this.No_Fak_Sub_Po) {
-        //             this.initializeRows();
-        //             return;
-        //         }
-        //         console.log("masuk di Y");
-
-        //         this.loading.currentDataSubmitAnalisa = true;
-        //         this.loading.dataTracking = true;
-        //         try {
-        //             const [
-        //                 response,
-        //                 currentDataHasilAnalisa,
-        //                 currentDataTracking,
-        //             ] = await Promise.all([
-        //                 axios.get(
-        //                     `/api/v1/detail/${this.No_Fak_Sub_Po}/multi-print/${this.Id_Jenis_Analisa}`
-        //                 ),
-        //                 axios.get(
-        //                     `/api/v1/detail-split/${this.No_Fak_Sub_Po}/multi-print/${this.Id_Jenis_Analisa}`
-        //                 ),
-        //                 axios.get(
-        //                     `/api/v1/tracking-detail/${this.No_Po_Sampel}/${this.No_Fak_Sub_Po}/multi-print/${this.Id_Jenis_Analisa}/analisa`
-        //                 ),
-        //             ]);
-
-        //             const hasilAnalisa =
-        //                 currentDataHasilAnalisa.data.result || [];
-        //             const draft = response.data.result?.is_draft;
-        //             const submitData = response.data.result?.is_submit || [];
-        //             const getDataTrackingCurrent =
-        //                 currentDataTracking.data.result || [];
-
-        //             this.currentDataSubmitAnalisa = hasilAnalisa;
-        //             this.dataSampel = submitData;
-        //             this.rawData = submitData;
-        //             this.dataTracking = getDataTrackingCurrent;
-
-        //             if (Array.isArray(draft) && draft.length > 0) {
-        //                 this.rows = draft.map((groupItem) => {
-        //                     const newRow = {
-        //                         inputValues: {},
-        //                         formulaResults: {},
-        //                         lockedInputs: {},
-        //                         draftDetails: {},
-        //                         hasilDraft: {}, // ✅ untuk menyimpan No_Urut & No_Sementara per rumus
-        //                     };
-
-        //                     const parameterList = groupItem.parameter || [];
-
-        //                     this.selectedTemplating.parameter.forEach(
-        //                         (param) => {
-        //                             const detailItem = parameterList.find(
-        //                                 (d) =>
-        //                                     d.Id_Quality_Control === param.id_qc
-        //                             );
-
-        //                             if (detailItem) {
-        //                                 newRow.inputValues[param.id_qc] =
-        //                                     detailItem.Value_Parameter;
-        //                                 newRow.draftDetails[param.id_qc] =
-        //                                     detailItem;
-        //                                 newRow.lockedInputs[param.id_qc] =
-        //                                     detailItem.Value_Parameter !== null;
-        //                             } else {
-        //                                 newRow.inputValues[param.id_qc] = null;
-        //                                 newRow.draftDetails[param.id_qc] = null;
-        //                                 newRow.lockedInputs[
-        //                                     param.id_qc
-        //                                 ] = false;
-        //                             }
-        //                         }
-        //                     );
-
-        //                     return newRow;
-        //                 });
-
-        //                 this.rows.forEach((_, index) =>
-        //                     this.calculateAllFormulas(index)
-        //                 );
-        //             } else {
-        //                 this.initializeRows();
-        //             }
-        //         } catch (error) {
-        //             console.log(error);
-        //             this.currentDataSubmitAnalisa = [];
-        //             this.dataSampel = [];
-        //             this.rawData = [];
-        //             this.dataTracking = [];
-        //             Swal.fire(
-        //                 "Error",
-        //                 "Gagal memuat data draft dari server.",
-        //                 "error"
-        //             );
-        //             this.initializeRows();
-        //         } finally {
-        //             this.loading.currentDataSubmitAnalisa = false;
-        //             this.loading.dataTracking = false;
-        //         }
-        //     } else {
-        //         console.log("gagal?");
-        //         if (!this.No_Po_Sampel) {
-        //             this.initializeRows();
-        //             return;
-        //         }
-
-        //         this.loading.currentDataSubmitAnalisa = true;
-        //         this.loading.dataTracking = true;
-
-        //         try {
-        //             const [
-        //                 response,
-        //                 currentDataHasilAnalisa,
-        //                 currentDataTracking,
-        //             ] = await Promise.all([
-        //                 axios.get(
-        //                     `/api/v1/${this.No_Po_Sampel}/no-multi/${this.Id_Jenis_Analisa}`
-        //                 ),
-        //                 axios.get(
-        //                     `/api/v1/detail-split/${this.No_Po_Sampel}/not-rumus-noqr/${this.Id_Jenis_Analisa}`
-        //                 ),
-        //                 axios.get(
-        //                     `/api/v1/tracking-detail/not-print/${this.No_Po_Sampel}/${this.Id_Jenis_Analisa}/analisa`
-        //                 ),
-        //             ]);
-
-        //             const hasilAnalisa =
-        //                 currentDataHasilAnalisa.data.result || [];
-        //             const resultDraft = response.data.result;
-        //             const draft = resultDraft?.is_draft || [];
-        //             const submitData = resultDraft?.is_submit || [];
-
-        //             const getDataTrackingCurrent =
-        //                 currentDataTracking.data.result || [];
-
-        //             this.currentDataSubmitAnalisa = hasilAnalisa;
-        //             this.dataSampel = submitData;
-        //             this.rawData = submitData;
-        //             this.dataTracking = getDataTrackingCurrent;
-
-        //             if (Array.isArray(draft) && draft.length > 0) {
-        //                 this.rows = draft.map((groupItem) => {
-        //                     const newRow = {
-        //                         inputValues: {},
-        //                         formulaResults: {},
-        //                         lockedInputs: {},
-        //                         draftDetails: {},
-        //                         hasilDraft: {}, // ✅ untuk menyimpan No_Urut & No_Sementara per rumus
-        //                     };
-
-        //                     const parameterList = groupItem.parameter || [];
-        //                     const hasilList = groupItem.hasil || [];
-
-        //                     this.selectedTemplating.parameter.forEach(
-        //                         (param) => {
-        //                             const detailItem = parameterList.find(
-        //                                 (d) =>
-        //                                     d.Id_Quality_Control === param.id_qc
-        //                             );
-
-        //                             if (detailItem) {
-        //                                 newRow.inputValues[param.id_qc] =
-        //                                     detailItem.Value_Parameter;
-        //                                 newRow.draftDetails[param.id_qc] =
-        //                                     detailItem;
-        //                                 newRow.lockedInputs[param.id_qc] =
-        //                                     detailItem.Value_Parameter !== null;
-        //                             } else {
-        //                                 newRow.inputValues[param.id_qc] = null;
-        //                                 newRow.draftDetails[param.id_qc] = null;
-        //                                 newRow.lockedInputs[
-        //                                     param.id_qc
-        //                                 ] = false;
-        //                             }
-        //                         }
-        //                     );
-
-        //                     // this.selectedTemplating.formula.forEach(
-        //                     //     (formula) => {
-        //                     //         const hasil = hasilList.find(
-        //                     //             (h) => h.Rumus === formula.rumus
-        //                     //         );
-        //                     //         newRow.formulaResults[formula.rumus] = hasil
-        //                     //             ? hasil.Hasil_Perhitungan || 0
-        //                     //             : 0;
-
-        //                     //         newRow.hasilDraft[formula.rumus] = hasil
-        //                     //             ? {
-        //                     //                   No_Urut: hasil.No_Urut ?? null, // ⛔️ tidak pakai fallback groupItem.No_Urut
-        //                     //                   No_Sementara:
-        //                     //                       hasil.No_Sementara ?? null,
-        //                     //               }
-        //                     //             : {
-        //                     //                   No_Urut: null,
-        //                     //                   No_Sementara: null,
-        //                     //               };
-        //                     //     }
-        //                     // );
-
-        //                     return newRow;
-        //                 });
-
-        //                 this.rows.forEach((_, index) =>
-        //                     this.calculateAllFormulas(index)
-        //                 );
-        //             } else {
-        //                 this.initializeRows();
-        //             }
-        //         } catch (error) {
-        //             console.error("Gagal memuat data non-multi-print:", error);
-        //             this.currentDataSubmitAnalisa = [];
-        //             this.dataSampel = [];
-        //             this.rawData = [];
-        //             this.dataTracking = [];
-        //             Swal.fire(
-        //                 "Error",
-        //                 "Gagal memuat data draft dari server.",
-        //                 "error"
-        //             );
-        //             this.initializeRows();
-        //         } finally {
-        //             this.loading.currentDataSubmitAnalisa = false;
-        //             this.loading.dataTracking = false;
-        //         }
-        //     }
-        // },
         getActivityStyle(jenis) {
             if (jenis === "save_draft") {
                 return {
@@ -1467,8 +1266,20 @@ export default {
                 return (0).toFixed(decimalPlaces); // Kembali ke nilai default jika ada error
             }
         },
-
+        handleStatusPhoto(photos) {
+            this.photoList = photos;
+            this.isPhotoCompleted = this.photoList.length > 0;
+        },
         async submitAnalysis() {
+            if (this.Flag_Foto === "Y" && !this.isPhotoCompleted) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Foto Wajib!",
+                    text: "Sesi ini mewajibkan Anda melampirkan minimal 1 foto hasil uji produk sebelum submit.",
+                });
+                return;
+            }
+
             this.loading.saveToDatabase = true;
 
             const isMulti = (this.is_multi_print || "").toString().trim();
@@ -1549,19 +1360,34 @@ export default {
                         ? "/api/v1/uji-sampel/store-multi-qrcode-not-rumus-perhitungan/resampling"
                         : "/uji-sampel/store-not-rumus-not-multipleqr/resampling";
 
-                const response = await axios.post(
-                    endpoint,
-                    { analyses: payload },
-                    {
-                        headers: {
-                            "X-CSRF-TOKEN": document
-                                .querySelector('meta[name="csrf-token"]')
-                                ?.getAttribute("content"),
-                        },
-                    }
-                );
+                const formData = new FormData();
+                formData.append("flag_foto", this.Flag_Foto);
+                formData.append("analyses", JSON.stringify(payload));
+                if (this.Flag_Foto === "Y" && this.photoList.length > 0) {
+                    this.photoList.forEach((photo, index) => {
+                        formData.append(
+                            `photos[${index}]`,
+                            photo.file,
+                            photo.fileName
+                        );
+                        formData.append(`notes[${index}]`, photo.note || "");
+                    });
+                }
+
+                const response = await axios.post(endpoint, formData, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                        "X-CSRF-TOKEN": document
+                            .querySelector('meta[name="csrf-token"]')
+                            .getAttribute("content"),
+                    },
+                });
 
                 if (response.status === 201 && response.data.success) {
+                    if (this.Flag_Foto === "Y") {
+                        localStorage.removeItem(this.photoStorageKey);
+                    }
+
                     Swal.fire({
                         icon: "success",
                         title: "Berhasil",
@@ -3059,6 +2885,98 @@ export default {
 @media (min-width: 1200px) {
     .calculation-container {
         grid-template-columns: 2fr 1fr;
+    }
+}
+</style>
+
+<style>
+/* ==========================================================================
+   PERBAIKAN LAYOUT KHUSUS MOBILE (Max 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* 1. Paksa Tombol Atas Menjadi Susun Atas-Bawah */
+    .panel-body
+        > .analysis-table-container
+        > .d-flex.justify-content-between.p-2 {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        padding: 0 !important;
+        margin-bottom: 1rem !important;
+    }
+
+    .panel-body
+        > .analysis-table-container
+        > .d-flex.justify-content-between.p-2
+        button {
+        width: 100% !important;
+        padding: 10px !important;
+        font-size: 0.9rem !important;
+        margin: 0 !important;
+    }
+
+    /* 2. Perkecil Header (Judul & Subjudul) */
+    .panel-header {
+        padding: 1rem 0.5rem !important;
+        text-align: center;
+    }
+    .panel-header h2 {
+        font-size: 1.25rem !important;
+        justify-content: center;
+    }
+    .subtitle {
+        font-size: 0.85rem !important;
+        margin-bottom: 0;
+    }
+
+    /* 3. Rampingkan Kotak Alert (Peringatan & Info) */
+    .alert {
+        padding: 10px 12px !important;
+        font-size: 0.85rem !important;
+        line-height: 1.4 !important;
+        display: flex;
+        align-items: flex-start;
+    }
+    .alert .label-icon {
+        font-size: 1.2rem !important;
+        margin-top: 2px;
+    }
+    .alert-dismissible .btn-close {
+        padding: 10px !important;
+    }
+
+    /* 4. Rampingkan Card Input (Tabel yang jadi Card) */
+    .modern-analysis-table tr {
+        padding: 12px 10px !important;
+        margin-bottom: 1rem !important;
+        border-radius: 8px !important;
+    }
+
+    .modern-analysis-table td {
+        padding: 6px 0 !important;
+    }
+
+    .modern-analysis-table td::before {
+        font-size: 0.75rem !important;
+        margin-bottom: 4px !important;
+        color: #64748b;
+    }
+
+    /* 5. Perkecil Kolom Input/Select */
+    .input-container input,
+    .input-container select {
+        padding: 8px 10px !important;
+        font-size: 0.85rem !important;
+        height: auto !important;
+    }
+
+    /* 6. Perkecil Tombol Hapus / Bawah */
+    .modern-delete-btn {
+        width: 32px !important;
+        height: 32px !important;
+    }
+    .modern-delete-btn i {
+        font-size: 12px !important;
     }
 }
 </style>

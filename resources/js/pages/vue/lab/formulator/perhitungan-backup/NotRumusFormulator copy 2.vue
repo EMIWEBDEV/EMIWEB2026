@@ -1,710 +1,120 @@
 <template>
     <div class="form-panel modern-form">
         <div class="panel-header">
-            <h2><i class="fas fa-flask me-2"></i> Sample Analysis</h2>
-            <p class="subtitle">Masukkan hasil analisis rinci untuk sampel</p>
-        </div>
-        <div
-            v-if="loading.currentDataSubmitAnalisa"
-            class="text-center loading-state"
-        >
-            <div class="d-flex justify-content-center py-4 loading-spinner">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Memuat...</span>
-                </div>
-            </div>
+            <h2>
+                <i class="fas fa-camera retro-icon me-2"></i> Dokumentasi
+                Analisa
+            </h2>
+            <p class="subtitle">Lampirkan foto dokumentasi untuk sampel</p>
         </div>
 
-        <div class="panel-body" v-else>
-            <div class="analysis-table-container">
-                <div class="mb-3 mt-2 d-flex justify-content-between p-2">
-                    <button
-                        @click="addRow"
-                        class="btn btn-primary"
-                        v-if="!dataSampel.length"
-                    >
-                        <i class="fas fa-plus"></i> Tambah Baris
-                    </button>
-                    <button
-                        @click="addRow"
-                        class="btn btn-primary"
-                        v-else
-                        :disabled="!isSubmitDone"
-                    >
-                        <i class="fas fa-plus"></i> Tambah Baris
-                    </button>
-                </div>
-
-                <div class="table-scroll-wrapper">
-                    <table class="modern-analysis-table">
-                        <thead>
-                            <tr>
-                                <th
-                                    v-for="param in selectedTemplating.parameter"
-                                    :key="param.id_qc"
-                                >
-                                    {{ param.nama_parameter }}
-                                </th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(row, rowIndex) in rows" :key="rowIndex">
-                                <td
-                                    v-for="param in selectedTemplating.parameter"
-                                    :key="param.id_qc"
-                                >
-                                    <div
-                                        v-if="param.type_inputan === 'Input'"
-                                        class="input-container"
-                                    >
-                                        <input
-                                            :id="
-                                                'input-' +
-                                                rowIndex +
-                                                '-' +
-                                                param.id_qc
-                                            "
-                                            type="text"
-                                            inputmode="decimal"
-                                            class="form-control"
-                                            :class="{
-                                                'is-editing':
-                                                    !row.lockedInputs[
-                                                        param.id_qc
-                                                    ] &&
-                                                    row.draftDetails[
-                                                        param.id_qc
-                                                    ] &&
-                                                    row.draftDetails[
-                                                        param.id_qc
-                                                    ].Value_Parameter !== null,
-                                            }"
-                                            :step="'any'"
-                                            :pattern="'[0-9]+([.][0-9]+)?'"
-                                            :placeholder="param.nama_parameter"
-                                            v-model="
-                                                row.inputValues[param.id_qc]
-                                            "
-                                            @input="handleInputChange(rowIndex)"
-                                            @keydown="checkDigit"
-                                            @paste="handlePaste"
-                                            :readonly="
-                                                row.lockedInputs[param.id_qc]
-                                            "
-                                            required
-                                        />
-
-                                        <div class="input-actions">
-                                            <button
-                                                v-if="
-                                                    row.lockedInputs[
-                                                        param.id_qc
-                                                    ]
-                                                "
-                                                @click="
-                                                    unlockInput(
-                                                        rowIndex,
-                                                        param.id_qc
-                                                    )
-                                                "
-                                                class="btn-action-icon btn-edit"
-                                                data-tooltip="Update Nilai"
-                                            >
-                                                <i
-                                                    class="fas fa-pencil-alt fa-sm"
-                                                ></i>
-                                            </button>
-
-                                            <div
-                                                class="button-group"
-                                                v-if="
-                                                    !row.lockedInputs[
-                                                        param.id_qc
-                                                    ] &&
-                                                    row.draftDetails[
-                                                        param.id_qc
-                                                    ] &&
-                                                    row.draftDetails[
-                                                        param.id_qc
-                                                    ].Value_Parameter !== null
-                                                "
-                                            >
-                                                <button
-                                                    @click="
-                                                        saveChange(
-                                                            rowIndex,
-                                                            param.id_qc
-                                                        )
-                                                    "
-                                                    class="btn-action-icon btn-glamor"
-                                                    data-tooltip="Simpan"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#myModalEdit"
-                                                >
-                                                    <i
-                                                        class="fas fa-check fa-sm"
-                                                    ></i>
-                                                </button>
-                                                <button
-                                                    @click="
-                                                        cancelChange(
-                                                            rowIndex,
-                                                            param.id_qc
-                                                        )
-                                                    "
-                                                    class="btn-action-icon btn-cancel"
-                                                    data-tooltip="Batal"
-                                                >
-                                                    <i
-                                                        class="fas fa-times fa-sm"
-                                                    ></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div
-                                        v-else-if="
-                                            param.type_inputan === 'Switch'
-                                        "
-                                        class="input-container"
-                                    >
-                                        <select
-                                            :id="
-                                                'input-' +
-                                                rowIndex +
-                                                '-' +
-                                                param.id_qc
-                                            "
-                                            class="form-control"
-                                            :class="{
-                                                'is-editing':
-                                                    !row.lockedInputs[
-                                                        param.id_qc
-                                                    ] &&
-                                                    row.draftDetails[
-                                                        param.id_qc
-                                                    ] &&
-                                                    row.draftDetails[
-                                                        param.id_qc
-                                                    ].Value_Parameter !== null,
-                                            }"
-                                            v-model="
-                                                row.inputValues[param.id_qc]
-                                            "
-                                            @change="
-                                                handleInputChange(rowIndex)
-                                            "
-                                            :disabled="
-                                                row.lockedInputs[param.id_qc]
-                                            "
-                                        >
-                                            <option
-                                                :value="null"
-                                                disabled
-                                                hidden
-                                            >
-                                                Pilih Hasil
-                                                {{ param.nama_parameter }}
-                                            </option>
-                                            <option
-                                                v-for="(
-                                                    opt, idx
-                                                ) in param.option"
-                                                :key="idx"
-                                                :value="opt.value"
-                                            >
-                                                {{ opt.label }}
-                                            </option>
-                                        </select>
-
-                                        <div class="input-actions">
-                                            <button
-                                                v-if="
-                                                    row.lockedInputs[
-                                                        param.id_qc
-                                                    ]
-                                                "
-                                                @click="
-                                                    unlockInput(
-                                                        rowIndex,
-                                                        param.id_qc
-                                                    )
-                                                "
-                                                class="btn-action-icon btn-edit"
-                                                data-tooltip="Update Nilai"
-                                                type="button"
-                                            >
-                                                <i
-                                                    class="fas fa-pencil-alt fa-sm"
-                                                ></i>
-                                            </button>
-
-                                            <div
-                                                class="button-group"
-                                                v-if="
-                                                    !row.lockedInputs[
-                                                        param.id_qc
-                                                    ] &&
-                                                    row.draftDetails[
-                                                        param.id_qc
-                                                    ] &&
-                                                    row.draftDetails[
-                                                        param.id_qc
-                                                    ].Value_Parameter !== null
-                                                "
-                                            >
-                                                <button
-                                                    @click="
-                                                        saveChange(
-                                                            rowIndex,
-                                                            param.id_qc
-                                                        )
-                                                    "
-                                                    class="btn-action-icon btn-glamor"
-                                                    data-tooltip="Simpan"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#myModalEdit"
-                                                    type="button"
-                                                >
-                                                    <i
-                                                        class="fas fa-check fa-sm"
-                                                    ></i>
-                                                </button>
-                                                <button
-                                                    @click="
-                                                        cancelChange(
-                                                            rowIndex,
-                                                            param.id_qc
-                                                        )
-                                                    "
-                                                    class="btn-action-icon btn-cancel"
-                                                    data-tooltip="Batal"
-                                                    type="button"
-                                                >
-                                                    <i
-                                                        class="fas fa-times fa-sm"
-                                                    ></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div v-if="!isEditing">
-                                        <button
-                                            @click="removeRow(rowIndex)"
-                                            class="modern-delete-btn"
-                                            v-if="
-                                                Object.keys(row.draftDetails)
-                                                    .length > 0 ||
-                                                rows.length > 1
-                                            "
-                                            aria-label="Delete row"
-                                        >
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div
-                    id="myModalEdit"
-                    class="modal fade"
-                    tabindex="-1"
-                    aria-labelledby="myModalLabel"
-                    aria-hidden="true"
-                    style="display: none"
-                    data-bs-backdrop="static"
-                >
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="myModalLabel">
-                                    Form Konfirmasi Keterangan
-                                </h5>
-                            </div>
-                            <div class="modal-body">
-                                <div class="mb-3">
-                                    <label class="form-label"
-                                        >Alasan Mengubah Hasil Analisa
-                                        <small class="text-danger"
-                                            >*</small
-                                        ></label
-                                    >
-                                    <textarea
-                                        v-model="reasonForChange"
-                                        rows="5"
-                                        class="form-control"
-                                        placeholder="Masukan Alasan Mengubah Nilai Analisa...."
-                                    ></textarea>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button
-                                    type="button"
-                                    class="btn btn-light"
-                                    data-bs-dismiss="modal"
-                                    :disabled="loading.editForDatabase"
-                                    @click="isEditing = false"
-                                >
-                                    Batal
-                                </button>
-                                <button
-                                    :disabled="loading.editForDatabase"
-                                    type="button"
-                                    class="btn btn-primary"
-                                    @click="
-                                        updateAnalysisSementaraForDraft(
-                                            editingRowIndex,
-                                            editingParamIdQc
-                                        )
-                                    "
-                                >
-                                    {{
-                                        loading.saveToDatabase
-                                            ? "Loading..."
-                                            : " Update Analisa "
-                                    }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div
-                    id="myModalHapus"
-                    class="modal zoomIn"
-                    tabindex="-1"
-                    aria-labelledby="myModalLabel"
-                    aria-hidden="true"
-                    style="display: none"
-                    data-bs-backdrop="static"
-                >
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="myModalLabel">
-                                    Form Konfirmasi Keterangan
-                                </h5>
-                            </div>
-                            <div class="modal-body">
-                                <div class="mb-3">
-                                    <label class="form-label"
-                                        >Alasan Menghapus Hasil Analisa
-                                        <small class="text-danger"
-                                            >*</small
-                                        ></label
-                                    >
-                                    <textarea
-                                        v-model="reasonForChange"
-                                        rows="5"
-                                        class="form-control"
-                                        placeholder="Masukan Alasan Menghapus Nilai Analisa...."
-                                    ></textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label"
-                                        >Untuk konfirmasi, Ketik
-                                        <strong class="text-danger"
-                                            >delete/hasil-analisa</strong
-                                        >
-                                        di bawah ini
-                                    </label>
-                                    <input
-                                        type="text"
-                                        class="form-control"
-                                        placeholder="Ketikan Atau Copy Yang Tulisan Warna Merah..."
-                                        v-model="hapuskey"
-                                    />
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button
-                                    type="button"
-                                    class="btn btn-light"
-                                    data-bs-dismiss="modal"
-                                    @click="clearModalHapus"
-                                    :disabled="loading.deleteForDatabase"
-                                >
-                                    Batal
-                                </button>
-                                <button
-                                    type="button"
-                                    class="btn btn-danger"
-                                    :disabled="loading.deleteForDatabase"
-                                    @click="deleteAnalysisSementaraForDraft"
-                                >
-                                    {{
-                                        loading.deleteForDatabase
-                                            ? "Loading..."
-                                            : "Hapus Analisa"
-                                    }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div
-                id="myModalInformasiSubmit"
-                class="modal fade"
-                tabindex="-1"
-                aria-labelledby="myModalLabel"
-                aria-hidden="true"
-                style="display: none"
-                data-bs-backdrop="static"
-            >
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">
-                                Konfirmasi dan Pernyataan Tanggung Jawab
-                            </h5>
-                            <button
-                                type="button"
-                                class="btn-close btn-close-white"
-                                data-bs-dismiss="modal"
-                                aria-label="Close"
-                            ></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="container-fluid">
-                                <!-- Animasi Peringatan -->
-                                <div class="d-flex justify-content-center mb-4">
-                                    <DotLottieVue
-                                        style="height: 150px; width: 300px"
-                                        autoplay
-                                        loop
-                                        src="/animation/warning-submit.json"
-                                    />
-                                </div>
-
-                                <!-- Informasi Penting -->
-                                <div
-                                    class="informasi-konfirmasi"
-                                    style="
-                                        max-height: 400px;
-                                        overflow-y: auto;
-                                        padding: 10px;
-                                        border: 1px solid #eee;
-                                        border-radius: 5px;
-                                    "
-                                >
-                                    <h6 class="text-danger">
-                                        PERHATIAN: Harap baca seluruh informasi
-                                        berikut sebelum melanjutkan
-                                    </h6>
-
-                                    <div class="mb-3">
-                                        <h6>1. Tanggung Jawab Analisis</h6>
-                                        <p>
-                                            Dengan menekan tombol "Submit
-                                            Analysis", Anda menyatakan bahwa:
-                                        </p>
-                                        <ul>
-                                            <li>
-                                                Anda bertanggung jawab penuh
-                                                atas semua hasil analisa ini
-                                            </li>
-                                            <li>
-                                                Data yang digunakan telah
-                                                diverifikasi kebenarannya
-                                            </li>
-                                            <li>
-                                                Parameter yang dimasukkan telah
-                                                sesuai dengan ketentuan
-                                            </li>
-                                            <li>
-                                                Anda memahami implikasi dari
-                                                hasil analisa ini
-                                            </li>
-                                        </ul>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <h6>2. Proses Analisis Sistem</h6>
-                                        <p>
-                                            Analisis ini menggunakan perhitungan
-                                            otomatis dengan ketentuan:
-                                        </p>
-                                        <ul>
-                                            <li>
-                                                Rumus perhitungan telah
-                                                ditetapkan oleh sistem
-                                            </li>
-                                            <li>
-                                                Perhitungan dilakukan secara
-                                                real-time seperti Excel
-                                            </li>
-                                            <li>
-                                                Hasil bergantung pada parameter
-                                                yang dimasukkan
-                                            </li>
-                                            <li>
-                                                Sistem tidak bertanggung jawab
-                                                atas kesalahan input data
-                                            </li>
-                                        </ul>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <h6>3. Keterbatasan Analisis</h6>
-                                        <p>
-                                            Analisis ini memiliki beberapa
-                                            keterbatasan:
-                                        </p>
-                                        <ul>
-                                            <li>
-                                                Hasil hanya seakurat data yang
-                                                dimasukkan
-                                            </li>
-                                            <li>
-                                                Tidak memperhitungkan faktor
-                                                eksternal yang tidak terukur
-                                            </li>
-                                            <li>
-                                                Interval kepercayaan berdasarkan
-                                                asumsi distribusi normal
-                                            </li>
-                                            <li>
-                                                Perlu verifikasi manual untuk
-                                                kasus khusus
-                                            </li>
-                                        </ul>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <h6>4. Penggunaan Hasil</h6>
-                                        <p>Hasil analisis ini:</p>
-                                        <ul>
-                                            <li>
-                                                Hanya untuk tujuan pengambilan
-                                                keputusan pendukung
-                                            </li>
-                                            <li>
-                                                Bukan merupakan jaminan mutlak
-                                            </li>
-                                            <li>
-                                                Harus diinterpretasikan oleh
-                                                profesional terkait
-                                            </li>
-                                            <li>
-                                                Tidak menggantikan analisis
-                                                komprehensif
-                                            </li>
-                                        </ul>
-                                    </div>
-
-                                    <!-- Checkbox Konfirmasi -->
-                                    <div class="form-check mt-4">
-                                        <input
-                                            class="form-check-input"
-                                            type="checkbox"
-                                            id="modalConfirmCheckbox"
-                                            v-model="modalConfirmed"
-                                            required
-                                        />
-                                        <label
-                                            class="form-check-label fw-bold"
-                                            for="modalConfirmCheckbox"
-                                        >
-                                            Saya telah membaca dan memahami
-                                            semua informasi di atas, dan
-                                            bertanggung jawab penuh atas hasil
-                                            analisis ini.
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button
-                                type="button"
-                                class="btn btn-light"
-                                data-bs-dismiss="modal"
-                                @click="modalConfirmed = false"
-                            >
-                                <i class="fas fa-times me-2"></i>Tutup
-                            </button>
-                            <button
-                                :disabled="
-                                    !modalConfirmed || loading.saveToDatabase
-                                "
-                                @click="
-                                    modalConfirmed ? submitAnalysis() : null
-                                "
-                                class="btn btn-primary"
-                                :class="{ 'disabled-opacity': !modalConfirmed }"
-                            >
-                                <i class="fas fa-paper-plane me-2"></i>
-                                {{
-                                    loading.saveToDatabase
-                                        ? "Loading..."
-                                        : "Submit Analysis"
-                                }}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-check mt-4" v-if="dataSampel.length">
-                <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="modalConfirmCheckbox"
-                    v-model="isSubmitDone"
-                    required
-                />
-                <label
-                    class="form-check-label fw-bold"
-                    for="modalConfirmCheckbox"
-                >
-                    Saya Ingin Menambahkan Analisa Lagi, Memang Benar Data
-                    Analisa Sebelumnya Pernah Di Submit. Namun Ada Data Lagi
-                    Yang Harus Di submit. Dan Saya bertanggung Jawab Atas
-                    tindakan yang saya ambil dan memahami konsekuensinya
-                </label>
-            </div>
-            <div v-if="Flag_Foto === 'Y'" class="mb-4">
-                <CameraCapture
-                    :storageKey="photoStorageKey"
-                    :sampleNumber="sampleNumber"
-                    @status-photo="handleStatusPhoto"
-                />
-            </div>
-            <div class="form-actions" v-if="!isEditing">
-                <button
-                    data-bs-toggle="modal"
-                    data-bs-target="#myModalInformasiSubmit"
-                    class="action-button primary"
-                    v-if="!dataSampel.length"
-                >
-                    <i class="fas fa-paper-plane"></i>
-                    {{
-                        loading.saveToDatabase
-                            ? "Loading..."
-                            : "Submit Analysis"
-                    }}
+        <div class="panel-body">
+            <div class="mb-3 mt-2 d-flex justify-content-between p-2">
+                <button @click="addRow" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Tambah Baris
                 </button>
-                <button
-                    data-bs-toggle="modal"
-                    data-bs-target="#myModalInformasiSubmit"
-                    class="action-button primary"
-                    v-else
-                    :disabled="!isSubmitDone"
+            </div>
+
+            <div class="table-scroll-wrapper">
+                <table
+                    class="modern-analysis-table text-center align-middle w-100"
                 >
-                    <i class="fas fa-paper-plane"></i>
-                    {{
-                        loading.saveToDatabase
-                            ? "Loading..."
-                            : "Submit Analysis"
-                    }}
+                    <thead class="table-light text-sm">
+                        <tr>
+                            <th style="width: 50px">No</th>
+                            <!-- Set Keterangan dan Gambar masing-masing 50% -->
+                            <th style="width: 50%">Keterangan (Opsional)</th>
+                            <th style="width: 50%">Gambar</th>
+                            <th style="width: 1%; white-space: nowrap">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(row, index) in rows" :key="index">
+                            <td>{{ index + 1 }}</td>
+
+                            <!-- Hapus batasan 100px, biarkan mengikuti 50% dari <th> -->
+                            <td>
+                                <div class="input-container w-100">
+                                    <textarea
+                                        v-model="row.keterangan"
+                                        class="form-control w-100"
+                                        rows="4"
+                                        style="resize: none"
+                                        placeholder="Masukkan keterangan di sini..."
+                                    ></textarea>
+                                </div>
+                            </td>
+
+                            <td class="p-2">
+                                <div
+                                    v-if="row.gambar"
+                                    class="d-flex justify-content-center w-100"
+                                >
+                                    <img
+                                        :src="row.gambar"
+                                        class="img-fluid rounded shadow-sm"
+                                        style="
+                                            width: 100%;
+                                            max-height: 300px;
+                                            object-fit: contain;
+                                            background-color: #f4f5f7;
+                                        "
+                                    />
+                                </div>
+                                <div
+                                    v-else
+                                    class="w-100 p-4 border rounded bg-light"
+                                    style="
+                                        border-style: dashed !important;
+                                        border-color: #ced4da !important;
+                                    "
+                                >
+                                    <i
+                                        class="fas fa-image fs-2 text-muted mb-2"
+                                    ></i>
+                                    <div class="text-muted small">
+                                        Belum ada gambar
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td style="width: 1%; white-space: nowrap">
+                                <div
+                                    class="d-flex justify-content-center gap-2"
+                                >
+                                    <button
+                                        @click="triggerCamera(index)"
+                                        class="btn-action-icon btn-glamor"
+                                        data-tooltip="Ambil Foto"
+                                    >
+                                        <i class="fas fa-camera fa-sm"></i>
+                                    </button>
+                                    <button
+                                        v-if="row.gambar"
+                                        @click="hapusFoto(index)"
+                                        class="btn-action-icon btn-cancel"
+                                        data-tooltip="Hapus Foto"
+                                    >
+                                        <i class="fas fa-trash fa-sm"></i>
+                                    </button>
+                                    <button
+                                        v-if="!row.gambar"
+                                        @click="hapusBaris(index)"
+                                        class="btn-action-icon btn-cancel"
+                                        data-tooltip="Hapus Baris"
+                                    >
+                                        <i class="fas fa-times fa-sm"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="form-actions mt-4">
+                <button class="action-button primary" @click="submitData">
+                    <i class="fas fa-save me-2"></i> Simpan Dokumentasi
                 </button>
             </div>
         </div>
@@ -827,20 +237,22 @@ export default {
                     },
                 },
             },
-
             isEditing: false,
             isSubmitDone: false,
 
+            // update
             editingRowIndex: null,
             editingParamIdQc: null,
             editingNoUrut: null,
             reasonForChange: "",
 
+            // DELETE
             deleteRowIndex: null,
             deleteNoSementara: null,
             hapuskey: "",
 
             isPhotoCompleted: false,
+            photoList: [],
         };
     },
     watch: {
@@ -852,15 +264,17 @@ export default {
             immediate: true,
         },
     },
-
+    mounted() {
+        this.fetchDraftData();
+    },
     computed: {
         photoStorageKey() {
             const keyAnalisa = this.kodeAnalisa || this.Id_Jenis_Analisa;
             const no_sub_sampel = this.No_Fak_Sub_Po || this.no_ticket || "";
             if (this.is_multi_print === "Y") {
-                return `lab_photo_${this.sampleNumber}_${keyAnalisa}_${no_sub_sampel}_notRumus_resampling`;
+                return `lab_photo_${this.sampleNumber}_${keyAnalisa}_${no_sub_sampel}_notRumus`;
             }
-            return `lab_photo_${this.sampleNumber}_${keyAnalisa}_notRumus_resampling`;
+            return `lab_photo_${this.sampleNumber}_${keyAnalisa}_notRumus`;
         },
         formattedCurrentDataSubmitAnalisa() {
             if (
@@ -869,7 +283,6 @@ export default {
             ) {
                 return [];
             }
-
             const sourceData = this.currentDataSubmitAnalisa[0];
             const numParamsInTemplate =
                 this.selectedTemplating?.parameter?.length ?? 0;
@@ -906,7 +319,7 @@ export default {
                     const results = log.hasil || [];
 
                     const normalizedParams = parameters.map((param) => ({
-                        Value_Parameter: param?.Value_Parameter ?? null, // Ganti 0 dengan null agar lebih jelas jika data kosong
+                        Value_Parameter: param?.Value_Parameter ?? null,
                     }));
 
                     const normalizedResults = results.map((res) => ({
@@ -920,12 +333,10 @@ export default {
                 });
             }
         },
-
         series() {
             return this.rawData.map((item) => {
                 const jamPO = this.jamKeMenit(item.Jam_Po_Sampel);
                 const jamAnalisa = this.jamKeMenit(item.Jam_Pengujian_Sampel);
-
                 return {
                     name: item.No_Po_Sampel,
                     data: [jamPO, jamAnalisa],
@@ -935,6 +346,7 @@ export default {
     },
     methods: {
         getRowsForLog(idLog) {
+            // Langkah 1: Validasi awal
             if (!this.dataTracking || this.dataTracking.length === 0) {
                 return [];
             }
@@ -1023,6 +435,135 @@ export default {
                 ];
             }
         },
+        async fetchDraftData() {
+            const isMulti = (this.is_multi_print || "").toString().trim();
+            this.loading.currentDataSubmitAnalisa = true;
+            this.loading.dataTracking = true;
+
+            try {
+                // ... (Bagian Endpoint URL sama seperti sebelumnya, tidak perlu diubah) ...
+                let endpointData, endpointTracking, endpointSplit;
+                if (isMulti === "Y") {
+                    if (!this.No_Fak_Sub_Po) {
+                        this.initializeRows();
+                        return;
+                    }
+                    endpointData = `/api/v1/formulator/detail/${this.No_Fak_Sub_Po}/multi-print/${this.Id_Jenis_Analisa}/detail`;
+                    endpointSplit = `/api/v1/formulator/detail-split/${this.No_Fak_Sub_Po}/multi-print/${this.Id_Jenis_Analisa}/hasil`;
+                    endpointTracking = `/api/v1/formulator/tracking-detail/${this.No_Po_Sampel}/${this.No_Fak_Sub_Po}/multi-print/${this.Id_Jenis_Analisa}/formulator-history`;
+                } else {
+                    if (!this.No_Po_Sampel) {
+                        this.initializeRows();
+                        return;
+                    }
+                    endpointData = `/api/v1/${this.No_Po_Sampel}/no-multi/${this.Id_Jenis_Analisa}`;
+                    endpointSplit = `/api/v1/detail-split/${this.No_Po_Sampel}/not-rumus-noqr/${this.Id_Jenis_Analisa}`;
+                    endpointTracking = `/api/v1/tracking-detail/not-print/${this.No_Po_Sampel}/${this.Id_Jenis_Analisa}/analisa`;
+                }
+
+                const [response, currentDataHasilAnalisa, currentDataTracking] =
+                    await Promise.all([
+                        axios.get(endpointData),
+                        axios.get(endpointSplit),
+                        axios.get(endpointTracking),
+                    ]);
+
+                const resultData = response.data.result || {};
+                const draft = resultData.is_draft || [];
+                const submitData = resultData.is_submit || [];
+
+                this.currentDataSubmitAnalisa =
+                    currentDataHasilAnalisa.data.result || [];
+                this.dataSampel = submitData;
+                this.rawData = submitData;
+                this.dataTracking = currentDataTracking.data.result || [];
+
+                // === PERBAIKAN LOGIC MAPPING DI SINI ===
+                if (Array.isArray(draft) && draft.length > 0) {
+                    this.rows = draft.map((groupItem) => {
+                        const newRow = {
+                            inputValues: {},
+                            formulaResults: {},
+                            lockedInputs: {}, // Status Kunci (True = Muncul Pencil, False = Muncul Simpan)
+                            draftDetails: {},
+                            hasilDraft: {},
+                        };
+
+                        const parameterList = groupItem.parameter || [];
+                        const hasilList = groupItem.hasil || [];
+
+                        // Loop Parameter Template
+                        (this.selectedTemplating.parameter || []).forEach(
+                            (param) => {
+                                // Cari data di draft yg cocok dgn ID QC
+                                const detailItem = parameterList.find(
+                                    (d) => d.Id_Quality_Control === param.id_qc
+                                );
+
+                                if (detailItem) {
+                                    // 1. Ambil Nilai
+                                    const rawVal = detailItem.Value_Parameter;
+
+                                    // 2. Masukkan ke inputValues
+                                    newRow.inputValues[param.id_qc] = rawVal;
+                                    newRow.draftDetails[param.id_qc] =
+                                        detailItem;
+
+                                    // 3. PENGECEKAN KETAT UNTUK LOCKED INPUTS
+                                    // Pastikan tidak null, tidak undefined, dan tidak string kosong.
+                                    // Angka 0, -999999, -88888888 harus dianggap TRUE (Ada Data)
+                                    const isFilled =
+                                        rawVal !== null &&
+                                        rawVal !== undefined &&
+                                        String(rawVal).trim() !== "";
+
+                                    newRow.lockedInputs[param.id_qc] = isFilled;
+                                } else {
+                                    // Data Kosong
+                                    newRow.inputValues[param.id_qc] = null;
+                                    newRow.draftDetails[param.id_qc] = null;
+                                    newRow.lockedInputs[param.id_qc] = false;
+                                }
+                            }
+                        );
+
+                        // Mapping Hasil Rumus
+                        (this.selectedTemplating.formula || []).forEach(
+                            (formula) => {
+                                const hasil = hasilList.find(
+                                    (h) => h.Rumus === formula.rumus
+                                );
+                                newRow.formulaResults[formula.rumus] = hasil
+                                    ? hasil.Hasil_Perhitungan || 0
+                                    : 0;
+                                newRow.hasilDraft[formula.rumus] = hasil
+                                    ? {
+                                          No_Urut: hasil.No_Urut ?? null,
+                                          No_Sementara:
+                                              hasil.No_Sementara ?? null,
+                                      }
+                                    : { No_Urut: null, No_Sementara: null };
+                            }
+                        );
+
+                        return newRow;
+                    });
+
+                    // Trigger hitung ulang rumus
+                    this.rows.forEach((_, index) =>
+                        this.calculateAllFormulas(index)
+                    );
+                } else {
+                    this.initializeRows();
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                this.initializeRows();
+            } finally {
+                this.loading.currentDataSubmitAnalisa = false;
+                this.loading.dataTracking = false;
+            }
+        },
         getActivityStyle(jenis) {
             if (jenis === "save_draft") {
                 return {
@@ -1045,6 +586,8 @@ export default {
 
             if (jenis === "save_submit") {
                 return {
+                    // bg: "bg-info",
+                    // icon: "fas fa-microscope",
                     bg: "bg-success",
                     icon: "fas fa-check",
                 };
@@ -1143,26 +686,18 @@ export default {
             const row = this.rows[rowIndex];
             const originalData = row.draftDetails[id_qc];
 
-            // Simpan indeks baris dan id_qc yang sedang diedit
             this.editingRowIndex = rowIndex;
             this.editingParamIdQc = id_qc;
             this.editingNoUrut = originalData.No_Urut;
-
-            // Reset alasan saat modal dibuka
             this.reasonForChange = "";
         },
         cancelChange(rowIndex, id_qc) {
             const row = this.rows[rowIndex];
             const originalValue = row.draftDetails[id_qc].Value_Parameter;
 
-            // Kembalikan nilai ke semula
             row.inputValues[id_qc] = originalValue;
-
-            // Kunci kembali inputnya
             row.lockedInputs[id_qc] = true;
-
             this, (this.isEditing = false);
-            // Hitung ulang formula karena nilai mungkin berubah
             this.handleInputChange(rowIndex);
         },
         handleInputChange(rowIndex) {
@@ -1188,33 +723,27 @@ export default {
             });
         },
         calculateFormula(formula, decimalPlaces = 2, inputValues) {
-            // Pola untuk mendeteksi fungsi seperti "AVG(...)" atau "SUM(...)"
             const functionRegex = /^(\w+)\((.*)\)$/;
             const functionMatch = formula.match(functionRegex);
 
             try {
                 let result;
 
-                // Kasus 1: Jika rumus adalah fungsi custom (AVG, SUM)
                 if (functionMatch) {
-                    const functionName = functionMatch[1].toUpperCase(); // Ambil nama fungsi (AVG/SUM)
-                    const argsString = functionMatch[2]; // Ambil string argumen "[id1],[id2],..."
-
-                    // Ekstrak semua ID parameter dari string argumen
+                    const functionName = functionMatch[1].toUpperCase();
+                    const argsString = functionMatch[2];
                     const paramIds = (
                         argsString.match(/\[([^\]]+)\]/g) || []
                     ).map((p) => p.replace(/[\[\]]/g, ""));
 
-                    // Dapatkan nilai numerik untuk setiap parameter
                     const values = paramIds
                         .map((id) => parseFloat(inputValues[id]))
-                        .filter((v) => !isNaN(v)); // Filter hanya nilai yang valid (angka)
+                        .filter((v) => !isNaN(v));
 
                     if (values.length === 0) {
                         return (0).toFixed(decimalPlaces);
                     }
 
-                    // Lakukan perhitungan berdasarkan nama fungsi
                     switch (functionName) {
                         case "SUM":
                             result = values.reduce((acc, val) => acc + val, 0);
@@ -1265,23 +794,20 @@ export default {
                 return (0).toFixed(decimalPlaces); // Kembali ke nilai default jika ada error
             }
         },
-
-        handleStatusPhoto(status) {
-            this.isPhotoCompleted = status;
+        handleStatusPhoto(photos) {
+            this.photoList = photos;
+            this.isPhotoCompleted = this.photoList.length > 0;
         },
-
         async submitAnalysis() {
             if (this.Flag_Foto === "Y" && !this.isPhotoCompleted) {
                 Swal.fire({
                     icon: "warning",
                     title: "Foto Wajib!",
-                    text: "Sesi ini mewajibkan Anda melampirkan foto hasil uji produk sebelum submit.",
+                    text: "Sesi ini mewajibkan Anda melampirkan minimal 1 foto hasil uji produk sebelum submit.",
                 });
                 return;
             }
-
             this.loading.saveToDatabase = true;
-
             const isMulti = (this.is_multi_print || "").toString().trim();
 
             try {
@@ -1291,7 +817,6 @@ export default {
                     ).map((param) => {
                         const value = row.inputValues?.[param.id_qc];
                         const detail = row.draftDetails?.[param.id_qc];
-
                         return {
                             Id_Quality_Control: param.id_qc,
                             Value_Parameter:
@@ -1306,7 +831,6 @@ export default {
                         (isMulti === "Y"
                             ? this.selectedTemplating?.formula
                             : this.selectedTemplating?.parameter) || [];
-
                     const formattedFormulas = formulas.map((item) => {
                         const key = isMulti === "Y" ? item.rumus : item.id_qc;
                         const value =
@@ -1351,31 +875,37 @@ export default {
                     if (isMulti === "Y") {
                         result.No_Po_Multi_Sampel = this.No_Fak_Sub_Po;
                     }
-
                     return result;
                 });
 
                 const endpoint =
                     isMulti === "Y"
-                        ? "/api/v1/formulator/resampling/hasil-trial/multi-qr-code/not-rumus/store"
-                        : "/api/v1/formulator/resampling/hasil-trial/single-qr-code/not-rumus/store";
+                        ? "/api/v1/formulator/hasil-trial/multi-qr-code/not-perhitungan"
+                        : "/api/v1/formulator/hasil-trial/single-qr-code/not-perhitungan";
 
-                const photoBase64 = localStorage.getItem(this.photoStorageKey);
-                const response = await axios.post(
-                    endpoint,
-                    {
-                        analyses: payload,
-                        photo_data: photoBase64,
-                        flag_foto: this.Flag_Foto,
+                const formData = new FormData();
+                formData.append("flag_foto", this.Flag_Foto);
+                formData.append("analyses", JSON.stringify(payload));
+
+                if (this.Flag_Foto === "Y" && this.photoList.length > 0) {
+                    this.photoList.forEach((photo, index) => {
+                        formData.append(
+                            `photos[${index}]`,
+                            photo.file,
+                            photo.fileName
+                        );
+                        formData.append(`notes[${index}]`, photo.note || "");
+                    });
+                }
+
+                const response = await axios.post(endpoint, formData, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                        "X-CSRF-TOKEN": document
+                            .querySelector('meta[name="csrf-token"]')
+                            .getAttribute("content"),
                     },
-                    {
-                        headers: {
-                            "X-CSRF-TOKEN": document
-                                .querySelector('meta[name="csrf-token"]')
-                                ?.getAttribute("content"),
-                        },
-                    }
-                );
+                });
 
                 if (response.status === 201 && response.data.success) {
                     if (this.Flag_Foto === "Y") {
@@ -1386,7 +916,7 @@ export default {
                         title: "Berhasil",
                         text: "Semua data analisis berhasil disimpan!",
                     }).then(() => {
-                        window.location.href = "/uji-ulang/hasil-trial";
+                        location.reload();
                     });
                 } else {
                     throw new Error(
@@ -1394,6 +924,7 @@ export default {
                     );
                 }
             } catch (error) {
+                console.error(error);
                 let errorMessage = "Terjadi Kesalahan";
                 if (error.response?.data) {
                     errorMessage =
@@ -1415,12 +946,6 @@ export default {
         async submitAnalysisSementara() {
             this.loading.saveToDatabase = true;
             const isMulti = (this.is_multi_print || "").toString().trim();
-
-            if (isMulti === "Y") {
-                console.log("Masuk ke blok multi Y");
-            } else {
-                console.log("Masuk ke blok non-multi");
-            }
 
             for (const [index, row] of this.rows.entries()) {
                 const isAnyInputFilled = this.selectedTemplating.parameter.some(
@@ -1494,9 +1019,9 @@ export default {
                             is_multi_print: this.is_multi_print,
                         };
                     });
-                    // Endpoint mungkin perlu disesuaikan untuk menerima array
+
                     const response = await axios.post(
-                        "/uji-sampel/store-multi-qr-code-no-perhitungan/sementara/resampling",
+                        "/api/v1/formulator/hasil-trial/multi-qr-code/not-perhitungan/temp",
                         { analyses: payload },
                         {
                             headers: {
@@ -1579,7 +1104,7 @@ export default {
                     });
 
                     const response = await axios.post(
-                        "/uji-sampel/store-not-rumus/sementara/no-perhitungan/no-qr",
+                        "/api/v1/formulator/hasil-trial/single-qr-code/not-perhitungan/temp",
                         { analyses: payload },
                         {
                             headers: {
@@ -1744,8 +1269,8 @@ export default {
 
                 const url =
                     isMulti === "Y"
-                        ? `/uji-sampel/store-multi-rumus/sementara/change-update/${rowIndex}`
-                        : `/uji-sampel/store-not-rumus-not-mutipleqr/sementara/change-update/${rowIndex}`;
+                        ? `/api/v1/formulator/update-trial/non-multi-qrcode/${rowIndex}/sementara`
+                        : `/api/v1/formulator/hasil-trial/single-qr-code/not-perhitungan/${rowIndex}/sementara`;
 
                 const response = await axios.post(url, payload, {
                     headers: {
@@ -1906,7 +1431,7 @@ export default {
             if (isMulti === "Y") {
                 try {
                     const response = await axios.post(
-                        `/uji-sampel/store-multi-rumus/sementara/hapus-data/${nomorSementara}`,
+                        `/api/v1/formulator/multi-qrcode/${nomorSementara}/delete`,
                         payload,
                         {
                             headers: {
@@ -1969,7 +1494,7 @@ export default {
             } else {
                 try {
                     const response = await axios.post(
-                        `/uji-sampel/store-not-rumus-nomultiple-qr/sementara/hapus-data/${nomorSementara}`,
+                        `/api/v1/formulator/hasil-trial/single-qr-code/not-perhitungan/${nomorSementara}/sementara`,
                         payload,
                         {
                             headers: {

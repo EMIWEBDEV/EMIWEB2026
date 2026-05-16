@@ -173,7 +173,9 @@ class MenuController extends Controller
                 'Kode_Perusahaan' => '001',
                 'Nama_Menu' => $request->Nama_Menu,
                 'Icon_Menu' => $request->Icon_Menu,
-                'Url_Menu' => $request->Url_Menu,
+                'Nama_Header' => $request->Nama_Header,
+                'Sub_Header' => $request->Sub_Header,
+                'Sub_Sub_Header' => $request->Sub_Sub_Header,
             ];
 
             DB::table('N_EMI_LAB_Menus')->insert($payload);
@@ -195,6 +197,7 @@ class MenuController extends Controller
             ], 500);
         }
     }
+    
     public function update(Request $request, $Id_Menu)
     {
         try {

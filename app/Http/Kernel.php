@@ -71,5 +71,6 @@ class Kernel extends HttpKernel
         'autotrack' => \App\Http\Middleware\AutoAppendTracking::class,
         'menu_access' => \App\Http\Middleware\CheckUserMenuAccess::class,
         'role' => \App\Http\Middleware\RoleMiddleware::class,
+        'permission' => \App\Http\Middleware\CheckPermission::class,
     ];
 }

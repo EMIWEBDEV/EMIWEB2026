@@ -6,7 +6,9 @@
                 <h1 class="system-title">
                     <i class="fas fa-vials"></i> Kontrol Kualitas Sampel
                 </h1>
-                <p class="system-subtitle">Sistem Manajemen Uji Sampel</p>
+                <p class="system-subtitle">
+                    Laboratory Information Management System
+                </p>
             </div>
             <div class="header-actions">
                 <button class="btn-help">
@@ -55,16 +57,19 @@
                 </div>
                 <div
                     v-if="showIntro"
-                    class="container d-flex justify-content-center align-items-center"
+                    class="container d-flex justify-content-center align-items-center px-3"
                 >
-                    <div class="d-flex flex-column text-center">
+                    <div
+                        class="d-flex flex-column text-center w-100 align-items-center"
+                    >
                         <DotLottieVue
-                            style="height: 350px; width: 500px"
+                            class="intro-animation"
                             autoplay
                             loop
                             src="/animation/labAnimation.lottie"
                         />
-                        <p class="mt-4 fw-semibold fs-5">
+
+                        <p class="mt-4 fw-semibold intro-text">
                             Segera Analisis, Masukan Nomor Sampel / Nomor
                             Transaksi Anda
                         </p>
@@ -227,18 +232,22 @@
                             <div class="analysis-content">
                                 <div class="analysis-badge">
                                     <span
-                                        class="badge"
+                                        class="badge truncate-text"
                                         :class="
                                             item.is_done
                                                 ? 'bg-success-soft'
                                                 : 'bg-primary-soft'
                                         "
+                                        :title="item.Kode_Analisa"
                                     >
                                         {{ item.Kode_Analisa }}
                                     </span>
                                 </div>
 
-                                <h4 class="analysis-title">
+                                <h4
+                                    class="analysis-title truncate-text"
+                                    :title="item.Jenis_Analisa"
+                                >
                                     {{ item.Jenis_Analisa }}
                                     <span
                                         v-if="item.is_done"
@@ -248,8 +257,9 @@
                                 </h4>
 
                                 <div
-                                    class="analysis-meta"
+                                    class="analysis-meta truncate-text"
                                     v-if="item.Nama_Mesin !== null"
+                                    :title="item.Nama_Mesin"
                                 >
                                     <span class="meta-item">
                                         <i class="fas fa-microscope"></i>
@@ -475,6 +485,8 @@
                                                     .Id_Mesin ?? null
                                             "
                                             :kodeAnalisa="kodeAnalisa"
+                                            :sampleNumber="sampleNumber"
+                                            :Flag_Foto="Flag_Foto"
                                         />
                                     </div>
                                     <div v-else>
@@ -499,6 +511,8 @@
                                                     .Id_Mesin ?? null
                                             "
                                             :kodeAnalisa="kodeAnalisa"
+                                            :Flag_Foto="Flag_Foto"
+                                            :sampleNumber="sampleNumber"
                                         />
                                     </div>
                                 </div>
@@ -523,6 +537,8 @@
                                         null
                                     "
                                     :kodeAnalisa="kodeAnalisa"
+                                    :Flag_Foto="Flag_Foto"
+                                    :sampleNumber="sampleNumber"
                                 />
                             </div>
                             <div v-else>
@@ -541,6 +557,8 @@
                                         nomorSampel.sampleDetails.Id_Mesin ??
                                         null
                                     "
+                                    :Flag_Foto="Flag_Foto"
+                                    :sampleNumber="sampleNumber"
                                 />
                             </div>
                         </div>
@@ -580,6 +598,7 @@ export default {
             inputValues: reactive({}),
             sampleNumber: null,
             samplePoMulti: null,
+            Flag_Foto: "T",
             showIntro: true,
             reactiveIdJenisAnalisa: null,
             kodeAnalisa: null,
@@ -624,7 +643,7 @@ export default {
 
                 if (response.status === 200 && response.data?.result) {
                     this.selectedTemplating = response.data.result;
-                    // Inisialisasi inputValues dengan id_qc sebagai key
+                    this.Flag_Foto = response.data.result?.sesi_foto;
                     this.selectedTemplating.parameter.forEach((param) => {
                         this.inputValues[param.id_qc] = null;
                     });
@@ -876,6 +895,199 @@ export default {
     },
 };
 </script>
+
+<style scoped>
+.celebration-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4f0fb 100%);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.confetti-left,
+.confetti-right {
+    position: absolute;
+    top: 0;
+    width: 40%; /* atur lebar confetti kiri dan kanan, sesuaikan */
+    height: 100%;
+    pointer-events: none; /* supaya klik ke konten utama tetap jalan */
+    z-index: 10; /* supaya confetti di atas background */
+}
+
+.confetti-left {
+    left: 0;
+}
+
+.confetti-right {
+    right: 0;
+}
+
+.animation-wrapper {
+    position: relative;
+    z-index: 2;
+}
+
+.celebration-animation {
+    height: 250px;
+    width: 250px;
+    -webkit-filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.2));
+    filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.2));
+}
+
+.celebration-message {
+    text-align: center;
+    margin-top: 1.5rem;
+    position: relative;
+    z-index: 2;
+}
+
+.congrats-text {
+    font-size: 2rem;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+    background: linear-gradient(to right, #3498db, #2ecc71);
+    /* Vendor prefixes for background-clip */
+    -webkit-background-clip: text;
+    -moz-background-clip: text;
+    background-clip: text;
+    /* Vendor prefixes for text-fill-color */
+    -webkit-text-fill-color: transparent;
+    -moz-text-fill-color: transparent;
+}
+
+.sample-info {
+    font-size: 1.2rem;
+    color: #555;
+    margin-bottom: 0;
+}
+
+.sample-number {
+    font-weight: bold;
+    color: #2980b9;
+}
+
+/* Confetti CSS Pure */
+.confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: #f00;
+    opacity: 0;
+    -webkit-animation: confetti 5s ease-in-out infinite;
+    animation: confetti 5s ease-in-out infinite;
+}
+
+.confetti:nth-child(1) {
+    background-color: #f00;
+    left: 10%;
+    -webkit-animation-delay: 0;
+    animation-delay: 0;
+}
+.confetti:nth-child(2) {
+    background-color: #0f0;
+    left: 20%;
+    -webkit-animation-delay: 0.5s;
+    animation-delay: 0.5s;
+}
+.confetti:nth-child(3) {
+    background-color: #00f;
+    left: 30%;
+    -webkit-animation-delay: 1.2s;
+    animation-delay: 1.2s;
+}
+.confetti:nth-child(4) {
+    background-color: #ff0;
+    left: 40%;
+    -webkit-animation-delay: 0.8s;
+    animation-delay: 0.8s;
+}
+.confetti:nth-child(5) {
+    background-color: #f0f;
+    left: 50%;
+    -webkit-animation-delay: 1.5s;
+    animation-delay: 1.5s;
+}
+
+.uiWah {
+    width: 100%;
+    height: 100%;
+}
+
+@-webkit-keyframes confetti {
+    0% {
+        opacity: 0;
+        -webkit-transform: translateY(0) rotate(0deg);
+        transform: translateY(0) rotate(0deg);
+    }
+    10% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        -webkit-transform: translateY(500px) rotate(720deg);
+        transform: translateY(500px) rotate(720deg);
+    }
+}
+
+@keyframes confetti {
+    0% {
+        opacity: 0;
+        -webkit-transform: translateY(0) rotate(0deg);
+        transform: translateY(0) rotate(0deg);
+    }
+    10% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        -webkit-transform: translateY(500px) rotate(720deg);
+        transform: translateY(500px) rotate(720deg);
+    }
+}
+
+/* Animasi float */
+@-webkit-keyframes float {
+    0% {
+        -webkit-transform: translateY(0px);
+        transform: translateY(0px);
+    }
+    50% {
+        -webkit-transform: translateY(-10px);
+        transform: translateY(-10px);
+    }
+    100% {
+        -webkit-transform: translateY(0px);
+        transform: translateY(0px);
+    }
+}
+@keyframes float {
+    0% {
+        -webkit-transform: translateY(0px);
+        transform: translateY(0px);
+    }
+    50% {
+        -webkit-transform: translateY(-10px);
+        transform: translateY(-10px);
+    }
+    100% {
+        -webkit-transform: translateY(0px);
+        transform: translateY(0px);
+    }
+}
+
+.celebration-animation {
+    -webkit-animation: float 3s ease-in-out infinite;
+    animation: float 3s ease-in-out infinite;
+}
+</style>
 
 <style>
 :root {
@@ -2552,195 +2764,334 @@ button.btn-search:disabled {
 }
 </style>
 
-<style scoped>
-.celebration-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 400px;
-    background: linear-gradient(135deg, #f5f7fa 0%, #e4f0fb 100%);
-    border-radius: 16px;
-    padding: 2rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    position: relative;
+<style>
+.analysis-content {
+    min-width: 0;
+
+    flex: 1;
+
     overflow: hidden;
 }
 
-.confetti-left,
-.confetti-right {
-    position: absolute;
-    top: 0;
-    width: 40%; /* atur lebar confetti kiri dan kanan, sesuaikan */
-    height: 100%;
-    pointer-events: none; /* supaya klik ke konten utama tetap jalan */
-    z-index: 10; /* supaya confetti di atas background */
+.truncate-text {
+    display: inline-block;
+
+    max-width: 100%;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    vertical-align: middle;
 }
 
-.confetti-left {
-    left: 0;
+/* Ukuran dasar text */
+
+.analysis-title.truncate-text {
+    display: block;
+
+    font-size: 1.1rem;
+
+    margin-bottom: 0.25rem;
 }
 
-.confetti-right {
-    right: 0;
+.badge {
+    font-size: 0.8rem;
 }
 
-.animation-wrapper {
-    position: relative;
-    z-index: 2;
+.analysis-meta {
+    font-size: 0.9rem;
 }
 
-.celebration-animation {
-    height: 250px;
-    width: 250px;
-    -webkit-filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.2));
-    filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.2));
-}
-
-.celebration-message {
-    text-align: center;
-    margin-top: 1.5rem;
-    position: relative;
-    z-index: 2;
-}
-
-.congrats-text {
-    font-size: 2rem;
-    color: #2c3e50;
-    margin-bottom: 0.5rem;
-    font-weight: 700;
-    background: linear-gradient(to right, #3498db, #2ecc71);
-    /* Vendor prefixes for background-clip */
-    -webkit-background-clip: text;
-    -moz-background-clip: text;
-    background-clip: text;
-    /* Vendor prefixes for text-fill-color */
-    -webkit-text-fill-color: transparent;
-    -moz-text-fill-color: transparent;
-}
-
-.sample-info {
-    font-size: 1.2rem;
-    color: #555;
-    margin-bottom: 0;
-}
-
-.sample-number {
-    font-weight: bold;
-    color: #2980b9;
-}
-
-/* Confetti CSS Pure */
-.confetti {
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    background-color: #f00;
-    opacity: 0;
-    -webkit-animation: confetti 5s ease-in-out infinite;
-    animation: confetti 5s ease-in-out infinite;
-}
-
-.confetti:nth-child(1) {
-    background-color: #f00;
-    left: 10%;
-    -webkit-animation-delay: 0;
-    animation-delay: 0;
-}
-.confetti:nth-child(2) {
-    background-color: #0f0;
-    left: 20%;
-    -webkit-animation-delay: 0.5s;
-    animation-delay: 0.5s;
-}
-.confetti:nth-child(3) {
-    background-color: #00f;
-    left: 30%;
-    -webkit-animation-delay: 1.2s;
-    animation-delay: 1.2s;
-}
-.confetti:nth-child(4) {
-    background-color: #ff0;
-    left: 40%;
-    -webkit-animation-delay: 0.8s;
-    animation-delay: 0.8s;
-}
-.confetti:nth-child(5) {
-    background-color: #f0f;
-    left: 50%;
-    -webkit-animation-delay: 1.5s;
-    animation-delay: 1.5s;
-}
-
-.uiWah {
-    width: 100%;
-    height: 100%;
-}
-
-@-webkit-keyframes confetti {
-    0% {
-        opacity: 0;
-        -webkit-transform: translateY(0) rotate(0deg);
-        transform: translateY(0) rotate(0deg);
+@media (max-width: 992px) {
+    .content-wrapper {
+        padding: 0 1.5rem;
     }
-    10% {
-        opacity: 1;
+
+    .detail-grid {
+        grid-template-columns: 1fr;
     }
-    100% {
-        opacity: 0;
-        -webkit-transform: translateY(500px) rotate(720deg);
-        transform: translateY(500px) rotate(720deg);
+
+    .calculation-container {
+        grid-template-columns: 1fr;
     }
 }
 
-@keyframes confetti {
-    0% {
-        opacity: 0;
-        -webkit-transform: translateY(0) rotate(0deg);
-        transform: translateY(0) rotate(0deg);
+@media (max-width: 768px) {
+    .content-wrapper {
+        padding: 0 1rem;
+
+        margin: 1rem auto;
     }
-    10% {
-        opacity: 1;
+
+    .system-header {
+        flex-direction: column;
+
+        text-align: center;
+
+        padding: 1rem;
+
+        gap: 1rem;
     }
-    100% {
-        opacity: 0;
-        -webkit-transform: translateY(500px) rotate(720deg);
-        transform: translateY(500px) rotate(720deg);
+
+    .system-title {
+        justify-content: center;
+
+        font-size: 1.5rem;
+    }
+
+    .header-actions {
+        justify-content: center;
+
+        width: 100%;
+    }
+
+    .panel-header {
+        flex-direction: column;
+
+        align-items: flex-start;
+
+        gap: 1rem;
+    }
+
+    .status-badge {
+        flex-wrap: wrap;
+
+        width: 100%;
+
+        gap: 0.5rem;
+    }
+
+    .analysis-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-item {
+        flex-direction: column;
+
+        align-items: flex-start;
+
+        gap: 0.25rem;
+
+        padding: 0.85rem 0;
+    }
+
+    .detail-value {
+        text-align: left;
+
+        word-break: break-word;
+    }
+
+    .analysis-table-container,
+    .parameter-table-container,
+    .multi-table {
+        width: 100%;
+
+        overflow-x: auto;
+
+        -webkit-overflow-scrolling: touch;
+
+        border-radius: 8px;
+    }
+
+    .form-actions {
+        flex-direction: column;
+
+        width: 100%;
+    }
+
+    .action-button,
+    .btn-submit,
+    .btn-save,
+    .btn-add {
+        width: 100%;
+
+        justify-content: center;
+    }
+
+    .intro-animation {
+        max-width: 300px;
+
+        min-height: 180px;
+    }
+
+    .intro-text {
+        font-size: 1rem;
+
+        line-height: 1.5;
+    }
+
+    /* Pengecilan Font Tablet/Mobile Besar */
+
+    .analysis-title.truncate-text {
+        font-size: 1rem;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+
+        padding: 0.25rem 0.5rem;
     }
 }
 
-/* Animasi float */
-@-webkit-keyframes float {
-    0% {
-        -webkit-transform: translateY(0px);
-        transform: translateY(0px);
+@media (max-width: 576px) {
+    .input-with-button {
+        flex-direction: column;
+
+        gap: 0.75rem;
     }
-    50% {
-        -webkit-transform: translateY(-10px);
-        transform: translateY(-10px);
+
+    .btn-search {
+        width: 100%;
+
+        justify-content: center;
+
+        padding: 0.8rem;
     }
-    100% {
-        -webkit-transform: translateY(0px);
-        transform: translateY(0px);
+
+    .panel-body {
+        padding: 1rem;
     }
-}
-@keyframes float {
-    0% {
-        -webkit-transform: translateY(0px);
-        transform: translateY(0px);
+
+    .container.d-flex.justify-content-center.align-items-center DotLottieVue {
+        width: 100% !important;
+
+        height: auto !important;
+
+        max-width: 250px;
     }
-    50% {
-        -webkit-transform: translateY(-10px);
-        transform: translateY(-10px);
+
+    .celebration-animation {
+        width: 150px;
+
+        height: 150px;
     }
-    100% {
-        -webkit-transform: translateY(0px);
-        transform: translateY(0px);
+
+    .congrats-text {
+        font-size: 1.5rem;
+    }
+
+    .celebration-container {
+        padding: 1.5rem 1rem;
+    }
+
+    /* Penyesuaian Card agar lebih proporsional */
+
+    .analysis-card {
+        padding: 0.75rem;
+    }
+
+    .analysis-icon {
+        width: 40px;
+
+        height: 40px;
+
+        margin-right: 0.75rem;
+
+        font-size: 1.2rem;
+    }
+
+    .completed-badge {
+        top: -5px;
+
+        right: -5px;
+
+        width: 18px;
+
+        height: 18px;
+
+        font-size: 0.7rem;
+    }
+
+    /* Pengecilan Font Mobile Standar */
+
+    .analysis-title.truncate-text {
+        font-size: 0.85rem;
+    }
+
+    .badge {
+        font-size: 0.65rem;
+
+        padding: 0.2rem 0.4rem;
+    }
+
+    .analysis-meta {
+        font-size: 0.8rem;
     }
 }
 
-.celebration-animation {
-    -webkit-animation: float 3s ease-in-out infinite;
-    animation: float 3s ease-in-out infinite;
+@media (max-width: 400px) {
+    .system-title {
+        font-size: 1.25rem;
+    }
+
+    .btn-help {
+        padding: 0.4rem 0.8rem;
+
+        font-size: 0.85rem;
+    }
+
+    .form-label,
+    .detail-label {
+        font-size: 0.9rem;
+    }
+
+    .detail-value {
+        font-size: 0.95rem;
+    }
+
+    /* Pengecilan Font Mobile Sangat Kecil */
+
+    .analysis-title.truncate-text {
+        font-size: 0.75rem;
+    }
+
+    .badge {
+        font-size: 0.55rem;
+
+        padding: 0.15rem 0.3rem;
+    }
+
+    .analysis-meta {
+        font-size: 0.7rem;
+    }
+
+    .analysis-icon {
+        width: 35px;
+
+        height: 35px;
+
+        font-size: 1rem;
+    }
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+    .system-header {
+        flex-direction: row;
+
+        padding: 0.5rem 1.5rem;
+    }
+
+    .content-wrapper {
+        margin: 1rem auto;
+    }
+
+    .celebration-container {
+        min-height: 200px;
+
+        padding: 1rem;
+    }
+
+    .celebration-animation {
+        height: 100px;
+
+        width: 100px;
+    }
+
+    .container.d-flex.justify-content-center.align-items-center DotLottieVue {
+        height: 180px !important;
+    }
 }
 </style>

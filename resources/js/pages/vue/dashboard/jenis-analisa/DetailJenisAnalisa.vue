@@ -561,7 +561,7 @@
                         </el-select>
                     </div>
 
-                    <div class="mb-3" v-if="isFLM">
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">
                             Kategori Analisa <span class="text-danger">*</span>
                         </label>
@@ -830,7 +830,6 @@
                     </div>
 
                     <div
-                        v-if="isFLM"
                         class="toggle-card border rounded p-3 mb-3"
                         :class="{ 'active-toggle': form.Flag_Foto === 'Y' }"
                     >
@@ -1017,8 +1016,7 @@ export default {
             return pages;
         },
         isFLM() {
-            if (this.roles.length === 1 && this.roles[0].Kode_Role === "FLM")
-                return true;
+            if (this.roles.length === 1) return true;
             return this.form.Kode_Role === "FLM";
         },
     },
@@ -1169,10 +1167,8 @@ export default {
                     Flag_Perhitungan: this.form.Flag_Perhitungan,
                     Sifat_Kegiatan: this.form.Sifat_Kegiatan,
                     Kode_Role: this.form.Kode_Role,
-                    Flag_Foto: this.isFLM ? this.form.Flag_Foto : "T",
-                    Kode_Aktivitas_Lab: this.isFLM
-                        ? this.form.Kode_Aktivitas_Lab
-                        : null,
+                    Flag_Foto: this.form.Flag_Foto,
+                    Kode_Aktivitas_Lab: this.form.Kode_Aktivitas_Lab,
                 };
 
                 if (this.selectedMesinList?.value) {
@@ -1284,7 +1280,7 @@ export default {
     mounted() {
         this.fetchDetailJenisAnalisa();
         this.fetchMesinList();
-        if (this.roles.length === 1 && this.roles[0].Kode_Role === "FLM") {
+        if (this.roles.length === 1) {
             this.fetchKategoriAnalisa();
         }
     },

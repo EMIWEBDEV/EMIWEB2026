@@ -44,7 +44,7 @@
                                 />
                             </div>
                         </div>
-                        <div class="col-lg-6">
+                        <div class="col-lg-6 mb-3">
                             <label class="form-label">Jenis QrCode</label>
                             <div
                                 class="select-picker-wrapper"
@@ -63,7 +63,7 @@
                                 </el-select>
                             </div>
                         </div>
-                        <div class="col-lg-6">
+                        <div class="col-lg-6 mb-3">
                             <label class="form-label">Pencarian Global</label>
                             <div
                                 class="search-wrapper position-relative flex-grow-1"
@@ -87,12 +87,69 @@
                                 </button>
                             </div>
                         </div>
+                        <div class="col-lg-12">
+                            <label class="form-label">Total Analisa</label>
+                            <div class="select-picker-wrapper">
+                                <el-select
+                                    v-model="filterTotalAnalisa"
+                                    placeholder="Pilih Total"
+                                    size="large"
+                                    clearable
+                                    @change="handleFilterChange"
+                                    class="w-100 shadow-sm"
+                                >
+                                    <el-option
+                                        v-for="n in 7"
+                                        :key="n"
+                                        :label="n + ' Analisa'"
+                                        :value="n"
+                                    />
+                                </el-select>
+                            </div>
+                        </div>
                     </div>
                     <hr />
                     <ListSkeleton :page="5" v-if="loading.loadingListData" />
 
                     <div v-else>
                         <div v-if="listData.length" class="row g-3">
+                            <div
+                                class="d-flex justify-content-between align-items-center mb-3"
+                            >
+                                <div
+                                    class="form-check custom-checkbox fs-5 d-flex align-items-center"
+                                >
+                                    <input
+                                        class="form-check-input shadow-sm mt-0"
+                                        type="checkbox"
+                                        :checked="isAllPageSelected"
+                                        @change="toggleSelectAllPage"
+                                        id="selectAllPage"
+                                    />
+                                    <label
+                                        class="form-check-label fw-bold text-dark ms-2 d-flex align-items-center gap-2"
+                                        for="selectAllPage"
+                                    >
+                                        Pilih Semua di Halaman Ini
+                                        <span
+                                            v-if="selectedItems.length > 0"
+                                            class="badge bg-primary bg-opacity-10 text-primary rounded-pill fs-6 px-3 py-2"
+                                        >
+                                            {{ selectedItems.length }} Terpilih
+                                        </span>
+                                    </label>
+                                </div>
+
+                                <button
+                                    v-if="selectedItems.length > 0"
+                                    class="btn btn-primary rounded-pill fw-semibold px-4 shadow-sm"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#bulkModal"
+                                >
+                                    <i class="fas fa-layer-group me-2"></i>
+                                    Finalisasi Bulk ({{ selectedItems.length }})
+                                </button>
+                            </div>
                             <div
                                 class="col-12"
                                 v-for="(item, index) in listData"
@@ -104,12 +161,31 @@
                                     <div class="card-body p-0">
                                         <div class="d-flex align-items-stretch">
                                             <div
-                                                class="status-strip bg-primary"
-                                            ></div>
-
+                                                class="bg-light border-end d-flex align-items-center justify-content-center p-3"
+                                                style="width: 60px"
+                                            >
+                                                <div
+                                                    class="form-check custom-checkbox mb-0"
+                                                >
+                                                    <input
+                                                        class="form-check-input fs-4 cursor-pointer shadow-sm"
+                                                        type="checkbox"
+                                                        :checked="
+                                                            isSelected(
+                                                                item.No_Po_Sampel
+                                                            )
+                                                        "
+                                                        @change="
+                                                            toggleSelection(
+                                                                item
+                                                            )
+                                                        "
+                                                    />
+                                                </div>
+                                            </div>
                                             <div class="p-3 p-md-4 w-100">
                                                 <div
-                                                    class="d-flex flex-column flex-lg-row gap-3 justify-content-between"
+                                                    class="d-flex flex-column flex-lg-row gap-4 justify-content-between"
                                                 >
                                                     <div
                                                         class="d-flex flex-column gap-3 flex-grow-1"
@@ -140,17 +216,44 @@
                                                                     item.Flag_Multi_QrCode ===
                                                                     'Y'
                                                                 "
-                                                                class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-10 rounded-pill px-2 py-2"
+                                                                class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-10 rounded-pill px-3 py-2"
                                                             >
+                                                                <i
+                                                                    class="fas fa-qrcode me-1"
+                                                                ></i>
                                                                 Multi QR
                                                             </span>
+                                                            <span
+                                                                v-if="
+                                                                    item.Flag_Trial_Produksi ===
+                                                                    'Y'
+                                                                "
+                                                                class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-10 rounded-pill px-3 py-2"
+                                                            >
+                                                                <i
+                                                                    class="fas fa-flask me-1"
+                                                                ></i>
+                                                                Trial Produksi
+                                                            </span>
+                                                            <span
+                                                                v-else
+                                                                class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-10 rounded-pill px-3 py-2"
+                                                            >
+                                                                <i
+                                                                    class="fas fa-industry me-1"
+                                                                ></i>
+                                                                Produksi
+                                                            </span>
                                                         </div>
-
                                                         <div
-                                                            class="d-flex align-items-start gap-3"
+                                                            class="d-flex align-items-start gap-3 mt-1"
                                                         >
                                                             <div
-                                                                class="icon-box bg-light rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 mt-1"
+                                                                class="icon-box bg-light rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                                                                style="
+                                                                    width: 48px;
+                                                                    height: 48px;
+                                                                "
                                                             >
                                                                 <i
                                                                     class="fas fa-box-open text-dark fa-lg"
@@ -165,24 +268,23 @@
                                                                     }}
                                                                 </h6>
                                                                 <div
-                                                                    class="d-flex align-items-center gap-3 text-muted small mt-2"
+                                                                    class="d-flex align-items-center flex-wrap gap-2 text-muted small mt-2"
                                                                 >
                                                                     <div
-                                                                        class="d-flex align-items-center gap-1 bg-light px-2 py-1 rounded"
+                                                                        class="d-flex align-items-center gap-2 bg-light px-2 py-1 rounded border border-light"
                                                                     >
                                                                         <i
                                                                             class="fas fa-barcode"
                                                                         ></i>
                                                                         <span
                                                                             class="fw-semibold text-dark"
-                                                                        >
-                                                                            {{
+                                                                            >{{
                                                                                 item.No_Po_Sampel
-                                                                            }}
-                                                                        </span>
+                                                                            }}</span
+                                                                        >
                                                                     </div>
                                                                     <div
-                                                                        class="d-flex align-items-center gap-1 bg-light px-2 py-1 rounded"
+                                                                        class="d-flex align-items-center gap-2 bg-light px-2 py-1 rounded border border-light"
                                                                     >
                                                                         <i
                                                                             class="fas fa-tag"
@@ -194,35 +296,103 @@
                                                                 </div>
                                                             </div>
                                                         </div>
+                                                        <div
+                                                            v-if="
+                                                                item.Detail_Jenis_Analisa &&
+                                                                item
+                                                                    .Detail_Jenis_Analisa
+                                                                    .length
+                                                            "
+                                                            class="mt-2 p-3 bg-light bg-opacity-50 rounded-4 border border-light"
+                                                        >
+                                                            <div
+                                                                class="d-flex align-items-center mb-2 gap-2"
+                                                            >
+                                                                <i
+                                                                    class="fas fa-microscope text-primary"
+                                                                ></i>
+                                                                <span
+                                                                    class="fw-bold text-dark small"
+                                                                    >Total
+                                                                    Analisa:
+                                                                    <span
+                                                                        class="text-primary"
+                                                                        >{{
+                                                                            item.Total_Jenis_Analisa
+                                                                        }}</span
+                                                                    ></span
+                                                                >
+                                                            </div>
+                                                            <div
+                                                                class="d-flex flex-wrap gap-2"
+                                                            >
+                                                                <span
+                                                                    v-for="(
+                                                                        analisa,
+                                                                        idx
+                                                                    ) in item.Detail_Jenis_Analisa"
+                                                                    :key="idx"
+                                                                    class="badge bg-white text-dark border border-secondary border-opacity-25 rounded-pill px-3 py-2 shadow-sm fw-medium d-flex align-items-center gap-2"
+                                                                >
+                                                                    <span
+                                                                        class="bg-primary rounded-circle"
+                                                                        style="
+                                                                            width: 6px;
+                                                                            height: 6px;
+                                                                        "
+                                                                    ></span>
+                                                                    {{
+                                                                        analisa.Jenis_Analisa
+                                                                    }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
                                                     </div>
-
                                                     <div
                                                         class="d-flex flex-column justify-content-between align-items-lg-end border-top border-lg-0 pt-3 pt-lg-0 gap-3"
+                                                        style="min-width: 150px"
                                                     >
                                                         <div
-                                                            class="text-muted small d-flex align-items-center gap-2"
+                                                            class="text-muted small d-flex flex-row flex-lg-column align-items-center align-items-lg-end gap-2 gap-lg-1 bg-light rounded-3 p-2"
                                                         >
-                                                            <i
-                                                                class="far fa-calendar-alt"
-                                                            ></i>
-                                                            {{
-                                                                formatTanggal(
-                                                                    item.Tanggal
-                                                                )
-                                                            }}
+                                                            <div
+                                                                class="d-flex align-items-center gap-2"
+                                                            >
+                                                                <i
+                                                                    class="far fa-calendar-alt text-primary"
+                                                                ></i>
+                                                                <span
+                                                                    class="fw-medium"
+                                                                    >{{
+                                                                        formatTanggal(
+                                                                            item.Tanggal
+                                                                        )
+                                                                    }}</span
+                                                                >
+                                                            </div>
                                                             <span
-                                                                class="vr"
+                                                                class="vr d-block d-lg-none mx-1"
                                                             ></span>
-                                                            <i
-                                                                class="far fa-clock"
-                                                            ></i>
-                                                            {{ item.Jam }}
+                                                            <div
+                                                                class="d-flex align-items-center gap-2"
+                                                            >
+                                                                <i
+                                                                    class="far fa-clock text-warning"
+                                                                ></i>
+                                                                <span
+                                                                    class="fw-medium"
+                                                                    >{{
+                                                                        item.Jam
+                                                                    }}</span
+                                                                >
+                                                            </div>
                                                         </div>
-
-                                                        <div class="d-flex">
+                                                        <div
+                                                            class="d-flex w-100"
+                                                        >
                                                             <a
                                                                 :href="`/hasil-analisa/validasi-close-sampel/${item.No_Po_Sampel}/${item.No_Split_Po}`"
-                                                                class="btn btn-outline-primary rounded-pill px-4 btn-sm fw-semibold"
+                                                                class="btn btn-primary bg-gradient rounded-pill px-4 py-2 btn-sm fw-semibold w-100 shadow-sm d-flex justify-content-center align-items-center gap-2 transition-all"
                                                             >
                                                                 Detail
                                                                 <i
@@ -238,7 +408,6 @@
                                 </div>
                             </div>
                         </div>
-
                         <div v-else class="text-center py-5">
                             <div class="d-flex justify-content-center mb-3">
                                 <DotLottieVue
@@ -259,7 +428,6 @@
                                 Reset Filter
                             </button>
                         </div>
-
                         <div
                             v-if="listData.length > 0"
                             class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top"
@@ -329,6 +497,255 @@
                             </nav>
                         </div>
                     </div>
+
+                    <div
+                        class="modal fade"
+                        id="bulkModal"
+                        tabindex="-1"
+                        aria-labelledby="bulkModalLabel"
+                        aria-hidden="true"
+                    >
+                        <div
+                            class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable"
+                        >
+                            <div class="modal-content border-0 shadow">
+                                <div
+                                    class="modal-header bg-primary text-white border-0"
+                                >
+                                    <h5
+                                        class="modal-title fw-bold text-white"
+                                        id="bulkModalLabel"
+                                    >
+                                        Konfirmasi Finalisasi Massal
+                                    </h5>
+                                    <button
+                                        type="button"
+                                        class="btn-close btn-close-white"
+                                        data-bs-dismiss="modal"
+                                        aria-label="Close"
+                                    ></button>
+                                </div>
+                                <div class="modal-body bg-light">
+                                    <div v-if="resultLogBulk" class="mb-4">
+                                        <div
+                                            class="alert alert-success border-0 shadow-sm"
+                                            v-if="
+                                                resultLogBulk.berhasil &&
+                                                resultLogBulk.berhasil.length
+                                            "
+                                        >
+                                            <h6 class="fw-bold">
+                                                <i
+                                                    class="fas fa-check-circle me-2"
+                                                ></i>
+                                                Berhasil Difinalisasi:
+                                            </h6>
+                                            <ul class="mb-0 small">
+                                                <li
+                                                    v-for="bs in resultLogBulk.berhasil"
+                                                    :key="bs"
+                                                >
+                                                    {{ bs }}
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <div
+                                            class="alert alert-danger border-0 shadow-sm mt-3"
+                                            v-if="
+                                                resultLogBulk.gagal &&
+                                                resultLogBulk.gagal.length
+                                            "
+                                        >
+                                            <h6 class="fw-bold">
+                                                <i
+                                                    class="fas fa-exclamation-triangle me-2"
+                                                ></i>
+                                                Gagal Difinalisasi:
+                                            </h6>
+                                            <ul class="mb-0 small">
+                                                <li
+                                                    v-for="gl in resultLogBulk.gagal"
+                                                    :key="gl.sampel"
+                                                >
+                                                    <strong>{{
+                                                        gl.sampel
+                                                    }}</strong
+                                                    >: {{ gl.reason }}
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    <div v-else>
+                                        <p class="text-muted small">
+                                            Anda akan memfinalisasi
+                                            <strong>{{
+                                                selectedItems.length
+                                            }}</strong>
+                                            sampel berikut. Silakan periksa
+                                            kembali sebelum menyimpan.
+                                        </p>
+                                        <div
+                                            class="accordion"
+                                            id="accordionBulk"
+                                        >
+                                            <div
+                                                class="accordion-item border-0 mb-3 rounded-4 shadow-sm overflow-hidden"
+                                                v-for="(
+                                                    item, index
+                                                ) in selectedItems"
+                                                :key="item.No_Po_Sampel"
+                                            >
+                                                <h2
+                                                    class="accordion-header"
+                                                    :id="'heading' + index"
+                                                >
+                                                    <button
+                                                        class="accordion-button bg-white text-dark collapsed py-3 fw-bold border-0"
+                                                        type="button"
+                                                        data-bs-toggle="collapse"
+                                                        :data-bs-target="
+                                                            '#collapse' + index
+                                                        "
+                                                        aria-expanded="false"
+                                                        :aria-controls="
+                                                            'collapse' + index
+                                                        "
+                                                    >
+                                                        <div
+                                                            class="d-flex w-100 justify-content-between align-items-center me-3"
+                                                        >
+                                                            <span
+                                                                ><i
+                                                                    class="fas fa-barcode text-primary me-2"
+                                                                ></i>
+                                                                {{
+                                                                    item.No_Po_Sampel
+                                                                }}</span
+                                                            >
+                                                            <span
+                                                                class="badge bg-primary rounded-pill"
+                                                                >{{
+                                                                    item.Total_Jenis_Analisa
+                                                                }}
+                                                                Analisa</span
+                                                            >
+                                                        </div>
+                                                    </button>
+                                                </h2>
+                                                <div
+                                                    :id="'collapse' + index"
+                                                    class="accordion-collapse collapse bg-light"
+                                                    :aria-labelledby="
+                                                        'heading' + index
+                                                    "
+                                                    data-bs-parent="#accordionBulk"
+                                                >
+                                                    <div
+                                                        class="accordion-body border-top p-3"
+                                                    >
+                                                        <div
+                                                            class="d-flex justify-content-between mb-3 align-items-start"
+                                                        >
+                                                            <div
+                                                                class="d-flex flex-column gap-1"
+                                                            >
+                                                                <span
+                                                                    class="fw-semibold text-dark"
+                                                                    >{{
+                                                                        item.Nama_Barang
+                                                                    }}</span
+                                                                >
+                                                                <span
+                                                                    class="text-muted small"
+                                                                    >PO:
+                                                                    {{
+                                                                        item.No_Po
+                                                                    }}
+                                                                    | Split PO:
+                                                                    {{
+                                                                        item.No_Split_Po
+                                                                    }}</span
+                                                                >
+                                                                <span
+                                                                    class="text-muted small"
+                                                                    >Kode
+                                                                    Barang:
+                                                                    {{
+                                                                        item.Kode_Barang
+                                                                    }}</span
+                                                                >
+                                                            </div>
+                                                            <button
+                                                                class="btn btn-sm btn-outline-danger rounded-pill"
+                                                                @click="
+                                                                    removeSelection(
+                                                                        item.No_Po_Sampel
+                                                                    )
+                                                                "
+                                                            >
+                                                                <i
+                                                                    class="fas fa-trash-alt me-1"
+                                                                ></i>
+                                                                Batal Pilih
+                                                            </button>
+                                                        </div>
+                                                        <div
+                                                            class="d-flex flex-wrap gap-2"
+                                                        >
+                                                            <span
+                                                                v-for="(
+                                                                    analisa, idx
+                                                                ) in item.Detail_Jenis_Analisa"
+                                                                :key="idx"
+                                                                class="badge bg-white text-dark border border-secondary border-opacity-25 rounded-pill px-3 py-2 shadow-sm d-flex align-items-center gap-2"
+                                                            >
+                                                                <span
+                                                                    class="bg-primary rounded-circle"
+                                                                    style="
+                                                                        width: 6px;
+                                                                        height: 6px;
+                                                                    "
+                                                                ></span>
+                                                                {{
+                                                                    analisa.Jenis_Analisa
+                                                                }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 bg-white">
+                                    <button
+                                        type="button"
+                                        class="btn btn-light rounded-pill px-4"
+                                        data-bs-dismiss="modal"
+                                    >
+                                        Tutup
+                                    </button>
+                                    <button
+                                        type="button"
+                                        v-if="
+                                            !resultLogBulk &&
+                                            selectedItems.length > 0
+                                        "
+                                        class="btn btn-primary rounded-pill px-4 shadow-sm d-flex align-items-center gap-2"
+                                        @click="submitBulkFinalisasi"
+                                        :disabled="loading.submittingBulk"
+                                    >
+                                        <span
+                                            v-if="loading.submittingBulk"
+                                            class="spinner-border spinner-border-sm"
+                                        ></span>
+                                        <i v-else class="fas fa-save"></i>
+                                        Simpan Finalisasi
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -339,7 +756,7 @@
 import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
 import axios from "axios";
 import ListSkeleton from "@/pages/vue/ui/ListSkeleton.vue";
-import { ElDatePicker, ElSelect, ElOption } from "element-plus";
+import { ElDatePicker, ElSelect, ElOption, ElMessage } from "element-plus";
 
 export default {
     components: {
@@ -354,7 +771,8 @@ export default {
             listData: [],
             search: "",
             dateRange: [],
-            filterQr: "", // Variable untuk filter QR
+            filterQr: "",
+            filterTotalAnalisa: "",
             searchTimeout: null,
             pagination: {
                 current_page: 1,
@@ -364,7 +782,12 @@ export default {
                 from: 0,
                 to: 0,
             },
-            loading: { loadingListData: false },
+            loading: {
+                loadingListData: false,
+                submittingBulk: false,
+            },
+            selectedItems: [],
+            resultLogBulk: null,
         };
     },
     computed: {
@@ -377,6 +800,12 @@ export default {
             );
             for (let i = start; i <= end; i++) pages.push(i);
             return pages;
+        },
+        isAllPageSelected() {
+            if (this.listData.length === 0) return false;
+            return this.listData.every((item) =>
+                this.isSelected(item.No_Po_Sampel)
+            );
         },
     },
     methods: {
@@ -398,7 +827,8 @@ export default {
         resetFilter() {
             this.search = "";
             this.dateRange = [];
-            this.filterQr = ""; // Reset filter QR
+            this.filterQr = "";
+            this.filterTotalAnalisa = "";
             this.pagination.current_page = 1;
             this.fetchData();
         },
@@ -416,34 +846,37 @@ export default {
                     page: this.pagination.current_page,
                     limit: this.pagination.per_page,
                     search: this.search,
-                    qr_type: this.filterQr, // Kirim parameter QR ke backend
+                    qr_type: this.filterQr,
+                    total_analisa: this.filterTotalAnalisa,
                 };
-
                 if (this.dateRange && this.dateRange.length === 2) {
                     params.start_date = this.dateRange[0];
                     params.end_date = this.dateRange[1];
                 }
-
                 const response = await axios.get(
                     "/api/v1/lab/validasi-hasil/akhir",
                     { params }
                 );
 
                 if (response.status === 200 && response.data?.success) {
-                    this.listData = response.data.result;
-                    const meta = response.data.pagination;
+                    this.listData =
+                        response.data.result.data || response.data.result;
+                    const meta =
+                        response.data.pagination ||
+                        response.data.result.pagination;
                     this.pagination = {
-                        current_page: meta.current_page,
-                        last_page: meta.total_pages,
-                        total: meta.total,
-                        per_page: meta.per_page,
-                        from: meta.from,
-                        to: meta.to,
+                        current_page: meta.current_page || meta.page,
+                        last_page: meta.total_pages || meta.totalPage,
+                        total: meta.total || meta.totalData,
+                        per_page: meta.per_page || meta.limit,
+                        from: meta.from || 1,
+                        to: meta.to || meta.limit,
                     };
                 } else {
                     this.listData = [];
                 }
             } catch (error) {
+                console.error("Gagal mengambil data:", error);
                 this.listData = [];
             } finally {
                 this.loading.loadingListData = false;
@@ -456,6 +889,116 @@ export default {
                 month: "short",
                 year: "numeric",
             });
+        },
+        isSelected(noSampel) {
+            return this.selectedItems.some((i) => i.No_Po_Sampel === noSampel);
+        },
+        toggleSelection(item) {
+            const index = this.selectedItems.findIndex(
+                (i) => i.No_Po_Sampel === item.No_Po_Sampel
+            );
+            if (index > -1) {
+                this.selectedItems.splice(index, 1);
+            } else {
+                this.selectedItems.push(item);
+            }
+        },
+        toggleSelectAllPage() {
+            if (this.isAllPageSelected) {
+                this.listData.forEach((item) => {
+                    const index = this.selectedItems.findIndex(
+                        (i) => i.No_Po_Sampel === item.No_Po_Sampel
+                    );
+                    if (index > -1) this.selectedItems.splice(index, 1);
+                });
+            } else {
+                this.listData.forEach((item) => {
+                    if (!this.isSelected(item.No_Po_Sampel)) {
+                        this.selectedItems.push(item);
+                    }
+                });
+            }
+        },
+        removeSelection(noSampel) {
+            const index = this.selectedItems.findIndex(
+                (i) => i.No_Po_Sampel === noSampel
+            );
+            if (index > -1) this.selectedItems.splice(index, 1);
+        },
+        async submitBulkFinalisasi() {
+            if (this.selectedItems.length === 0) {
+                ElMessage.warning("Tidak ada sampel yang dipilih.");
+                return;
+            }
+
+            this.loading.submittingBulk = true;
+            this.resultLogBulk = null;
+
+            try {
+                const no_sampel_list = this.selectedItems.map(
+                    (item) => item.No_Po_Sampel
+                );
+                const response = await axios.post(
+                    "/api/v1/hasil-analisa-close/finalisasi/bulk/closingberkala",
+                    { no_sampel_list }
+                );
+
+                if (response.data && response.data.success) {
+                    this.resultLogBulk = response.data.result;
+
+                    const sukses = response.data.result.berhasil || [];
+                    const gagal = response.data.result.gagal || [];
+
+                    this.selectedItems = this.selectedItems.filter(
+                        (item) => !sukses.includes(item.No_Po_Sampel)
+                    );
+
+                    if (sukses.length > 0 && gagal.length === 0) {
+                        ElMessage({
+                            type: "success",
+                            message: "Semua sampel berhasil difinalisasi.",
+                        });
+                    } else if (sukses.length > 0 && gagal.length > 0) {
+                        ElMessage({
+                            type: "warning",
+                            message:
+                                "Sebagian sampel berhasil difinalisasi, namun ada yang gagal.",
+                        });
+                    } else if (sukses.length === 0 && gagal.length > 0) {
+                        ElMessage({
+                            type: "error",
+                            message:
+                                "Gagal memfinalisasi semua sampel yang dipilih.",
+                        });
+                    } else {
+                        ElMessage({
+                            type: "success",
+                            message:
+                                response.data.message ||
+                                "Proses Bulk Finalisasi selesai.",
+                        });
+                    }
+
+                    this.fetchData();
+                } else {
+                    ElMessage({
+                        type: "error",
+                        message:
+                            response.data?.message ||
+                            "Gagal melakukan proses Bulk Finalisasi.",
+                    });
+                }
+            } catch (error) {
+                console.error(error);
+                ElMessage({
+                    type: "error",
+                    message:
+                        error.response?.data?.message ||
+                        "Gagal melakukan proses Bulk Finalisasi.",
+                });
+            } finally {
+                this.loading.submittingBulk = false;
+            }
         },
     },
     mounted() {

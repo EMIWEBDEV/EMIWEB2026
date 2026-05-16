@@ -2416,7 +2416,6 @@ export default {
                     );
                 }
             } catch (error) {
-                console.error(error);
                 let errorMessage = "Terjadi Kesalahan";
                 if (error.response?.data) {
                     errorMessage =

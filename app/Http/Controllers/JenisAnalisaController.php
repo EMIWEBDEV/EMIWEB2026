@@ -13,9 +13,6 @@ use Vinkla\Hashids\Facades\Hashids;
 
 class JenisAnalisaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
        $roles = Session::get("User_Roles") ?? []; 
@@ -315,17 +312,15 @@ class JenisAnalisaController extends Controller
                     'Id_Mesin' => $item['Id_Mesin'] ?? null,
                     'Flag_Perhitungan' => $item['Flag_Perhitungan'] ?? null,
                     'Sifat_Kegiatan' => $item['Sifat_Kegiatan'] ?? 'Rutin',
-                    'Flag_Foto' => ($kodeRole === 'FLM') ? ($item['Flag_Foto'] ?? 'T') : 'T',
+                    'Flag_Foto' => $item['Flag_Foto'] ?? 'T',
                     'Kode_Role' => $kodeRole,
                     'Id_User' => $pengguna->UserId,
                     'Created_At' => now(),
                     'Updated_At' => now()
                 ];
 
-                if ($kodeRole === 'FLM') {
-                    $dataRow['Kode_Aktivitas_Lab'] = $item['Kode_Aktivitas_Lab'];
-                }
-
+                $dataRow['Kode_Aktivitas_Lab'] = $item['Kode_Aktivitas_Lab'];
+    
                 $insertData[] = $dataRow;
             }
 
@@ -361,6 +356,7 @@ class JenisAnalisaController extends Controller
 
     public function update(Request $request, $id)
     {
+
         $pengguna = Auth::user();
 
         try {
@@ -435,8 +431,8 @@ class JenisAnalisaController extends Controller
                 'Id_Mesin' => $Id_Mesin,
                 'Flag_Perhitungan' => $request->Flag_Perhitungan,
                 'Sifat_Kegiatan' => $request->Sifat_Kegiatan ?? 'Rutin',
-                'Flag_Foto' => ($request->Kode_Role === 'FLM') ? ($request->Flag_Foto ?? 'T') : 'T',
-                'Kode_Aktivitas_Lab' => ($request->Kode_Role === 'FLM') ? $request->Kode_Aktivitas_Lab : null,
+                'Flag_Foto' => $request->Flag_Foto ?? 'T',
+                'Kode_Aktivitas_Lab' => $request->Kode_Aktivitas_Lab ?? null,
                 'Id_User' => $pengguna->UserId,
                 'Updated_At' => now()
             ];
@@ -498,10 +494,7 @@ class JenisAnalisaController extends Controller
                     ->where('berkala.Id_Jenis_Analisa', $item->id)
                     ->get();
 
-                // Tambahkan Sub_Analisa sebagai array string dari sub_ja
                 $item->Sub_Analisa = $getDataSubJenis->pluck('Sub_Jenis_Analisa');
-
-                // Encode ID
                 $item->id = Hashids::connection('custom')->encode($item->id);
                 $item->Id_Mesin = Hashids::connection('custom')->encode($item->Id_Mesin);
             }

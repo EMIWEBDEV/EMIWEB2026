@@ -9,14 +9,10 @@ use Illuminate\Support\Facades\Schema;
 
 class ProgressAnalisaSampelController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         return inertia("vue/dashboard/progress-sampel-analisa/HomeProgresAnalisa");
     }
-
 
     public function getDataCurrent(Request $request)
     {
@@ -183,6 +179,4 @@ class ProgressAnalisaSampelController extends Controller
                 ], 500); 
         }
     }
-  
-    
 }

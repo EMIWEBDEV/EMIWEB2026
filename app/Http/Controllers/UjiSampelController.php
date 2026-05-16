@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\File;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Storage;
 use ZipArchive;
 
 
@@ -1920,6 +1922,13 @@ class UjiSampelController extends Controller
 
     public function storeMultiQrCodeNotRumus(Request $request)
     {
+
+        if (is_string($request->input('analyses'))) {
+            $request->merge([
+                'analyses' => json_decode($request->input('analyses'), true)
+            ]);
+        }
+
         $request->validate([
             'analyses' => 'required|array|min:1',
             'analyses.*.No_Po_Sampel' => 'required|string',
@@ -1987,9 +1996,40 @@ class UjiSampelController extends Controller
 
             $idLogActivity = DB::table('N_EMI_LAB_Activity_Uji_Sampel')->insertGetId($payloadActivityUjiSampel, 'Id_Log_Activity');
 
+            $uploadedFilesData = [];
+            if ($request->hasFile('photos') && $request->flag_foto === 'Y') {
+                foreach ($request->file('photos') as $index => $file) {
+                    $extension = $file->getClientOriginalExtension() ?: 'png';
+                    $receivedSizeMB = number_format($file->getSize() / 1048576, 2);
+                    Log::channel('UjiSampelController')->info("📥 [UPLOAD FOTO MULTIPLE] Menerima file indeks {$index} murni dari Frontend. Ukuran: {$receivedSizeMB} MB");
+
+                    $fileName = 'lab' . Str::random(5) . '_' . time() . '_' . $index . '.' . $extension;
+                    $gcsFilePath = 'berkas/lab/' . $fileName;
+                    
+                    Storage::disk('gcs')->put($gcsFilePath, file_get_contents($file));
+
+                    $gcsFileSize = Storage::disk('gcs')->size($gcsFilePath);
+                    $gcsSizeMB = number_format($gcsFileSize / 1048576, 2);
+                    Log::channel('UjiSampelController')->info("☁️ [GCS UPLOAD MULTIPLE] Berhasil disimpan ke Cloud (Indeks {$index}). Ukuran final: {$gcsSizeMB} MB | Path: {$gcsFilePath}");
+
+                    $note = $request->input("notes.$index") ?? '';
+
+                    $uploadedFilesData[] = [
+                        'File_Path' => $gcsFilePath,
+                        'Keterangan' => $note
+                    ];
+                }
+            }
+            
+            // dd($request->analyses);
+
             foreach ($request->analyses as $analysisData) {
                 $idDecoded = Hashids::connection('custom')->decode($analysisData['Id_Jenis_Analisa']);
                 $jenisAnalisaId = isset($idDecoded[0]) ? $idDecoded[0] : null;
+
+                $kodeAktivitasLab = DB::table('N_EMI_LAB_Jenis_Analisa')
+                    ->where('id', $jenisAnalisaId)
+                    ->value('Kode_Aktivitas_Lab');
 
                 $rulesNonHitung = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
                     ->select('Nilai_Kriteria', 'Keterangan_Kriteria', 'Flag_Layak')
@@ -2003,6 +2043,8 @@ class UjiSampelController extends Controller
                 
                 $standardRule = $rulesNonHitung->firstWhere('Flag_Layak', 'Y');
                 $standardRangeValue = $standardRule ? (float)$standardRule->Nilai_Kriteria : null;
+
+                
 
                 foreach ($rulesNonHitung as $rule) {
                     $valFloat = (float)$rule->Nilai_Kriteria;
@@ -2039,6 +2081,8 @@ class UjiSampelController extends Controller
                             ], 403);
                         }
                 }
+
+
 
                 $analysisData['parameters'] = collect($analysisData['parameters'])->map(function ($param) use ($inputMap) {
                     $decoded = Hashids::connection('custom')->decode($param['Id_Quality_Control']);
@@ -2156,7 +2200,8 @@ class UjiSampelController extends Controller
 
                     $flagString = null;
                     $nilaiHasilString = null;
-                    $flagLayak = null;
+                    $flagLayak = 'T';
+
                     
                     $keyCheck = (string)$paramValueFloat;
                     if (isset($ruleDetailsMap[$keyCheck])) {
@@ -2165,6 +2210,11 @@ class UjiSampelController extends Controller
                         $flagString = 'Y';
                         $nilaiHasilString = $ruleDetail['label'];
                         $flagLayak = $ruleDetail['layak']; 
+                    }
+                    
+
+                    if ($kodeAktivitasLab === 'PLT') {
+                        $flagLayak = 'Y';
                     }
 
                     $rangeAwal = $standardRangeValue;
@@ -2175,6 +2225,7 @@ class UjiSampelController extends Controller
                         "Kode_Perusahaan" => "001",
                         "Id_Jenis_Analisa" => $sumberData->Id_Jenis_Analisa,
                         "Hasil" => $paramValueFloat,
+                        "Flag_Foto" => $request->flag_foto,
                         "Flag_Perhitungan" => null,
                         "Flag_Multi_QrCode" => $sumberData->is_multi_print,
                         "No_Fak_Sub_Po" => $sumberData->No_Po_Multi_Sampel,
@@ -2238,6 +2289,20 @@ class UjiSampelController extends Controller
                 DB::table('N_EMI_LAB_Activity_Uji_Sampel_Hasil_Detail')->insert($payloadActivityUjiSampelHasil);
                 DB::table('N_EMI_LAB_Activity_Uji_Sampel_Parameter_Detail')->insert($payloadActiviyUjiSampelDetail);
 
+                if (!empty($uploadedFilesData)) {
+                    $berkasPayload = [];
+                    foreach ($uploadedFilesData as $fileData) {
+                        $berkasPayload[] = [
+                            'No_Faktur' => $newNumber,
+                            'No_Sampel' => $analysisData['No_Po_Sampel'],
+                            'Berkas_Key' => Str::random(32),
+                            'File_Path' => $fileData['File_Path'],
+                            'Keterangan' => $fileData['Keterangan'] 
+                        ];
+                    }
+                    DB::table('N_EMI_LAB_Berkas_Uji_Lab')->insert($berkasPayload);
+                }
+
                 if ($isFromSementara) {
                     DB::table('N_EMI_LAB_Uji_Sampel_Detail_Sementara')->where('No_Sementara', $noSementara)->delete();
                     DB::table('N_EMI_LAB_Uji_Sampel_Sementara')->where('No_Sementara', $noSementara)->delete();
@@ -2257,19 +2322,89 @@ class UjiSampelController extends Controller
                 'message' => "Data berhasil diproses dan disimpan.",
                 'results' => $results 
             ], 201);
-        } catch (\Exception $e) {
+        } catch (\Illuminate\Database\QueryException $e) {
+            // 1. Tangkap khusus error database (QueryException)
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            
+            // Rollback file di GCS jika ada
+            if (!empty($uploadedFilesData)) {
+                foreach ($uploadedFilesData as $fileData) {
+                    if (Storage::disk('gcs')->exists($fileData['File_Path'])) {
+                        Storage::disk('gcs')->delete($fileData['File_Path']);
+                        Log::channel('UjiSampelController')->info("🗑️ [GCS ROLLBACK] File dihapus karena proses DB gagal: {$fileData['File_Path']}");
+                    }
+                }
+            }
+            
+            // Log error asli (lengkap dengan query-nya) HANYA di file log server untuk tim IT
+            Log::channel('UjiSampelController')->error('DB Error: ' . $e->getMessage());
+
+            // 2. Filter pesan untuk pengguna
+            $errorCode = $e->errorInfo[1] ?? 0;
+            $sqlState = $e->errorInfo[0] ?? '';
+            
+            $userMessage = "Terjadi kesalahan pada saat menyimpan data ke database.";
+
+            // Mapping Kode Error SQL Server ke bahasa manusia yang aman
+            if ($errorCode == 8152 || $errorCode == 2628 || $sqlState === '22001') {
+                $userMessage = "Gagal menyimpan: Ada isian teks/data yang terlalu panjang melebihi kapasitas kolom.";
+            } elseif ($errorCode == 1205 || $sqlState === '40001') {
+                $userMessage = "Sistem sedang sibuk memproses data lain (Deadlock). Silakan coba simpan lagi beberapa saat.";
+            } elseif ($errorCode == 2627 || $errorCode == 2601) {
+                $userMessage = "Gagal menyimpan: Ditemukan data duplikat yang sudah pernah diinput sebelumnya.";
+            } elseif ($errorCode == 547) {
+                $userMessage = "Gagal menyimpan: Data yang direferensikan tidak valid atau tidak ditemukan.";
+            } elseif ($errorCode == 208) {
+                $userMessage = "Kesalahan sistem: Tabel atau relasi data tidak ditemukan saat memproses permintaan.";
+            }
+
             return response()->json([
                 'success' => false,
                 'status' => 500,
-                'message' => "Terjadi Kesalahan"
+                'message' => $userMessage
+            ], 500);
+
+        } catch (\Exception $e) {
+            // 3. Tangkap error umum lainnya (Logic PHP, Network, dll)
+            DB::rollBack();
+            
+            if (!empty($uploadedFilesData)) {
+                foreach ($uploadedFilesData as $fileData) {
+                    if (Storage::disk('gcs')->exists($fileData['File_Path'])) {
+                        Storage::disk('gcs')->delete($fileData['File_Path']);
+                        Log::channel('UjiSampelController')->info("🗑️ [GCS ROLLBACK] File dihapus karena logic PHP gagal: {$fileData['File_Path']}");
+                    }
+                }
+            }
+            
+            Log::channel('UjiSampelController')->error('General Error: ' . $e->getMessage());
+
+            // Cek apakah pesan exception murni dari PHP/Logic (aman) atau memuat kata kunci database
+            $rawMessage = $e->getMessage();
+            $safeMessage = "Terjadi Kesalahan Sistem.";
+            
+            // Jika pesannya bukan tentang syntax SQL atau hal teknis, kita bisa tampilkan
+            if (!str_contains(strtolower($rawMessage), 'sql') && !str_contains(strtolower($rawMessage), 'syntax')) {
+                // Opsional: Anda bisa membatasi panjang pesan agar tidak kepanjangan
+                $safeMessage = "Kesalahan Sistem: " . substr($rawMessage, 0, 150); 
+            }
+
+            return response()->json([
+                'success' => false,
+                'status' => 500,
+                'message' => $safeMessage
             ], 500);
         }
     }
     
     public function storeMultiQrCodeNotRumusResampling(Request $request)
     {
+        if (is_string($request->input('analyses'))) {
+            $request->merge([
+                'analyses' => json_decode($request->input('analyses'), true)
+            ]);
+        }
+
         $request->validate([
             'analyses' => 'required|array|min:1',
             'analyses.*.No_Po_Sampel' => 'required|string',
@@ -2286,7 +2421,10 @@ class UjiSampelController extends Controller
         ]);
         
         DB::beginTransaction();
-        
+
+        $berkasInsertsTemplate = []; 
+        $oldFilesToDeleteGcs = [];   
+
         try {
             $results = [];
             
@@ -2322,6 +2460,7 @@ class UjiSampelController extends Controller
             $firstAnalysis = $request->analyses[0];
             $idDecoded = Hashids::connection('custom')->decode($firstAnalysis['Id_Jenis_Analisa']);
             $jenisAnalisaId = isset($idDecoded[0]) ? $idDecoded[0] : null;
+            $noPoSampel = $firstAnalysis['No_Po_Sampel'];
 
             $dataResampling = DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')
                 ->where('No_Po_Sampel', $firstAnalysis['No_Po_Sampel'])
@@ -2336,6 +2475,55 @@ class UjiSampelController extends Controller
 
             $fixedNoFakSubPo = $dataResampling->No_Sampel_Resampling;
             $fixedTahapanKe = $dataResampling->Tahapan_Ke;
+
+            $oldFakturRecords = DB::table('N_EMI_LAB_Uji_Sampel')
+                ->where('No_Po_Sampel', $noPoSampel)
+                ->where('Id_Jenis_Analisa', $jenisAnalisaId)
+                ->where('Flag_Resampling', 'Y')
+                ->where('Status_Keputusan_Sampel', 'tolak')
+                ->pluck('No_Faktur')
+                ->toArray();
+
+            $noSementaraList = collect($request->analyses)->pluck('No_Sementara')->filter()->toArray();
+
+            $allFakturToDelete = array_unique(array_merge($oldFakturRecords, $noSementaraList));
+            
+            if (!empty($allFakturToDelete)) {
+                $oldBerkasRecords = DB::table('N_EMI_LAB_Berkas_Uji_Lab')
+                    ->whereIn('No_Faktur', $allFakturToDelete)
+                    ->get();
+
+                foreach ($oldBerkasRecords as $berkas) {
+                    if (!empty($berkas->File_Path)) {
+                        $oldFilesToDeleteGcs[] = $berkas->File_Path;
+                    }
+                }
+
+                if ($oldBerkasRecords->count() > 0) {
+                    DB::table('N_EMI_LAB_Berkas_Uji_Lab')
+                        ->whereIn('No_Faktur', $allFakturToDelete)
+                        ->delete();
+                }
+            }
+            
+            if ($request->hasFile('photos') && $request->flag_foto === 'Y') {
+                $photos = $request->file('photos');
+                $notes = $request->input('notes', []);
+
+                foreach ($photos as $index => $file) {
+                    $extension = $file->getClientOriginalExtension() ?: 'png';
+                    $fileName = 'lab_' . Str::random(5) . '_' . time() . '_' . $index . '.' . $extension;
+                    $gcsFilePath = 'berkas/lab/' . $fileName;
+                    Storage::disk('gcs')->put($gcsFilePath, file_get_contents($file));
+                    $note = isset($notes[$index]) && !empty($notes[$index]) ? $notes[$index] : '-';
+                    $berkasInsertsTemplate[] = [
+                        'No_Sampel' => $noPoSampel,
+                        'Berkas_Key' => Str::random(32),
+                        'File_Path' => $gcsFilePath,
+                        'Keterangan' => $note
+                    ];
+                }
+            }
 
             $payloadActivityUjiSampel = [
                 'Kode_Perusahaan' => '001',
@@ -2553,6 +2741,7 @@ class UjiSampelController extends Controller
                     $payloadUjiSampleData[] = [
                         "No_Faktur" => $newNumber,
                         "Kode_Perusahaan" => "001",
+                        "Flag_Foto" => $request->flag_foto,
                         "Id_Jenis_Analisa" => $jenisAnalisaId,
                         "Hasil" => $paramValueFloat,
                         "Flag_Perhitungan" => $flagPerhitunganVal,
@@ -2618,6 +2807,16 @@ class UjiSampelController extends Controller
                 DB::table('N_EMI_LAB_Activity_Uji_Sampel_Hasil_Detail')->insert($payloadActivityUjiSampelHasil);
                 DB::table('N_EMI_LAB_Activity_Uji_Sampel_Parameter_Detail')->insert($payloadActiviyUjiSampelDetail);
 
+                if (!empty($berkasInsertsTemplate)) {
+                    $berkasToInsert = array_map(function($item) use ($newNumber) {
+                        $item['No_Faktur'] = $newNumber;
+                        $item['Berkas_Key'] = Str::random(32); 
+                        return $item;
+                    }, $berkasInsertsTemplate);
+
+                    DB::table('N_EMI_LAB_Berkas_Uji_Lab')->insert($berkasToInsert);
+                }
+
                 if ($isFromSementara) {
                     DB::table('N_EMI_LAB_Uji_Sampel_Detail_Sementara')->where('No_Sementara', $noSementara)->delete();
                     DB::table('N_EMI_LAB_Uji_Sampel_Sementara')->where('No_Sementara', $noSementara)->delete();
@@ -2637,6 +2836,16 @@ class UjiSampelController extends Controller
 
             DB::commit();
 
+            if (!empty($oldFilesToDeleteGcs)) {
+                $uniqueFilesToDelete = array_unique($oldFilesToDeleteGcs);
+                foreach ($uniqueFilesToDelete as $oldPath) {
+                    if (Storage::disk('gcs')->exists($oldPath)) {
+                        Storage::disk('gcs')->delete($oldPath);
+                    }
+                }
+            }
+
+
             return response()->json([
                 'success' => true,
                 'status' => 201,
@@ -2645,6 +2854,13 @@ class UjiSampelController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
+            if (!empty($berkasInsertsTemplate)) {
+                foreach ($berkasInsertsTemplate as $berkasItem) {
+                    if (Storage::disk('gcs')->exists($berkasItem['File_Path'])) {
+                        Storage::disk('gcs')->delete($berkasItem['File_Path']);
+                    }
+                }
+            }
             Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -3389,6 +3605,12 @@ class UjiSampelController extends Controller
 
     public function storeNoRumusNotMultiQrCode(Request $request)
     {
+        if (is_string($request->input('analyses'))) {
+            $request->merge([
+                'analyses' => json_decode($request->input('analyses'), true)
+            ]);
+        }
+
         $request->validate([
             'analyses' => 'required|array|min:1',
             'analyses.*.No_Po_Sampel' => 'required|string',
@@ -3478,6 +3700,32 @@ class UjiSampelController extends Controller
                 ->selectRaw("MAX(CAST(SUBSTRING(No_Faktur, ? + 2, 10) AS INT)) as max_number", [$prefixLength])
                 ->value('max_number') ?? 0;
 
+
+            $uploadedFilesData = [];
+            if ($request->hasFile('photos') && $request->flag_foto === 'Y') {
+                foreach ($request->file('photos') as $index => $file) {
+                    $extension = $file->getClientOriginalExtension() ?: 'png';
+                    $receivedSizeMB = number_format($file->getSize() / 1048576, 2);
+                    Log::channel('UjiSampelController')->info("📥 [UPLOAD FOTO MULTIPLE] Menerima file indeks {$index} murni dari Frontend. Ukuran: {$receivedSizeMB} MB");
+
+                    $fileName = 'lab' . Str::random(5) . '_' . time() . '_' . $index . '.' . $extension;
+                    $gcsFilePath = 'berkas/lab/' . $fileName;
+                    
+                    Storage::disk('gcs')->put($gcsFilePath, file_get_contents($file));
+
+                    $gcsFileSize = Storage::disk('gcs')->size($gcsFilePath);
+                    $gcsSizeMB = number_format($gcsFileSize / 1048576, 2);
+                    Log::channel('UjiSampelController')->info("☁️ [GCS UPLOAD MULTIPLE] Berhasil disimpan ke Cloud (Indeks {$index}). Ukuran final: {$gcsSizeMB} MB | Path: {$gcsFilePath}");
+
+                    $note = $request->input("notes.$index") ?? '';
+
+                    $uploadedFilesData[] = [
+                        'File_Path' => $gcsFilePath,
+                        'Keterangan' => $note
+                    ];
+                }
+            }
+
             foreach ($request->analyses as $analysisData) {
                 $idJenisAnalisa = Hashids::connection('custom')->decode($analysisData['Id_Jenis_Analisa'])[0] ?? null;
 
@@ -3501,6 +3749,10 @@ class UjiSampelController extends Controller
                         ], 403);
                     }
                 }
+
+                $kodeAktivitasLab = DB::table('N_EMI_LAB_Jenis_Analisa')
+                    ->where('id', $idJenisAnalisa)
+                    ->value('Kode_Aktivitas_Lab');
 
                 $parameters = collect($analysisData['parameters'])->map(function ($param) {
                     $decoded = !empty($param['Id_Quality_Control']) ? Hashids::connection('custom')->decode($param['Id_Quality_Control']) : [];
@@ -3615,11 +3867,16 @@ class UjiSampelController extends Controller
                         }
                     }
 
+                    if ($kodeAktivitasLab === 'PLT') {
+                        $flagLayak = 'Y';
+                    }
+
                     $payloadUjiSampleData[] = [
                         "No_Faktur" => $newNumber,
                         "Kode_Perusahaan" => "001",
                         "Id_Jenis_Analisa" => $result['Id_Jenis_Analisa'],
                         "Hasil" => $hasilFloat,
+                        "Flag_Foto" => $request->flag_foto,
                         "Flag_Perhitungan" => $flagPerhitunganValue, 
                         "Flag_Multi_QrCode" => null,
                         "Status" => null,
@@ -3686,6 +3943,20 @@ class UjiSampelController extends Controller
                     DB::table('N_EMI_LAB_Activity_Uji_Sampel_Parameter_Detail')->insert($payloadActiviyUjiSampelDetail);
                 }
 
+                if (!empty($uploadedFilesData)) {
+                    $berkasPayload = [];
+                    foreach ($uploadedFilesData as $fileData) {
+                        $berkasPayload[] = [
+                            'No_Faktur' => $newNumber,
+                            'No_Sampel' => $analysisData['No_Po_Sampel'],
+                            'Berkas_Key' => Str::random(32),
+                            'File_Path' => $fileData['File_Path'],
+                            'Keterangan' => $fileData['Keterangan'] 
+                        ];
+                    }
+                    DB::table('N_EMI_LAB_Berkas_Uji_Lab')->insert($berkasPayload);
+                }
+
                 if ($isFromSementara) {
                     DB::table('N_EMI_LAB_Uji_Sampel_Detail_Sementara')->where('No_Sementara', $noSementara)->delete();
                     DB::table('N_EMI_LAB_Uji_Sampel_Sementara')->where('No_Sementara', $noSementara)->delete();
@@ -3708,6 +3979,14 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            if (!empty($uploadedFilesData)) {
+                foreach ($uploadedFilesData as $fileData) {
+                    if (Storage::disk('gcs')->exists($fileData['File_Path'])) {
+                        Storage::disk('gcs')->delete($fileData['File_Path']);
+                        Log::channel('UjiSampelController')->info("🗑️ [GCS ROLLBACK] File dihapus karena proses DB gagal: {$fileData['File_Path']}");
+                    }
+                }
+            }
             Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -3719,6 +3998,12 @@ class UjiSampelController extends Controller
 
     public function storeNoRumusNotMultiQrCodeResampling(Request $request)
     {
+         if (is_string($request->input('analyses'))) {
+            $request->merge([
+                'analyses' => json_decode($request->input('analyses'), true)
+            ]);
+        }
+
         $request->validate([
             'analyses' => 'required|array|min:1',
             'analyses.*.No_Po_Sampel' => 'required|string',
@@ -3733,6 +4018,10 @@ class UjiSampelController extends Controller
         ]);
 
         DB::beginTransaction();
+
+        $berkasInsertsTemplate = []; 
+        $oldFilesToDeleteGcs = [];   
+
 
         try {
             $waktuServer = DB::select("SELECT dbo.Get_Date_Time() as DateTimeNow");
@@ -3788,6 +4077,57 @@ class UjiSampelController extends Controller
             if (!$dataResamplingFirst) {
                 throw new \Exception("Data Resampling Aktif tidak ditemukan.");
             }
+
+
+            $oldFakturRecords = DB::table('N_EMI_LAB_Uji_Sampel')
+                ->where('No_Po_Sampel', $request->analyses[0]['No_Po_Sampel'])
+                ->where('Id_Jenis_Analisa', $firstIdDecoded)
+                ->where('Flag_Resampling', 'Y')
+                ->where('Status_Keputusan_Sampel', 'tolak')
+                ->pluck('No_Faktur')
+                ->toArray();
+
+            $noSementaraList = collect($request->analyses)->pluck('No_Sementara')->filter()->toArray();
+
+            $allFakturToDelete = array_unique(array_merge($oldFakturRecords, $noSementaraList));
+            
+            if (!empty($allFakturToDelete)) {
+                $oldBerkasRecords = DB::table('N_EMI_LAB_Berkas_Uji_Lab')
+                    ->whereIn('No_Faktur', $allFakturToDelete)
+                    ->get();
+
+                foreach ($oldBerkasRecords as $berkas) {
+                    if (!empty($berkas->File_Path)) {
+                        $oldFilesToDeleteGcs[] = $berkas->File_Path;
+                    }
+                }
+
+                if ($oldBerkasRecords->count() > 0) {
+                    DB::table('N_EMI_LAB_Berkas_Uji_Lab')
+                        ->whereIn('No_Faktur', $allFakturToDelete)
+                        ->delete();
+                }
+            }
+            
+            if ($request->hasFile('photos') && $request->flag_foto === 'Y') {
+                $photos = $request->file('photos');
+                $notes = $request->input('notes', []);
+
+                foreach ($photos as $index => $file) {
+                    $extension = $file->getClientOriginalExtension() ?: 'png';
+                    $fileName = 'lab_' . Str::random(5) . '_' . time() . '_' . $index . '.' . $extension;
+                    $gcsFilePath = 'berkas/lab/' . $fileName;
+                    Storage::disk('gcs')->put($gcsFilePath, file_get_contents($file));
+                    $note = isset($notes[$index]) && !empty($notes[$index]) ? $notes[$index] : '-';
+                    $berkasInsertsTemplate[] = [
+                        'No_Sampel' => $request->analyses[0]['No_Po_Sampel'],
+                        'Berkas_Key' => Str::random(32),
+                        'File_Path' => $gcsFilePath,
+                        'Keterangan' => $note
+                    ];
+                }
+            }
+
 
             $payloadActivityUjiSampel = [
                 'Kode_Perusahaan' => '001',
@@ -3971,6 +4311,7 @@ class UjiSampelController extends Controller
                     $payloadUjiSampleData[] = [
                         "No_Faktur" => $newNumber,
                         "Kode_Perusahaan" => "001",
+                        "Flag_Foto" => $request->flag_foto,
                         "Id_Jenis_Analisa" => $result['Id_Jenis_Analisa'],
                         "Hasil" => $hasilFloat,
                         "Flag_Perhitungan" => $flagPerhitunganValue,
@@ -4039,6 +4380,17 @@ class UjiSampelController extends Controller
                     DB::table('N_EMI_LAB_Activity_Uji_Sampel_Parameter_Detail')->insert($payloadActiviyUjiSampelDetail);
                 }
 
+                if (!empty($berkasInsertsTemplate)) {
+                    $berkasToInsert = array_map(function($item) use ($newNumber) {
+                        $item['No_Faktur'] = $newNumber;
+                        $item['Berkas_Key'] = Str::random(32); 
+                        return $item;
+                    }, $berkasInsertsTemplate);
+
+                    DB::table('N_EMI_LAB_Berkas_Uji_Lab')->insert($berkasToInsert);
+                }
+                
+
                 if ($isFromSementara) {
                     DB::table('N_EMI_LAB_Uji_Sampel_Detail_Sementara')->where('No_Sementara', $noSementara)->delete();
                     DB::table('N_EMI_LAB_Uji_Sampel_Sementara')->where('No_Sementara', $noSementara)->delete();
@@ -4067,6 +4419,13 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            if (!empty($berkasInsertsTemplate)) {
+                foreach ($berkasInsertsTemplate as $berkasItem) {
+                    if (Storage::disk('gcs')->exists($berkasItem['File_Path'])) {
+                        Storage::disk('gcs')->delete($berkasItem['File_Path']);
+                    }
+                }
+            }
             Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -6702,117 +7061,113 @@ class UjiSampelController extends Controller
 
             $checkedPerhitungan = DB::table('N_EMI_LAB_Jenis_Analisa')->where('id', $analysis->Id_Jenis_Analisa)->first();
 
-            if ($checkFinishGood && $checkFinishGood->Flag_FG === 'Y') {
+                
 
-                if ($checkedPerhitungan->Flag_Perhitungan === 'Y') {
-                    
-                    // --- PERBAIKAN CORE LOGIC ---
-                    // Hanya check Flag_Layak = 'T' pada data yang Status-nya masih NULL.
-                    // Data lama yang Status-nya 'Y' (history) diabaikan.
-                    $adaTidakLayak = DB::table('N_EMI_LAB_Uji_Sampel')
+            if($checkFinishGood && $checkFinishGood->Flag_FG === 'Y'){
+                
+                if($checkedPerhitungan->Flag_Perhitungan === 'Y'){
+                        $adaTidakLayak = DB::table('N_EMI_LAB_Uji_Sampel')
                         ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
                         ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
                         ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
-                        ->whereNull('Status') // <--- KUNCI: Hanya cek yang statusnya NULL (batch saat ini)
-                        ->where('Flag_Layak', 'T') 
+                        ->where('Flag_Layak', 'T')
                         ->exists();
 
-                    // Jika di batch inputan ini (Status NULL) ada yang T, maka T. Jika bersih, maka Y.
                     $statusKelayakan = $adaTidakLayak ? 'T' : 'Y';
 
                     DB::beginTransaction();
 
                     try {
-                        // Update juga difilter berdasarkan Status yang NULL agar tidak mengupdate history
-                        DB::table('N_EMI_LAB_Uji_Sampel')
-                            ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
-                            ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
-                            ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
-                            ->whereNull('Status') // <--- Filter update juga pakai Status NULL
-                            ->update([
-                                'Status_Keputusan_Sampel' => 'terima',
-                                'Flag_Selesai' => 'Y',
-                            ]);
+                            DB::table('N_EMI_LAB_Uji_Sampel')
+                                    ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
+                                    ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
+                                    ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa) 
+                                    ->whereNull('Flag_Selesai')
+                                    ->update([
+                                        'Status_Keputusan_Sampel' => 'terima',
+                                        'Flag_Selesai' => 'Y'
+                                    ]);
 
-                        $payloadUjiFinalDetail = [
-                            'No_Sampel' => $analysis->No_Po_Sampel,
-                            'No_Sub_Sampel' => $analysis->No_Fak_Sub_Po,
-                            'Id_Jenis_Analisa' => $analysis->Id_Jenis_Analisa,
-                            'Tahapan_Ke' => $analysis->Tahapan_Ke,
-                            'Flag_Layak' => $statusKelayakan, // Nilai sudah sesuai logic Status NULL
-                            'Tanggal' => $tanggalSqlServer,
-                            'Jam' => $jamSqlServer,
-                            'Id_User' => $userId
-                        ];
-                        
-                        DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Detail_Final')->insert($payloadUjiFinalDetail);
-                        DB::commit();
+                            $payloadUjiFinalDetail = [
+                                'No_Sampel' => $analysis->No_Po_Sampel,
+                                'No_Sub_Sampel' => $analysis->No_Fak_Sub_Po,
+                                'Id_Jenis_Analisa' => $analysis->Id_Jenis_Analisa,
+                                'Tahapan_Ke' => $analysis->Tahapan_Ke,
+                                'Flag_Layak' => $statusKelayakan,
+                                'Tanggal' => $tanggalSqlServer,
+                                'Jam' => $jamSqlServer,    
+                                'Id_User' => $userId
+                            ];
+                            DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Detail_Final')->insert($payloadUjiFinalDetail);
+                            DB::commit();
 
-                        return response()->json([
-                            'success' => true,
-                            'message' => 'Data berhasil diupdate dan status penyelesaian telah diperiksa.'
-                        ], 200);
+                            return response()->json([
+                                'success' => true,
+                                'message' => 'Data berhasil diupdate dan status penyelesaian telah diperiksa.'
+                            ], 200);
 
                     } catch (\Exception $e) {
-                        DB::rollBack();
-                        Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
-                        return response()->json([
-                            'success' => false,
-                            'status' => 500,
-                            'message' => "Terjadi Kesalahan"
-                        ], 500);
+                            DB::rollBack();
+                            Log::error($e);
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Terjadi kesalahan pada server saat memproses data.',
+                                'error' => $e->getMessage(), 
+                            ], 500);
                     }
-                } else {
-                    // Logic Non-Perhitungan (Tetap pakai filter Status NULL untuk konsistensi)
+                }else {
                     DB::beginTransaction();
-                    try {
-                        DB::table('N_EMI_LAB_Uji_Sampel')
-                            ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
-                            ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
-                            ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
-                            ->whereNull('Status') // Filter Status NULL
-                            ->update([
-                                'Status_Keputusan_Sampel' => 'terima',
-                                'Flag_Selesai' => 'Y',
-                                'Flag_Layak' => 'Y',
-                                'Flag_Final' => 'Y',
-                            ]);
 
-                        DB::commit();
-                        return response()->json([
-                            'success' => true,
-                            'message' => 'Data berhasil diupdate dan status penyelesaian telah diperiksa.'
-                        ], 200);
+                    try {
+                            
+                        DB::table('N_EMI_LAB_Uji_Sampel')
+                                    ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
+                                    ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
+                                    ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa) 
+                                    ->whereNull('Flag_Selesai')
+                                    ->update([
+                                        'Status_Keputusan_Sampel' => 'terima',
+                                        'Flag_Selesai' => 'Y',
+                                        'Flag_Layak' => 'Y',
+                                        'Flag_Final' => 'Y'
+                                    ]);
+
+                            DB::commit();
+
+                            return response()->json([
+                                'success' => true,
+                                'message' => 'Data berhasil diupdate dan status penyelesaian telah diperiksa.'
+                            ], 200);
 
                     } catch (\Exception $e) {
-                        DB::rollBack();
-                        Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
-                        return response()->json([
-                            'success' => false,
-                            'status' => 500,
-                            'message' => "Terjadi Kesalahan"
-                        ], 500);
+                            DB::rollBack();
+                            Log::error($e);
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Terjadi kesalahan pada server saat memproses data.',
+                                'error' => $e->getMessage(), 
+                            ], 500);
                     }
                 }
-            } else {
-                // Logic Non-FinishGood
-                if ($analysis->Flag_Multi_QrCode === 'Y') {
+            }else {
+                if($analysis->Flag_Multi_QrCode === 'Y'){
                     DB::beginTransaction();
+
                     try {
                         DB::table('N_EMI_LAB_Uji_Sampel')
-                            ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
-                            ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
-                            ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
-                            ->whereNull('Status')
-                            ->update([
-                                'Flag_Selesai' => 'Y',
-                                'Status_Keputusan_Sampel' => 'terima',
-                                'Flag_Layak' => 'Y',
-                                'Flag_Final' => 'Y',
-                                // 'Status' => 'Y'
-                            ]);
-
+                                ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
+                                ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
+                                ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa) 
+                                ->whereNull('Flag_Selesai')
+                                ->update([
+                                    'Flag_Selesai' => 'Y',
+                                    'Status_Keputusan_Sampel' => 'terima',
+                                    'Flag_Layak' => 'Y',
+                                    'Flag_Final' => 'Y'
+                                ]);
+                                
                         DB::commit();
+
                         return response()->json([
                             'success' => true,
                             'message' => 'Data berhasil diupdate dan status penyelesaian telah diperiksa.'
@@ -6820,47 +7175,48 @@ class UjiSampelController extends Controller
 
                     } catch (\Exception $e) {
                         DB::rollBack();
-                        Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+                        Log::error($e);
                         return response()->json([
                             'success' => false,
-                            'status' => 500,
-                            'message' => "Terjadi Kesalahan"
+                            'message' => 'Terjadi kesalahan pada server saat memproses data.',
+                            'error' => $e->getMessage(), // Opsional: hanya tampilkan saat mode debug
                         ], 500);
                     }
-                } else {
+                }else {
                     DB::beginTransaction();
+
                     try {
                         DB::table('N_EMI_LAB_Uji_Sampel')
-                            ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
-                            ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
-                            ->whereNull('Status')
-                            ->update([
-                                'Flag_Selesai' => 'Y',
-                                'Status_Keputusan_Sampel' => 'terima',
-                                'Flag_Layak' => 'Y',
-                                'Flag_Final' => 'Y',
-                                // 'Status' => 'Y'
-                            ]);
-
+                                ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
+                                ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa) 
+                                ->whereNull('Flag_Selesai')
+                                ->update([
+                                    'Flag_Selesai' => 'Y',
+                                    'Status_Keputusan_Sampel' => 'terima',
+                                    'Flag_Layak' => 'Y',
+                                    'Flag_Final' => 'Y'
+                                ]);
+                    
                         DB::commit();
                         return response()->json([
                             'success' => true,
                             'message' => 'Data berhasil diupdate dan status penyelesaian telah diperiksa.'
                         ], 200);
 
-                    } catch (\Exception $e) {
+                    }catch(\Exception $e){
                         DB::rollBack();
-                        Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+                        Log::error($e);
                         return response()->json([
                             'success' => false,
-                            'status' => 500,
-                            'message' => "Terjadi Kesalahan"
+                            'message' => 'Terjadi kesalahan pada server saat memproses data.',
+                            'error' => $e->getMessage() 
                         ], 500);
                     }
                 }
             }
         }
     }
+
     public function finalisasiNoPoSampel($no_sampel)
     {
         $userId = Auth::user()->UserId;
@@ -7518,7 +7874,8 @@ class UjiSampelController extends Controller
                     'q.Kode_Uji as kode_uji',
                     'ja.Kode_Analisa as kode_analisa',
                     'ja.Jenis_Analisa as jenis_analisa',
-                    'ja.Flag_Perhitungan as flag_perhitungan'
+                    'ja.Flag_Perhitungan as flag_perhitungan',
+                    'ja.Flag_Foto as sesi_foto'
                 )
                 ->get();
 
@@ -7568,6 +7925,7 @@ class UjiSampelController extends Controller
                     'kode_analisa' => $param->kode_analisa,
                     'jenis_analisa' => $param->jenis_analisa,
                     'flag_perhitungan' => $param->flag_perhitungan,
+                    'sesi_foto' => $param->sesi_foto,
                     'option' => $options
                 ];
             });
@@ -7614,7 +7972,8 @@ class UjiSampelController extends Controller
                 'message' => "Data Ditemukan !",
                 'result' => [
                     'parameter' => $hashedParameters,
-                    'formula' => $hashedFormula
+                    'formula' => $hashedFormula,
+                    'sesi_foto' => $parameters->first()->sesi_foto
                 ]
             ], 200);
         } catch (\Exception $e) {
@@ -9417,13 +9776,41 @@ class UjiSampelController extends Controller
 
     public function getDataConfirmedSelesaiV2(Request $request)
     {
-        $searchQuery = $request->input('q', '');
-        $limit = $request->input('limit', 10);
+        $checkedAkses = Session::get("user_permissions");
+        $permissionKonten = $checkedAkses['permission_konten'] ?? [];
+
+        $allowedAnalisaIds = [];
+            if (isset($permissionKonten['Validasi Hasil Analisa']) && is_array($permissionKonten['Validasi Hasil Analisa'])) {
+                foreach ($permissionKonten['Validasi Hasil Analisa'] as $akses) {
+                    if (isset($akses['flag']) && $akses['flag'] === 'Y' && isset($akses['id_jenis_analisa'])) {
+                        $allowedAnalisaIds[] = $akses['id_jenis_analisa'];
+                    }
+                }
+            }
+
+            $searchQuery = $request->input('q', '');
+            $limit = $request->input('limit', 10);
+
+            if (empty($allowedAnalisaIds)) {
+                return response()->json([
+                    'success' => true,
+                    'status'  => 200,
+                    'message' => "Data tidak ditemukan (Tidak ada akses jenis analisa yang valid).",
+                    'result'  => [
+                        'data' => [],
+                        'pagination' => [
+                            'page'      => 1,
+                            'limit'     => (int)$limit,
+                            'totalPage' => 0,
+                            'totalData' => 0,
+                        ]
+                    ]
+                ], 200);
+            }
         $filterTanggalMulai = $request->input('tanggal_mulai');
         $filterTanggalSelesai = $request->input('tanggal_selesai');
         $filterQrCode = $request->input('qrcode');
 
-        // 1. Base Query: Grouping by Sample & Analysis Type
         $baseQuery = DB::table('N_EMI_LAB_Uji_Sampel')
             ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
             ->join('N_EMI_LAB_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', '=', 'N_EMI_LAB_Jenis_Analisa.id')
@@ -9431,18 +9818,19 @@ class UjiSampelController extends Controller
                 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa',
                 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
                 'N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode',
-                'N_EMI_LAB_Uji_Sampel.Tanggal',
                 'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa',
-                'N_EMI_LAB_Jenis_Analisa.Kode_Analisa'
+                'N_EMI_LAB_Jenis_Analisa.Kode_Analisa',
+                DB::raw('MAX(N_EMI_LAB_Uji_Sampel.Tanggal) as Tanggal') 
             )
+            ->whereIn('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
             ->whereNull('N_EMI_LAB_Uji_Sampel.Flag_Selesai')
             ->where('N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 'menunggu')
+            ->whereNull('N_EMI_LAB_PO_Sampel.Flag_Trial_Produksi') 
             ->groupBy(
                 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
                 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa',
                 'N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode',
-                'N_EMI_LAB_Uji_Sampel.Tanggal',
                 'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa',
                 'N_EMI_LAB_Jenis_Analisa.Kode_Analisa'
             );
@@ -9471,11 +9859,11 @@ class UjiSampelController extends Controller
             }
         }
 
-        $paginatedData = $baseQuery->orderByDesc('N_EMI_LAB_Uji_Sampel.Tanggal')->paginate($limit);
+        // Urutkan menggunakan alias `Tanggal` yang didapat dari agregasi MAX()
+        $paginatedData = $baseQuery->orderByDesc('Tanggal')->paginate($limit);
         $noPoSampelList = $paginatedData->pluck('No_Po_Sampel')->toArray();
 
         // 2. Fetch ALL history details for these samples
-        // Sorted strictly to ensure the first item found is the latest update
         $allInfoRows = DB::table('N_EMI_LAB_Uji_Sampel')
             ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
             ->join('EMI_Master_Mesin', 'N_EMI_LAB_PO_Sampel.Id_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
@@ -9488,6 +9876,7 @@ class UjiSampelController extends Controller
                 'N_EMI_LAB_PO_Sampel.Kode_Barang',
                 'N_EMI_LAB_PO_Sampel.No_Split_Po',
                 'N_EMI_LAB_PO_Sampel.No_Batch',
+                'N_EMI_LAB_PO_Sampel.Flag_Trial_Produksi', // Tambahkan field ini
                 'N_EMI_LAB_Uji_Sampel.Jam',
                 'N_EMI_LAB_Uji_Sampel.Tanggal',
                 'EMI_Master_Mesin.Nama_Mesin',
@@ -9501,7 +9890,6 @@ class UjiSampelController extends Controller
             ->orderByDesc('N_EMI_LAB_Uji_Sampel.Jam')
             ->get();
 
-        // Group by Sample ID only. We will filter by Analysis ID inside the loop.
         $groupedInfos = $allInfoRows->groupBy('No_Po_Sampel');
 
         $kodeBarangList = $allInfoRows->pluck('Kode_Barang')->unique()->filter()->toArray();
@@ -9512,38 +9900,32 @@ class UjiSampelController extends Controller
         $paginatedData->getCollection()->transform(function ($item) use ($groupedInfos, $barangList) {
             $rawIdJenisAnalisa = $item->Id_Jenis_Analisa;
             
-            // Encode ID for response
             $item->Id_Jenis_Analisa = Hashids::connection('custom')->encode($item->Id_Jenis_Analisa);
 
-            // Get all history for this sample
             $sampleHistory = $groupedInfos->get($item->No_Po_Sampel);
             
-            // Find specific row for THIS Analysis Type (Reza for Particle, Frans for Salmonella)
-            // Because of the OrderByDesc in query, first() is the latest.
             $specificInfo = null;
             if ($sampleHistory) {
                 $specificInfo = $sampleHistory->where('Id_Jenis_Analisa', $rawIdJenisAnalisa)->first();
             }
 
             if ($specificInfo) {
-                // Assign specific User/Time data
                 $item->Id_User            = $specificInfo->Id_User;
                 $item->Jam                = $specificInfo->Jam;
                 $item->Flag_Layak         = $specificInfo->Flag_Layak;
                 
-                // Assign Common PO Data
                 $item->Tanggal_Registrasi = $specificInfo->Tanggal_Registrasi;
                 $item->Jam_Registrasi     = $specificInfo->Jam_Registrasi;
                 $item->Nama_Barang        = $barangList[$specificInfo->Kode_Barang] ?? null;
                 $item->po_info = [
-                    'No_Po'         => $specificInfo->No_Po,
-                    'No_Split_Po'   => $specificInfo->No_Split_Po,
-                    'No_Batch'      => $specificInfo->No_Batch,
-                    'Kode_Barang'   => $specificInfo->Kode_Barang,
-                    'Nama_Mesin'    => $specificInfo->Nama_Mesin,
+                    'No_Po'               => $specificInfo->No_Po,
+                    'No_Split_Po'         => $specificInfo->No_Split_Po,
+                    'No_Batch'            => $specificInfo->No_Batch,
+                    'Kode_Barang'         => $specificInfo->Kode_Barang,
+                    'Nama_Mesin'          => $specificInfo->Nama_Mesin,
+                    'Flag_Trial_Produksi' => $specificInfo->Flag_Trial_Produksi, // Map ke po_info
                 ];
             } else {
-                // Fallback if data missing (should not happen if inner join is correct)
                 $item->Id_User = null;
                 $item->Jam = null;
                 $item->Flag_Layak = null;
@@ -9553,14 +9935,12 @@ class UjiSampelController extends Controller
                 $item->po_info = null;
             }
 
-            // Logic Status Keputusan (Lolos/Tidak)
             $autoLolosKodes = ['PSZ'];
             $kodeAnalisa = trim($item->Kode_Analisa);
 
             if (in_array($kodeAnalisa, $autoLolosKodes)) {
                 $item->Status_Sampel = "Lolos Uji";
             } else {
-                // Calculate status based ONLY on rows for this Analysis Type
                 if ($sampleHistory && $sampleHistory->isNotEmpty()) {
                     $filteredRows = $sampleHistory->where('Id_Jenis_Analisa', $rawIdJenisAnalisa);
 
@@ -9629,26 +10009,60 @@ class UjiSampelController extends Controller
 
     public function getDataValidasiHasilAkhirDanCloseSampel(Request $request)
     {
+        $checkedAkses = Session::get("user_permissions");
+        $permissionKonten = $checkedAkses['permission_konten'] ?? [];
+
+        $allowedAnalisaIds = [];
+        if (isset($permissionKonten['Finalisasi Sampel']) && is_array($permissionKonten['Validasi Hasil Analisa'])) {
+            foreach ($permissionKonten['Finalisasi Sampel'] as $akses) {
+                if (isset($akses['flag']) && $akses['flag'] === 'Y' && isset($akses['id_jenis_analisa'])) {
+                    $allowedAnalisaIds[] = $akses['id_jenis_analisa'];
+                }
+            }
+        }
+
         $perPage = $request->input('limit', 10);
         $page = $request->input('page', 1);
+        
+        if (empty($allowedAnalisaIds)) {
+            return response()->json([
+                'success' => true,
+                'status'  => 200,
+                'message' => "Data tidak ditemukan (Tidak ada akses jenis analisa yang valid).",
+                'result'  => [
+                    'data' => [],
+                    'pagination' => [
+                        'page'      => 1,
+                        'limit'     => (int)$perPage,
+                        'totalPage' => 0,
+                        'totalData' => 0,
+                    ]
+                ]
+            ], 200);
+        }
+        
         $search = $request->input('search');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $qrType = $request->input('qr_type'); // Filter QR
+        $totalAnalisa = $request->input('total_analisa'); // Menerima filter total analisa
 
         $query = DB::table('N_EMI_LAB_Uji_Sampel as uji')
             ->join('N_EMI_LAB_PO_Sampel as po', 'uji.No_Po_Sampel', '=', 'po.No_Sampel')
             ->join('N_EMI_View_Barang as brg', 'po.Kode_Barang', '=', 'brg.Kode_Barang')
             ->select(
                 'uji.No_Po_Sampel',
-                'uji.Tanggal',
+                DB::raw('MAX(uji.Tanggal) as Tanggal'),
                 DB::raw('MAX(uji.Jam) as Jam'),
                 'uji.Flag_Multi_QrCode',
                 'po.No_Po',
                 'po.No_Split_Po',
                 'po.Kode_Barang',
-                'brg.Nama as Nama_Barang'
+                'brg.Nama as Nama_Barang',
+                'po.Flag_Trial_Produksi' 
             )
+            ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
+            ->whereNull('po.Flag_Trial_Produksi')
             ->whereNull('uji.Status')
             ->where('uji.Flag_Selesai', 'Y')
             ->whereNull('uji.Flag_Final')
@@ -9667,10 +10081,9 @@ class UjiSampelController extends Controller
             if ($qrType === 'Y') {
                 $query->where('uji.Flag_Multi_QrCode', 'Y');
             } else {
-                // Handle T atau NULL sebagai Single QR
                 $query->where(function($q) {
                     $q->where('uji.Flag_Multi_QrCode', '!=', 'Y')
-                      ->orWhereNull('uji.Flag_Multi_QrCode');
+                    ->orWhereNull('uji.Flag_Multi_QrCode');
                 });
             }
         }
@@ -9679,29 +10092,74 @@ class UjiSampelController extends Controller
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('uji.No_Po_Sampel', 'LIKE', "%{$search}%")
-                  ->orWhere('po.No_Po', 'LIKE', "%{$search}%")
-                  ->orWhere('po.No_Split_Po', 'LIKE', "%{$search}%")
-                  ->orWhere('po.Kode_Barang', 'LIKE', "%{$search}%")
-                  ->orWhere('brg.Nama', 'LIKE', "%{$search}%");
+                ->orWhere('po.No_Po', 'LIKE', "%{$search}%")
+                ->orWhere('po.No_Split_Po', 'LIKE', "%{$search}%")
+                ->orWhere('po.Kode_Barang', 'LIKE', "%{$search}%")
+                ->orWhere('brg.Nama', 'LIKE', "%{$search}%");
             });
         }
 
         $query->groupBy(
             'uji.No_Po_Sampel',
-            'uji.Tanggal',
             'uji.Flag_Multi_QrCode',
             'po.No_Po',
             'po.No_Split_Po',
             'po.Kode_Barang',
-            'brg.Nama'
-        )
-        ->orderByDesc('uji.Tanggal')
-        ->orderByDesc(DB::raw('MAX(uji.Jam)'));
+            'brg.Nama',
+            'po.Flag_Trial_Produksi'
+        );
+
+        // FILTER TOTAL ANALISA (Gunakan HAVING setelah GROUP BY)
+        if (!empty($totalAnalisa)) {
+            $query->having(DB::raw('COUNT(DISTINCT uji.Id_Jenis_Analisa)'), '=', (int)$totalAnalisa);
+        }
+
+        $query->orderByDesc(DB::raw('MAX(uji.Tanggal)'))
+            ->orderByDesc(DB::raw('MAX(uji.Jam)'));
 
         $paginated = $query->paginate($perPage, ['*'], 'page', $page);
+        $items = $paginated->items();
+
+        // 1. Ambil list No_Po_Sampel dari data yang sedang di-paginate
+        $poSampelIds = collect($items)->pluck('No_Po_Sampel')->toArray();
+
+        if (!empty($poSampelIds)) {
+            // 2. Lakukan Query Join ke tabel Jenis Analisa khusus untuk data di halaman ini
+            $analisaDetails = DB::table('N_EMI_LAB_Uji_Sampel as uji')
+                ->join('N_EMI_LAB_Jenis_Analisa as ja', 'uji.Id_Jenis_Analisa', '=', 'ja.id')
+                ->whereIn('uji.No_Po_Sampel', $poSampelIds)
+                ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
+                ->whereNull('uji.Status')
+                ->where('uji.Flag_Selesai', 'Y')
+                ->whereNull('uji.Flag_Final')
+                ->where('uji.Status_Keputusan_Sampel', 'terima')
+                ->where(function($q) {
+                    $q->where('uji.Flag_Resampling', '!=', 'Y')
+                    ->orWhereNull('uji.Flag_Resampling');
+                })
+                ->select(
+                    'uji.No_Po_Sampel',
+                    'ja.id',
+                    'ja.Kode_Analisa',
+                    'ja.Jenis_Analisa'
+                )
+                ->distinct() // Mencegah duplikasi data array jika ada sampel ganda di analisa yang sama
+                ->get()
+                ->groupBy('No_Po_Sampel');
+
+            // 3. Sisipkan Total dan Array Detail Jenis Analisa ke dalam hasil response
+            $items = collect($items)->map(function ($item) use ($analisaDetails) {
+                $analisa = $analisaDetails->get($item->No_Po_Sampel, collect());
+
+                $item->Total_Jenis_Analisa = $analisa->count();
+                $item->Detail_Jenis_Analisa = $analisa->values()->toArray(); // Berbentuk Array JSON berisi Object
+
+                return $item;
+            })->toArray();
+        }
 
         return ResponseHelper::successWithPaginationV2(
-            $paginated->items(),
+            $items,
             $paginated->currentPage(),
             $paginated->perPage(),
             $paginated->total(),
@@ -9879,36 +10337,36 @@ class UjiSampelController extends Controller
 
     public function validasiHasilAkhirDariValidasiAwalJenisAnalisaV1($No_Po_Sampel)
     {
-
         $result = collect(
-        DB::table('N_EMI_LAB_Uji_Sampel')
-            ->join('N_EMI_LAB_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', '=', 'N_EMI_LAB_Jenis_Analisa.id')
-            ->select(
-                'N_EMI_LAB_Uji_Sampel.*',
-                'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa',
-                'N_EMI_LAB_Jenis_Analisa.Kode_Analisa'
-            )
-            ->where('No_Po_Sampel', $No_Po_Sampel)
-            ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
-            ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
-            ->where('N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 'terima')
-            ->orderByDesc('Tanggal')
-            ->get()
-            )->map(function ($item) {
-                /** @var object $item */
-                $item->Id_Jenis_Analisa = Hashids::connection('custom')->encode($item->Id_Jenis_Analisa);
-                return $item;
-            })->unique(function ($item) {
-                // Kombinasi unik berdasarkan No_Po_Sampel dan Id_Jenis_Analisa (yang sudah di-hash)
-                return $item->No_Po_Sampel . '-' . $item->Id_Jenis_Analisa;
-            })->values(); // reset index agar rapih
+            DB::table('N_EMI_LAB_Uji_Sampel')
+                ->join('N_EMI_LAB_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', '=', 'N_EMI_LAB_Jenis_Analisa.id')
+                ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel') 
+                ->select(
+                    'N_EMI_LAB_Uji_Sampel.*',
+                    'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa',
+                    'N_EMI_LAB_Jenis_Analisa.Kode_Analisa'
+                )
+                ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $No_Po_Sampel)
+                ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
+                ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
+                ->where('N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 'terima')
+                ->whereNull('N_EMI_LAB_PO_Sampel.Flag_Trial_Produksi') 
+                ->orderByDesc('N_EMI_LAB_Uji_Sampel.Tanggal')
+                ->get()
+        )->map(function ($item) {
+            /** @var object $item */
+            $item->Id_Jenis_Analisa = Hashids::connection('custom')->encode($item->Id_Jenis_Analisa);
+            return $item;
+        })->unique(function ($item) {
+            return $item->No_Po_Sampel . '-' . $item->Id_Jenis_Analisa;
+        })->values();
 
-            return response()->json([
-                'success' => true,
-                'status' => 200,
-                'message' => "Data Ditemukan",
-                'result' => $result
-            ], 200);
+        return response()->json([
+            'success' => true,
+            'status' => 200,
+            'message' => "Data Ditemukan",
+            'result' => $result
+        ], 200);
     }
 
     public function getDataConfirmedSelesaiByJenisAnalisa($id_jenis_analisa)
@@ -10233,6 +10691,18 @@ class UjiSampelController extends Controller
 
     public function getDataHasilAnalisaSelesai()
     {
+        $checkedAkses = Session::get("user_permissions");
+        $permissionKonten = $checkedAkses['permission_konten'] ?? [];
+
+        $allowedAnalisaIds = [];
+        if (isset($permissionKonten['Hasil Analisa']) && is_array($permissionKonten['Validasi Hasil Analisa'])) {
+                foreach ($permissionKonten['Hasil Analisa'] as $akses) {
+                    if (isset($akses['flag']) && $akses['flag'] === 'Y' && isset($akses['id_jenis_analisa'])) {
+                        $allowedAnalisaIds[] = $akses['id_jenis_analisa'];
+                    }
+                }
+        }
+
         $result = collect(
             DB::table('N_EMI_LAB_Uji_Sampel')
                 ->join('N_EMI_LAB_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', '=', 'N_EMI_LAB_Jenis_Analisa.id')
@@ -10243,6 +10713,7 @@ class UjiSampelController extends Controller
                     DB::raw('MAX(N_EMI_LAB_Jenis_Analisa.Kode_Analisa) as Kode_Analisa'),
                
                 )
+                ->whereIn('N_EMI_LAB_Jenis_Analisa.id', $allowedAnalisaIds)
                 ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
                 ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
                 ->groupBy('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa')
@@ -10616,153 +11087,382 @@ class UjiSampelController extends Controller
             return response()->json(['success' => false, 'status' => 400, 'message' => 'Format ID Jenis Analisa tidak valid.'], 400);
         }
 
-        $ujiSampel = DB::table('N_EMI_LAB_Uji_Sampel') 
-            ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
-            ->join('EMI_Master_Mesin', 'N_EMI_LAB_PO_Sampel.Id_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
-            ->leftJoin('N_EMI_LAB_Perhitungan', function ($join) {
-                $join->on('N_EMI_LAB_Perhitungan.id', '=', 'N_EMI_LAB_Uji_Sampel.Id_Perhitungan')
-                    ->on('N_EMI_LAB_Perhitungan.Kode_Perusahaan', '=', 'N_EMI_LAB_Uji_Sampel.Kode_Perusahaan');
-            })
-            ->select(
-                'N_EMI_LAB_PO_Sampel.Kode_Barang',
-                'N_EMI_LAB_Uji_Sampel.No_Faktur',
-                'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
-                'N_EMI_LAB_Uji_Sampel.No_Fak_Sub_Po',
-                'N_EMI_LAB_Uji_Sampel.Flag_Layak',
-                'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa',
-                'N_EMI_LAB_Uji_Sampel.Tanggal as Tanggal_Pengujian',
-                'N_EMI_LAB_Uji_Sampel.Hasil as Hasil_Akhir_Analisa',
-                'N_EMI_LAB_Uji_Sampel.Flag_Perhitungan',
-                'N_EMI_LAB_Uji_Sampel.Range_Awal',
-                'N_EMI_LAB_Uji_Sampel.Range_Akhir',
-                'N_EMI_LAB_PO_Sampel.No_Po',
-                'N_EMI_LAB_PO_Sampel.No_Split_Po',
-                DB::raw("ISNULL(N_EMI_LAB_Perhitungan.Hasil_Perhitungan, 0) AS Pembulatan"),
-                DB::raw("CASE WHEN N_EMI_LAB_Uji_Sampel.Range_Awal IS NOT NULL THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS is_sop")
-            )
-            ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
-            ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
-            ->where('N_EMI_LAB_Uji_Sampel.No_Fak_Sub_po', $no_sub)
-            ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
-            ->where('N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode', $flag_multi)
-            ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
-            ->get();
+        try {
+            $ujiSampel = DB::table('N_EMI_LAB_Uji_Sampel') 
+                ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
+                ->join('EMI_Master_Mesin', 'N_EMI_LAB_PO_Sampel.Id_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
+                ->leftJoin('N_EMI_LAB_Perhitungan', function ($join) {
+                    $join->on('N_EMI_LAB_Perhitungan.id', '=', 'N_EMI_LAB_Uji_Sampel.Id_Perhitungan')
+                        ->on('N_EMI_LAB_Perhitungan.Kode_Perusahaan', '=', 'N_EMI_LAB_Uji_Sampel.Kode_Perusahaan');
+                })
+                ->select(
+                    'N_EMI_LAB_PO_Sampel.Kode_Barang',
+                    'N_EMI_LAB_Uji_Sampel.No_Faktur',
+                    'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
+                    'N_EMI_LAB_Uji_Sampel.No_Fak_Sub_Po',
+                    'N_EMI_LAB_Uji_Sampel.Flag_Layak',
+                    'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa',
+                    'N_EMI_LAB_Uji_Sampel.Tanggal as Tanggal_Pengujian',
+                    'N_EMI_LAB_Uji_Sampel.Hasil as Hasil_Akhir_Analisa',
+                    'N_EMI_LAB_Uji_Sampel.Flag_Perhitungan',
+                    'N_EMI_LAB_Uji_Sampel.Range_Awal',
+                    'N_EMI_LAB_Uji_Sampel.Range_Akhir',
+                    'N_EMI_LAB_PO_Sampel.No_Po',
+                    'N_EMI_LAB_PO_Sampel.No_Split_Po',
+                    'N_EMI_LAB_Uji_Sampel.Flag_Foto', // PERBAIKAN: Gunakan N_EMI_LAB_Uji_Sampel, bukan LIMS
+                    DB::raw("ISNULL(N_EMI_LAB_Perhitungan.Hasil_Perhitungan, 0) AS Pembulatan"),
+                    DB::raw("CASE WHEN N_EMI_LAB_Uji_Sampel.Range_Awal IS NOT NULL THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS is_sop")
+                )
+                ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
+                ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
+                ->where('N_EMI_LAB_Uji_Sampel.No_Fak_Sub_po', $no_sub)
+                ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
+                ->where('N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode', $flag_multi)
+                ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
+                ->get();
 
-        if ($ujiSampel->isEmpty()) {
-            return response()->json(['success' => true, 'status' => 200, 'message' => 'Data Tidak Ditemukan'], 200);
-        }
-
-        $rawRules = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
-            ->select('Nilai_Kriteria', 'Keterangan_Kriteria')
-            ->where('Id_Jenis_Analisa', $id_jenis_analisa_decoded)
-            ->where('Flag_Aktif', 'Y')
-            ->get();
-
-        $rulesMap = [];
-        foreach ($rawRules as $rule) {
-            $key = (string)((float)$rule->Nilai_Kriteria);
-            $rulesMap[$key] = $rule->Keterangan_Kriteria;
-        }
-
-        $parameterRaw = DB::table('N_EMI_LAB_Uji_Sampel_Detail')
-            ->select(
-                'Id_Uji_Sample_Detail',
-                'No_Faktur_Uji_Sample',
-                'Id_Quality_Control',
-                'Value_Parameter as Hasil_Analisa',
-                'Tanggal as Tanggal_Parameter_Analisa',
-                'Jam as Jam_Parameter_Analisa'
-            )
-            ->whereIn('No_Faktur_Uji_Sample', $ujiSampel->pluck('No_Faktur'))
-            ->get()
-            ->groupBy('No_Faktur_Uji_Sample');
-
-        $result = [];
-
-        foreach ($ujiSampel as $item) {
-            $item->is_sop = (bool) $item->is_sop;
-            $item->Range_Awal = (float) $item->Range_Awal;
-            $item->Range_Akhir = (float) $item->Range_Akhir;
-
-            $valHeader = (float)$item->Hasil_Akhir_Analisa;
-            $keyHeader = (string)$valHeader;
-
-            if (is_null($item->Flag_Perhitungan) && isset($rulesMap[$keyHeader])) {
-                $item->Hasil_Akhir_Analisa = $rulesMap[$keyHeader];
-            } else {
-                $item->Hasil_Akhir_Analisa = number_format($valHeader, $item->Pembulatan, '.', '');
+            if ($ujiSampel->isEmpty()) {
+                return response()->json(['success' => true, 'status' => 200, 'message' => 'Data Tidak Ditemukan'], 200);
             }
 
-            $params = $parameterRaw->get($item->No_Faktur);
-            $transformedParameters = [];
+            // Deklarasi Sesi Foto dan Faktur List
+            $hasSesiFoto = $ujiSampel->contains('Flag_Foto', 'Y') ? 'Y' : 'T';
+            $fakturList = $ujiSampel->pluck('No_Faktur')->unique()->toArray();
 
-            if ($params) {
-                foreach ($params as $param) {
-                    $valParam = (float)$param->Hasil_Analisa;
-                    $keyParam = (string)$valParam;
-                    
-                    if (is_null($item->Flag_Perhitungan) && isset($rulesMap[$keyParam])) {
-                        $hasilTampil = $rulesMap[$keyParam];
-                    } else {
-                        $hasilTampil = round($valParam, 4);
-                    }
+            // Pengambilan data Berkas / Foto
+            $berkasRaw = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+                ->select('Id_Berkas_Uji_Lab', 'No_Faktur', 'Berkas_Key', 'Keterangan')
+                ->whereIn('No_Faktur', $fakturList)
+                ->get()
+                ->groupBy('No_Faktur');
 
-                    $transformedParameters[] = [
-                        'Id_Jenis_Analisa' => Hashids::connection('custom')->encode($id_jenis_analisa_decoded),
-                        'Id_Uji_Sample_Detail' => Hashids::connection('custom')->encode($param->Id_Uji_Sample_Detail),
-                        'No_Faktur_Uji_Sample' => $param->No_Faktur_Uji_Sample,
-                        'Id_Quality_Control' => Hashids::connection('custom')->encode($param->Id_Quality_Control),
-                        'Hasil_Analisa' => $hasilTampil,
-                        'Tanggal_Parameter_Analisa' => $param->Tanggal_Parameter_Analisa,
-                        'Jam_Parameter_Analisa' => $param->Jam_Parameter_Analisa,
-                    ];
+            $rawRules = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
+                ->select('Nilai_Kriteria', 'Keterangan_Kriteria')
+                ->where('Id_Jenis_Analisa', $id_jenis_analisa_decoded)
+                ->where('Flag_Aktif', 'Y')
+                ->where('Kode_Role', 'LAB')
+                ->get();
+
+            $rulesMap = [];
+            foreach ($rawRules as $rule) {
+                $key = (string)((float)$rule->Nilai_Kriteria);
+                $rulesMap[$key] = $rule->Keterangan_Kriteria;
+            }
+
+            $parameterRaw = DB::table('N_EMI_LAB_Uji_Sampel_Detail')
+                ->select(
+                    'Id_Uji_Sample_Detail',
+                    'No_Faktur_Uji_Sample',
+                    'Id_Quality_Control',
+                    'Value_Parameter as Hasil_Analisa',
+                    'Tanggal as Tanggal_Parameter_Analisa',
+                    'Jam as Jam_Parameter_Analisa'
+                )
+                ->whereIn('No_Faktur_Uji_Sample', $fakturList) // OPTIMALISASI: Gunakan $fakturList
+                ->get()
+                ->groupBy('No_Faktur_Uji_Sample');
+
+            $result = [];
+
+            foreach ($ujiSampel as $item) {
+                $item->is_sop = (bool) $item->is_sop;
+                $item->Range_Awal = (float) $item->Range_Awal;
+                $item->Range_Akhir = (float) $item->Range_Akhir;
+
+                $valHeader = (float)$item->Hasil_Akhir_Analisa;
+                $keyHeader = (string)$valHeader;
+
+                if (is_null($item->Flag_Perhitungan) && isset($rulesMap[$keyHeader])) {
+                    $item->Hasil_Akhir_Analisa = $rulesMap[$keyHeader];
+                } else {
+                    $item->Hasil_Akhir_Analisa = number_format($valHeader, $item->Pembulatan, '.', '');
                 }
+
+                $params = $parameterRaw->get($item->No_Faktur);
+                $transformedParameters = [];
+
+                if ($params) {
+                    foreach ($params as $param) {
+                        $valParam = (float)$param->Hasil_Analisa;
+                        $keyParam = (string)$valParam;
+                        
+                        if (is_null($item->Flag_Perhitungan) && isset($rulesMap[$keyParam])) {
+                            $hasilTampil = $rulesMap[$keyParam];
+                        } else {
+                            $hasilTampil = round($valParam, 4);
+                        }
+
+                        $transformedParameters[] = [
+                            'Id_Jenis_Analisa' => Hashids::connection('custom')->encode($id_jenis_analisa_decoded),
+                            'Id_Uji_Sample_Detail' => Hashids::connection('custom')->encode($param->Id_Uji_Sample_Detail),
+                            'No_Faktur_Uji_Sample' => $param->No_Faktur_Uji_Sample,
+                            'Id_Quality_Control' => Hashids::connection('custom')->encode($param->Id_Quality_Control),
+                            'Hasil_Analisa' => $hasilTampil,
+                            'Tanggal_Parameter_Analisa' => $param->Tanggal_Parameter_Analisa,
+                            'Jam_Parameter_Analisa' => $param->Jam_Parameter_Analisa,
+                        ];
+                    }
+                }
+
+                // Proses mapping berkas foto untuk item ini
+                $berkas = $berkasRaw->get($item->No_Faktur);
+                $fotoList = [];
+
+                if ($berkas) {
+                    foreach ($berkas as $file) {
+                        $fotoList[] = [
+                            'Berkas_Key' => $file->Berkas_Key,
+                            'Keterangan' => $file->Keterangan,
+                        ];
+                    }
+                }
+
+                $item->foto_analisa = $fotoList;
+                unset($item->Flag_Foto); // Hapus Flag_Foto dari response JSON final
+
+                $item->parameter = $transformedParameters;
+                $result[] = $item;
             }
 
-            $item->parameter = $transformedParameters;
-            $result[] = $item;
+            $informasi = DB::table('N_EMI_LAB_Uji_Sampel')
+                ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
+                ->join('EMI_Master_Mesin', 'N_EMI_LAB_PO_Sampel.Id_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
+                ->join('N_EMI_LAB_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', '=', 'N_EMI_LAB_Jenis_Analisa.id')
+                ->select(
+                    'N_EMI_LAB_Uji_Sampel.No_Faktur',
+                    'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
+                    'N_EMI_LAB_Uji_Sampel.No_Fak_Sub_Po',
+                    'N_EMI_LAB_Uji_Sampel.Tanggal as Tanggal_Pengujian',
+                    'N_EMI_LAB_Uji_Sampel.Jam as Jam_Pengujian',
+                    'N_EMI_LAB_PO_Sampel.Tanggal as Tanggal_Pengajuan',
+                    'N_EMI_LAB_PO_Sampel.Jam as Jam_Pengajuan',
+                    'N_EMI_LAB_PO_Sampel.No_Po',
+                    'N_EMI_LAB_PO_Sampel.Keterangan as Catatan',
+                    'N_EMI_LAB_PO_Sampel.No_Split_Po',
+                    'N_EMI_LAB_PO_Sampel.No_Batch',
+                    'N_EMI_LAB_PO_Sampel.Kode_Barang',
+                    'EMI_Master_Mesin.Seri_Mesin',
+                    'EMI_Master_Mesin.Nama_Mesin', 
+                    'N_EMI_LAB_Jenis_Analisa.Kode_Analisa',
+                    'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa'
+                )
+                ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
+                ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
+                ->where('N_EMI_LAB_Uji_Sampel.No_Fak_Sub_po', $no_sub)
+                ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
+                ->where('N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode', $flag_multi)
+                ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
+                ->first();
+
+            // PERBAIKAN: Tambahkan sesi foto ke object informasi agar Vue mengetahui ada foto
+            if ($informasi) {
+                $informasi->sesi_foto = $hasSesiFoto;
+            }
+
+            return response()->json([
+                'success' => true,
+                'status' => 200,
+                'message' => 'Data Ditemukan',
+                'result' => [
+                    'informasi' => $informasi,
+                    'sampel' => $result
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false, 
+                'status' => 500, 
+                'message' => 'Terjadi kesalahan pada server. Silahkan hubungi administrator.'
+            ], 500);
         }
-
-        $informasi = DB::table('N_EMI_LAB_Uji_Sampel')
-            ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
-            ->join('EMI_Master_Mesin', 'N_EMI_LAB_PO_Sampel.Id_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
-            ->join('N_EMI_LAB_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', '=', 'N_EMI_LAB_Jenis_Analisa.id')
-            ->select(
-                'N_EMI_LAB_Uji_Sampel.No_Faktur',
-                'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
-                'N_EMI_LAB_Uji_Sampel.No_Fak_Sub_Po',
-                'N_EMI_LAB_Uji_Sampel.Tanggal as Tanggal_Pengujian',
-                'N_EMI_LAB_Uji_Sampel.Jam as Jam_Pengujian',
-                'N_EMI_LAB_PO_Sampel.Tanggal as Tanggal_Pengajuan',
-                'N_EMI_LAB_PO_Sampel.Jam as Jam_Pengajuan',
-                'N_EMI_LAB_PO_Sampel.No_Po',
-                'N_EMI_LAB_PO_Sampel.Keterangan as Catatan',
-                'N_EMI_LAB_PO_Sampel.No_Split_Po',
-                'N_EMI_LAB_PO_Sampel.No_Batch',
-                'N_EMI_LAB_PO_Sampel.Kode_Barang',
-                'EMI_Master_Mesin.Seri_Mesin',
-                'EMI_Master_Mesin.Nama_Mesin', 
-                'N_EMI_LAB_Jenis_Analisa.Kode_Analisa',
-                'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa'
-            )
-            ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
-            ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
-            ->where('N_EMI_LAB_Uji_Sampel.No_Fak_Sub_po', $no_sub)
-            ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
-            ->where('N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode', $flag_multi)
-            ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
-            ->first();
-
-        return response()->json([
-            'success' => true,
-            'status' => 200,
-            'message' => 'Data Ditemukan',
-            'result' => [
-                'informasi' => $informasi,
-                'sampel' => $result
-            ]
-        ], 200);
     }
+
+    // public function getDataHasilAnalisaPerhitunganByMultiV2($id_jenis_analisa, $no_po_sampel, $flag_multi, $no_sub)
+    // {
+    //     try {
+    //         $id_jenis_analisa_decoded = Hashids::connection('custom')->decode($id_jenis_analisa)[0];
+    //     } catch (\Exception $e) {
+    //         return response()->json(['success' => false, 'status' => 400, 'message' => 'Format ID Jenis Analisa tidak valid.'], 400);
+    //     }
+
+    //     $ujiSampel = DB::table('N_EMI_LAB_Uji_Sampel') 
+    //         ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
+    //         ->join('EMI_Master_Mesin', 'N_EMI_LAB_PO_Sampel.Id_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
+    //         ->leftJoin('N_EMI_LAB_Perhitungan', function ($join) {
+    //             $join->on('N_EMI_LAB_Perhitungan.id', '=', 'N_EMI_LAB_Uji_Sampel.Id_Perhitungan')
+    //                 ->on('N_EMI_LAB_Perhitungan.Kode_Perusahaan', '=', 'N_EMI_LAB_Uji_Sampel.Kode_Perusahaan');
+    //         })
+    //         ->select(
+    //             'N_EMI_LAB_PO_Sampel.Kode_Barang',
+    //             'N_EMI_LAB_Uji_Sampel.No_Faktur',
+    //             'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
+    //             'N_EMI_LAB_Uji_Sampel.No_Fak_Sub_Po',
+    //             'N_EMI_LAB_Uji_Sampel.Flag_Layak',
+    //             'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa',
+    //             'N_EMI_LAB_Uji_Sampel.Tanggal as Tanggal_Pengujian',
+    //             'N_EMI_LAB_Uji_Sampel.Hasil as Hasil_Akhir_Analisa',
+    //             'N_EMI_LAB_Uji_Sampel.Flag_Perhitungan',
+    //             'N_EMI_LAB_Uji_Sampel.Range_Awal',
+    //             'N_EMI_LAB_Uji_Sampel.Range_Akhir',
+    //             'N_EMI_LAB_PO_Sampel.No_Po',
+    //             'N_EMI_LAB_PO_Sampel.No_Split_Po',
+    //             'N_EMI_LIMS_Uji_Sampel.Flag_Foto',
+    //             DB::raw("ISNULL(N_EMI_LAB_Perhitungan.Hasil_Perhitungan, 0) AS Pembulatan"),
+    //             DB::raw("CASE WHEN N_EMI_LAB_Uji_Sampel.Range_Awal IS NOT NULL THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS is_sop")
+    //         )
+    //         ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
+    //         ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
+    //         ->where('N_EMI_LAB_Uji_Sampel.No_Fak_Sub_po', $no_sub)
+    //         ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
+    //         ->where('N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode', $flag_multi)
+    //         ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
+    //         ->get();
+
+    //     if ($ujiSampel->isEmpty()) {
+    //         return response()->json(['success' => true, 'status' => 200, 'message' => 'Data Tidak Ditemukan'], 200);
+    //     }
+
+    //     $hasSesiFoto = $ujiSampel->contains('Flag_Foto', 'Y') ? 'Y' : 'T';
+    //         $fakturList = $ujiSampel->pluck('No_Faktur')->unique()->toArray();
+
+    //         // Pengambilan data Berkas / Foto
+    //         // PERUBAHAN: Menambahkan 'Keterangan' pada select
+    //         $berkasRaw = DB::table('N_EMI_LIMS_Berkas_Uji_Lab')
+    //             ->select('Id_Berkas_Uji_Lab', 'No_Faktur', 'Berkas_Key', 'Keterangan')
+    //             ->whereIn('No_Faktur', $fakturList)
+    //             ->get()
+    //             ->groupBy('No_Faktur');
+
+    //     $rawRules = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
+    //         ->select('Nilai_Kriteria', 'Keterangan_Kriteria')
+    //         ->where('Id_Jenis_Analisa', $id_jenis_analisa_decoded)
+    //         ->where('Flag_Aktif', 'Y')
+    //         ->where('Kode_Role', 'LAB')
+    //         ->get();
+
+    //     $rulesMap = [];
+    //     foreach ($rawRules as $rule) {
+    //         $key = (string)((float)$rule->Nilai_Kriteria);
+    //         $rulesMap[$key] = $rule->Keterangan_Kriteria;
+    //     }
+
+    //     $parameterRaw = DB::table('N_EMI_LAB_Uji_Sampel_Detail')
+    //         ->select(
+    //             'Id_Uji_Sample_Detail',
+    //             'No_Faktur_Uji_Sample',
+    //             'Id_Quality_Control',
+    //             'Value_Parameter as Hasil_Analisa',
+    //             'Tanggal as Tanggal_Parameter_Analisa',
+    //             'Jam as Jam_Parameter_Analisa'
+    //         )
+    //         ->whereIn('No_Faktur_Uji_Sample', $ujiSampel->pluck('No_Faktur'))
+    //         ->get()
+    //         ->groupBy('No_Faktur_Uji_Sample');
+
+    //     $result = [];
+
+    //     foreach ($ujiSampel as $item) {
+    //         $item->is_sop = (bool) $item->is_sop;
+    //         $item->Range_Awal = (float) $item->Range_Awal;
+    //         $item->Range_Akhir = (float) $item->Range_Akhir;
+
+    //         $valHeader = (float)$item->Hasil_Akhir_Analisa;
+    //         $keyHeader = (string)$valHeader;
+
+    //         if (is_null($item->Flag_Perhitungan) && isset($rulesMap[$keyHeader])) {
+    //             $item->Hasil_Akhir_Analisa = $rulesMap[$keyHeader];
+    //         } else {
+    //             $item->Hasil_Akhir_Analisa = number_format($valHeader, $item->Pembulatan, '.', '');
+    //         }
+
+    //         $params = $parameterRaw->get($item->No_Faktur);
+    //         $transformedParameters = [];
+
+    //         if ($params) {
+    //             foreach ($params as $param) {
+    //                 $valParam = (float)$param->Hasil_Analisa;
+    //                 $keyParam = (string)$valParam;
+                    
+    //                 if (is_null($item->Flag_Perhitungan) && isset($rulesMap[$keyParam])) {
+    //                     $hasilTampil = $rulesMap[$keyParam];
+    //                 } else {
+    //                     $hasilTampil = round($valParam, 4);
+    //                 }
+
+    //                 $transformedParameters[] = [
+    //                     'Id_Jenis_Analisa' => Hashids::connection('custom')->encode($id_jenis_analisa_decoded),
+    //                     'Id_Uji_Sample_Detail' => Hashids::connection('custom')->encode($param->Id_Uji_Sample_Detail),
+    //                     'No_Faktur_Uji_Sample' => $param->No_Faktur_Uji_Sample,
+    //                     'Id_Quality_Control' => Hashids::connection('custom')->encode($param->Id_Quality_Control),
+    //                     'Hasil_Analisa' => $hasilTampil,
+    //                     'Tanggal_Parameter_Analisa' => $param->Tanggal_Parameter_Analisa,
+    //                     'Jam_Parameter_Analisa' => $param->Jam_Parameter_Analisa,
+    //                 ];
+    //             }
+    //         }
+
+    //         // Proses mapping berkas foto untuk item ini
+    //             $berkas = $berkasRaw->get($item->No_Faktur);
+    //             $fotoList = [];
+
+    //             if ($berkas) {
+    //                 foreach ($berkas as $file) {
+    //                     // PERUBAHAN: Menambahkan 'Keterangan' ke array respons
+    //                     $fotoList[] = [
+    //                         'Berkas_Key' => $file->Berkas_Key,
+    //                         'Keterangan' => $file->Keterangan,
+    //                     ];
+    //                 }
+    //             }
+
+    //             $item->foto_analisa = $fotoList;
+    //             unset($item->Flag_Foto); // Hapus Flag_Foto dari response JSON final
+
+    //             $item->parameter = $transformedParameters;
+    //             $result[] = $item;
+    //     }
+
+    //     $informasi = DB::table('N_EMI_LAB_Uji_Sampel')
+    //         ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
+    //         ->join('EMI_Master_Mesin', 'N_EMI_LAB_PO_Sampel.Id_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
+    //         ->join('N_EMI_LAB_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', '=', 'N_EMI_LAB_Jenis_Analisa.id')
+    //         ->select(
+    //             'N_EMI_LAB_Uji_Sampel.No_Faktur',
+    //             'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
+    //             'N_EMI_LAB_Uji_Sampel.No_Fak_Sub_Po',
+    //             'N_EMI_LAB_Uji_Sampel.Tanggal as Tanggal_Pengujian',
+    //             'N_EMI_LAB_Uji_Sampel.Jam as Jam_Pengujian',
+    //             'N_EMI_LAB_PO_Sampel.Tanggal as Tanggal_Pengajuan',
+    //             'N_EMI_LAB_PO_Sampel.Jam as Jam_Pengajuan',
+    //             'N_EMI_LAB_PO_Sampel.No_Po',
+    //             'N_EMI_LAB_PO_Sampel.Keterangan as Catatan',
+    //             'N_EMI_LAB_PO_Sampel.No_Split_Po',
+    //             'N_EMI_LAB_PO_Sampel.No_Batch',
+    //             'N_EMI_LAB_PO_Sampel.Kode_Barang',
+    //             'EMI_Master_Mesin.Seri_Mesin',
+    //             'EMI_Master_Mesin.Nama_Mesin', 
+    //             'N_EMI_LAB_Jenis_Analisa.Kode_Analisa',
+    //             'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa'
+    //         )
+    //         ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
+    //         ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
+    //         ->where('N_EMI_LAB_Uji_Sampel.No_Fak_Sub_po', $no_sub)
+    //         ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
+    //         ->where('N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode', $flag_multi)
+    //         ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
+    //         ->first();
+
+    //     return response()->json([
+    //             'success' => true,
+    //             'status' => 200,
+    //             'message' => 'Data Ditemukan',
+    //             'result' => [
+    //                 'informasi' => $informasi,
+    //                 'sampel' => $result
+    //             ]
+    //         ], 200);
+    // }
 
     public function getVerifikasiHasilAnalisaPerhitunganByMultiV2($id_jenis_analisa, $no_po_sampel, $no_sub)
     {
@@ -10807,6 +11507,7 @@ class UjiSampelController extends Controller
                 'N_EMI_LAB_PO_Sampel.No_Po',
                 'N_EMI_LAB_PO_Sampel.No_Split_Po',
                 'EMI_Master_Mesin.Flag_FG',
+                'N_EMI_LAB_Uji_Sampel.Flag_Foto', // Flag Foto terambil di sini
                 DB::raw("ISNULL(N_EMI_LAB_Perhitungan.Hasil_Perhitungan, 0) AS Pembulatan")
             )
             ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
@@ -10819,6 +11520,19 @@ class UjiSampelController extends Controller
         if ($ujiSampel->isEmpty()) {
             return response()->json(['success' => true, 'status' => 200, 'message' => 'Data Tidak Ditemukan'], 200);
         }
+
+        // --- MULAI PENAMBAHAN FOTO ---
+        $hasSesiFoto = $ujiSampel->contains('Flag_Foto', 'Y') ? 'Y' : 'T';
+        $fakturList = $ujiSampel->pluck('No_Faktur')->unique()->toArray();
+
+        // Catatan: Pastikan nama tabelnya N_EMI_LAB_Berkas_Uji_Lab. 
+        // Jika di database nama tabelnya tetap N_EMI_LIMS_Berkas_Uji_Lab, silakan ubah string tabel di bawah ini.
+        $berkasRaw = DB::table('N_EMI_LAB_Berkas_Uji_Lab')
+            ->select('Id_Berkas_Lab', 'No_Faktur', 'Berkas_Key', 'Keterangan')
+            ->whereIn('No_Faktur', $fakturList)
+            ->get()
+            ->groupBy('No_Faktur');
+        // --- SELESAI PENAMBAHAN FOTO ---
 
         $rawRules = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
             ->select('Nilai_Kriteria', 'Keterangan_Kriteria')
@@ -10841,7 +11555,7 @@ class UjiSampelController extends Controller
                 'Tanggal as Tanggal_Parameter_Analisa',
                 'Jam as Jam_Parameter_Analisa'
             )
-            ->whereIn('No_Faktur_Uji_Sample', $ujiSampel->pluck('No_Faktur'))
+            ->whereIn('No_Faktur_Uji_Sample', $fakturList) // Menggunakan $fakturList agar lebih efisien
             ->get()
             ->groupBy('No_Faktur_Uji_Sample');
 
@@ -10886,15 +11600,38 @@ class UjiSampelController extends Controller
                 }
             }
 
+            // --- MULAI PENAMBAHAN LOOP FOTO ---
+            $berkas = $berkasRaw->get($item->No_Faktur);
+            $fotoList = [];
+
+            if ($berkas) {
+                foreach ($berkas as $file) {
+                    $fotoList[] = [
+                        'Berkas_Key' => $file->Berkas_Key,
+                        'Keterangan' => $file->Keterangan ?? 'Tidak Ada Keterangan'
+                    ];
+                }
+            }
+
+            $item->foto_analisa = $fotoList;
+            unset($item->Flag_Foto);
+            // --- SELESAI PENAMBAHAN LOOP FOTO ---
+
             $item->parameter = $transformedParameters;
             $result[] = $item;
         }
 
+        // --- PENYESUAIAN RESPONSE JSON ---
         return response()->json([
             'success' => true,
             'status' => 200,
             'message' => 'Data Ditemukan',
-            'result' => ['sampel' => $result]
+            'result' => [
+                'informasi' => [
+                    'sesi_foto' => $hasSesiFoto
+                ],
+                'sampel' => $result
+            ]
         ], 200);
     }
 
@@ -10944,6 +11681,7 @@ class UjiSampelController extends Controller
                     'N_EMI_LAB_PO_Sampel.No_Po',
                     'N_EMI_LAB_PO_Sampel.No_Split_Po',
                     'EMI_Master_Mesin.Flag_FG',
+                    'N_EMI_LAB_Uji_Sampel.Flag_Foto', 
                     'N_EMI_LAB_Jenis_Analisa.Flag_Perhitungan', 
                     DB::raw("ISNULL(N_EMI_LAB_Perhitungan.Hasil_Perhitungan, 0) AS Pembulatan"),
                     DB::raw("CASE WHEN N_EMI_LAB_Standar_Rentang.Id_Standar_Rentang IS NOT NULL THEN N_EMI_LAB_Standar_Rentang.Range_Awal ELSE NULL END AS Range_Awal"),
@@ -10962,6 +11700,17 @@ class UjiSampelController extends Controller
                     'message' => 'Data Tidak Ditemukan',
                 ], 200);
             }
+
+            // --- MULAI PENAMBAHAN FOTO ---
+            $hasSesiFoto = $ujiSampel->contains('Flag_Foto', 'Y') ? 'Y' : 'T';
+            $fakturList = $ujiSampel->pluck('No_Faktur')->unique()->toArray();
+
+            $berkasRaw = DB::table('N_EMI_LAB_Berkas_Uji_Lab')
+                ->select('Id_Berkas_Lab', 'No_Faktur', 'Berkas_Key', 'Keterangan')
+                ->whereIn('No_Faktur', $fakturList)
+                ->get()
+                ->groupBy('No_Faktur');
+            // --- SELESAI PENAMBAHAN FOTO ---
 
             $kodePerusahaan = $ujiSampel->first()->Kode_Perusahaan;
 
@@ -10984,7 +11733,7 @@ class UjiSampelController extends Controller
                     'Tanggal as Tanggal_Parameter_Analisa',
                     'Jam as Jam_Parameter_Analisa'
                 )
-                ->whereIn('No_Faktur_Uji_Sample', $ujiSampel->pluck('No_Faktur'))
+                ->whereIn('No_Faktur_Uji_Sample', $fakturList) // Optimasi query memakai $fakturList
                 ->get()
                 ->groupBy('No_Faktur_Uji_Sample');
 
@@ -11025,14 +11774,36 @@ class UjiSampelController extends Controller
                 });
             
                 $item['parameter'] = $transformedParameters;
+
+                // --- MULAI PENAMBAHAN LOOP FOTO ---
+                $berkas = $berkasRaw->get($sampel->No_Faktur);
+                $fotoList = [];
+
+                if ($berkas) {
+                    foreach ($berkas as $file) {
+                        $fotoList[] = [
+                            'Berkas_Key' => $file->Berkas_Key,
+                            'Keterangan' => $file->Keterangan ?? 'Tidak Ada Keterangan'
+                        ];
+                    }
+                }
+
+                $item['foto_analisa'] = $fotoList;
+                unset($item['Flag_Foto']); // Hapus Flag_Foto dari response array seperti di contoh sebelumnya
+                // --- SELESAI PENAMBAHAN LOOP FOTO ---
+
                 $result[] = $item;
             }
 
+            // --- PENYESUAIAN RESPONSE JSON ---
             return response()->json([
                 'success' => true,
                 'status' => 200,
                 'message' => 'Data Ditemukan',
                 'result' => [
+                    'informasi' => [
+                        'sesi_foto' => $hasSesiFoto
+                    ],
                     'sampel' => $result
                 ]
             ], 200);
@@ -11059,136 +11830,312 @@ class UjiSampelController extends Controller
 
     public function getVerifikasiHasilAnalisaFinalKeputusanV1($id_jenis_analisa, $no_po_sampel, $no_sub)
     {
+        // Try Catch Pertama: Decode ID Jenis Analisa
         try {
             $id_jenis_analisa_decoded = Hashids::connection('custom')->decode($id_jenis_analisa)[0];
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'status' => 400, 'message' => 'Format ID Jenis Analisa tidak valid.'], 400);
         }
 
-        $ujiSampel = DB::table('N_EMI_LAB_Uji_Sampel') 
-            ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
-            ->join('EMI_Master_Mesin', 'N_EMI_LAB_PO_Sampel.Id_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
-            ->leftJoin('N_EMI_LAB_Perhitungan', function ($join) {
-                $join->on('N_EMI_LAB_Perhitungan.id', '=', 'N_EMI_LAB_Uji_Sampel.Id_Perhitungan')
-                    ->on('N_EMI_LAB_Perhitungan.Kode_Perusahaan', '=', 'N_EMI_LAB_Uji_Sampel.Kode_Perusahaan');
-            })
-            ->select(
-                'N_EMI_LAB_PO_Sampel.Kode_Barang',
-                'N_EMI_LAB_Uji_Sampel.No_Faktur',
-                'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
-                'N_EMI_LAB_Uji_Sampel.No_Fak_Sub_Po', 
-                'N_EMI_LAB_PO_Sampel.No_Batch', 
-                'N_EMI_LAB_Uji_Sampel.Tahapan_Ke', 
-                'N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode', 
-                'N_EMI_LAB_Uji_Sampel.Flag_Resampling', 
-                'N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 
-                'N_EMI_LAB_Uji_Sampel.Flag_Layak', 
-                'N_EMI_LAB_Uji_Sampel.Flag_Final', 
-                'N_EMI_LAB_Uji_Sampel.Id_Mesin', 
-                'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa',
-                'N_EMI_LAB_Uji_Sampel.Tanggal as Tanggal_Pengujian',
-                'N_EMI_LAB_Uji_Sampel.Hasil as Hasil_Akhir_Analisa',
-                'N_EMI_LAB_Uji_Sampel.Flag_Perhitungan',
-                'N_EMI_LAB_Uji_Sampel.Range_Awal',
-                'N_EMI_LAB_Uji_Sampel.Range_Akhir',
-                'N_EMI_LAB_PO_Sampel.No_Po',
-                'N_EMI_LAB_PO_Sampel.No_Split_Po',
-                'EMI_Master_Mesin.Flag_FG',
-                DB::raw("ISNULL(N_EMI_LAB_Perhitungan.Hasil_Perhitungan, 0) AS Pembulatan")
-            )
-            ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
-            ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
-            ->where('N_EMI_LAB_Uji_Sampel.No_Fak_Sub_po', $no_sub)
-            ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
-            ->where('N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 'terima')
-            ->get();
+        // Try Catch Kedua: Logika Utama Data & Database
+        try {
+            $ujiSampel = DB::table('N_EMI_LAB_Uji_Sampel') 
+                ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
+                ->join('EMI_Master_Mesin', 'N_EMI_LAB_PO_Sampel.Id_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
+                ->leftJoin('N_EMI_LAB_Perhitungan', function ($join) {
+                    $join->on('N_EMI_LAB_Perhitungan.id', '=', 'N_EMI_LAB_Uji_Sampel.Id_Perhitungan')
+                        ->on('N_EMI_LAB_Perhitungan.Kode_Perusahaan', '=', 'N_EMI_LAB_Uji_Sampel.Kode_Perusahaan');
+                })
+                ->select(
+                    'N_EMI_LAB_PO_Sampel.Kode_Barang',
+                    'N_EMI_LAB_Uji_Sampel.No_Faktur',
+                    'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
+                    'N_EMI_LAB_Uji_Sampel.No_Fak_Sub_Po', 
+                    'N_EMI_LAB_PO_Sampel.No_Batch', 
+                    'N_EMI_LAB_Uji_Sampel.Tahapan_Ke', 
+                    'N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode', 
+                    'N_EMI_LAB_Uji_Sampel.Flag_Resampling', 
+                    'N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 
+                    'N_EMI_LAB_Uji_Sampel.Flag_Layak', 
+                    'N_EMI_LAB_Uji_Sampel.Flag_Final', 
+                    'N_EMI_LAB_Uji_Sampel.Id_Mesin', 
+                    'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa',
+                    'N_EMI_LAB_Uji_Sampel.Tanggal as Tanggal_Pengujian',
+                    'N_EMI_LAB_Uji_Sampel.Hasil as Hasil_Akhir_Analisa',
+                    'N_EMI_LAB_Uji_Sampel.Flag_Perhitungan',
+                    'N_EMI_LAB_Uji_Sampel.Range_Awal',
+                    'N_EMI_LAB_Uji_Sampel.Range_Akhir',
+                    'N_EMI_LAB_PO_Sampel.No_Po',
+                    'N_EMI_LAB_PO_Sampel.No_Split_Po',
+                    'EMI_Master_Mesin.Flag_FG',
+                    'N_EMI_LAB_Uji_Sampel.Flag_Foto', // Penambahan Field Flag_Foto (disesuaikan dengan nama tabel utama LAB)
+                    DB::raw("ISNULL(N_EMI_LAB_Perhitungan.Hasil_Perhitungan, 0) AS Pembulatan")
+                )
+                ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
+                ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
+                ->where('N_EMI_LAB_Uji_Sampel.No_Fak_Sub_po', $no_sub)
+                ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
+                ->where('N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 'terima')
+                ->get();
 
-        if ($ujiSampel->isEmpty()) {
-            return response()->json(['success' => true, 'status' => 200, 'message' => 'Data Tidak Ditemukan'], 200);
-        }
-
-        $rawRules = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
-            ->select('Nilai_Kriteria', 'Keterangan_Kriteria')
-            ->where('Id_Jenis_Analisa', $id_jenis_analisa_decoded)
-            ->where('Flag_Aktif', 'Y')
-            ->get();
-
-        $rulesMap = [];
-        foreach ($rawRules as $rule) {
-            $key = (string)((float)$rule->Nilai_Kriteria);
-            $rulesMap[$key] = $rule->Keterangan_Kriteria;
-        }
-
-        $parameterRaw = DB::table('N_EMI_LAB_Uji_Sampel_Detail')
-            ->select(
-                'Id_Uji_Sample_Detail',
-                'No_Faktur_Uji_Sample',
-                'Id_Quality_Control',
-                'Value_Parameter as Hasil_Analisa',
-                'Tanggal as Tanggal_Parameter_Analisa',
-                'Jam as Jam_Parameter_Analisa'
-            )
-            ->whereIn('No_Faktur_Uji_Sample', $ujiSampel->pluck('No_Faktur'))
-            ->get()
-            ->groupBy('No_Faktur_Uji_Sample');
-
-        $result = [];
-
-        foreach ($ujiSampel as $item) {
-            $item->Range_Awal = (float) $item->Range_Awal;
-            $item->Range_Akhir = (float) $item->Range_Akhir;
-            
-            $valHeader = (float)$item->Hasil_Akhir_Analisa;
-            $keyHeader = (string)$valHeader;
-
-            if (is_null($item->Flag_Perhitungan) && isset($rulesMap[$keyHeader])) {
-                $item->Hasil_Akhir_Analisa = $rulesMap[$keyHeader];
-            } else {
-                $item->Hasil_Akhir_Analisa = number_format($valHeader, $item->Pembulatan, '.', '');
+            if ($ujiSampel->isEmpty()) {
+                return response()->json(['success' => true, 'status' => 200, 'message' => 'Data Tidak Ditemukan'], 200);
             }
 
-            $params = $parameterRaw->get($item->No_Faktur);
-            $transformedParameters = [];
+            // --- AWAL PENAMBAHAN FLAG FOTO ---
+            // Deklarasi Sesi Foto dan Faktur List
+            $hasSesiFoto = $ujiSampel->contains('Flag_Foto', 'Y') ? 'Y' : 'T';
+            $fakturList = $ujiSampel->pluck('No_Faktur')->unique()->toArray();
 
-            if ($params) {
-                foreach ($params as $param) {
-                    $valParam = (float)$param->Hasil_Analisa;
-                    $keyParam = (string)$valParam;
+            // Ambil Data Berkas (Foto) dari Database (Disamakan dengan prefix tabel LAB kamu)
+            $berkasRaw = DB::table('N_EMI_LAB_Berkas_Uji_Lab')
+                ->select('Id_Berkas_Lab', 'No_Faktur', 'Berkas_Key')
+                ->whereIn('No_Faktur', $fakturList)
+                ->get()
+                ->groupBy('No_Faktur');
+            // --- AKHIR PENAMBAHAN FLAG FOTO ---
 
-                    if (is_null($item->Flag_Perhitungan) && isset($rulesMap[$keyParam])) {
-                        $hasilTampil = $rulesMap[$keyParam];
-                    } else {
-                        $hasilTampil = round($valParam, 4);
-                    }
+            $rawRules = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
+                ->select('Nilai_Kriteria', 'Keterangan_Kriteria')
+                ->where('Id_Jenis_Analisa', $id_jenis_analisa_decoded)
+                ->where('Flag_Aktif', 'Y')
+                ->get();
 
-                    $transformedParameters[] = [
-                        'Id_Jenis_Analisa' => Hashids::connection('custom')->encode($id_jenis_analisa_decoded),
-                        'Id_Uji_Sample_Detail' => Hashids::connection('custom')->encode($param->Id_Uji_Sample_Detail),
-                        'No_Faktur_Uji_Sample' => $param->No_Faktur_Uji_Sample,
-                        'Id_Quality_Control' => Hashids::connection('custom')->encode($param->Id_Quality_Control),
-                        'Hasil_Analisa' => $hasilTampil,
-                        'Tanggal_Parameter_Analisa' => $param->Tanggal_Parameter_Analisa,
-                        'Jam_Parameter_Analisa' => $param->Jam_Parameter_Analisa,
-                    ];
+            $rulesMap = [];
+            foreach ($rawRules as $rule) {
+                $key = (string)((float)$rule->Nilai_Kriteria);
+                $rulesMap[$key] = $rule->Keterangan_Kriteria;
+            }
+
+            $parameterRaw = DB::table('N_EMI_LAB_Uji_Sampel_Detail')
+                ->select(
+                    'Id_Uji_Sample_Detail',
+                    'No_Faktur_Uji_Sample',
+                    'Id_Quality_Control',
+                    'Value_Parameter as Hasil_Analisa',
+                    'Tanggal as Tanggal_Parameter_Analisa',
+                    'Jam as Jam_Parameter_Analisa'
+                )
+                ->whereIn('No_Faktur_Uji_Sample', $fakturList) // Optimasi menggunakan array fakturList
+                ->get()
+                ->groupBy('No_Faktur_Uji_Sample');
+
+            $result = [];
+
+            foreach ($ujiSampel as $item) {
+                $item->Range_Awal = (float) $item->Range_Awal;
+                $item->Range_Akhir = (float) $item->Range_Akhir;
+                
+                $valHeader = (float)$item->Hasil_Akhir_Analisa;
+                $keyHeader = (string)$valHeader;
+
+                if (is_null($item->Flag_Perhitungan) && isset($rulesMap[$keyHeader])) {
+                    $item->Hasil_Akhir_Analisa = $rulesMap[$keyHeader];
+                } else {
+                    $item->Hasil_Akhir_Analisa = number_format($valHeader, $item->Pembulatan, '.', '');
                 }
+
+                $params = $parameterRaw->get($item->No_Faktur);
+                $transformedParameters = [];
+
+                if ($params) {
+                    foreach ($params as $param) {
+                        $valParam = (float)$param->Hasil_Analisa;
+                        $keyParam = (string)$valParam;
+
+                        if (is_null($item->Flag_Perhitungan) && isset($rulesMap[$keyParam])) {
+                            $hasilTampil = $rulesMap[$keyParam];
+                        } else {
+                            $hasilTampil = round($valParam, 4);
+                        }
+
+                        $transformedParameters[] = [
+                            'Id_Jenis_Analisa' => Hashids::connection('custom')->encode($id_jenis_analisa_decoded),
+                            'Id_Uji_Sample_Detail' => Hashids::connection('custom')->encode($param->Id_Uji_Sample_Detail),
+                            'No_Faktur_Uji_Sample' => $param->No_Faktur_Uji_Sample,
+                            'Id_Quality_Control' => Hashids::connection('custom')->encode($param->Id_Quality_Control),
+                            'Hasil_Analisa' => $hasilTampil,
+                            'Tanggal_Parameter_Analisa' => $param->Tanggal_Parameter_Analisa,
+                            'Jam_Parameter_Analisa' => $param->Jam_Parameter_Analisa,
+                        ];
+                    }
+                }
+
+                // --- TRANSFORMASI DATA FOTO ---
+                $berkas = $berkasRaw->get($item->No_Faktur);
+                $fotoList = [];
+
+                if ($berkas) {
+                    foreach ($berkas as $file) {
+                        $fotoList[] = [
+                            'Berkas_Key' => $file->Berkas_Key,
+                        ];
+                    }
+                }
+
+                $item->foto_analisa = $fotoList;
+                unset($item->Flag_Foto); // Dihapus karena informasinya diangkat ke node informasi
+                // ------------------------------
+
+                $item->parameter = $transformedParameters;
+                $result[] = $item;
             }
 
-            $item->parameter = $transformedParameters;
-            $result[] = $item;
-        }
+            // Return Data Sesuai Pola Baru
+            return response()->json([
+                'success' => true,
+                'status' => 200,
+                'message' => 'Data Ditemukan',
+                'result' => [
+                    'informasi' => [
+                        'sesi_foto' => $hasSesiFoto
+                    ],
+                    'sampel' => $result
+                ]
+            ], 200);
 
-        return response()->json([
-            'success' => true,
-            'status' => 200,
-            'message' => 'Data Ditemukan',
-            'result' => ['sampel' => $result]
-        ], 200);
+        } catch (\Exception $e) {
+            // Logging error (pastikan Log di-import di atas, e.g: use Illuminate\Support\Facades\Log;)
+            Log::error($e->getMessage());
+            return response()->json([
+                'success' => false, 
+                'status' => 500, 
+                'message' => 'Terjadi kesalahan pada server. Silahkan hubungi administrator.'
+            ], 500);
+        }
     }
+
+    // public function getVerifikasiHasilAnalisaFinalKeputusanV1($id_jenis_analisa, $no_po_sampel, $no_sub)
+    // {
+    //     try {
+    //         $id_jenis_analisa_decoded = Hashids::connection('custom')->decode($id_jenis_analisa)[0];
+    //     } catch (\Exception $e) {
+    //         return response()->json(['success' => false, 'status' => 400, 'message' => 'Format ID Jenis Analisa tidak valid.'], 400);
+    //     }
+
+    //     $ujiSampel = DB::table('N_EMI_LAB_Uji_Sampel') 
+    //         ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
+    //         ->join('EMI_Master_Mesin', 'N_EMI_LAB_PO_Sampel.Id_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
+    //         ->leftJoin('N_EMI_LAB_Perhitungan', function ($join) {
+    //             $join->on('N_EMI_LAB_Perhitungan.id', '=', 'N_EMI_LAB_Uji_Sampel.Id_Perhitungan')
+    //                 ->on('N_EMI_LAB_Perhitungan.Kode_Perusahaan', '=', 'N_EMI_LAB_Uji_Sampel.Kode_Perusahaan');
+    //         })
+    //         ->select(
+    //             'N_EMI_LAB_PO_Sampel.Kode_Barang',
+    //             'N_EMI_LAB_Uji_Sampel.No_Faktur',
+    //             'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
+    //             'N_EMI_LAB_Uji_Sampel.No_Fak_Sub_Po', 
+    //             'N_EMI_LAB_PO_Sampel.No_Batch', 
+    //             'N_EMI_LAB_Uji_Sampel.Tahapan_Ke', 
+    //             'N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode', 
+    //             'N_EMI_LAB_Uji_Sampel.Flag_Resampling', 
+    //             'N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 
+    //             'N_EMI_LAB_Uji_Sampel.Flag_Layak', 
+    //             'N_EMI_LAB_Uji_Sampel.Flag_Final', 
+    //             'N_EMI_LAB_Uji_Sampel.Id_Mesin', 
+    //             'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa',
+    //             'N_EMI_LAB_Uji_Sampel.Tanggal as Tanggal_Pengujian',
+    //             'N_EMI_LAB_Uji_Sampel.Hasil as Hasil_Akhir_Analisa',
+    //             'N_EMI_LAB_Uji_Sampel.Flag_Perhitungan',
+    //             'N_EMI_LAB_Uji_Sampel.Range_Awal',
+    //             'N_EMI_LAB_Uji_Sampel.Range_Akhir',
+    //             'N_EMI_LAB_PO_Sampel.No_Po',
+    //             'N_EMI_LAB_PO_Sampel.No_Split_Po',
+    //             'EMI_Master_Mesin.Flag_FG',
+    //             'N_EMI_LIMS_Uji_Sampel.Flag_Foto',
+    //             DB::raw("ISNULL(N_EMI_LAB_Perhitungan.Hasil_Perhitungan, 0) AS Pembulatan")
+    //         )
+    //         ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
+    //         ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
+    //         ->where('N_EMI_LAB_Uji_Sampel.No_Fak_Sub_po', $no_sub)
+    //         ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
+    //         ->where('N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 'terima')
+    //         ->get();
+
+    //     if ($ujiSampel->isEmpty()) {
+    //         return response()->json(['success' => true, 'status' => 200, 'message' => 'Data Tidak Ditemukan'], 200);
+    //     }
+
+    //     $rawRules = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
+    //         ->select('Nilai_Kriteria', 'Keterangan_Kriteria')
+    //         ->where('Id_Jenis_Analisa', $id_jenis_analisa_decoded)
+    //         ->where('Flag_Aktif', 'Y')
+    //         ->get();
+
+    //     $rulesMap = [];
+    //     foreach ($rawRules as $rule) {
+    //         $key = (string)((float)$rule->Nilai_Kriteria);
+    //         $rulesMap[$key] = $rule->Keterangan_Kriteria;
+    //     }
+
+    //     $parameterRaw = DB::table('N_EMI_LAB_Uji_Sampel_Detail')
+    //         ->select(
+    //             'Id_Uji_Sample_Detail',
+    //             'No_Faktur_Uji_Sample',
+    //             'Id_Quality_Control',
+    //             'Value_Parameter as Hasil_Analisa',
+    //             'Tanggal as Tanggal_Parameter_Analisa',
+    //             'Jam as Jam_Parameter_Analisa'
+    //         )
+    //         ->whereIn('No_Faktur_Uji_Sample', $ujiSampel->pluck('No_Faktur'))
+    //         ->get()
+    //         ->groupBy('No_Faktur_Uji_Sample');
+
+    //     $result = [];
+
+    //     foreach ($ujiSampel as $item) {
+    //         $item->Range_Awal = (float) $item->Range_Awal;
+    //         $item->Range_Akhir = (float) $item->Range_Akhir;
+            
+    //         $valHeader = (float)$item->Hasil_Akhir_Analisa;
+    //         $keyHeader = (string)$valHeader;
+
+    //         if (is_null($item->Flag_Perhitungan) && isset($rulesMap[$keyHeader])) {
+    //             $item->Hasil_Akhir_Analisa = $rulesMap[$keyHeader];
+    //         } else {
+    //             $item->Hasil_Akhir_Analisa = number_format($valHeader, $item->Pembulatan, '.', '');
+    //         }
+
+    //         $params = $parameterRaw->get($item->No_Faktur);
+    //         $transformedParameters = [];
+
+    //         if ($params) {
+    //             foreach ($params as $param) {
+    //                 $valParam = (float)$param->Hasil_Analisa;
+    //                 $keyParam = (string)$valParam;
+
+    //                 if (is_null($item->Flag_Perhitungan) && isset($rulesMap[$keyParam])) {
+    //                     $hasilTampil = $rulesMap[$keyParam];
+    //                 } else {
+    //                     $hasilTampil = round($valParam, 4);
+    //                 }
+
+    //                 $transformedParameters[] = [
+    //                     'Id_Jenis_Analisa' => Hashids::connection('custom')->encode($id_jenis_analisa_decoded),
+    //                     'Id_Uji_Sample_Detail' => Hashids::connection('custom')->encode($param->Id_Uji_Sample_Detail),
+    //                     'No_Faktur_Uji_Sample' => $param->No_Faktur_Uji_Sample,
+    //                     'Id_Quality_Control' => Hashids::connection('custom')->encode($param->Id_Quality_Control),
+    //                     'Hasil_Analisa' => $hasilTampil,
+    //                     'Tanggal_Parameter_Analisa' => $param->Tanggal_Parameter_Analisa,
+    //                     'Jam_Parameter_Analisa' => $param->Jam_Parameter_Analisa,
+    //                 ];
+    //             }
+    //         }
+
+    //         $item->parameter = $transformedParameters;
+    //         $result[] = $item;
+    //     }
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'status' => 200,
+    //         'message' => 'Data Ditemukan',
+    //         'result' => ['sampel' => $result]
+    //     ], 200);
+    // }
 
     public function getVerifikasiHasilAnalisaFinalKeputusanV1NoPcs($id_jenis_analisa, $no_po_sampel)
     {
-      
-             
         try {
             $id_jenis_analisa = Hashids::connection('custom')->decode($id_jenis_analisa)[0];
         } catch (\Exception $e) {
@@ -11199,113 +12146,236 @@ class UjiSampelController extends Controller
             ], 400);
         }
 
-   
+        try {
 
-        $ujiSampel = DB::table('N_EMI_LAB_Uji_Sampel') 
-            ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
-            ->join('EMI_Master_Mesin', 'N_EMI_LAB_PO_Sampel.Id_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
-            ->leftJoin('N_EMI_LAB_Perhitungan', function ($join) {
-                $join->on('N_EMI_LAB_Perhitungan.id', '=', 'N_EMI_LAB_Uji_Sampel.Id_Perhitungan')
-                    ->on('N_EMI_LAB_Perhitungan.Kode_Perusahaan', '=', 'N_EMI_LAB_Uji_Sampel.Kode_Perusahaan');
-            })
-            ->leftJoin('N_EMI_LAB_Standar_Rentang', function ($join) {
-                $join->on('N_EMI_LAB_Standar_Rentang.Id_Jenis_Analisa', '=', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa')
-                    ->on('N_EMI_LAB_Standar_Rentang.Id_Master_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
-                    ->on('N_EMI_LAB_Standar_Rentang.Kode_Barang', '=', 'N_EMI_LAB_PO_Sampel.Kode_Barang');
-            })
-            ->select(
-                'N_EMI_LAB_PO_Sampel.Kode_Barang',
-                'N_EMI_LAB_Uji_Sampel.No_Faktur',
-                'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
-                'N_EMI_LAB_Uji_Sampel.No_Fak_Sub_Po', 
-                'N_EMI_LAB_PO_Sampel.No_Batch', 
-                'N_EMI_LAB_Uji_Sampel.Tahapan_Ke', 
-                'N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode', 
-                'N_EMI_LAB_Uji_Sampel.Flag_Resampling', 
-                'N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 
-                'N_EMI_LAB_Uji_Sampel.Flag_Layak', 
-                'N_EMI_LAB_Uji_Sampel.Flag_Final', 
-                'N_EMI_LAB_Uji_Sampel.Id_Mesin', 
-                'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa',
-                'N_EMI_LAB_Uji_Sampel.Tanggal as Tanggal_Pengujian',
-                'N_EMI_LAB_Uji_Sampel.Hasil as Hasil_Akhir_Analisa',
-                'N_EMI_LAB_PO_Sampel.No_Po',
-                'N_EMI_LAB_PO_Sampel.No_Split_Po',
-                'EMI_Master_Mesin.Flag_FG',
-                DB::raw("ISNULL(N_EMI_LAB_Perhitungan.Hasil_Perhitungan, 0) AS Pembulatan"),
-                DB::raw("CASE 
-                            WHEN N_EMI_LAB_Standar_Rentang.Id_Standar_Rentang IS NOT NULL THEN N_EMI_LAB_Standar_Rentang.Range_Awal
+            $ujiSampel = DB::table('N_EMI_LAB_Uji_Sampel') 
+                ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
+                ->join('EMI_Master_Mesin', 'N_EMI_LAB_PO_Sampel.Id_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
+                ->leftJoin('N_EMI_LAB_Perhitungan', function ($join) {
+                    $join->on('N_EMI_LAB_Perhitungan.id', '=', 'N_EMI_LAB_Uji_Sampel.Id_Perhitungan')
+                        ->on('N_EMI_LAB_Perhitungan.Kode_Perusahaan', '=', 'N_EMI_LAB_Uji_Sampel.Kode_Perusahaan');
+                })
+                ->leftJoin('N_EMI_LAB_Standar_Rentang', function ($join) {
+                    $join->on('N_EMI_LAB_Standar_Rentang.Id_Jenis_Analisa', '=', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa')
+                        ->on('N_EMI_LAB_Standar_Rentang.Id_Master_Mesin', '=', 'EMI_Master_Mesin.Id_Master_Mesin')
+                        ->on('N_EMI_LAB_Standar_Rentang.Kode_Barang', '=', 'N_EMI_LAB_PO_Sampel.Kode_Barang');
+                })
+                ->select(
+                    'N_EMI_LAB_PO_Sampel.Kode_Barang',
+                    'N_EMI_LAB_Uji_Sampel.No_Faktur',
+                    'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
+                    'N_EMI_LAB_Uji_Sampel.No_Fak_Sub_Po', 
+                    'N_EMI_LAB_PO_Sampel.No_Batch', 
+                    'N_EMI_LAB_Uji_Sampel.Tahapan_Ke', 
+                    'N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode', 
+                    'N_EMI_LAB_Uji_Sampel.Flag_Resampling', 
+                    'N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 
+                    'N_EMI_LAB_Uji_Sampel.Flag_Layak', 
+                    'N_EMI_LAB_Uji_Sampel.Flag_Final', 
+                    'N_EMI_LAB_Uji_Sampel.Id_Mesin', 
+                    'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa',
+                    'N_EMI_LAB_Uji_Sampel.Tanggal as Tanggal_Pengujian',
+                    'N_EMI_LAB_Uji_Sampel.Hasil as Hasil_Akhir_Analisa',
+                    'N_EMI_LAB_Uji_Sampel.Flag_Foto',
+                    'N_EMI_LAB_PO_Sampel.No_Po',
+                    'N_EMI_LAB_PO_Sampel.No_Split_Po',
+                    'EMI_Master_Mesin.Flag_FG',
+                    DB::raw("ISNULL(N_EMI_LAB_Perhitungan.Hasil_Perhitungan, 0) AS Pembulatan"),
+                    DB::raw("
+                        CASE 
+                            WHEN N_EMI_LAB_Standar_Rentang.Id_Standar_Rentang IS NOT NULL 
+                            THEN N_EMI_LAB_Standar_Rentang.Range_Awal
                             ELSE NULL
-                        END AS Range_Awal"),
-                DB::raw("CASE 
-                            WHEN N_EMI_LAB_Standar_Rentang.Id_Standar_Rentang IS NOT NULL THEN N_EMI_LAB_Standar_Rentang.Range_Akhir
+                        END AS Range_Awal
+                    "),
+                    DB::raw("
+                        CASE 
+                            WHEN N_EMI_LAB_Standar_Rentang.Id_Standar_Rentang IS NOT NULL 
+                            THEN N_EMI_LAB_Standar_Rentang.Range_Akhir
                             ELSE NULL
-                        END AS Range_Akhir")
-            )
-            ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
-            ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
-            ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa)
-            ->where('N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 'terima')
-            ->get();
+                        END AS Range_Akhir
+                    ")
+                )
+                ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
+                ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
+                ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa)
+                ->where('N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 'terima')
+                ->get();
 
-        if ($ujiSampel->isEmpty()) {
+            if ($ujiSampel->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'status' => 200,
+                    'message' => 'Data Tidak Ditemukan',
+                ], 200);
+            }
+
+            // =========================
+            // MAPPING STANDAR RENTANG NON PERHITUNGAN (KHUSUS LAB)
+            // =========================
+            $kriteriaRaw = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
+                ->where('Id_Jenis_Analisa', $id_jenis_analisa)
+                ->where('Kode_Role', 'LAB')
+                ->get(['Nilai_Kriteria', 'Keterangan_Kriteria']);
+
+            $kriteriaNonPerhitunganList = [];
+            foreach ($kriteriaRaw as $kriteria) {
+                // Konversi float untuk otomatis menghilangkan ".0" dari database jika ada, lalu cast ke string
+                $nilaiKey = is_numeric($kriteria->Nilai_Kriteria) 
+                    ? (string) floatval($kriteria->Nilai_Kriteria) 
+                    : trim((string) $kriteria->Nilai_Kriteria);
+                    
+                $kriteriaNonPerhitunganList[$nilaiKey] = $kriteria->Keterangan_Kriteria;
+            }
+
+            // =========================
+            // FLAG FOTO
+            // =========================
+            $hasSesiFoto = $ujiSampel->contains('Flag_Foto', 'Y') ? 'Y' : 'T';
+
+            $fakturList = $ujiSampel->pluck('No_Faktur')->unique()->toArray();
+
+            $berkasRaw = DB::table('N_EMI_LAB_Berkas_Uji_Lab')
+                ->select(
+                    'Id_Berkas_Lab',
+                    'No_Faktur',
+                    'Berkas_Key'
+                )
+                ->whereIn('No_Faktur', $fakturList)
+                ->get()
+                ->groupBy('No_Faktur');
+
+            // =========================
+            // PARAMETER
+            // =========================
+            $parameterRaw = DB::table('N_EMI_LAB_Uji_Sampel_Detail')
+                ->select(
+                    'Id_Uji_Sample_Detail',
+                    'No_Faktur_Uji_Sample',
+                    'Id_Quality_Control',
+                    'Value_Parameter as Hasil_Analisa',
+                    'Tanggal as Tanggal_Parameter_Analisa',
+                    'Jam as Jam_Parameter_Analisa'
+                )
+                ->whereIn('No_Faktur_Uji_Sample', $fakturList)
+                ->get()
+                ->groupBy('No_Faktur_Uji_Sample');
+
+            $result = [];
+
+            foreach ($ujiSampel as $sampel) {
+
+                $sampel->Range_Awal = (float) $sampel->Range_Awal;
+                $sampel->Range_Akhir = (float) $sampel->Range_Akhir;
+
+                // =========================
+                // PENGECEKAN HASIL ANALISA (INDUK)
+                // =========================
+                $hasilAsli = (string)$sampel->Hasil_Akhir_Analisa;
+
+                // Format key pencarian untuk membuang '.0' jika ada, agar matching dengan array
+                $keyCari = is_numeric($hasilAsli) 
+                    ? (string) floatval($hasilAsli) 
+                    : trim($hasilAsli);
+
+                // Cek apakah nilai hasil ada di database master Non Perhitungan
+                if (array_key_exists($keyCari, $kriteriaNonPerhitunganList)) {
+                    // Tampilkan keterangannya jika cocok
+                    $sampel->Hasil_Akhir_Analisa = $kriteriaNonPerhitunganList[$keyCari];
+                } else {
+                    // Jika tidak ada di db, tampilkan aslinya. (Format numerik jika ia berupa angka)
+                    if (is_numeric($hasilAsli)) {
+                        $sampel->Hasil_Akhir_Analisa = number_format(
+                            (float)$hasilAsli,
+                            $sampel->Pembulatan,
+                            '.',
+                            ''
+                        );
+                    } else {
+                        $sampel->Hasil_Akhir_Analisa = $hasilAsli;
+                    }
+                }
+
+                $parameters = $parameterRaw->get($sampel->No_Faktur)?->values() ?? collect([]);
+
+                // Perhatikan penambahan "use ($kriteriaNonPerhitunganList)" di bawah ini
+                $transformedParameters = $parameters->map(function ($param) use ($id_jenis_analisa, $kriteriaNonPerhitunganList) {
+                    
+                    // =========================
+                    // PENGECEKAN HASIL ANALISA (PARAMETER DETAIL)
+                    // =========================
+                    $hasilParamAsli = (string)$param->Hasil_Analisa;
+                    
+                    $keyCariParam = is_numeric($hasilParamAsli) 
+                        ? (string) floatval($hasilParamAsli) 
+                        : trim($hasilParamAsli);
+
+                    if (array_key_exists($keyCariParam, $kriteriaNonPerhitunganList)) {
+                        $hasilParamFinal = $kriteriaNonPerhitunganList[$keyCariParam];
+                    } else {
+                        // Kembali ke format asal (dibulatkan ke 4 angka di belakang koma) jika bukan string keterangan
+                        $hasilParamFinal = is_numeric($hasilParamAsli) 
+                            ? round(floatval($hasilParamAsli), 4) 
+                            : $hasilParamAsli;
+                    }
+
+                    return [
+                        'Id_Jenis_Analisa' => Hashids::connection('custom')->encode($id_jenis_analisa),
+                        'Id_Uji_Sample_Detail' => Hashids::connection('custom')->encode($param->Id_Uji_Sample_Detail),
+                        'No_Faktur_Uji_Sample' => $param->No_Faktur_Uji_Sample,
+                        'Id_Quality_Control' => Hashids::connection('custom')->encode($param->Id_Quality_Control),
+                        'Hasil_Analisa' => $hasilParamFinal,
+                        'Tanggal_Parameter_Analisa' => $param->Tanggal_Parameter_Analisa,
+                        'Jam_Parameter_Analisa' => $param->Jam_Parameter_Analisa,
+                    ];
+                });
+
+                // =========================
+                // FOTO ANALISA
+                // =========================
+                $berkas = $berkasRaw->get($sampel->No_Faktur);
+
+                $fotoList = [];
+
+                if ($berkas) {
+                    foreach ($berkas as $file) {
+                        $fotoList[] = [
+                            'Berkas_Key' => $file->Berkas_Key,
+                        ];
+                    }
+                }
+
+                $sampel->foto_analisa = $fotoList;
+
+                unset($sampel->Flag_Foto);
+
+                $sampel->parameter = $transformedParameters;
+
+                $result[] = $sampel;
+            }
+
             return response()->json([
                 'success' => true,
                 'status' => 200,
-                'message' => 'Data Tidak Ditemukan',
+                'message' => 'Data Ditemukan',
+                'result' => [
+                    'informasi' => [
+                        'sesi_foto' => $hasSesiFoto
+                    ],
+                    'sampel' => $result
+                ]
             ], 200);
+
+        } catch (\Exception $e) {
+
+            Log::error($e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'status' => 500,
+                'message' => 'Terjadi kesalahan pada server. Silahkan hubungi administrator.'
+            ], 500);
         }
-
-        foreach ($ujiSampel as $item) {
-            $item->Range_Awal = (float) $item->Range_Awal;
-            $item->Range_Akhir = (float) $item->Range_Akhir;
-            $item->Hasil_Akhir_Analisa = number_format((float)$item->Hasil_Akhir_Analisa, $item->Pembulatan, '.', '');
-        }
-
-        $parameterRaw = DB::table('N_EMI_LAB_Uji_Sampel_Detail')
-            ->select(
-                'Id_Uji_Sample_Detail',
-                'No_Faktur_Uji_Sample',
-                'Id_Quality_Control',
-                'Value_Parameter as Hasil_Analisa',
-                'Tanggal as Tanggal_Parameter_Analisa',
-                'Jam as Jam_Parameter_Analisa'
-            )
-            ->whereIn('No_Faktur_Uji_Sample', $ujiSampel->pluck('No_Faktur'))
-            ->get()
-            ->groupBy('No_Faktur_Uji_Sample');
-
-        $result = [];
-
-        foreach ($ujiSampel as $sampel) {
-            $item = (array) $sampel;
-            $parameters = $parameterRaw->get($sampel->No_Faktur)?->values() ?? [];
-        
-            // transformasi setiap parameter
-            $transformedParameters = $parameters->map(function ($param) use ($id_jenis_analisa) {
-                return [
-                    'Id_Jenis_Analisa' => Hashids::connection('custom')->encode($id_jenis_analisa),
-                    'Id_Uji_Sample_Detail' => Hashids::connection('custom')->encode($param->Id_Uji_Sample_Detail),
-                    'No_Faktur_Uji_Sample' => $param->No_Faktur_Uji_Sample,
-                    'Id_Quality_Control' => Hashids::connection('custom')->encode($param->Id_Quality_Control),
-                    'Hasil_Analisa' => round(floatval($param->Hasil_Analisa), 4),
-                    'Tanggal_Parameter_Analisa' => $param->Tanggal_Parameter_Analisa,
-                    'Jam_Parameter_Analisa' => $param->Jam_Parameter_Analisa,
-                ];
-            });
-        
-            $item['parameter'] = $transformedParameters;
-            $result[] = $item;
-        }
-
-        return response()->json([
-            'success' => true,
-            'status' => 200,
-            'message' => 'Data Ditemukan',
-            'result' => [
-                'sampel' => $result
-            ]
-        ], 200);
     }
 
     public function getDataHasilAnalisaPerhitunganByNoMulti($id_jenis_analisa, $no_po_sampel)
@@ -13348,5 +14418,58 @@ class UjiSampelController extends Controller
                 'message' => "Terjadi Kesalahan. Hubungi Admin"
             ], 500);
         }
+    }
+
+    public function generateFotoToken(Request $request)
+    {
+        if (!auth()->check()) abort(401);
+
+        $keys = $request->keys;
+
+        $result = [];
+
+        foreach ($keys as $key) {
+            $token = Str::random(40);
+
+            Cache::put(
+                "lab_foto_token:$token",
+                [
+                    "key" => $key,
+                    "user" => Auth::user()->UserId
+                ],
+                now()->addSeconds(30)
+            );
+
+            $result[$key] = $token;
+        }
+
+        return response()->json($result);
+    }
+
+    public function streamFoto(Request $request, $key)
+    {
+        if (!auth()->check()) abort(401);
+
+        $token = $request->query("token");
+        if (!$token) abort(401);
+
+        $payload = Cache::get("lab_foto_token:$token");
+
+        if (!$payload) abort(401, "Token expired");
+
+        Cache::forget("lab_foto_token:$token");
+
+        if ($payload["key"] !== $key) abort(403);
+
+        if ($payload["user"] !== auth()->id()) abort(403);
+
+
+        $berkas = DB::table('N_EMI_LAB_Berkas_Uji_Lab')
+            ->where('Berkas_Key', $key)
+            ->first();
+
+        if (!$berkas) abort(404);
+
+        return Storage::disk('gcs')->response($berkas->File_Path);
     }
 }

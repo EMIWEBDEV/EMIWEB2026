@@ -50,17 +50,52 @@
                                 class="alert alert-info alert-dismissible alert-label-icon label-arrow fade show material-shadow"
                                 role="alert"
                             >
-                                <i class="ri-airplay-line label-icon"></i
-                                ><strong>Info</strong> - Icon Hanya untuk Font
+                                <i class="ri-airplay-line label-icon"></i>
+                                <strong>Info</strong> - Icon Hanya untuk Font
                                 Awesome Dilarang Icon Lain Seperti Remix, Box
                                 Dan lainnya
                                 <button
                                     type="button"
                                     class="btn-close"
-                                    data-bs-dismiss=" alert"
+                                    data-bs-dismiss="alert"
                                     aria-label="Close"
                                 ></button>
                             </div>
+
+                            <div class="col-12 mb-3">
+                                <div class="form-group">
+                                    <label
+                                        for="Nama_Pengguna"
+                                        class="form-label fw-semibold"
+                                    >
+                                        Nama Pengguna
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <el-select
+                                        v-if="
+                                            userCurrentList &&
+                                            userCurrentList.length
+                                        "
+                                        v-model="selectedOptionUser"
+                                        multiple
+                                        collapse-tags
+                                        collapse-tags-tooltip
+                                        :max-collapse-tags="2"
+                                        placeholder="--- Pilih Pengguna (User) ---"
+                                        style="width: 100%"
+                                        clearable
+                                    >
+                                        <el-option
+                                            v-for="item in userCurrentList"
+                                            :key="item.value"
+                                            :label="item.name"
+                                            :value="item.value"
+                                        />
+                                    </el-select>
+                                </div>
+                            </div>
+
+                            <!-- Bagian el-select Menu -->
                             <div class="col-12 mb-3">
                                 <div class="form-group">
                                     <label
@@ -70,55 +105,98 @@
                                         Nama Menu
                                         <span class="text-danger">*</span>
                                     </label>
-                                    <v-select
+
+                                    <!-- Peringatan jika belum pilih user -->
+                                    <div
+                                        v-if="selectedOptionUser.length === 0"
+                                        class="text-muted small mb-2"
+                                    >
+                                        *Pilih pengguna terlebih dahulu untuk
+                                        melihat ketersediaan menu.
+                                    </div>
+
+                                    <el-select
                                         v-if="
                                             menuCurrentList &&
                                             menuCurrentList.length
                                         "
                                         v-model="selectedOptionIdentity"
-                                        :options="menuCurrentList"
-                                        label="name"
-                                        placeholder="--- Pilih Menu Sidebar ---"
-                                        class="scrollable-select"
                                         multiple
-                                    />
+                                        collapse-tags
+                                        collapse-tags-tooltip
+                                        :max-collapse-tags="2"
+                                        placeholder="--- Pilih Menu Sidebar ---"
+                                        style="width: 100%"
+                                        clearable
+                                        @change="handleMenuChange"
+                                        :disabled="
+                                            selectedOptionUser.length === 0
+                                        "
+                                    >
+                                        <el-option
+                                            label="-- Pilih Semua Menu --"
+                                            value="ALL"
+                                            class="fw-bold text-primary"
+                                        />
+                                        <!-- Gunakan processedMenuOptions dari computed -->
+                                        <el-option
+                                            v-for="item in processedMenuOptions"
+                                            :key="item.value"
+                                            :label="item.label"
+                                            :value="item.value"
+                                            :disabled="item.disabled"
+                                        />
+                                    </el-select>
                                 </div>
                             </div>
 
-                            <div class="col-12 mb-3">
-                                <div class="form-group">
-                                    <label
-                                        for="Nama_Menu"
-                                        class="form-label fw-semibold"
-                                    >
-                                        Nama Pengguna
-                                        <span class="text-danger">*</span>
-                                    </label>
-                                    <v-select
-                                        v-if="
-                                            userCurrentList &&
-                                            userCurrentList.length
-                                        "
-                                        v-model="selectedOptionUser"
-                                        :options="userCurrentList"
-                                        label="name"
-                                        placeholder="--- Pilih Pengguna (User) ---"
-                                        class="scrollable-select"
-                                        multiple
-                                    />
+                            <div
+                                v-if="selectedOptionIdentity.length > 0"
+                                class="col-12 mb-3"
+                            >
+                                <label class="form-label fw-semibold"
+                                    >Atur Urutan Menu</label
+                                >
+                                <div
+                                    v-for="menuId in selectedOptionIdentity"
+                                    :key="menuId"
+                                    class="row mb-2 align-items-center"
+                                >
+                                    <div class="col-md-5">
+                                        <span>{{ getMenuName(menuId) }}</span>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <input
+                                            type="number"
+                                            class="form-control"
+                                            v-model.number="urutanMenu[menuId]"
+                                            placeholder="Masukkan Urutan"
+                                            required
+                                            min="1"
+                                        />
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-danger"
+                                            @click="removeMenu(menuId)"
+                                        >
+                                            <i class="ri-delete-bin-line"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
                             <div class="col-12">
                                 <div class="d-grid">
                                     <button
-                                        :disabled="menuSaveToDatabase"
+                                        :disabled="loading.menuSaveToDatabase"
                                         type="submit"
                                         class="btn btn-primary"
                                     >
                                         <i class="bi bi-send-check me-2"></i>
                                         {{
-                                            menuSaveToDatabase
+                                            loading.menuSaveToDatabase
                                                 ? "Loading..."
                                                 : "Submit Form"
                                         }}
@@ -182,12 +260,15 @@ import axios from "axios";
 import ListSkeleton from "@/pages/vue/ui/ListSkeleton.vue";
 import Swal from "sweetalert2";
 import vSelect from "vue-select";
+import { ElSelect, ElOption } from "element-plus";
 
 export default {
     components: {
         ListSkeleton,
         DotLottieVue,
         vSelect,
+        ElSelect,
+        ElOption,
     },
     data() {
         return {
@@ -197,15 +278,109 @@ export default {
             subMenuCurrentList: [],
             userCurrentList: [],
             searchQuery: "",
-            selectedOptionIdentity: null,
-            selectedOptionUser: null,
+            selectedOptionIdentity: [],
+            selectedOptionUser: [],
+            urutanMenu: {},
             loading: {
                 loadingListData: false,
                 menuSaveToDatabase: false,
+                loadinMenuCurrentList: false,
             },
+            errors: {},
         };
     },
+    computed: {
+        processedMenuOptions() {
+            // Jika belum ada user yang dipilih, kembalikan menu default (semua aktif)
+            if (
+                !this.selectedOptionUser ||
+                this.selectedOptionUser.length === 0
+            ) {
+                return this.menuCurrentList.map((m) => ({
+                    ...m,
+                    label: m.name,
+                    disabled: false,
+                }));
+            }
+
+            return this.menuCurrentList.map((menu) => {
+                // Filter dari user yang dipilih, siapa saja yang sudah punya menu ini di listData (database existing)
+                const ownedBySelectedUsers = this.selectedOptionUser.filter(
+                    (userId) => {
+                        return this.listData.some(
+                            (data) =>
+                                data.Id_User === userId &&
+                                data.Id_Menu === menu.value
+                        );
+                    }
+                );
+
+                let customLabel = menu.name;
+                let isDisabled = false;
+
+                if (ownedBySelectedUsers.length > 0) {
+                    if (
+                        ownedBySelectedUsers.length ===
+                        this.selectedOptionUser.length
+                    ) {
+                        // Kondisi 1: SEMUA user yang dipilih SUDAH PUNYA menu ini
+                        customLabel = `${menu.name} (Sudah dimiliki semua user terpilih)`;
+                        isDisabled = true; // Matikan opsi
+                    } else {
+                        // Kondisi 2: HANYA SEBAGIAN user yang dipilih yang sudah punya
+                        customLabel = `${
+                            menu.name
+                        } (Sudah dimiliki: ${ownedBySelectedUsers.join(", ")})`;
+                        isDisabled = false; // Tetap nyalakan agar user lain bisa ditambahkan
+                    }
+                }
+
+                return {
+                    ...menu,
+                    label: customLabel,
+                    disabled: isDisabled,
+                };
+            });
+        },
+    },
     methods: {
+        getMenuName(id) {
+            const menu = this.menuCurrentList.find((m) => m.value === id);
+            return menu ? menu.name : "";
+        },
+        updateUrutan() {
+            let items = this.selectedOptionIdentity.map((id) => {
+                return {
+                    id: id,
+                    urutan: this.urutanMenu[id] || 999999,
+                };
+            });
+
+            items.sort((a, b) => a.urutan - b.urutan);
+
+            const newUrutan = {};
+            items.forEach((item, index) => {
+                newUrutan[item.id] = index + 1;
+            });
+
+            this.urutanMenu = newUrutan;
+
+            this.selectedOptionIdentity = items.map((item) => item.id);
+        },
+        handleMenuChange(val) {
+            if (val.includes("ALL")) {
+                this.selectedOptionIdentity = this.menuCurrentList.map(
+                    (item) => item.value
+                );
+            }
+            this.updateUrutan();
+        },
+        removeMenu(id) {
+            this.selectedOptionIdentity = this.selectedOptionIdentity.filter(
+                (menuId) => menuId !== id
+            );
+            this.updateUrutan();
+        },
         async fetchMenuListCurrent() {
             this.loading.loadinMenuCurrentList = true;
             try {
@@ -262,19 +437,20 @@ export default {
             try {
                 const payload = [];
 
-                this.selectedOptionIdentity.forEach((menu) => {
-                    this.selectedOptionUser.forEach((user) => {
+                this.selectedOptionIdentity.forEach((menuId) => {
+                    this.selectedOptionUser.forEach((userId) => {
                         payload.push({
-                            Id_Menu: menu.value,
-                            Id_User: user.value,
+                            Id_Menu: menuId,
+                            Id_User: userId,
                             Id_Sub_Menu: null,
+                            Urutan_Menu: this.urutanMenu[menuId] || 1,
                         });
                     });
                 });
 
                 const response = await axios.post(
                     "/api/v1/role-menu/store",
-                    { data: payload }, // kirim array
+                    { data: payload },
                     {
                         headers: {
                             "X-CSRF-TOKEN": document

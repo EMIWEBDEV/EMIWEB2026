@@ -400,6 +400,9 @@
                     :Id_Jenis_Analisa="reactiveIdJenisAnalisa"
                     :No_Po_Sampel="nomorSampel.sampleDetails.no_sampel ?? null"
                     :Id_Mesin="nomorSampel.sampleDetails.Id_Mesin ?? null"
+                    :kodeAnalisa="kodeAnalisa"
+                    :sampleNumber="No_Sampel"
+                    :Flag_Foto="Flag_Foto"
                 />
             </div>
             <div v-else-if="selectedTemplating">
@@ -412,6 +415,9 @@
                     :No_Po_Sampel="nomorSampel.sampleDetails.no_sampel"
                     :No_Fak_Sub_Po="samplePoMulti"
                     :Id_Mesin="nomorSampel.sampleDetails.Id_Mesin ?? null"
+                    :kodeAnalisa="kodeAnalisa"
+                    :Flag_Foto="Flag_Foto"
+                    :sampleNumber="No_Sampel"
                 />
             </div>
         </div>
@@ -455,9 +461,10 @@ export default {
             inputValues: reactive({}),
             sampleNumber: null,
             samplePoMulti: null,
+            Flag_Foto: "T",
+            kodeAnalisa: null,
             showIntro: true,
             reactiveIdJenisAnalisa: null,
-
             nomorSampel: {
                 sampleDetails: null,
                 multiSampel: null,
@@ -497,7 +504,7 @@ export default {
 
                 if (response.status === 200 && response.data?.result) {
                     this.selectedTemplating = response.data.result;
-
+                    this.Flag_Foto = response.data.result?.sesi_foto;
                     this.selectedTemplating.parameter.forEach((param) => {
                         this.inputValues[param.id_qc] = null;
                     });
@@ -666,7 +673,7 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
 :root {
     --warna-primer: #4361ee;
     --warna-sekunder: #3f37c9;
@@ -2341,7 +2348,7 @@ button.btn-search:disabled {
 }
 </style>
 
-<style scoped>
+<style>
 .celebration-container {
     display: flex;
     flex-direction: column;
@@ -2531,5 +2538,337 @@ button.btn-search:disabled {
 .celebration-animation {
     -webkit-animation: float 3s ease-in-out infinite;
     animation: float 3s ease-in-out infinite;
+}
+</style>
+
+<style>
+.analysis-content {
+    min-width: 0;
+
+    flex: 1;
+
+    overflow: hidden;
+}
+
+.truncate-text {
+    display: inline-block;
+
+    max-width: 100%;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    vertical-align: middle;
+}
+
+/* Ukuran dasar text */
+
+.analysis-title.truncate-text {
+    display: block;
+
+    font-size: 1.1rem;
+
+    margin-bottom: 0.25rem;
+}
+
+.badge {
+    font-size: 0.8rem;
+}
+
+.analysis-meta {
+    font-size: 0.9rem;
+}
+
+@media (max-width: 992px) {
+    .content-wrapper {
+        padding: 0 1.5rem;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .calculation-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .content-wrapper {
+        padding: 0 1rem;
+
+        margin: 1rem auto;
+    }
+
+    .system-header {
+        flex-direction: column;
+
+        text-align: center;
+
+        padding: 1rem;
+
+        gap: 1rem;
+    }
+
+    .system-title {
+        justify-content: center;
+
+        font-size: 1.5rem;
+    }
+
+    .header-actions {
+        justify-content: center;
+
+        width: 100%;
+    }
+
+    .panel-header {
+        flex-direction: column;
+
+        align-items: flex-start;
+
+        gap: 1rem;
+    }
+
+    .status-badge {
+        flex-wrap: wrap;
+
+        width: 100%;
+
+        gap: 0.5rem;
+    }
+
+    .analysis-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-item {
+        flex-direction: column;
+
+        align-items: flex-start;
+
+        gap: 0.25rem;
+
+        padding: 0.85rem 0;
+    }
+
+    .detail-value {
+        text-align: left;
+
+        word-break: break-word;
+    }
+
+    .analysis-table-container,
+    .parameter-table-container,
+    .multi-table {
+        width: 100%;
+
+        overflow-x: auto;
+
+        -webkit-overflow-scrolling: touch;
+
+        border-radius: 8px;
+    }
+
+    .form-actions {
+        flex-direction: column;
+
+        width: 100%;
+    }
+
+    .action-button,
+    .btn-submit,
+    .btn-save,
+    .btn-add {
+        width: 100%;
+
+        justify-content: center;
+    }
+
+    .intro-animation {
+        max-width: 300px;
+
+        min-height: 180px;
+    }
+
+    .intro-text {
+        font-size: 1rem;
+
+        line-height: 1.5;
+    }
+
+    /* Pengecilan Font Tablet/Mobile Besar */
+
+    .analysis-title.truncate-text {
+        font-size: 1rem;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+
+        padding: 0.25rem 0.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .input-with-button {
+        flex-direction: column;
+
+        gap: 0.75rem;
+    }
+
+    .btn-search {
+        width: 100%;
+
+        justify-content: center;
+
+        padding: 0.8rem;
+    }
+
+    .panel-body {
+        padding: 1rem;
+    }
+
+    .container.d-flex.justify-content-center.align-items-center DotLottieVue {
+        width: 100% !important;
+
+        height: auto !important;
+
+        max-width: 250px;
+    }
+
+    .celebration-animation {
+        width: 150px;
+
+        height: 150px;
+    }
+
+    .congrats-text {
+        font-size: 1.5rem;
+    }
+
+    .celebration-container {
+        padding: 1.5rem 1rem;
+    }
+
+    /* Penyesuaian Card agar lebih proporsional */
+
+    .analysis-card {
+        padding: 0.75rem;
+    }
+
+    .analysis-icon {
+        width: 40px;
+
+        height: 40px;
+
+        margin-right: 0.75rem;
+
+        font-size: 1.2rem;
+    }
+
+    .completed-badge {
+        top: -5px;
+
+        right: -5px;
+
+        width: 18px;
+
+        height: 18px;
+
+        font-size: 0.7rem;
+    }
+
+    /* Pengecilan Font Mobile Standar */
+
+    .analysis-title.truncate-text {
+        font-size: 0.85rem;
+    }
+
+    .badge {
+        font-size: 0.65rem;
+
+        padding: 0.2rem 0.4rem;
+    }
+
+    .analysis-meta {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .system-title {
+        font-size: 1.25rem;
+    }
+
+    .btn-help {
+        padding: 0.4rem 0.8rem;
+
+        font-size: 0.85rem;
+    }
+
+    .form-label,
+    .detail-label {
+        font-size: 0.9rem;
+    }
+
+    .detail-value {
+        font-size: 0.95rem;
+    }
+
+    /* Pengecilan Font Mobile Sangat Kecil */
+
+    .analysis-title.truncate-text {
+        font-size: 0.75rem;
+    }
+
+    .badge {
+        font-size: 0.55rem;
+
+        padding: 0.15rem 0.3rem;
+    }
+
+    .analysis-meta {
+        font-size: 0.7rem;
+    }
+
+    .analysis-icon {
+        width: 35px;
+
+        height: 35px;
+
+        font-size: 1rem;
+    }
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+    .system-header {
+        flex-direction: row;
+
+        padding: 0.5rem 1.5rem;
+    }
+
+    .content-wrapper {
+        margin: 1rem auto;
+    }
+
+    .celebration-container {
+        min-height: 200px;
+
+        padding: 1rem;
+    }
+
+    .celebration-animation {
+        height: 100px;
+
+        width: 100px;
+    }
+
+    .container.d-flex.justify-content-center.align-items-center DotLottieVue {
+        height: 180px !important;
+    }
 }
 </style>

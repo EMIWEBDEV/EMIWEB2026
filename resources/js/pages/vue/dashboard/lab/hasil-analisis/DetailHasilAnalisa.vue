@@ -86,135 +86,150 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div
-                                    v-else-if="listData.length > 0"
-                                    class="table-responsive"
-                                >
-                                    <table
-                                        class="table table-bordered table-nowrap align-middle mb-0"
-                                    >
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>No</th>
-                                                <th>No Transaksi</th>
-                                                <th>No Sampel</th>
-                                                <th>No PO</th>
-                                                <th>No Split Po</th>
-                                                <th>Tanggal</th>
-                                                <th
-                                                    v-for="param in template.parameter"
-                                                    :key="param.id_qc"
-                                                >
-                                                    {{ param.nama_parameter }}
-                                                </th>
-                                                <template
-                                                    v-if="
-                                                        informasiData.Flag_Perhitungan ===
-                                                        'Y'
-                                                    "
-                                                >
+                                <div v-else-if="listData.length > 0">
+                                    <div class="table-responsive">
+                                        <table
+                                            class="table table-bordered table-nowrap align-middle mb-0"
+                                        >
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>No</th>
+                                                    <th>No Transaksi</th>
+                                                    <th>No Sampel</th>
+                                                    <th>No PO</th>
+                                                    <th>No Split Po</th>
+                                                    <th>Tanggal</th>
                                                     <th
-                                                        v-for="(
-                                                            hitung, i
-                                                        ) in template.formula"
-                                                        :key="
-                                                            'hitung-header-' + i
-                                                        "
-                                                    >
-                                                        {{ hitung.nama_kolom }}
-                                                    </th>
-                                                </template>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr
-                                                v-for="(
-                                                    row, rowIndex
-                                                ) in listData"
-                                                :key="rowIndex"
-                                                :class="getRowClass(row)"
-                                            >
-                                                <td>{{ rowIndex + 1 }}</td>
-                                                <td>{{ row.No_Faktur }}</td>
-                                                <td>{{ row.No_Po_Sampel }}</td>
-                                                <td>{{ row.No_Po }}</td>
-                                                <td>{{ row.No_Split_Po }}</td>
-                                                <td>
-                                                    {{
-                                                        formatTanggal(
-                                                            row.Tanggal
-                                                        )
-                                                    }}
-                                                </td>
-                                                <td
-                                                    v-for="(
-                                                        paramValue, pIndex
-                                                    ) in row.parameters"
-                                                    :key="`param-${rowIndex}-${pIndex}`"
-                                                >
-                                                    {{ paramValue }}
-                                                </td>
-                                                <template
-                                                    v-if="
-                                                        informasiData.Flag_Perhitungan ===
-                                                        'Y'
-                                                    "
-                                                >
-                                                    <td
-                                                        v-for="(
-                                                            formula, fIndex
-                                                        ) in template.formula"
-                                                        :key="`formula-${rowIndex}-${fIndex}`"
+                                                        v-for="param in template.parameter"
+                                                        :key="param.id_qc"
                                                     >
                                                         {{
-                                                            row.results[
-                                                                fIndex
-                                                            ] &&
-                                                            row.results[fIndex]
-                                                                .value !==
-                                                                undefined &&
-                                                            row.results[fIndex]
-                                                                .value !== null
-                                                                ? row.results[
-                                                                      fIndex
-                                                                  ].value
-                                                                : "-"
+                                                            param.nama_parameter
+                                                        }}
+                                                    </th>
+                                                    <template
+                                                        v-if="
+                                                            informasiData.Flag_Perhitungan ===
+                                                            'Y'
+                                                        "
+                                                    >
+                                                        <th
+                                                            v-for="(
+                                                                hitung, i
+                                                            ) in template.formula"
+                                                            :key="
+                                                                'hitung-header-' +
+                                                                i
+                                                            "
+                                                        >
+                                                            {{
+                                                                hitung.nama_kolom
+                                                            }}
+                                                        </th>
+                                                    </template>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr
+                                                    v-for="(
+                                                        row, rowIndex
+                                                    ) in listData"
+                                                    :key="rowIndex"
+                                                    :class="getRowClass(row)"
+                                                >
+                                                    <td>{{ rowIndex + 1 }}</td>
+                                                    <td>{{ row.No_Faktur }}</td>
+                                                    <td>
+                                                        {{ row.No_Po_Sampel }}
+                                                    </td>
+                                                    <td>{{ row.No_Po }}</td>
+                                                    <td>
+                                                        {{ row.No_Split_Po }}
+                                                    </td>
+                                                    <td>
+                                                        {{
+                                                            formatTanggal(
+                                                                row.Tanggal
+                                                            )
                                                         }}
                                                     </td>
-                                                </template>
-                                            </tr>
-                                            <tr
-                                                v-if="
-                                                    informasiData.Flag_Perhitungan ===
-                                                    'Y'
-                                                "
-                                                class="table-warning fw-bold"
-                                            >
-                                                <td
-                                                    :colspan="
-                                                        6 +
-                                                        (template.parameter
-                                                            ? template.parameter
-                                                                  .length
-                                                            : 0)
+                                                    <td
+                                                        v-for="(
+                                                            paramValue, pIndex
+                                                        ) in row.parameters"
+                                                        :key="`param-${rowIndex}-${pIndex}`"
+                                                    >
+                                                        {{ paramValue }}
+                                                    </td>
+                                                    <template
+                                                        v-if="
+                                                            informasiData.Flag_Perhitungan ===
+                                                            'Y'
+                                                        "
+                                                    >
+                                                        <td
+                                                            v-for="(
+                                                                formula, fIndex
+                                                            ) in template.formula"
+                                                            :key="`formula-${rowIndex}-${fIndex}`"
+                                                        >
+                                                            {{
+                                                                row.results[
+                                                                    fIndex
+                                                                ] &&
+                                                                row.results[
+                                                                    fIndex
+                                                                ].value !==
+                                                                    undefined &&
+                                                                row.results[
+                                                                    fIndex
+                                                                ].value !== null
+                                                                    ? row
+                                                                          .results[
+                                                                          fIndex
+                                                                      ].value
+                                                                    : "-"
+                                                            }}
+                                                        </td>
+                                                    </template>
+                                                </tr>
+                                                <tr
+                                                    v-if="
+                                                        informasiData.Flag_Perhitungan ===
+                                                        'Y'
                                                     "
-                                                    class="text-center"
+                                                    class="table-warning fw-bold"
                                                 >
-                                                    <strong>Rata-Rata</strong>
-                                                </td>
-                                                <td
-                                                    v-for="(
-                                                        avg, fIndex
-                                                    ) in formulaAverages"
-                                                    :key="
-                                                        'avg-formula-' + fIndex
-                                                    "
-                                                >
-                                                    {{ avg }}
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                                    <td
+                                                        :colspan="
+                                                            6 +
+                                                            (template.parameter
+                                                                ? template
+                                                                      .parameter
+                                                                      .length
+                                                                : 0)
+                                                        "
+                                                        class="text-center"
+                                                    >
+                                                        <strong
+                                                            >Rata-Rata</strong
+                                                        >
+                                                    </td>
+                                                    <td
+                                                        v-for="(
+                                                            avg, fIndex
+                                                        ) in formulaAverages"
+                                                        :key="
+                                                            'avg-formula-' +
+                                                            fIndex
+                                                        "
+                                                    >
+                                                        {{ avg }}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                                 <div v-else class="text-center py-5">
                                     <p>Data tidak ditemukan.</p>
@@ -1135,6 +1150,7 @@
 import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
 import axios from "axios";
 import ApexChart from "vue3-apexcharts";
+import { ElImage } from "element-plus";
 
 export default {
     props: {
@@ -1158,6 +1174,7 @@ export default {
     components: {
         DotLottieVue,
         apexchart: ApexChart,
+        ElImage,
     },
     data() {
         return {
@@ -1165,6 +1182,7 @@ export default {
             informasiData: {},
             dataTracking: [],
             formulaAverages: [],
+            fotoBlobUrls: {},
             template: {
                 parameter: [],
                 formula: [],
@@ -1250,6 +1268,43 @@ export default {
         },
     },
     methods: {
+        async fetchBlobPhotos() {
+            if (this.informasiData?.sesi_foto !== "Y") return;
+
+            const allKeys = [];
+
+            this.listData.forEach((item) => {
+                item.foto_analisa?.forEach((f) => {
+                    allKeys.push(f.Berkas_Key);
+                });
+            });
+
+            if (allKeys.length === 0) return;
+
+            const tokenResponse = await axios.post(
+                `/api/v1/lab/hasil-uji/berkas/foto/token/bulk`,
+                { keys: allKeys }
+            );
+
+            const tokenMap = tokenResponse.data;
+
+            for (const key of allKeys) {
+                const res = await axios.get(
+                    `/api/v1/lab/berkas/stream/foto-uji/${key}?token=${tokenMap[key]}`,
+                    { responseType: "blob" }
+                );
+
+                this.fotoBlobUrls[key] = URL.createObjectURL(res.data);
+            }
+        },
+        hapusSemuaBlobMemori() {
+            if (this.fotoBlobUrls) {
+                Object.values(this.fotoBlobUrls).forEach((url) => {
+                    URL.revokeObjectURL(url);
+                });
+                this.fotoBlobUrls = {};
+            }
+        },
         getRowsForLog(idLog) {
             if (!this.dataTracking || this.dataTracking.length === 0) return [];
 
