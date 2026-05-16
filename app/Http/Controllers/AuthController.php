@@ -13,7 +13,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Session;
 
 class AuthController extends Controller
@@ -78,7 +78,6 @@ class AuthController extends Controller
     
     public function proses_login(Request $request)
     {
-
         if (app()->environment('production')) {
             if (!$this->verifyCloudflareCaptcha($request)) {
                 return back()
@@ -90,11 +89,10 @@ class AuthController extends Controller
         $request->validate([
             'UserId' => 'required|string',
             'Password' => 'required|string',
-
         ]);
 
         $user = User::where('UserId', $request->UserId)->first();
- 
+
         if (!$user) {
             return back()->with('error', "Akun Tidak Terdaftar");
         }
@@ -114,7 +112,6 @@ class AuthController extends Controller
             $request->session()->regenerate();
             $userId = $user->UserId;
 
-
             $userRoles = DB::table('N_EMI_LAB_User_Roles as ur')
                         ->join('N_EMI_LAB_Roles as r','ur.Id_Role','=','r.Id_Role')
                         ->where('ur.Id_User', $userId)
@@ -122,46 +119,129 @@ class AuthController extends Controller
                         ->toArray();
 
             $request->session()->put('User_Roles', $userRoles);
+            
 
-            $hasRole3 = collect($userRoles)->contains(function ($role) {
-                return $role->Id_Role == 3;
-            });
+            $userAccess = DB::table('N_EMI_LAB_Page_Access_2 as pa')
+                ->join('N_EMI_LAB_Role_Menu_Access as rma', 'rma.Id_Page_Access', '=', 'pa.Id_Page_Access')
+                ->join('N_EMI_LAB_Klasifikasi_Aksi as ka', 'ka.Id_Klasifikasi_Actions', '=', 'rma.Id_Aksi') 
+                ->leftJoin('N_EMI_LAB_Menus as m', 'm.Id_Menu', '=', 'pa.Id_Menu')
+                ->where('pa.Id_User', $userId)
+                ->where('rma.Flag_Diizinkan', 'Y')
+                ->select(
+                    'pa.Id_Page_Access',
+                    'm.Nama_Menu as Jenis_page',
+                    'ka.Nama_Aksi',
+                    'm.Nama_Menu',
+                    'm.Nama_Menu as Nama_Header',
+                    'm.Icon_Menu',
+                    'm.Url_Menu',
+                    'pa.Urutan_Menu'
+                )
+                ->orderBy('pa.Urutan_Menu', 'ASC')
+                ->get();
 
-            if ($hasRole3) {
-                return redirect('/tracking');
+
+            $permissions = [];
+            $permissionLabels = [];
+            $pageAccessIds = [];
+            $firstRedirectUrl = ''; 
+
+           foreach ($userAccess as $index => $access) {
+                // $page menyimpan nama asli yang ada spasinya (contoh: "Finalisasi Trial Produksi")
+                $page = $access->Jenis_page;
+                
+                // $permissionKey mengubah spasi jadi underscore (contoh: "Finalisasi_Trial_Produksi")
+                $permissionKey = str_replace(' ', '_', $page);
+
+                $url = Str::start($access->Url_Menu, '/');
+
+                // --- BAGIAN PERMISSIONS (GUNAKAN $permissionKey) ---
+                if (!isset($permissions[$permissionKey])) {
+                    $permissions[$permissionKey] = [];
+                }
+                if (!in_array($access->Nama_Aksi, $permissions[$permissionKey])) {
+                    $permissions[$permissionKey][] = $access->Nama_Aksi;
+                }
+
+                // --- BAGIAN LABEL/UI (TETAP GUNAKAN $page) ---
+                if (!isset($permissionLabels[$page])) {
+                    $permissionLabels[$page] = [
+                        'nama_menu'   => $access->Nama_Menu,
+                        'nama_header' => $access->Nama_Header,
+                        'icon'        => $access->Icon_Menu,
+                        'url'         => $url,
+                    ];
+                }
+
+                if (empty($firstRedirectUrl)) {
+                    $firstRedirectUrl = $url;
+                }
+
+                if (!in_array($access->Id_Page_Access, $pageAccessIds)) {
+                    $pageAccessIds[] = $access->Id_Page_Access; 
+                }
             }
 
-            $hasDashboardAccess = DB::table('N_EMI_LAB_Role_Menu')
-                ->join('N_EMI_LAB_Menus', 'N_EMI_LAB_Role_Menu.Id_Menu', '=', 'N_EMI_LAB_Menus.Id_Menu')
-                ->where('N_EMI_LAB_Role_Menu.Id_User', $userId)
-                ->where('N_EMI_LAB_Menus.Nama_Menu', 'Dashboard')
-                ->exists();
-
-            $hasHomeAccess = DB::table('N_EMI_LAB_Role_Menu')
-                ->join('N_EMI_LAB_Menus', 'N_EMI_LAB_Role_Menu.Id_Menu', '=', 'N_EMI_LAB_Menus.Id_Menu')
-                ->where('N_EMI_LAB_Role_Menu.Id_User', $userId)
-                ->where('N_EMI_LAB_Menus.Nama_Menu', 'Registrasi Sampel')
-                ->exists();
-
-            $hasMaterialAccess = DB::table('N_EMI_LAB_Role_Menu')
-                ->join('N_EMI_LAB_Menus', 'N_EMI_LAB_Role_Menu.Id_Menu', '=', 'N_EMI_LAB_Menus.Id_Menu')
-                ->where('N_EMI_LAB_Role_Menu.Id_User', $userId)
-                ->where('N_EMI_LAB_Menus.Nama_Menu', 'Registrasi Material')
-                ->exists();
-
-            if ($hasDashboardAccess) {
-                return redirect('/dashboard');
-            } elseif ($hasHomeAccess) {
-                return redirect('/home');
-            } elseif ($hasMaterialAccess) {
-                return redirect('/registrasi-material');
-            } else {
-                return redirect('/master-template-printer-transaksi');
+            if (empty($permissions)) {
+                Auth::logout();
+                return back()->with('error', "Anda belum memiliki hak akses menu. Silahkan hubungi Administrator.");
             }
+
+            $permissionKonten = [];
+
+            if (!empty($pageAccessIds)) {
+                $userKontenAccess = DB::table('N_EMI_LAB_Role_Konten_Access as rka')
+                    ->join('N_EMI_LAB_Page_Access_2 as pa', 'rka.Id_Page_Access', '=', 'pa.Id_Page_Access')
+                    ->leftJoin('N_EMI_LAB_Menus as m', 'm.Id_Menu', '=', 'pa.Id_Menu')
+                    ->leftJoin('N_EMI_LAB_Jenis_Analisa as ja', 'rka.Id_Jenis_Analisa', '=', 'ja.id')
+                    ->whereIn('rka.Id_Page_Access', $pageAccessIds)
+                    ->where('rka.Flag_Diizinkan', 'Y')
+                    ->select(
+                        'm.Nama_Menu as Jenis_page',
+                        'rka.Id_Jenis_Analisa',
+                        'rka.Kategori',
+                        'rka.Flag_Diizinkan',
+                        'ja.Jenis_Analisa as Nama_Analisa'
+                    )
+                    ->get();
+
+                foreach ($userKontenAccess as $konten) {
+                    $page = $konten->Jenis_page;
+
+                    if (!isset($permissionKonten[$page])) {
+                        $permissionKonten[$page] = [];
+                    }
+
+                    if ($konten->Id_Jenis_Analisa) {
+                        $permissionKonten[$page][] = [
+                            'id_jenis_analisa' => $konten->Id_Jenis_Analisa,
+                            'nama_analisa'     => $konten->Nama_Analisa ?? null,
+                            'flag'             => $konten->Flag_Diizinkan
+                        ];
+                    } elseif ($konten->Kategori) {
+                        $permissionKonten[$page][] = [
+                            'kategori' => $konten->Kategori,
+                            'flag'     => $konten->Flag_Diizinkan
+                        ];
+                    }
+                }
+            }
+
+            Session::put('user_permissions', [
+                'id'               => $user->UserId,
+                'username'         => $user->UserId,
+                'nama'             => $user->Nama ?? null,
+                'permissions'      => $permissions,
+                'permission_label' => $permissionLabels,
+                'permission_konten'=> $permissionKonten
+            ]);
+            // dd($firstRedirectUrl, Session::get('user_permissions'));
+
+            return redirect($firstRedirectUrl)->with('success', 'Login berhasil!');
 
         } catch (\Exception $e) {
-            Log::channel('AuthController')->error('Login Error: ' . $e->getMessage());
-            return back()->with('error', "Terjadi Kesalahan");
+            Log::channel('AuthController')->error('Login Error: ' . $e->getMessage() . ' on line ' . $e->getLine());
+            return back()->with('error', "Terjadi Kesalahan Sistem.");
         }
     }
 

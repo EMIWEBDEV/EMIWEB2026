@@ -456,7 +456,11 @@ class FormulatorValidasiHirarkiController extends Controller
 
                             $item->foto_list = [];
                             if ($item->Flag_Foto === 'Y' && $filesGlobal->isNotEmpty()) {
-                                foreach ($filesGlobal as $file) {
+                                
+                                // PERBAIKAN DI SINI: Filter file hanya yang sesuai dengan No_Faktur item saat ini
+                                $itemFiles = $filesGlobal->where('No_Faktur', $item->No_Faktur);
+                                
+                                foreach ($itemFiles as $file) {
                                     try {
                                         if (!empty($file->File_Path)) {
                                             $url = Storage::disk('gcs')->temporaryUrl(

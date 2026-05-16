@@ -83,6 +83,68 @@
                             <div class="col-12 mb-3">
                                 <div class="form-group">
                                     <label
+                                        for="Nama_Header"
+                                        class="form-label fw-semibold"
+                                    >
+                                        Nama Header
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <input
+                                            type="text"
+                                            id="Nama_Header"
+                                            class="form-control"
+                                            placeholder="Masukan Nama Header"
+                                            v-model="form.Nama_Header"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <div class="form-group">
+                                    <label
+                                        for="Sub_Header"
+                                        class="form-label fw-semibold"
+                                    >
+                                        Sub Header
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <input
+                                            type="text"
+                                            id="Sub_Header"
+                                            class="form-control"
+                                            placeholder="Masukan Nama Sub Header"
+                                            v-model="form.Sub_Header"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <div class="form-group">
+                                    <label
+                                        for="Sub_Sub_Header"
+                                        class="form-label fw-semibold"
+                                    >
+                                        Sub Sub Header
+                                    </label>
+                                    <div class="input-group">
+                                        <input
+                                            type="text"
+                                            id="Sub_Sub_Header"
+                                            class="form-control"
+                                            placeholder="Masukan Nama Header"
+                                            v-model="form.Sub_Sub_Header"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <div class="form-group">
+                                    <label
                                         for="Nama_Menu"
                                         class="form-label fw-semibold"
                                     >
@@ -373,6 +435,9 @@ export default {
                 Nama_Menu: "",
                 Icon_Menu: "",
                 Url_Menu: "",
+                Nama_Header: "",
+                Sub_Header: "",
+                Sub_Sub_Header: "",
             },
             errors: {},
             isEdit: false,

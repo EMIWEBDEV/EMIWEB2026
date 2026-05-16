@@ -75,19 +75,6 @@ class POSampleController extends Controller
             ], 403);
         }
 
-        $hasAccessToHome = DB::table('N_EMI_LAB_Role_Menu AS rm')
-            ->join('N_EMI_LAB_Menus AS m', 'rm.Id_Menu', '=', 'm.Id_Menu')
-            ->where('rm.Id_User', $checkedOnlyHuman->UserId)
-            ->where('m.Url_Menu', 'Home')
-            ->exists();
-
-        if (!$hasAccessToHome) {
-            return response()->json([
-                'success' => false,
-                'status' => 403,
-                'message' => 'Anda tidak memiliki izin untuk mengakses halaman Home'
-            ], 403);
-        }
         
         $waktuServer = DB::select("SELECT dbo.Get_Date_Time() as DateTimeNow");
         $dt = $waktuServer[0]->DateTimeNow; 
@@ -128,6 +115,12 @@ class POSampleController extends Controller
                 'Kode_Barang' => 'required',
                 'No_Po' => 'required',
             ]);
+
+            $dataPO = DB::table('N_EMI_View_Order_Produksi')
+                ->where('No_Faktur', $request->No_Po)
+                ->first();
+
+            $flagTrial = $dataPO ? $dataPO->Flag_Trial_Produksi : null;
     
             try {
                 $IdMesin = Hashids::connection('custom')->decode($request->Id_Mesin)[0];
@@ -173,6 +166,7 @@ class POSampleController extends Controller
                     'No_Po' => $request->No_Po,
                     'Berat_Sampel' => $request->Berat_Sampel,
                     'Id_User' => $pengguna->UserId,
+                    'Flag_Trial_Produksi' => $flagTrial,
                     'Jumlah_Pcs' => $request->Jumlah_Pcs
                 ];
 

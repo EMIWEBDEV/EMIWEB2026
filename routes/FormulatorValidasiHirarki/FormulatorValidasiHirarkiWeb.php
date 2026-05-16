@@ -3,8 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FormulatorValidasiHirarki\FormulatorValidasiHirarkiController;
 
-Route::get("/validasi/pra-finalisasi", [FormulatorValidasiHirarkiController::class, "index"])->middleware('autotrack');
-Route::get("/api/v1/validasi/pra-finalisasi/current-home", [FormulatorValidasiHirarkiController::class, "getDataValidasi"]);
+Route::get("/validasi/pra-finalisasi", [FormulatorValidasiHirarkiController::class, "index"])->middleware('autotrack', 'permission:Pra-Finalisasi,VIEW');
+Route::get("/api/v1/validasi/pra-finalisasi/current-home", [FormulatorValidasiHirarkiController::class, "getDataValidasi"])->middleware('permission:Pra-Finalisasi,VIEW');
 Route::get("/api/v1/validasi/pra-finalisasi/informasi/validasi-desktop", [FormulatorValidasiHirarkiController::class, "getInformasiDesktop"]);
 Route::get("/api/v1/validasi/pra-finalisasi/options/klasifikasi-lab", [FormulatorValidasiHirarkiController::class, "getKlasifikasiAktivitasLab"]);
 Route::get("/api/v1/validasi/pra-finalisasi/detail/by/{no_sampel}", [FormulatorValidasiHirarkiController::class, "getDetailValidasi"]);

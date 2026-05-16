@@ -248,15 +248,14 @@ class QuisyController extends Controller
                     ->on('po.Kode_Stock_Owner', '=', 'b.Kode_Stock_Owner')
                     ->on('po.Kode_Barang', '=', 'b.Kode_Barang');
             })
-            ->select('po.No_Faktur', 'po.Jumlah', 'po.Satuan', 'po.Tanggal', 'po.Kode_Barang', 'b.Nama')
-            ->where('po.Tanggal', '>=', '2025-08-16')
+            ->select('po.No_Faktur', 'po.Jumlah', 'po.Satuan', 'po.Tanggal', 'po.Kode_Barang', 'po.Flag_Trial_Produksi', 'b.Nama')
             ->whereNull('po.status')
             ->whereNotIn('po.No_Faktur', function ($query) {
                 $query->select('No_Po')
                     ->from('N_EMI_LAB_PO_Sampel')
                     ->where('Flag_Close_Po', 'Y');
             })
-            // ->whereNotIn('po.No_Faktur', ['PRD0825-00051', 'PRD0825-00039'])
+            ->where('po.Flag_Release', 'Y')
             ->orderBy('po.Tanggal', 'asc')
             ->orderBy('po.No_Faktur', 'asc')
             ->get();

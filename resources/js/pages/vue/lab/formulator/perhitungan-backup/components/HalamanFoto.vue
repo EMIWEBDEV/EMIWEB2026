@@ -28,102 +28,96 @@
         </div>
 
         <div class="table-responsive shadow-sm rounded-4 border bg-white">
-            <table class="table table-hover mb-0 align-middle">
+            <table
+                class="table table-bordered table-hover mb-0 align-middle w-100"
+            >
                 <thead class="table-light text-center">
                     <tr>
-                        <th width="5%">No</th>
-                        <th width="40%">Gambar</th>
-                        <th width="55%">Aksi</th>
+                        <th style="width: 50px">No</th>
+                        <!-- Keterangan dikasih 50% biar berbagi ruang adil sama Gambar -->
+                        <th style="width: 25%">Keterangan (Opsional)</th>
+                        <th>Gambar</th>
+                        <!-- Kolom aksi di-press biar ukurannya ngepas tombol aja -->
+                        <th style="width: 1%; white-space: nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- Empty State (colspan jadi 4 karena sekarang ada 4 kolom) -->
                     <tr v-if="sortedRows.length === 0">
-                        <td colspan="3" class="text-center py-4 text-muted">
+                        <td colspan="4" class="text-center py-4 text-muted">
                             Belum ada daftar dokumentasi. Silakan klik "Tambah
                             Baris Baru".
                         </td>
                     </tr>
 
-                    <template v-for="(row, index) in sortedRows" :key="row.id">
-                        <tr>
-                            <td class="text-center fw-bold">{{ index + 1 }}</td>
-                            <td class="text-center">
-                                <div
-                                    v-if="row.url"
-                                    class="position-relative d-inline-block"
+                    <!-- Baris Data -->
+                    <tr v-for="(row, index) in sortedRows" :key="row.id">
+                        <!-- 1. No -->
+                        <td class="text-center fw-bold">{{ index + 1 }}</td>
+
+                        <!-- 2. Keterangan -->
+                        <td>
+                            <textarea
+                                class="form-control form-control-sm border shadow-none bg-white rounded-3 custom-textarea w-100"
+                                v-model="row.note"
+                                @input="emitData"
+                                rows="3"
+                                placeholder="Tambahkan keterangan..."
+                                style="resize: none"
+                            ></textarea>
+                        </td>
+
+                        <!-- 3. Gambar -->
+                        <td class="text-center">
+                            <div
+                                v-if="row.url"
+                                class="position-relative d-inline-block"
+                            >
+                                <el-image
+                                    :src="row.url"
+                                    :preview-src-list="[row.url]"
+                                    fit="cover"
+                                    class="rounded border shadow-sm"
+                                    style="cursor: pointer"
+                                />
+                            </div>
+                            <div
+                                v-else
+                                class="text-muted p-3 bg-light rounded border-dashed"
+                            >
+                                <i
+                                    class="fas fa-image fa-2x mb-2 text-secondary"
+                                ></i>
+                                <br /><small>Belum ada foto</small>
+                            </div>
+                        </td>
+
+                        <!-- 4. Aksi -->
+                        <td style="width: 1%; white-space: nowrap">
+                            <div
+                                class="d-flex justify-content-center gap-2 px-2"
+                            >
+                                <button
+                                    @click="openCameraModal(row.id)"
+                                    :class="[
+                                        'btn btn-sm shadow-sm fw-bold action-btn',
+                                        row.url
+                                            ? 'btn-outline-warning'
+                                            : 'btn-primary',
+                                    ]"
                                 >
-                                    <el-image
-                                        :src="row.url"
-                                        :preview-src-list="[row.url]"
-                                        fit="cover"
-                                        class="rounded border shadow-sm"
-                                        style="
-                                            width: 120px;
-                                            height: 80px;
-                                            cursor: pointer;
-                                        "
-                                    />
-                                </div>
-                                <div
-                                    v-else
-                                    class="text-muted p-3 bg-light rounded border-dashed"
+                                    <i class="fas fa-camera me-1"></i>
+                                    {{ row.url ? "Retake Foto" : "Ambil Foto" }}
+                                </button>
+                                <button
+                                    @click="removeRow(row.id)"
+                                    class="btn btn-outline-danger btn-sm shadow-sm action-btn"
                                 >
-                                    <i
-                                        class="fas fa-image fa-2x mb-2 text-secondary"
-                                    ></i>
-                                    <br /><small>Belum ada foto</small>
-                                </div>
-                            </td>
-                            <td class="text-center">
-                                <div
-                                    class="d-flex justify-content-center gap-2"
-                                >
-                                    <button
-                                        @click="openCameraModal(row.id)"
-                                        :class="[
-                                            'btn btn-sm shadow-sm fw-bold action-btn',
-                                            row.url
-                                                ? 'btn-outline-warning'
-                                                : 'btn-primary',
-                                        ]"
-                                    >
-                                        <i class="fas fa-camera me-1"></i>
-                                        {{
-                                            row.url
-                                                ? "Retake Foto"
-                                                : "Ambil Foto"
-                                        }}
-                                    </button>
-                                    <button
-                                        @click="removeRow(row.id)"
-                                        class="btn btn-outline-danger btn-sm shadow-sm action-btn"
-                                    >
-                                        <i class="fas fa-trash"></i> Hapus
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr class="border-bottom text-bg-light">
-                            <td></td>
-                            <td colspan="2" class="pb-3 pt-1 pe-4">
-                                <label
-                                    class="form-label text-muted mb-1"
-                                    style="font-size: 12px; font-weight: 600"
-                                >
-                                    <i class="fas fa-pen me-1"></i> Catatan
-                                    (Opsional)
-                                </label>
-                                <textarea
-                                    class="form-control form-control-sm border shadow-none bg-white rounded-3 custom-textarea"
-                                    v-model="row.note"
-                                    @input="emitData"
-                                    rows="2"
-                                    placeholder="Tambahkan keterangan..."
-                                    style="resize: vertical"
-                                ></textarea>
-                            </td>
-                        </tr>
-                    </template>
+                                    <i class="fas fa-trash"></i> Hapus
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -131,12 +125,13 @@
         <el-dialog
             v-model="isModalVisible"
             title="Ambil Dokumentasi Foto"
-            width="600px"
+            fullscreen
             center
             :before-close="closeCameraModal"
             destroy-on-close
         >
-            <div class="d-flex flex-column gap-3">
+            <!-- Tambahkan h-100 biar flex container meregang penuh -->
+            <div class="d-flex flex-column gap-3 h-100">
                 <div class="input-group shadow-sm">
                     <span class="input-group-text bg-white border-end-0">
                         <i class="fas fa-video text-primary"></i>
@@ -164,23 +159,39 @@
                     </select>
                 </div>
 
+                <!-- Tinggi disesuaikan dengan calc() agar responsif terhadap layar -->
+                <!-- Container luar untuk memastikan posisi tetap di tengah dengan tinggi dinamis -->
                 <div
-                    class="camera-wrapper bg-dark rounded-4 overflow-hidden position-relative shadow-sm"
-                    style="height: 350px"
+                    class="d-flex justify-content-center align-items-center w-100"
+                    style="min-height: calc(100vh - 250px)"
                 >
-                    <video
-                        id="modal-video-stream"
-                        autoplay
-                        playsinline
-                        class="w-100 h-100 object-fit-cover"
-                    ></video>
-
+                    <!-- Wrapper kamera diberi max-width dan aspect-ratio agar rasionya tetap terjaga -->
                     <div
-                        v-if="isCameraLoading"
-                        class="position-absolute text-white d-flex flex-column align-items-center"
+                        class="camera-wrapper bg-dark rounded-4 overflow-hidden position-relative shadow-sm"
+                        style="
+                            width: 100%;
+                            max-width: 800px;
+                            aspect-ratio: 16/9;
+                        "
                     >
-                        <div class="spinner-border mb-2" role="status"></div>
-                        <span>Menyalakan Kamera...</span>
+                        <video
+                            id="modal-video-stream"
+                            autoplay
+                            playsinline
+                            class="w-100 h-100 object-fit-cover position-absolute top-0 start-0"
+                        ></video>
+
+                        <div
+                            v-if="isCameraLoading"
+                            class="position-absolute w-100 h-100 text-white d-flex flex-column align-items-center justify-content-center z-3"
+                            style="background-color: rgba(0, 0, 0, 0.5)"
+                        >
+                            <div
+                                class="spinner-border mb-2"
+                                role="status"
+                            ></div>
+                            <span>Menyalakan Kamera...</span>
+                        </div>
                     </div>
                 </div>
             </div>

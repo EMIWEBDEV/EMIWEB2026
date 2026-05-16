@@ -95,7 +95,7 @@
                                     </button>
                                 </div>
                                 <div class="card-body">
-                                    <div class="mb-3" v-if="isFLM">
+                                    <div class="mb-3">
                                         <label class="form-label fw-semibold">
                                             Kategori Analisa
                                             <span class="text-danger">*</span>
@@ -410,7 +410,6 @@
 
                                     <div
                                         v-if="
-                                            isFLM &&
                                             item.Kode_Aktivitas_Lab === 'LCKV'
                                         "
                                         class="toggle-card border rounded p-3 mb-3"
@@ -607,7 +606,7 @@ export default {
             this.form.analisa_list.splice(index, 1);
         },
         handleRoleChange() {
-            if (this.isFLM && this.optionsKategori.length === 0) {
+            if (this.optionsKategori.length === 0) {
                 this.fetchKategoriAnalisa();
             }
         },
@@ -709,11 +708,9 @@ export default {
                         Id_Mesin: item.selectedMesin
                             ? item.selectedMesin.value
                             : null,
-                        Kode_Aktivitas_Lab: this.isFLM
-                            ? item.Kode_Aktivitas_Lab
-                            : null,
+                        Kode_Aktivitas_Lab: item.Kode_Aktivitas_Lab,
                         Flag_Foto:
-                            this.isFLM && item.Kode_Aktivitas_Lab === "LCKV"
+                            item.Kode_Aktivitas_Lab === "LCKV"
                                 ? item.Flag_Foto
                                 : "T",
                     })),
@@ -761,9 +758,7 @@ export default {
     },
     mounted() {
         this.fetchMesinList();
-        if (this.roles.length === 1 && this.roles[0].Kode_Role === "FLM") {
-            this.fetchKategoriAnalisa();
-        }
+        this.fetchKategoriAnalisa();
     },
 };
 </script>

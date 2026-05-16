@@ -382,19 +382,6 @@ class FormulatorRegistrasiController extends Controller
             ], 403);
         }
 
-        $hasAccessToHome = DB::table('N_EMI_LAB_Role_Menu AS rm')
-            ->join('N_EMI_LAB_Menus AS m', 'rm.Id_Menu', '=', 'm.Id_Menu')
-            ->where('rm.Id_User', $checkedOnlyHuman->UserId)
-            ->where('m.Url_Menu', '/registrasi-material')
-            ->exists();
-
-        if (!$hasAccessToHome) {
-            return response()->json([
-                'success' => false,
-                'status' => 403,
-                'message' => 'Anda tidak memiliki izin untuk mengakses halaman Home'
-            ], 403);
-        }
         
         $waktuServer = DB::select("SELECT dbo.Get_Date_Time() as DateTimeNow");
         $dt = $waktuServer[0]->DateTimeNow; 

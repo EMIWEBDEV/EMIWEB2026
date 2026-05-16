@@ -49,18 +49,6 @@
                                     Informasi
                                 </a>
                             </li>
-                            <li class="nav-item" role="presentation">
-                                <a
-                                    class="nav-link"
-                                    data-bs-toggle="tab"
-                                    href="#messages1"
-                                    role="tab"
-                                    aria-selected="false"
-                                    tabindex="-1"
-                                >
-                                    Riwayat Perhitungan
-                                </a>
-                            </li>
                         </ul>
 
                         <div class="tab-content text-muted">
@@ -86,121 +74,314 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div
-                                    v-else-if="listData.length > 0"
-                                    class="table-responsive"
-                                >
-                                    <table
-                                        class="table table-bordered table-nowrap align-middle mb-0"
+                                <div v-else-if="listData.length > 0">
+                                    <div class="table-responsive">
+                                        <table
+                                            class="table table-bordered table-nowrap align-middle mb-0"
+                                        >
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>No</th>
+                                                    <th>No Transaksi</th>
+                                                    <th>No Sampel</th>
+                                                    <th>No PO</th>
+                                                    <th>No Split Po</th>
+                                                    <th>Tanggal</th>
+                                                    <th
+                                                        v-for="param in template.parameter"
+                                                        :key="param.id_qc"
+                                                    >
+                                                        {{
+                                                            param.nama_parameter
+                                                        }}
+                                                    </th>
+                                                    <th
+                                                        v-for="(
+                                                            hitung, i
+                                                        ) in template.formula"
+                                                        :key="
+                                                            'hitung-header-' + i
+                                                        "
+                                                    >
+                                                        {{ hitung.nama_kolom }}
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr
+                                                    v-for="(
+                                                        row, rowIndex
+                                                    ) in listData"
+                                                    :key="rowIndex"
+                                                    :class="getRowClass(row)"
+                                                >
+                                                    <td>
+                                                        {{ rowIndex + 1 }}
+                                                    </td>
+                                                    <td>{{ row.No_Faktur }}</td>
+                                                    <td>
+                                                        {{ row.No_Po_Sampel }}
+                                                    </td>
+                                                    <td>{{ row.No_Po }}</td>
+                                                    <td>
+                                                        {{ row.No_Split_Po }}
+                                                    </td>
+                                                    <td>
+                                                        {{
+                                                            formatTanggal(
+                                                                row.Tanggal
+                                                            )
+                                                        }}
+                                                    </td>
+                                                    <td
+                                                        v-for="(
+                                                            paramValue, pIndex
+                                                        ) in row.parameters"
+                                                        :key="`param-${rowIndex}-${pIndex}`"
+                                                    >
+                                                        {{ paramValue }}
+                                                    </td>
+                                                    <td
+                                                        v-for="(
+                                                            formula, fIndex
+                                                        ) in template.formula"
+                                                        :key="`formula-${rowIndex}-${fIndex}`"
+                                                    >
+                                                        {{
+                                                            row.results[
+                                                                fIndex
+                                                            ] &&
+                                                            row.results[fIndex]
+                                                                .value !==
+                                                                undefined &&
+                                                            row.results[fIndex]
+                                                                .value !== null
+                                                                ? row.results[
+                                                                      fIndex
+                                                                  ].value
+                                                                : "-"
+                                                        }}
+                                                    </td>
+                                                </tr>
+                                                <tr
+                                                    v-if="
+                                                        template.formula &&
+                                                        template.formula
+                                                            .length > 0 &&
+                                                        formulaAverages.length >
+                                                            0
+                                                    "
+                                                    class="table-warning fw-bold"
+                                                >
+                                                    <td
+                                                        :colspan="
+                                                            6 +
+                                                            (template.parameter
+                                                                ? template
+                                                                      .parameter
+                                                                      .length
+                                                                : 0)
+                                                        "
+                                                        class="text-center"
+                                                    >
+                                                        <strong
+                                                            >Rata-Rata</strong
+                                                        >
+                                                    </td>
+                                                    <td
+                                                        v-for="(
+                                                            avg, fIndex
+                                                        ) in formulaAverages"
+                                                        :key="
+                                                            'avg-formula-' +
+                                                            fIndex
+                                                        "
+                                                    >
+                                                        {{ avg }}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- mungkin disini -->
+                                    <div
+                                        v-if="informasiData?.sesi_foto === 'Y'"
+                                        class="mt-5 pt-3"
                                     >
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>No</th>
-                                                <th>No Transaksi</th>
-                                                <th>No Sampel</th>
-                                                <th>No PO</th>
-                                                <th>No Split Po</th>
-                                                <th>Tanggal</th>
-                                                <th
-                                                    v-for="param in template.parameter"
-                                                    :key="param.id_qc"
-                                                >
-                                                    {{ param.nama_parameter }}
-                                                </th>
-                                                <th
-                                                    v-for="(
-                                                        hitung, i
-                                                    ) in template.formula"
-                                                    :key="'hitung-header-' + i"
-                                                >
-                                                    {{ hitung.nama_kolom }}
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr
-                                                v-for="(
-                                                    row, rowIndex
-                                                ) in listData"
-                                                :key="rowIndex"
-                                                :class="getRowClass(row)"
-                                            >
-                                                <td>
-                                                    {{ rowIndex + 1 }}
-                                                </td>
-                                                <td>{{ row.No_Faktur }}</td>
-                                                <td>{{ row.No_Po_Sampel }}</td>
-                                                <td>{{ row.No_Po }}</td>
-                                                <td>{{ row.No_Split_Po }}</td>
-                                                <td>
-                                                    {{
-                                                        formatTanggal(
-                                                            row.Tanggal
-                                                        )
-                                                    }}
-                                                </td>
-                                                <td
-                                                    v-for="(
-                                                        paramValue, pIndex
-                                                    ) in row.parameters"
-                                                    :key="`param-${rowIndex}-${pIndex}`"
-                                                >
-                                                    {{ paramValue }}
-                                                </td>
-                                                <td
-                                                    v-for="(
-                                                        formula, fIndex
-                                                    ) in template.formula"
-                                                    :key="`formula-${rowIndex}-${fIndex}`"
-                                                >
-                                                    {{
-                                                        row.results[fIndex] &&
-                                                        row.results[fIndex]
-                                                            .value !==
-                                                            undefined &&
-                                                        row.results[fIndex]
-                                                            .value !== null
-                                                            ? row.results[
-                                                                  fIndex
-                                                              ].value
-                                                            : "-"
-                                                    }}
-                                                </td>
-                                            </tr>
-                                            <tr
+                                        <div
+                                            class="d-flex align-items-center mb-4"
+                                        >
+                                            <h4 class="fw-bold mb-0 text-dark">
+                                                Dokumentasi Hasil Analisa
+                                            </h4>
+                                            <div
+                                                class="flex-grow-1 border-top border-2 ms-4 border-light"
+                                            ></div>
+                                        </div>
+
+                                        <div
+                                            v-for="(item, index) in listData"
+                                            :key="index"
+                                            class="mb-5"
+                                        >
+                                            <div
                                                 v-if="
-                                                    template.formula &&
-                                                    template.formula.length >
-                                                        0 &&
-                                                    formulaAverages.length > 0
+                                                    item.foto_analisa &&
+                                                    item.foto_analisa.length > 0
                                                 "
-                                                class="table-warning fw-bold"
+                                                class="card border border-light shadow-sm rounded-4 overflow-hidden"
                                             >
-                                                <td
-                                                    :colspan="
-                                                        6 +
-                                                        (template.parameter
-                                                            ? template.parameter
-                                                                  .length
-                                                            : 0)
-                                                    "
-                                                    class="text-center"
+                                                <div
+                                                    class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center"
                                                 >
-                                                    <strong>Rata-Rata</strong>
-                                                </td>
-                                                <td
-                                                    v-for="(
-                                                        avg, fIndex
-                                                    ) in formulaAverages"
-                                                    :key="
-                                                        'avg-formula-' + fIndex
-                                                    "
+                                                    <span
+                                                        class="fw-bold text-secondary text-uppercase"
+                                                        style="
+                                                            letter-spacing: 1px;
+                                                            font-size: 0.85rem;
+                                                        "
+                                                    >
+                                                        <i
+                                                            class="fas fa-camera me-2 text-primary"
+                                                        ></i>
+                                                        Identitas Sampel
+                                                    </span>
+                                                    <span
+                                                        class="badge bg-primary px-3 py-2 rounded-pill fs-6"
+                                                    >
+                                                        {{ item.No_Po_Sampel }}
+                                                    </span>
+                                                </div>
+
+                                                <div
+                                                    class="card-body p-3 bg-light"
                                                 >
-                                                    {{ avg }}
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                                    <div class="row g-3">
+                                                        <div
+                                                            v-for="foto in item.foto_analisa"
+                                                            :key="
+                                                                foto.Berkas_Key
+                                                            "
+                                                            class="col-12 col-md-6"
+                                                        >
+                                                            <div
+                                                                class="bg-white border rounded shadow-sm p-2 h-100 d-flex flex-column"
+                                                            >
+                                                                <div
+                                                                    v-if="
+                                                                        !fotoBlobUrls[
+                                                                            foto
+                                                                                .Berkas_Key
+                                                                        ]
+                                                                    "
+                                                                    class="d-flex justify-content-center align-items-center bg-light w-100 rounded"
+                                                                    style="
+                                                                        height: 250px;
+                                                                    "
+                                                                >
+                                                                    <div
+                                                                        class="spinner-grow text-primary"
+                                                                        role="status"
+                                                                    >
+                                                                        <span
+                                                                            class="visually-hidden"
+                                                                            >Memuat
+                                                                            Gambar...</span
+                                                                        >
+                                                                    </div>
+                                                                </div>
+                                                                <el-image
+                                                                    v-else
+                                                                    class="w-100 d-block rounded"
+                                                                    style="
+                                                                        height: 250px;
+                                                                        object-fit: contain;
+                                                                        background-color: #f8f9fa;
+                                                                    "
+                                                                    :src="
+                                                                        fotoBlobUrls[
+                                                                            foto
+                                                                                .Berkas_Key
+                                                                        ]
+                                                                    "
+                                                                    :zoom-rate="
+                                                                        1.2
+                                                                    "
+                                                                    :max-scale="
+                                                                        7
+                                                                    "
+                                                                    :min-scale="
+                                                                        0.2
+                                                                    "
+                                                                    :preview-src-list="
+                                                                        item.foto_analisa
+                                                                            .map(
+                                                                                (
+                                                                                    f
+                                                                                ) =>
+                                                                                    fotoBlobUrls[
+                                                                                        f
+                                                                                            .Berkas_Key
+                                                                                    ]
+                                                                            )
+                                                                            .filter(
+                                                                                Boolean
+                                                                            )
+                                                                    "
+                                                                    :initial-index="
+                                                                        item.foto_analisa.findIndex(
+                                                                            (
+                                                                                f
+                                                                            ) =>
+                                                                                f.Berkas_Key ===
+                                                                                foto.Berkas_Key
+                                                                        )
+                                                                    "
+                                                                    fit="contain"
+                                                                    hide-on-click-modal
+                                                                    @contextmenu.prevent
+                                                                    @dragstart.prevent
+                                                                >
+                                                                    <template
+                                                                        #error
+                                                                    >
+                                                                        <div
+                                                                            class="d-flex flex-column justify-content-center align-items-center bg-light text-muted w-100 h-100 rounded"
+                                                                        >
+                                                                            <i
+                                                                                class="fas fa-image-slash fa-3x mb-3 text-secondary"
+                                                                            ></i>
+                                                                            <span
+                                                                                class="fw-medium"
+                                                                                >Gambar
+                                                                                gagal
+                                                                                dimuat</span
+                                                                            >
+                                                                        </div>
+                                                                    </template>
+                                                                </el-image>
+
+                                                                <div
+                                                                    class="mt-2 text-center flex-grow-1 d-flex align-items-center justify-content-center"
+                                                                >
+                                                                    <span
+                                                                        class="text-secondary small fw-medium"
+                                                                    >
+                                                                        {{
+                                                                            foto.Keterangan ||
+                                                                            "Tidak ada keterangan"
+                                                                        }}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- end mungkin disini -->
                                 </div>
                                 <div v-else class="text-center py-5">
                                     <p>Data tidak ditemukan.</p>
@@ -389,23 +570,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                <!-- <div class="performance-chart-container">
-                                    <h2 class="text-lg font-bold mb-4">
-                                        Grafik Waktu Pengujian Sampel
-                                    </h2>
-
-                                    <div
-                                        class="chart-wrapper"
-                                        v-if="series.length > 0"
-                                    >
-                                        <apexchart
-                                            type="area"
-                                            height="300"
-                                            :options="chartOptions"
-                                            :series="series"
-                                        />
-                                    </div>
-                                </div> -->
                             </div>
                             <div
                                 class="tab-pane"
@@ -416,527 +580,6 @@
                                 <p class="text-center">
                                     Dalam Tahapan Upgrade Layouting
                                 </p>
-                                <!-- <div class="profile-timeline">
-                                    <div
-                                        class="accordion accordion-flush"
-                                        id="accordionFlushExample"
-                                    >
-                                        <div
-                                            class="accordion-item border-0"
-                                            v-for="(
-                                                item, index
-                                            ) in dataTracking"
-                                            :key="index"
-                                        >
-                                            <div
-                                                class="accordion-header"
-                                                :id="`heading${index}`"
-                                            >
-                                                <a
-                                                    class="accordion-button p-2 shadow-none"
-                                                    data-bs-toggle="collapse"
-                                                    :href="`#collapse${index}`"
-                                                    aria-expanded="true"
-                                                    :aria-controls="`collapse${index}`"
-                                                >
-                                                    <div
-                                                        class="d-flex align-items-center"
-                                                    >
-                                                        <div
-                                                            class="flex-shrink-0 avatar-xs"
-                                                        >
-                                                            <div
-                                                                class="avatar-title rounded-circle material-shadow"
-                                                                :class="
-                                                                    getActivityStyle(
-                                                                        item.Jenis_Aktivitas
-                                                                    ).bg
-                                                                "
-                                                            >
-                                                                <i
-                                                                    :class="
-                                                                        getActivityStyle(
-                                                                            item.Jenis_Aktivitas
-                                                                        ).icon
-                                                                    "
-                                                                ></i>
-                                                            </div>
-                                                        </div>
-                                                        <div
-                                                            class="d-flex gap-3 ms-3"
-                                                        >
-                                                            <h6
-                                                                class="fs-15 mb-0 fw-semibold"
-                                                            >
-                                                                {{
-                                                                    item.No_Po ??
-                                                                    ""
-                                                                }}
-                                                                -
-                                                                <span
-                                                                    class="fw-normal"
-                                                                >
-                                                                    {{
-                                                                        item.No_Split_Po
-                                                                    }}
-                                                                </span>
-                                                                -
-                                                                <span
-                                                                    class="fw-normal"
-                                                                >
-                                                                    {{
-                                                                        item.No_Po_Sampel
-                                                                    }}
-                                                                </span>
-                                                            </h6>
-                                                            <span
-                                                                class="badge bg-primary"
-                                                                ><i
-                                                                    class="fas fa-user"
-                                                                ></i>
-                                                                {{
-                                                                    item.Id_User
-                                                                }}</span
-                                                            >
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                            <div
-                                                :id="`collapse${index}`"
-                                                class="accordion-collapse collapse show"
-                                                :aria-labelledby="`heading${index}`"
-                                                data-bs-parent="#accordionExample"
-                                            >
-                                                <div
-                                                    class="accordion-body ms-2 ps-5 pt-0"
-                                                >
-                                                    <div
-                                                        class="d-flex flex-wrap align-items-center gap-2 mb-2"
-                                                    >
-                                                        <template
-                                                            v-if="
-                                                                item.No_Fak_Sub_Po !==
-                                                                null
-                                                            "
-                                                        >
-                                                            <span
-                                                                class="badge bg-primary-subtle text-primary-emphasis"
-                                                            >
-                                                                <i
-                                                                    class="fas fa-receipt me-1"
-                                                                ></i>
-                                                                No Sub Multi
-                                                                QrCode:
-                                                                {{
-                                                                    item.No_Fak_Sub_Po
-                                                                }}
-                                                            </span>
-                                                        </template>
-
-                                                        <template
-                                                            v-if="
-                                                                item.No_Fak_Sub_Po !==
-                                                                null
-                                                            "
-                                                        >
-                                                            <span
-                                                                class="badge bg-info-subtle text-info-emphasis"
-                                                            >
-                                                                <i
-                                                                    class="fas fa-box me-1"
-                                                                ></i>
-                                                                No Batch:
-                                                                {{
-                                                                    item.No_Batch
-                                                                }}
-                                                            </span>
-                                                        </template>
-
-                                                        <span
-                                                            class="badge bg-success-subtle text-success-emphasis"
-                                                        >
-                                                            <i
-                                                                class="fas fa-clipboard-list me-1"
-                                                            ></i>
-                                                            Kode/Jenis Analisa:
-                                                            {{
-                                                                item.Kode_Analisa
-                                                            }}/
-                                                            {{
-                                                                item.Jenis_Analisa
-                                                            }}
-                                                        </span>
-
-                                                        <span
-                                                            class="badge"
-                                                            :class="
-                                                                item.Flag_Perhitungan ===
-                                                                'Y'
-                                                                    ? 'bg-warning-subtle text-warning-emphasis'
-                                                                    : 'bg-light text-dark'
-                                                            "
-                                                        >
-                                                            <i
-                                                                class="fas"
-                                                                :class="
-                                                                    item.Flag_Perhitungan ===
-                                                                    'Y'
-                                                                        ? 'fa-qrcode'
-                                                                        : 'fa-qrcode'
-                                                                "
-                                                            ></i>
-                                                            {{
-                                                                item.Flag_Perhitungan ===
-                                                                "Y"
-                                                                    ? "Multi QR Code"
-                                                                    : "Single QR Code"
-                                                            }}
-                                                        </span>
-                                                    </div>
-                                                    <h5
-                                                        class="mb-2 text-truncate"
-                                                        style="max-width: 100%"
-                                                    >
-                                                        {{ item.Keterangan }}
-                                                    </h5>
-                                                    <div
-                                                        class="d-flex align-items-center text-muted small"
-                                                    >
-                                                        <i
-                                                            class="fas fa-calendar-alt me-1"
-                                                        ></i>
-                                                        <span>{{
-                                                            formatTanggal(
-                                                                item.Tanggal
-                                                            )
-                                                        }}</span>
-                                                        <span class="mx-2"
-                                                            >•</span
-                                                        >
-                                                        <i
-                                                            class="fas fa-clock me-1"
-                                                        ></i>
-                                                        <span>{{
-                                                            item.Jam
-                                                        }}</span>
-                                                    </div>
-                                                    <hr />
-                                                    <div
-                                                        class="notes-section mb-3"
-                                                        v-if="
-                                                            item.Jenis_Aktivitas ===
-                                                                'save_delete' ||
-                                                            item.Jenis_Aktivitas ===
-                                                                'save_update'
-                                                        "
-                                                    >
-                                                        <div
-                                                            class="notes-header"
-                                                        >
-                                                            <span
-                                                                class="notes-label"
-                                                                ><i
-                                                                    class="fas fa-sticky-note"
-                                                                ></i>
-                                                                <span
-                                                                    v-if="
-                                                                        item.Jenis_Aktivitas ===
-                                                                        'save_delete'
-                                                                    "
-                                                                    >Alasan
-                                                                    Menghapus
-                                                                    Analisa</span
-                                                                >
-                                                                <span
-                                                                    v-if="
-                                                                        item.Jenis_Aktivitas ===
-                                                                        'save_update'
-                                                                    "
-                                                                    >Alasan
-                                                                    Mengedit
-                                                                    Analisa</span
-                                                                >
-                                                            </span>
-                                                        </div>
-                                                        <div
-                                                            class="notes-content"
-                                                        >
-                                                            {{
-                                                                item.Alasan ||
-                                                                "-"
-                                                            }}
-                                                        </div>
-                                                    </div>
-                                                    <div
-                                                        class="alert alert-info d-flex align-items-center gap-2"
-                                                        role="alert"
-                                                    >
-                                                        <i
-                                                            class="ri-information-line fs-4"
-                                                        ></i>
-                                                        <div>
-                                                            <strong
-                                                                >Catatan:</strong
-                                                            >
-                                                            Nilai hasil analisa
-                                                            dan parameter
-                                                            ditampilkan
-                                                            mengikuti format
-                                                            sistem, yaitu secara
-                                                            <strong
-                                                                >default
-                                                                menggunakan 4
-                                                                digit di
-                                                                belakang
-                                                                koma</strong
-                                                            >
-                                                            (contoh:
-                                                            <code>1.2345</code
-                                                            >).
-                                                            <br />
-                                                            Jika Anda melihat
-                                                            perbedaan tampilan
-                                                            seperti angka nol
-                                                            tambahan di belakang
-                                                            (misalnya
-                                                            <code>1.2300</code
-                                                            >), itu hanya
-                                                            bersifat format
-                                                            tampilan. Nilai
-                                                            aslinya tetap akurat
-                                                            sesuai input dan
-                                                            tidak berubah secara
-                                                            matematis.
-                                                            <br />
-                                                            Format ini digunakan
-                                                            untuk menjaga
-                                                            konsistensi data dan
-                                                            memudahkan proses
-                                                            verifikasi hasil
-                                                            analisa.
-                                                        </div>
-                                                    </div>
-                                                    <div
-                                                        class="table-responsive"
-                                                    >
-                                                        <table
-                                                            class="modern-analysis-table text-center"
-                                                        >
-                                                            <thead
-                                                                class="text-sm"
-                                                            >
-                                                                <tr>
-                                                                    <th
-                                                                        v-for="param in template.parameter"
-                                                                        :key="
-                                                                            param.id_qc
-                                                                        "
-                                                                    >
-                                                                        {{
-                                                                            param.nama_parameter
-                                                                        }}
-                                                                    </th>
-                                                                    <th
-                                                                        v-for="(
-                                                                            hitung,
-                                                                            i
-                                                                        ) in template.formula"
-                                                                        :key="
-                                                                            'hitung-header-' +
-                                                                            i
-                                                                        "
-                                                                    >
-                                                                        {{
-                                                                            hitung.nama_kolom
-                                                                        }}
-                                                                    </th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                <tr
-                                                                    v-for="(
-                                                                        row,
-                                                                        rowIndex
-                                                                    ) in getRowsForLog(
-                                                                        item.Id_Log_Activity
-                                                                    )"
-                                                                    :key="
-                                                                        rowIndex
-                                                                    "
-                                                                >
-                                                                    <td
-                                                                        v-for="(
-                                                                            param,
-                                                                            paramIndex
-                                                                        ) in row.parameter"
-                                                                        :key="
-                                                                            'param-' +
-                                                                            paramIndex
-                                                                        "
-                                                                    >
-                                                                        <span
-                                                                            v-if="
-                                                                                param.Value_Baru
-                                                                            "
-                                                                            :class="{
-                                                                                'text-success':
-                                                                                    item.Jenis_Aktivitas ===
-                                                                                    'save_submit',
-                                                                                'text-danger':
-                                                                                    item.Jenis_Aktivitas ===
-                                                                                    'save_delete',
-                                                                                'text-dark':
-                                                                                    item.Jenis_Aktivitas !==
-                                                                                        'save_submit' &&
-                                                                                    item.Jenis_Aktivitas !==
-                                                                                        'save_delete',
-                                                                            }"
-                                                                        >
-                                                                            {{
-                                                                                param.Value_Baru
-                                                                            }}
-                                                                        </span>
-
-                                                                        <span
-                                                                            v-else
-                                                                            class="text-muted"
-                                                                        >
-                                                                            Parameter
-                                                                            Ini
-                                                                            Belum
-                                                                            Ada
-                                                                            Hasil
-                                                                            Analisa
-                                                                        </span>
-
-                                                                        <span
-                                                                            v-if="
-                                                                                param.Value_Lama !==
-                                                                                    null &&
-                                                                                param.Value_Lama !=
-                                                                                    param.Value_Baru
-                                                                            "
-                                                                            class="text-danger ms-2"
-                                                                        >
-                                                                            <s
-                                                                                >{{
-                                                                                    param.Value_Lama
-                                                                                }}</s
-                                                                            >
-                                                                        </span>
-                                                                    </td>
-
-                                                                    <td
-                                                                        v-for="(
-                                                                            result,
-                                                                            resultIndex
-                                                                        ) in row.hasil"
-                                                                        :key="
-                                                                            'hasil-' +
-                                                                            resultIndex
-                                                                        "
-                                                                    >
-                                                                        <span
-                                                                            :class="{
-                                                                                'text-success':
-                                                                                    item.Jenis_Aktivitas ===
-                                                                                    'save_submit',
-                                                                                'text-danger':
-                                                                                    item.Jenis_Aktivitas ===
-                                                                                    'save_delete',
-                                                                                'text-dark':
-                                                                                    item.Jenis_Aktivitas !==
-                                                                                        'save_submit' &&
-                                                                                    item.Jenis_Aktivitas !==
-                                                                                        'save_delete',
-                                                                            }"
-                                                                        >
-                                                                            {{
-                                                                                result.Value_Baru
-                                                                            }}
-                                                                        </span>
-
-                                                                        <span
-                                                                            v-if="
-                                                                                result.Value_Lama !==
-                                                                                    null &&
-                                                                                result.Value_Lama !=
-                                                                                    result.Value_Baru
-                                                                            "
-                                                                            class="text-danger ms-2"
-                                                                        >
-                                                                            <s
-                                                                                >{{
-                                                                                    result.Value_Lama
-                                                                                }}</s
-                                                                            >
-                                                                        </span>
-                                                                    </td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                    <div
-                                                        style="
-                                                            margin-top: 15px;
-                                                            font-size: 0.9em;
-                                                        "
-                                                    >
-                                                        <strong
-                                                            >Keterangan:</strong
-                                                        >
-                                                        <ul
-                                                            style="
-                                                                padding-left: 20px;
-                                                                margin-top: 5px;
-                                                            "
-                                                        >
-                                                            <li>
-                                                                Nilai Normal:
-                                                                Data terbaru.
-                                                            </li>
-                                                            <li>
-                                                                <span
-                                                                    style="
-                                                                        color: red;
-                                                                    "
-                                                                    ><s
-                                                                        >Nilai
-                                                                        Tercoret</s
-                                                                    ></span
-                                                                >: Data
-                                                                sebelumnya yang
-                                                                telah diubah.
-                                                            </li>
-                                                            <li>
-                                                                <span
-                                                                    style="
-                                                                        color: red;
-                                                                    "
-                                                                    >Nilai
-                                                                    Bewarna
-                                                                    Merah</span
-                                                                >: Nilai Yang
-                                                                Dihapus
-                                                            </li>
-                                                            <li>
-                                                                <span
-                                                                    class="text-success"
-                                                                    >Nilai
-                                                                    Berwarna
-                                                                    Hijau</span
-                                                                >: Nilai yang
-                                                                sudah disimpan
-                                                                secara permanen.
-                                                            </li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div> -->
                             </div>
                         </div>
                     </div>
@@ -950,6 +593,7 @@
 import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
 import axios from "axios";
 import ApexChart from "vue3-apexcharts";
+import { ElImage } from "element-plus";
 
 export default {
     props: {
@@ -973,6 +617,7 @@ export default {
     components: {
         DotLottieVue,
         apexchart: ApexChart,
+        ElImage,
     },
     data() {
         return {
@@ -980,6 +625,7 @@ export default {
             informasiData: {},
             dataTracking: [],
             formulaAverages: [],
+            fotoBlobUrls: {},
             template: {
                 parameter: [],
                 formula: [],
@@ -1065,6 +711,43 @@ export default {
         },
     },
     methods: {
+        async fetchBlobPhotos() {
+            if (this.informasiData?.sesi_foto !== "Y") return;
+
+            const allKeys = [];
+
+            this.listData.forEach((item) => {
+                item.foto_analisa?.forEach((f) => {
+                    allKeys.push(f.Berkas_Key);
+                });
+            });
+
+            if (allKeys.length === 0) return;
+
+            const tokenResponse = await axios.post(
+                `/api/v1/lab/hasil-uji/berkas/foto/token/bulk`,
+                { keys: allKeys }
+            );
+
+            const tokenMap = tokenResponse.data;
+
+            for (const key of allKeys) {
+                const res = await axios.get(
+                    `/api/v1/lab/berkas/stream/foto-uji/${key}?token=${tokenMap[key]}`,
+                    { responseType: "blob" }
+                );
+
+                this.fotoBlobUrls[key] = URL.createObjectURL(res.data);
+            }
+        },
+        hapusSemuaBlobMemori() {
+            if (this.fotoBlobUrls) {
+                Object.values(this.fotoBlobUrls).forEach((url) => {
+                    URL.revokeObjectURL(url);
+                });
+                this.fotoBlobUrls = {};
+            }
+        },
         getRowsForLog(idLog) {
             // Langkah 1: Validasi awal
             if (!this.dataTracking || this.dataTracking.length === 0) {
@@ -1212,6 +895,7 @@ export default {
                         Flag_Layak: groupFlagLayak,
                         // ------------------------------------------------
 
+                        foto_analisa: firstItemInGroup.foto_analisa || [],
                         parameters: parameterResults,
                         results: finalResults,
                         _originalGroup: group, // Properti sementara
@@ -1353,6 +1037,7 @@ export default {
                     this.formulaAverages = formulaAverages;
                     this.informasiData = response.data.result.informasi;
                     this.dataTracking = currentDataTracking.data.result;
+                    this.fetchBlobPhotos();
                 } else {
                     throw new Error(
                         "Respons API tidak valid atau data tidak ditemukan."

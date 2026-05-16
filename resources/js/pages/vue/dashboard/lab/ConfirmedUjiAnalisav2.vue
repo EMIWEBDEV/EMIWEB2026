@@ -147,6 +147,7 @@
                                                     <h5 class="title">
                                                         {{ item.Jenis_Analisa }}
                                                     </h5>
+
                                                     <div class="subtitle-group">
                                                         <span
                                                             class="subtitle-kode"
@@ -154,6 +155,8 @@
                                                                 item.No_Po_Sampel
                                                             }}</span
                                                         >
+
+                                                        <!-- BADGE MULTI/SINGLE QR -->
                                                         <span
                                                             v-if="
                                                                 item.Flag_Multi_QrCode ===
@@ -175,8 +178,41 @@
                                                             ></i>
                                                             Single QR
                                                         </span>
+
+                                                        <!-- BADGE TRIAL / PRODUKSI -->
+                                                        <span
+                                                            v-if="
+                                                                item.po_info
+                                                                    ?.Flag_Trial_Produksi ===
+                                                                'Y'
+                                                            "
+                                                            class="badge-custom"
+                                                            style="
+                                                                background-color: #ff9800;
+                                                                color: white;
+                                                            "
+                                                        >
+                                                            <i
+                                                                class="fas fa-vial"
+                                                            ></i>
+                                                            Trial Produksi
+                                                        </span>
+                                                        <span
+                                                            v-else
+                                                            class="badge-custom"
+                                                            style="
+                                                                background-color: #2196f3;
+                                                                color: white;
+                                                            "
+                                                        >
+                                                            <i
+                                                                class="fas fa-industry"
+                                                            ></i>
+                                                            Produksi
+                                                        </span>
                                                     </div>
                                                 </div>
+
                                                 <span
                                                     :class="[
                                                         'badge-custom',
@@ -214,12 +250,10 @@
                                                         ></i>
                                                         No. PO</span
                                                     >
-                                                    <span class="value"
-                                                        >{{
-                                                            item.po_info
-                                                                ?.No_Po || "-"
-                                                        }}
-                                                    </span>
+                                                    <span class="value">{{
+                                                        item.po_info?.No_Po ||
+                                                        "-"
+                                                    }}</span>
                                                 </div>
 
                                                 <div class="detail-pair">
@@ -229,12 +263,10 @@
                                                         ></i>
                                                         No. Split PO</span
                                                     >
-                                                    <span class="value"
-                                                        >{{
-                                                            item.po_info
-                                                                .No_Split_Po
-                                                        }}
-                                                    </span>
+                                                    <span class="value">{{
+                                                        item.po_info
+                                                            ?.No_Split_Po || "-"
+                                                    }}</span>
                                                 </div>
 
                                                 <div class="detail-pair">
@@ -262,16 +294,16 @@
                                                         Tgl Registrasi
                                                         Sampel</span
                                                     >
-                                                    <span class="value"
-                                                        >{{
+                                                    <span class="value">
+                                                        {{
                                                             formatTanggal(
                                                                 item.Tanggal_Registrasi
                                                             )
                                                         }}
                                                         {{
                                                             item.Jam_Registrasi
-                                                        }}</span
-                                                    >
+                                                        }}
+                                                    </span>
                                                 </div>
 
                                                 <div class="detail-pair">

@@ -106,17 +106,6 @@
                                                             ""
                                                         }}
                                                     </span>
-                                                    <span
-                                                        v-if="
-                                                            item.No_Fak_Sub_Po !==
-                                                            null
-                                                        "
-                                                        class="badge priority"
-                                                        >{{
-                                                            item.No_Fak_Sub_Po ??
-                                                            ""
-                                                        }}</span
-                                                    >
                                                 </div>
                                             </div>
 
@@ -325,7 +314,6 @@
                                                 hasil analisa.
                                             </div>
                                         </div>
-
                                         <div
                                             class="table-responsive"
                                             v-for="(
@@ -345,19 +333,6 @@
                                                         >
                                                             {{
                                                                 param.nama_parameter
-                                                            }}
-                                                        </th>
-                                                        <th
-                                                            v-for="(
-                                                                hitung, i
-                                                            ) in selectedTemplating.formula"
-                                                            :key="
-                                                                'hitung-header-' +
-                                                                i
-                                                            "
-                                                        >
-                                                            {{
-                                                                hitung.nama_kolom
                                                             }}
                                                         </th>
                                                     </tr>
@@ -384,24 +359,12 @@
                                                                 0
                                                             }}
                                                         </td>
-                                                        <td
-                                                            v-for="(
-                                                                hitung, i
-                                                            ) in item.hasil"
-                                                            :key="'hasil-' + i"
-                                                        >
-                                                            {{
-                                                                hitung.Hasil_Perhitungan ??
-                                                                0
-                                                            }}
-                                                        </td>
                                                     </tr>
                                                 </tbody>
                                             </table>
                                         </div>
                                     </div>
 
-                                    <!-- tab pane untuk riwayat tracking pengisian (log) -->
                                     <div
                                         class="tab-pane"
                                         id="nav-border-top-messages"
@@ -758,16 +721,6 @@
                                                                                     param.nama_parameter
                                                                                 }}
                                                                             </th>
-                                                                            <th
-                                                                                v-for="formula in selectedTemplating.formula"
-                                                                                :key="
-                                                                                    formula.id_rumus
-                                                                                "
-                                                                            >
-                                                                                {{
-                                                                                    formula.nama_kolom
-                                                                                }}
-                                                                            </th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
@@ -839,53 +792,6 @@
                                                                                     <s
                                                                                         >{{
                                                                                             param.Value_Lama
-                                                                                        }}</s
-                                                                                    >
-                                                                                </span>
-                                                                            </td>
-
-                                                                            <td
-                                                                                v-for="(
-                                                                                    result,
-                                                                                    resultIndex
-                                                                                ) in row.hasil"
-                                                                                :key="
-                                                                                    'hasil-' +
-                                                                                    resultIndex
-                                                                                "
-                                                                            >
-                                                                                <span
-                                                                                    :class="{
-                                                                                        'text-success':
-                                                                                            item.Jenis_Aktivitas ===
-                                                                                            'save_submit',
-                                                                                        'text-danger':
-                                                                                            item.Jenis_Aktivitas ===
-                                                                                            'save_delete',
-                                                                                        'text-dark':
-                                                                                            item.Jenis_Aktivitas !==
-                                                                                                'save_submit' &&
-                                                                                            item.Jenis_Aktivitas !==
-                                                                                                'save_delete',
-                                                                                    }"
-                                                                                >
-                                                                                    {{
-                                                                                        result.Value_Baru
-                                                                                    }}
-                                                                                </span>
-
-                                                                                <span
-                                                                                    v-if="
-                                                                                        result.Value_Lama !==
-                                                                                            null &&
-                                                                                        result.Value_Lama !=
-                                                                                            result.Value_Baru
-                                                                                    "
-                                                                                    class="text-danger ms-2"
-                                                                                >
-                                                                                    <s
-                                                                                        >{{
-                                                                                            result.Value_Lama
                                                                                         }}</s
                                                                                     >
                                                                                 </span>
@@ -989,18 +895,6 @@
                     </div>
                 </div>
 
-                <div class="mb-3 container-fluid" v-if="dataSampel.length">
-                    <div
-                        class="alert alert-success alert-dismissible alert-label-icon label-arrow fade show material-shadow"
-                        role="alert"
-                    >
-                        <i class="ri-airplay-line label-icon"></i
-                        ><strong>Info 🎉</strong> - Untuk Melihat data yang
-                        pernah disubmit, silahkan tekan button di ujung kanan
-                        atas 😊
-                    </div>
-                </div>
-
                 <div class="table-scroll-wrapper">
                     <table class="modern-analysis-table">
                         <thead>
@@ -1011,18 +905,9 @@
                                 >
                                     {{ param.nama_parameter }}
                                 </th>
-                                <th
-                                    v-for="(
-                                        hitung, i
-                                    ) in selectedTemplating.formula"
-                                    :key="'hitung-header-' + i"
-                                >
-                                    {{ hitung.nama_kolom }}
-                                </th>
                                 <th>Aksi</th>
                             </tr>
                         </thead>
-
                         <tbody>
                             <tr v-for="(row, rowIndex) in rows" :key="rowIndex">
                                 <td
@@ -1040,7 +925,8 @@
                                                 '-' +
                                                 param.id_qc
                                             "
-                                            type="number"
+                                            type="text"
+                                            inputmode="decimal"
                                             class="form-control"
                                             :class="{
                                                 'is-editing':
@@ -1054,8 +940,8 @@
                                                         param.id_qc
                                                     ].Value_Parameter !== null,
                                             }"
-                                            step="any"
-                                            pattern="[0-9]+([.][0-9]+)?"
+                                            :step="'any'"
+                                            :pattern="'[0-9]+([.][0-9]+)?'"
                                             :placeholder="param.nama_parameter"
                                             v-model="
                                                 row.inputValues[param.id_qc]
@@ -1072,6 +958,7 @@
                                         <div class="input-actions">
                                             <button
                                                 v-if="
+                                                    row.lockedInputs &&
                                                     row.lockedInputs[
                                                         param.id_qc
                                                     ]
@@ -1083,6 +970,7 @@
                                                     )
                                                 "
                                                 class="btn-action-icon btn-edit"
+                                                data-tooltip="Update Nilai"
                                             >
                                                 <i
                                                     class="fas fa-pencil-alt fa-sm"
@@ -1092,9 +980,11 @@
                                             <div
                                                 class="button-group"
                                                 v-if="
-                                                    !row.lockedInputs[
-                                                        param.id_qc
-                                                    ] &&
+                                                    (!row.lockedInputs ||
+                                                        !row.lockedInputs[
+                                                            param.id_qc
+                                                        ]) &&
+                                                    row.draftDetails &&
                                                     row.draftDetails[
                                                         param.id_qc
                                                     ] &&
@@ -1262,23 +1152,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                </td>
-
-                                <td
-                                    v-for="(
-                                        hitung, i
-                                    ) in selectedTemplating.formula"
-                                    :key="'hitung-body-' + i"
-                                >
-                                    <input
-                                        type="number"
-                                        class="form-control"
-                                        readonly
-                                        disabled
-                                        :value="
-                                            row.formulaResults[hitung.rumus]
-                                        "
-                                    />
                                 </td>
                                 <td>
                                     <div v-if="!isEditing">
@@ -1467,6 +1340,7 @@
                         </div>
                         <div class="modal-body">
                             <div class="container-fluid">
+                                <!-- Animasi Peringatan -->
                                 <div class="d-flex justify-content-center mb-4">
                                     <DotLottieVue
                                         style="height: 150px; width: 300px"
@@ -1476,6 +1350,7 @@
                                     />
                                 </div>
 
+                                <!-- Informasi Penting -->
                                 <div
                                     class="informasi-konfirmasi"
                                     style="
@@ -1643,6 +1518,7 @@
                     </div>
                 </div>
             </div>
+
             <div class="form-check mt-4" v-if="dataSampel.length">
                 <input
                     class="form-check-input"
@@ -1670,33 +1546,35 @@
             </div>
 
             <div class="form-actions" v-if="!isEditing">
-                <button
-                    :disabled="loading.saveToDatabase"
-                    class="action-button secondary"
-                    @click="submitAnalysisSementara"
-                    v-if="!dataSampel.length"
-                >
-                    <i class="fas fa-save"></i>
-                    {{
-                        loading.saveToDatabase
-                            ? "Loading..."
-                            : "Simpan As Draft"
-                    }}
-                </button>
+                <template v-if="Flag_Foto !== 'Y'">
+                    <button
+                        :disabled="loading.saveToDatabase"
+                        class="action-button secondary"
+                        @click="submitAnalysisSementara"
+                        v-if="!dataSampel.length"
+                    >
+                        <i class="fas fa-save"></i>
+                        {{
+                            loading.saveToDatabase
+                                ? "Loading..."
+                                : "Simpan As Draft"
+                        }}
+                    </button>
 
-                <button
-                    :disabled="!isSubmitDone"
-                    class="action-button secondary"
-                    @click="submitAnalysisSementara"
-                    v-else
-                >
-                    <i class="fas fa-save"></i>
-                    {{
-                        loading.saveToDatabase
-                            ? "Loading..."
-                            : "Simpan As Draft"
-                    }}
-                </button>
+                    <button
+                        :disabled="!isSubmitDone"
+                        class="action-button secondary"
+                        @click="submitAnalysisSementara"
+                        v-else
+                    >
+                        <i class="fas fa-save"></i>
+                        {{
+                            loading.saveToDatabase
+                                ? "Loading..."
+                                : "Simpan As Draft"
+                        }}
+                    </button>
+                </template>
 
                 <button
                     data-bs-toggle="modal"
@@ -1733,38 +1611,20 @@
             </div>
         </div>
     </div>
-    <div
-        v-if="loading.saveToDatabase"
-        class="loading-overlay d-flex justify-content-center align-items-center"
-    >
-        <div class="loading-box text-center p-4 shadow">
-            <DotLottieVue
-                style="height: 150px; width: 300px"
-                autoplay
-                loop
-                src="/animation/loading.json"
-            />
-            <small class="mt-3 mb-0 text-white">
-                Mohon tunggu, sedang menyimpan data...
-            </small>
-        </div>
-    </div>
 </template>
 
 <script>
 import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
-import { evaluate, round } from "mathjs";
 import Swal from "sweetalert2";
 import axios from "axios";
 import ApexChart from "vue3-apexcharts";
-import vSelect from "vue-select";
+import { evaluate, round } from "mathjs";
 import CameraCapture from "./components/HalamanFoto.vue";
 
 export default {
     components: {
         apexchart: ApexChart,
         DotLottieVue,
-        vSelect,
         CameraCapture,
     },
     props: {
@@ -1777,11 +1637,8 @@ export default {
             type: String,
             default: null,
         },
-        No_Po_Sampel: {
-            type: String,
-            default: null,
-        },
-        kodeAnalisa: {
+        No_Po_Sampel: String,
+        No_Fak_Sub_Po: {
             type: String,
             default: null,
         },
@@ -1793,6 +1650,10 @@ export default {
         },
         sampleNumber: {
             type: [String, Number],
+            default: null,
+        },
+        kodeAnalisa: {
+            type: String,
             default: null,
         },
     },
@@ -1881,7 +1742,9 @@ export default {
             deleteRowIndex: null,
             deleteNoSementara: null,
             hapuskey: "",
+
             isPhotoCompleted: false,
+            photoList: [],
         };
     },
     watch: {
@@ -1899,10 +1762,11 @@ export default {
     computed: {
         photoStorageKey() {
             const keyAnalisa = this.kodeAnalisa || this.Id_Jenis_Analisa;
+            const no_sub_sampel = this.No_Fak_Sub_Po || this.no_ticket || "";
             if (this.is_multi_print === "Y") {
-                return `lab_photo_${this.sampleNumber}_${keyAnalisa}_${this.no_ticket}_multiRumus`;
+                return `lab_photo_${this.sampleNumber}_${keyAnalisa}_${no_sub_sampel}_notRumus`;
             }
-            return `lab_photo_${this.sampleNumber}_${keyAnalisa}_multiRumus`;
+            return `lab_photo_${this.sampleNumber}_${keyAnalisa}_notRumus`;
         },
         formattedCurrentDataSubmitAnalisa() {
             if (
@@ -1911,45 +1775,60 @@ export default {
             ) {
                 return [];
             }
-
             const sourceData = this.currentDataSubmitAnalisa[0];
-            const allParameters = sourceData.parameter || [];
-            const allResults = sourceData.hasil || [];
-
-            // Dapatkan jumlah parameter dan hasil per baris dari template yang aktif
-            const paramsPerRow =
+            const numParamsInTemplate =
                 this.selectedTemplating?.parameter?.length ?? 0;
-            const resultsPerRow = this.selectedTemplating?.formula?.length ?? 0;
+            const numParamsInData = sourceData.parameter?.length ?? 0;
 
-            // Hitung total baris berdasarkan parameter
-            const totalRows = Math.floor(allParameters.length / paramsPerRow);
-            const restructuredData = [];
+            if (
+                this.currentDataSubmitAnalisa.length === 1 &&
+                numParamsInTemplate > 0 &&
+                numParamsInData > numParamsInTemplate
+            ) {
+                const allParameters = sourceData.parameter || [];
+                const allResults = sourceData.hasil || [];
+                const totalRows = allResults.length;
+                const restructuredData = [];
 
-            for (let i = 0; i < totalRows; i++) {
-                const paramStart = i * paramsPerRow;
-                const paramEnd = paramStart + paramsPerRow;
+                for (let i = 0; i < totalRows; i++) {
+                    const startIndex = i * numParamsInTemplate;
+                    const endIndex = startIndex + numParamsInTemplate;
 
-                const resultStart = i * resultsPerRow;
-                const resultEnd = resultStart + resultsPerRow;
+                    if (endIndex > allParameters.length) {
+                        continue;
+                    }
 
-                // Antisipasi jika panjang hasil kurang
-                const paramSlice = allParameters.slice(paramStart, paramEnd);
-                const resultSlice = allResults.slice(resultStart, resultEnd);
+                    const newRow = {
+                        parameter: allParameters.slice(startIndex, endIndex),
+                        hasil: [allResults[i]],
+                    };
+                    restructuredData.push(newRow);
+                }
+                return restructuredData;
+            } else {
+                return this.currentDataSubmitAnalisa.map((log) => {
+                    const parameters = log.parameter || [];
+                    const results = log.hasil || [];
 
-                restructuredData.push({
-                    parameter: paramSlice,
-                    hasil: resultSlice,
+                    const normalizedParams = parameters.map((param) => ({
+                        Value_Parameter: param?.Value_Parameter ?? null,
+                    }));
+
+                    const normalizedResults = results.map((res) => ({
+                        Hasil_Perhitungan: res?.Hasil_Perhitungan ?? null,
+                    }));
+
+                    return {
+                        parameter: normalizedParams,
+                        hasil: normalizedResults,
+                    };
                 });
             }
-
-            return restructuredData;
         },
-
         series() {
             return this.rawData.map((item) => {
                 const jamPO = this.jamKeMenit(item.Jam_Po_Sampel);
                 const jamAnalisa = this.jamKeMenit(item.Jam_Pengujian_Sampel);
-
                 return {
                     name: item.No_Po_Sampel,
                     data: [jamPO, jamAnalisa],
@@ -1959,77 +1838,82 @@ export default {
     },
     methods: {
         getRowsForLog(idLog) {
-            if (!this.dataTracking || this.dataTracking.length === 0) return [];
+            // Langkah 1: Validasi awal
+            if (!this.dataTracking || this.dataTracking.length === 0) {
+                return [];
+            }
 
+            // Cari log spesifik berdasarkan ID
             const logTerpilih = this.dataTracking.find(
                 (log) => log.Id_Log_Activity === idLog
             );
 
-            if (!logTerpilih) return [];
+            if (!logTerpilih) {
+                return [];
+            }
 
             const numParamsInTemplate =
                 this.selectedTemplating?.parameter?.length ?? 0;
-            const numResultsInTemplate =
-                this.selectedTemplating?.formula?.length ?? 0;
-
-            const allParameters = logTerpilih.parameter || [];
+            const numParamsInData = logTerpilih.parameter?.length ?? 0;
             const allResults = logTerpilih.hasil || [];
 
             if (
                 numParamsInTemplate > 0 &&
-                allParameters.length > numParamsInTemplate &&
-                allResults.length > numResultsInTemplate
+                numParamsInData > numParamsInTemplate &&
+                allResults.length > 1 // Tambahan: pastikan ada lebih dari 1 hasil, indikasi multi-baris
             ) {
-                const totalRows = Math.floor(
-                    allParameters.length / numParamsInTemplate
-                );
+                const allParameters = logTerpilih.parameter || [];
+                const totalRows = allResults.length;
                 const restructuredData = [];
 
                 for (let i = 0; i < totalRows; i++) {
-                    const paramStart = i * numParamsInTemplate;
-                    const paramEnd = paramStart + numParamsInTemplate;
+                    const startIndex = i * numParamsInTemplate;
+                    const endIndex = startIndex + numParamsInTemplate;
 
-                    const resultStart = i * numResultsInTemplate;
-                    const resultEnd = resultStart + numResultsInTemplate;
+                    if (endIndex > allParameters.length) {
+                        continue;
+                    }
 
+                    // Ambil potongan parameter & hasil untuk baris saat ini
                     const paramsForThisRow = allParameters.slice(
-                        paramStart,
-                        paramEnd
+                        startIndex,
+                        endIndex
                     );
-                    const resultsForThisRow = allResults.slice(
-                        resultStart,
-                        resultEnd
-                    );
+                    const resultForThisRow = [allResults[i]]; // Harus dalam array
 
+                    // Lakukan normalisasi HANYA pada data untuk baris ini
+                    const normalizedParams = paramsForThisRow.map((param) => ({
+                        nama: param.nama_parameter,
+                        Value_Baru:
+                            param?.Value_Baru ?? param?.Value_Parameter ?? null,
+                        Value_Lama: param?.Value_Lama ?? null,
+                    }));
+
+                    const normalizedResults = resultForThisRow.map((res) => ({
+                        Value_Baru:
+                            res?.Value_Baru ?? res?.Hasil_Perhitungan ?? null,
+                        Value_Lama: res?.Value_Lama ?? null,
+                    }));
+
+                    // Gabungkan menjadi objek baris tunggal
                     restructuredData.push({
-                        parameter: paramsForThisRow.map((param) => ({
-                            nama: param.nama_parameter,
-                            Value_Baru:
-                                param?.Value_Baru ??
-                                param?.Value_Parameter ??
-                                null,
-                            Value_Lama: param?.Value_Lama ?? null,
-                        })),
-                        hasil: resultsForThisRow.map((res) => ({
-                            Value_Baru:
-                                res?.Value_Baru ??
-                                res?.Hasil_Perhitungan ??
-                                null,
-                            Value_Lama: res?.Value_Lama ?? null,
-                        })),
+                        parameter: normalizedParams,
+                        hasil: normalizedResults,
                     });
                 }
-
                 return restructuredData;
             } else {
-                const normalizedParams = allParameters.map((param) => ({
+                const parameters = logTerpilih.parameter || [];
+                const results = logTerpilih.hasil || [];
+
+                const normalizedParams = parameters.map((param) => ({
                     nama: param.nama_parameter,
                     Value_Baru:
                         param?.Value_Baru ?? param?.Value_Parameter ?? null,
                     Value_Lama: param?.Value_Lama ?? null,
                 }));
 
-                const normalizedResults = allResults.map((res) => ({
+                const normalizedResults = results.map((res) => ({
                     Value_Baru:
                         res?.Value_Baru ?? res?.Hasil_Perhitungan ?? null,
                     Value_Lama: res?.Value_Lama ?? null,
@@ -2044,261 +1928,132 @@ export default {
             }
         },
         async fetchDraftData() {
-            if (this.is_multi_print === "Y") {
-                if (!this.no_ticket) {
-                    this.initializeRows();
-                    return;
+            const isMulti = (this.is_multi_print || "").toString().trim();
+            this.loading.currentDataSubmitAnalisa = true;
+            this.loading.dataTracking = true;
+
+            try {
+                // ... (Bagian Endpoint URL sama seperti sebelumnya, tidak perlu diubah) ...
+                let endpointData, endpointTracking, endpointSplit;
+                if (isMulti === "Y") {
+                    if (!this.No_Fak_Sub_Po) {
+                        this.initializeRows();
+                        return;
+                    }
+                    endpointData = `/api/v1/formulator/detail/${this.No_Fak_Sub_Po}/multi-print/${this.Id_Jenis_Analisa}/detail`;
+                    endpointSplit = `/api/v1/formulator/detail-split/${this.No_Fak_Sub_Po}/multi-print/${this.Id_Jenis_Analisa}/hasil`;
+                    endpointTracking = `/api/v1/formulator/tracking-detail/${this.No_Po_Sampel}/${this.No_Fak_Sub_Po}/multi-print/${this.Id_Jenis_Analisa}/formulator-history`;
+                } else {
+                    if (!this.No_Po_Sampel) {
+                        this.initializeRows();
+                        return;
+                    }
+                    endpointData = `/api/v1/${this.No_Po_Sampel}/no-multi/${this.Id_Jenis_Analisa}`;
+                    endpointSplit = `/api/v1/detail-split/${this.No_Po_Sampel}/not-rumus-noqr/${this.Id_Jenis_Analisa}`;
+                    endpointTracking = `/api/v1/tracking-detail/not-print/${this.No_Po_Sampel}/${this.Id_Jenis_Analisa}/analisa`;
                 }
 
-                this.loading.currentDataSubmitAnalisa = true;
-                this.loading.dataTracking = true;
-                try {
-                    const [
-                        response,
-                        currentDataHasilAnalisa,
-                        currentDataTracking,
-                    ] = await Promise.all([
-                        axios.get(
-                            `/api/v1/formulator/detail/${this.no_ticket}/multi-print/${this.Id_Jenis_Analisa}/detail`
-                        ),
-                        axios.get(
-                            `/api/v1/formulator/detail-split/${this.no_ticket}/multi-print/${this.Id_Jenis_Analisa}/hasil`
-                        ),
-                        axios.get(
-                            `/api/v1/formulator/tracking-detail/${this.No_Po_Sampel}/${this.no_ticket}/multi-print/${this.Id_Jenis_Analisa}/formulator-history`
-                        ),
+                const [response, currentDataHasilAnalisa, currentDataTracking] =
+                    await Promise.all([
+                        axios.get(endpointData),
+                        axios.get(endpointSplit),
+                        axios.get(endpointTracking),
                     ]);
 
-                    const hasilAnalisa =
-                        currentDataHasilAnalisa.data.result || [];
-                    const draft = response.data.result?.is_draft;
-                    const submitData = response.data.result?.is_submit || [];
-                    const getDataTrackingCurrent =
-                        currentDataTracking.data.result || [];
+                const resultData = response.data.result || {};
+                const draft = resultData.is_draft || [];
+                const submitData = resultData.is_submit || [];
 
-                    this.currentDataSubmitAnalisa = hasilAnalisa;
-                    this.dataSampel = submitData;
-                    this.rawData = submitData;
-                    this.dataTracking = getDataTrackingCurrent;
+                this.currentDataSubmitAnalisa =
+                    currentDataHasilAnalisa.data.result || [];
+                this.dataSampel = submitData;
+                this.rawData = submitData;
+                this.dataTracking = currentDataTracking.data.result || [];
 
-                    if (Array.isArray(draft) && draft.length > 0) {
-                        this.rows = draft.map((groupItem) => {
-                            const newRow = {
-                                inputValues: {},
-                                formulaResults: {},
-                                lockedInputs: {},
-                                draftDetails: {},
-                                hasilDraft: {},
-                            };
+                // === PERBAIKAN LOGIC MAPPING DI SINI ===
+                if (Array.isArray(draft) && draft.length > 0) {
+                    this.rows = draft.map((groupItem) => {
+                        const newRow = {
+                            inputValues: {},
+                            formulaResults: {},
+                            lockedInputs: {}, // Status Kunci (True = Muncul Pencil, False = Muncul Simpan)
+                            draftDetails: {},
+                            hasilDraft: {},
+                        };
 
-                            const parameterList = groupItem.parameter || [];
-                            const hasilList = groupItem.hasil || [];
+                        const parameterList = groupItem.parameter || [];
+                        const hasilList = groupItem.hasil || [];
 
-                            this.selectedTemplating.parameter.forEach(
-                                (param) => {
-                                    const detailItem = parameterList.find(
-                                        (d) =>
-                                            d.Id_Quality_Control === param.id_qc
-                                    );
+                        // Loop Parameter Template
+                        (this.selectedTemplating.parameter || []).forEach(
+                            (param) => {
+                                // Cari data di draft yg cocok dgn ID QC
+                                const detailItem = parameterList.find(
+                                    (d) => d.Id_Quality_Control === param.id_qc
+                                );
 
-                                    if (detailItem) {
-                                        newRow.inputValues[param.id_qc] =
-                                            detailItem.Value_Parameter;
-                                        newRow.draftDetails[param.id_qc] =
-                                            detailItem;
-                                        newRow.lockedInputs[param.id_qc] =
-                                            detailItem.Value_Parameter !== null;
-                                    } else {
-                                        newRow.inputValues[param.id_qc] = null;
-                                        newRow.draftDetails[param.id_qc] = null;
-                                        newRow.lockedInputs[
-                                            param.id_qc
-                                        ] = false;
-                                    }
+                                if (detailItem) {
+                                    // 1. Ambil Nilai
+                                    const rawVal = detailItem.Value_Parameter;
+
+                                    // 2. Masukkan ke inputValues
+                                    newRow.inputValues[param.id_qc] = rawVal;
+                                    newRow.draftDetails[param.id_qc] =
+                                        detailItem;
+
+                                    // 3. PENGECEKAN KETAT UNTUK LOCKED INPUTS
+                                    // Pastikan tidak null, tidak undefined, dan tidak string kosong.
+                                    // Angka 0, -999999, -88888888 harus dianggap TRUE (Ada Data)
+                                    const isFilled =
+                                        rawVal !== null &&
+                                        rawVal !== undefined &&
+                                        String(rawVal).trim() !== "";
+
+                                    newRow.lockedInputs[param.id_qc] = isFilled;
+                                } else {
+                                    // Data Kosong
+                                    newRow.inputValues[param.id_qc] = null;
+                                    newRow.draftDetails[param.id_qc] = null;
+                                    newRow.lockedInputs[param.id_qc] = false;
                                 }
-                            );
-
-                            this.selectedTemplating.formula.forEach(
-                                (formula) => {
-                                    const hasil = hasilList.find(
-                                        (h) => h.Rumus === formula.rumus
-                                    );
-                                    newRow.formulaResults[formula.rumus] = {
-                                        nilai: hasil
-                                            ? hasil.Hasil_Perhitungan || 0
-                                            : 0,
-                                        digit: formula.digit ?? null,
-                                        range_awal: formula.Range_Awal ?? null,
-                                        range_akhir:
-                                            formula.Range_Akhir ?? null,
-                                    };
-
-                                    newRow.hasilDraft[formula.rumus] = hasil
-                                        ? {
-                                              No_Urut: hasil.No_Urut ?? null,
-                                              No_Sementara:
-                                                  hasil.No_Sementara ?? null,
-                                          }
-                                        : {
-                                              No_Urut: null,
-                                              No_Sementara: null,
-                                          };
-                                }
-                            );
-
-                            return newRow;
-                        });
-
-                        this.rows.forEach((_, index) =>
-                            this.calculateAllFormulas(index)
+                            }
                         );
-                    } else {
-                        this.initializeRows();
-                    }
-                } catch (error) {
-                    this.currentDataSubmitAnalisa = [];
-                    this.dataSampel = [];
-                    this.rawData = [];
-                    this.dataTracking = [];
-                    Swal.fire(
-                        "Error",
-                        "Gagal memuat data draft dari server.",
-                        "error"
-                    );
-                    this.initializeRows();
-                } finally {
-                    this.loading.currentDataSubmitAnalisa = false;
-                    this.loading.dataTracking = false;
-                }
-            } else {
-                if (!this.No_Po_Sampel) {
-                    this.initializeRows();
-                    return;
-                }
 
-                this.loading.currentDataSubmitAnalisa = true;
-                this.loading.dataTracking = true;
-
-                try {
-                    const [
-                        response,
-                        currentDataHasilAnalisa,
-                        currentDataTracking,
-                    ] = await Promise.all([
-                        axios.get(
-                            `/api/v1/formulator/${this.No_Po_Sampel}/no-multi/${this.Id_Jenis_Analisa}/uji-trial`
-                        ),
-                        axios.get(
-                            `/api/v1/formulator/detail-split/${this.No_Po_Sampel}/not-print/${this.Id_Jenis_Analisa}/uji-trial`
-                        ),
-                        axios.get(
-                            `/api/v1/formulator/tracking-detail/not-print/${this.No_Po_Sampel}/${this.Id_Jenis_Analisa}/uji-trial`
-                        ),
-                    ]);
-
-                    const hasilAnalisa =
-                        currentDataHasilAnalisa.data.result || [];
-                    const draft = response.data.result?.is_draft;
-                    const submitData = response.data.result?.is_submit || [];
-                    const getDataTrackingCurrent =
-                        currentDataTracking.data.result || [];
-
-                    this.currentDataSubmitAnalisa = hasilAnalisa;
-                    this.dataSampel = submitData;
-                    this.rawData = submitData;
-                    this.dataTracking = getDataTrackingCurrent;
-
-                    if (Array.isArray(draft) && draft.length > 0) {
-                        this.rows = draft.map((groupItem) => {
-                            const newRow = {
-                                inputValues: {},
-                                formulaResults: {},
-                                lockedInputs: {},
-                                draftDetails: {},
-                                hasilDraft: {}, // ✅ untuk menyimpan No_Urut & No_Sementara per rumus
-                            };
-
-                            const parameterList = groupItem.parameter || [];
-                            const hasilList = groupItem.hasil || [];
-                            console.log(hasilList, groupItem);
-
-                            this.selectedTemplating.parameter.forEach(
-                                (param) => {
-                                    const detailItem = parameterList.find(
-                                        (d) =>
-                                            d.Id_Quality_Control === param.id_qc
-                                    );
-
-                                    if (detailItem) {
-                                        newRow.inputValues[param.id_qc] =
-                                            detailItem.Value_Parameter;
-                                        newRow.draftDetails[param.id_qc] =
-                                            detailItem;
-                                        newRow.lockedInputs[param.id_qc] =
-                                            detailItem.Value_Parameter !== null;
-                                    } else {
-                                        newRow.inputValues[param.id_qc] = null;
-                                        newRow.draftDetails[param.id_qc] = null;
-                                        newRow.lockedInputs[
-                                            param.id_qc
-                                        ] = false;
-                                    }
-                                }
-                            );
-
-                            this.selectedTemplating.formula.forEach(
-                                (formula) => {
-                                    const hasil = hasilList.find(
-                                        (h) => h.Rumus === formula.rumus
-                                    );
-                                    newRow.formulaResults[formula.rumus] = {
-                                        nilai: hasil
-                                            ? hasil.Hasil_Perhitungan || 0
-                                            : 0,
-                                        digit: formula.digit ?? null,
-                                        range_awal: formula.Range_Awal ?? null,
-                                        range_akhir:
-                                            formula.Range_Akhir ?? null,
-                                    };
-
-                                    newRow.hasilDraft[formula.rumus] = hasil
-                                        ? {
-                                              No_Urut: hasil.No_Urut ?? null,
-                                              No_Sementara:
-                                                  hasil.No_Sementara ?? null,
-                                          }
-                                        : {
-                                              No_Urut: null,
-                                              No_Sementara: null,
-                                          };
-                                }
-                            );
-
-                            return newRow;
-                        });
-
-                        this.rows.forEach((_, index) =>
-                            this.calculateAllFormulas(index)
+                        // Mapping Hasil Rumus
+                        (this.selectedTemplating.formula || []).forEach(
+                            (formula) => {
+                                const hasil = hasilList.find(
+                                    (h) => h.Rumus === formula.rumus
+                                );
+                                newRow.formulaResults[formula.rumus] = hasil
+                                    ? hasil.Hasil_Perhitungan || 0
+                                    : 0;
+                                newRow.hasilDraft[formula.rumus] = hasil
+                                    ? {
+                                          No_Urut: hasil.No_Urut ?? null,
+                                          No_Sementara:
+                                              hasil.No_Sementara ?? null,
+                                      }
+                                    : { No_Urut: null, No_Sementara: null };
+                            }
                         );
-                    } else {
-                        this.initializeRows();
-                    }
-                } catch (error) {
-                    console.error("Gagal memuat data non-multi-print:", error);
-                    this.currentDataSubmitAnalisa = [];
-                    this.dataSampel = [];
-                    this.rawData = [];
-                    this.dataTracking = [];
-                    Swal.fire(
-                        "Error",
-                        "Gagal memuat data draft dari server.",
-                        "error"
+
+                        return newRow;
+                    });
+
+                    // Trigger hitung ulang rumus
+                    this.rows.forEach((_, index) =>
+                        this.calculateAllFormulas(index)
                     );
+                } else {
                     this.initializeRows();
-                } finally {
-                    this.loading.currentDataSubmitAnalisa = false;
-                    this.loading.dataTracking = false;
                 }
+            } catch (error) {
+                console.error("Error:", error);
+                this.initializeRows();
+            } finally {
+                this.loading.currentDataSubmitAnalisa = false;
+                this.loading.dataTracking = false;
             }
         },
         getActivityStyle(jenis) {
@@ -2342,12 +2097,31 @@ export default {
                 icon: "fas fa-times",
             };
         },
-
+        convertToISO(dateStr) {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) {
+                console.warn("Tanggal tidak valid:", dateStr);
+                return "2025-06-13";
+            }
+            return date.toISOString().split("T")[0];
+        },
         initializeRows() {
             this.rows = [];
-            this.addRow();
+            if (this.selectedTemplating && this.selectedTemplating.parameter) {
+                this.addRow();
+            }
         },
         addRow() {
+            if (
+                !this.selectedTemplating ||
+                !this.selectedTemplating.parameter
+            ) {
+                console.error(
+                    "Tidak dapat menambah baris karena definisi parameter tidak ada."
+                );
+                return;
+            }
+
             const newRow = {
                 inputValues: {},
                 formulaResults: {},
@@ -2355,14 +2129,21 @@ export default {
                 draftDetails: {},
             };
 
+            // Bagian ini akan selalu berjalan jika parameter ada
             this.selectedTemplating.parameter.forEach((param) => {
                 newRow.inputValues[param.id_qc] = null;
                 newRow.lockedInputs[param.id_qc] = false;
             });
 
-            this.selectedTemplating.formula.forEach((formula) => {
-                newRow.formulaResults[formula.rumus] = 0;
-            });
+            // DIPERBAIKI: Hanya proses formula jika ada dan merupakan sebuah array
+            if (
+                this.selectedTemplating.formula &&
+                Array.isArray(this.selectedTemplating.formula)
+            ) {
+                this.selectedTemplating.formula.forEach((formula) => {
+                    newRow.formulaResults[formula.rumus] = 0;
+                });
+            }
             this.rows.push(newRow);
         },
         unlockInput(rowIndex, id_qc) {
@@ -2405,6 +2186,7 @@ export default {
         cancelChange(rowIndex, id_qc) {
             const row = this.rows[rowIndex];
             const originalValue = row.draftDetails[id_qc].Value_Parameter;
+
             row.inputValues[id_qc] = originalValue;
             row.lockedInputs[id_qc] = true;
             this, (this.isEditing = false);
@@ -2433,291 +2215,210 @@ export default {
             });
         },
         calculateFormula(formula, decimalPlaces = 2, inputValues) {
+            const functionRegex = /^(\w+)\((.*)\)$/;
+            const functionMatch = formula.match(functionRegex);
+
             try {
-                let processedFormula = formula;
-                const customFunctions = {
-                    AVG: (values) => {
-                        if (!values.length) return 0;
-                        const sum = values.reduce((acc, val) => acc + val, 0);
-                        return sum / values.length;
-                    },
-                    SUM: (values) => {
-                        return values.reduce((acc, val) => acc + val, 0);
-                    },
-                };
-                for (const funcName in customFunctions) {
-                    const regex = new RegExp(`${funcName}\\(([^)]+?)\\)`, "g");
+                let result;
 
-                    processedFormula = processedFormula.replace(
-                        regex,
-                        (match, argsString) => {
-                            const paramIds = (
-                                argsString.match(/\[([^\]]+)\]/g) || []
-                            ).map((p) => p.replace(/[\[\]]/g, ""));
+                if (functionMatch) {
+                    const functionName = functionMatch[1].toUpperCase();
+                    const argsString = functionMatch[2];
+                    const paramIds = (
+                        argsString.match(/\[([^\]]+)\]/g) || []
+                    ).map((p) => p.replace(/[\[\]]/g, ""));
 
-                            const values = paramIds
-                                .map((id) => parseFloat(inputValues[id]))
-                                .filter((v) => !isNaN(v));
+                    const values = paramIds
+                        .map((id) => parseFloat(inputValues[id]))
+                        .filter((v) => !isNaN(v));
 
-                            const result = customFunctions[funcName](values);
-                            return result;
-                        }
-                    );
+                    if (values.length === 0) {
+                        return (0).toFixed(decimalPlaces);
+                    }
+
+                    switch (functionName) {
+                        case "SUM":
+                            result = values.reduce((acc, val) => acc + val, 0);
+                            break;
+                        case "AVG":
+                            const sum = values.reduce(
+                                (acc, val) => acc + val,
+                                0
+                            );
+                            result = sum / values.length;
+                            break;
+                        default:
+                            // Jika fungsi tidak dikenali, anggap sebagai error
+                            console.warn(
+                                `Fungsi tidak dikenali: ${functionName}`
+                            );
+                            result = 0;
+                            break;
+                    }
+                }
+                // Kasus 2: Jika rumus adalah ekspresi matematika biasa (contoh: "[param1] * [param2]")
+                else {
+                    let calculatedFormula = formula;
+                    const matches = formula.match(/\[([^\]]+)\]/g);
+
+                    if (matches) {
+                        matches.forEach((match) => {
+                            const id_qc = match.replace(/[\[\]]/g, "");
+                            const value = parseFloat(inputValues[id_qc]) || 0;
+                            calculatedFormula = calculatedFormula.replace(
+                                match,
+                                value
+                            );
+                        });
+                    }
+                    // Gunakan math.js untuk evaluasi yang aman
+                    result = evaluate(calculatedFormula);
                 }
 
-                let finalFormula = processedFormula.replace(
-                    /\[([^\]]+)\]/g,
-                    (match, id_qc) => {
-                        return parseFloat(inputValues[id_qc]) || 0;
-                    }
-                );
-
-                const finalResult = evaluate(finalFormula);
-
-                if (typeof finalResult === "number" && isFinite(finalResult)) {
-                    return round(finalResult, decimalPlaces).toFixed(
-                        decimalPlaces
-                    );
+                // Format hasil akhir
+                if (typeof result === "number" && isFinite(result)) {
+                    return round(result, decimalPlaces).toFixed(decimalPlaces);
                 }
 
                 return (0).toFixed(decimalPlaces);
             } catch (e) {
-                console.error(
-                    "Error saat menghitung rumus kompleks:",
-                    formula,
-                    e
-                );
-                return (0).toFixed(decimalPlaces);
+                console.error("Error saat menghitung rumus:", e);
+                return (0).toFixed(decimalPlaces); // Kembali ke nilai default jika ada error
             }
         },
-        handleStatusPhoto(status) {
-            this.isPhotoCompleted = status;
+        handleStatusPhoto(photos) {
+            this.photoList = photos;
+            this.isPhotoCompleted = this.photoList.length > 0;
         },
         async submitAnalysis() {
             if (this.Flag_Foto === "Y" && !this.isPhotoCompleted) {
                 Swal.fire({
                     icon: "warning",
                     title: "Foto Wajib!",
-                    text: "Sesi ini mewajibkan Anda melampirkan foto hasil uji produk sebelum submit.",
+                    text: "Sesi ini mewajibkan Anda melampirkan minimal 1 foto hasil uji produk sebelum submit.",
                 });
                 return;
             }
-
             this.loading.saveToDatabase = true;
-
-            const modalElement = document.getElementById(
-                "myModalInformasiSubmit"
-            );
-            const modalInstance =
-                bootstrap.Modal.getInstance(modalElement) ||
-                new bootstrap.Modal(modalElement);
-            modalInstance.hide();
-
-            for (const [index, row] of this.rows.entries()) {
-                const allInputsFilled = this.selectedTemplating.parameter.every(
-                    (param) =>
-                        row.inputValues[param.id_qc] !== null &&
-                        row.inputValues[param.id_qc] !== ""
-                );
-                if (!allInputsFilled) {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Gagal",
-                        text: `Data pada baris ${
-                            index + 1
-                        } tidak lengkap. Mohon isi semua parameter.`,
-                    });
-                    this.loading.saveToDatabase = false;
-                    return;
-                }
-            }
+            const isMulti = (this.is_multi_print || "").toString().trim();
 
             try {
-                if (this.is_multi_print === "Y") {
-                    const payload = this.rows.map((row) => {
-                        const parameters =
-                            this.selectedTemplating.parameter.map((param) => {
-                                const value = row.inputValues[param.id_qc];
-                                const detail = row.draftDetails[param.id_qc];
-
-                                return {
-                                    Id_Quality_Control: param.id_qc,
-                                    Value_Parameter:
-                                        value === "" || value === null
-                                            ? null
-                                            : value,
-                                    No_Urut: detail ? detail.No_Urut : null,
-                                    RV_INT: detail ? detail.RV_INT : null,
-                                    No_Sementara: detail
-                                        ? detail.No_Sementara
-                                        : null,
-                                };
-                            });
-
-                        const formulas = this.selectedTemplating.formula.map(
-                            (formula) => ({
-                                Id_Jenis_Analisa: formula.Id_Jenis_Analisa,
-                                Id_Perhitungan: formula.id,
-                                Hasil_Perhitungan:
-                                    row.formulaResults[formula.rumus] || 0,
-                                Rumus: formula.rumus,
-                                Digit: formula.digit,
-                                Range_Awal: formula.Range_Awal,
-                                Range_Akhir: formula.Range_Akhir,
-                            })
-                        );
-
-                        const firstDetail = Object.values(row.draftDetails)[0];
-                        const noSementaraForRow = firstDetail
-                            ? firstDetail.No_Sementara
-                            : null;
-
-                        const result = {
-                            No_Po_Sampel: this.No_Po_Sampel,
-                            Id_Jenis_Analisa: this.Id_Jenis_Analisa,
-                            No_Sementara: noSementaraForRow,
-                            parameters,
-                            formulas,
-                            is_multi_print: this.is_multi_print,
-                            id_mesin: this.Id_Mesin,
+                const payload = this.rows.map((row) => {
+                    const parameters = (
+                        this.selectedTemplating?.parameter || []
+                    ).map((param) => {
+                        const value = row.inputValues?.[param.id_qc];
+                        const detail = row.draftDetails?.[param.id_qc];
+                        return {
+                            Id_Quality_Control: param.id_qc,
+                            Value_Parameter:
+                                value === "" || value === null ? null : value,
+                            No_Urut: detail?.No_Urut || null,
+                            No_Sementara: detail?.No_Sementara || null,
+                            RV_INT: detail?.RV_INT || null,
                         };
-
-                        if (this.is_multi_print === "Y") {
-                            result.No_Po_Multi_Sampel = this.no_ticket;
-                        }
-
-                        return result;
                     });
-                    const photoBase64 = localStorage.getItem(
-                        this.photoStorageKey
-                    );
-                    const response = await axios.post(
-                        "/api/v1/formulator/hasil-trial/multi-qrcode",
-                        {
-                            analyses: payload,
-                            photo_data: photoBase64,
-                            flag_foto: this.Flag_Foto,
-                        },
-                        {
-                            headers: {
-                                "X-CSRF-TOKEN": document
-                                    .querySelector('meta[name="csrf-token"]')
-                                    .getAttribute("content"),
-                            },
-                        }
-                    );
 
-                    if (response.status === 201 && response.data.success) {
-                        if (this.Flag_Foto === "Y") {
-                            localStorage.removeItem(this.photoStorageKey);
-                        }
-                        Swal.fire({
-                            icon: "success",
-                            title: "Berhasil",
-                            text: "Semua data analisis berhasil disimpan!",
-                        }).then(() => {
-                            location.reload();
-                        });
-                    } else {
-                        throw new Error(
-                            response.data.message || "Gagal menyimpan data."
-                        );
+                    const formulas =
+                        (isMulti === "Y"
+                            ? this.selectedTemplating?.formula
+                            : this.selectedTemplating?.parameter) || [];
+                    const formattedFormulas = formulas.map((item) => {
+                        const key = isMulti === "Y" ? item.rumus : item.id_qc;
+                        const value =
+                            isMulti === "Y"
+                                ? row.formulaResults?.[key] || 0
+                                : row.inputValues?.[key];
+                        const detail = row.draftDetails?.[key];
+
+                        return {
+                            Id_Jenis_Analisa: item.Id_Jenis_Analisa,
+                            Hasil_Perhitungan:
+                                isMulti === "Y" ? value : undefined,
+                            Value_Parameter:
+                                isMulti === "Y"
+                                    ? undefined
+                                    : value === "" || value === null
+                                    ? null
+                                    : value,
+                            Rumus: item.rumus || null,
+                            Digit: item.digit || null,
+                            No_Urut: detail?.No_Urut || null,
+                            No_Sementara: detail?.No_Sementara || null,
+                            RV_INT: detail?.RV_INT || null,
+                        };
+                    });
+
+                    const firstDetail = Object.values(
+                        row.draftDetails || {}
+                    )[0];
+                    const noSementaraForRow = firstDetail?.No_Sementara || null;
+
+                    const result = {
+                        No_Po_Sampel: this.No_Po_Sampel,
+                        Id_Jenis_Analisa: this.Id_Jenis_Analisa,
+                        No_Sementara: noSementaraForRow,
+                        parameters,
+                        formulas: formattedFormulas,
+                        is_multi_print: this.is_multi_print,
+                        id_mesin: this.Id_Mesin,
+                    };
+
+                    if (isMulti === "Y") {
+                        result.No_Po_Multi_Sampel = this.No_Fak_Sub_Po;
                     }
+                    return result;
+                });
+
+                const endpoint =
+                    isMulti === "Y"
+                        ? "/api/v1/formulator/hasil-trial/multi-qr-code/not-perhitungan"
+                        : "/api/v1/formulator/hasil-trial/single-qr-code/not-perhitungan";
+
+                const formData = new FormData();
+                formData.append("flag_foto", this.Flag_Foto);
+                formData.append("analyses", JSON.stringify(payload));
+
+                if (this.Flag_Foto === "Y" && this.photoList.length > 0) {
+                    this.photoList.forEach((photo, index) => {
+                        formData.append(
+                            `photos[${index}]`,
+                            photo.file,
+                            photo.fileName
+                        );
+                        formData.append(`notes[${index}]`, photo.note || "");
+                    });
+                }
+
+                const response = await axios.post(endpoint, formData, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                        "X-CSRF-TOKEN": document
+                            .querySelector('meta[name="csrf-token"]')
+                            .getAttribute("content"),
+                    },
+                });
+
+                if (response.status === 201 && response.data.success) {
+                    if (this.Flag_Foto === "Y") {
+                        localStorage.removeItem(this.photoStorageKey);
+                    }
+                    Swal.fire({
+                        icon: "success",
+                        title: "Berhasil",
+                        text: "Semua data analisis berhasil disimpan!",
+                    }).then(() => {
+                        location.reload();
+                    });
                 } else {
-                    const payload = this.rows.map((row) => {
-                        const parameters =
-                            this.selectedTemplating.parameter.map((param) => {
-                                const value = row.inputValues[param.id_qc];
-                                const detail = row.draftDetails[param.id_qc];
-
-                                return {
-                                    Id_Quality_Control: param.id_qc,
-                                    Value_Parameter:
-                                        value === "" || value === null
-                                            ? null
-                                            : value,
-                                    No_Urut: detail ? detail.No_Urut : null,
-                                    RV_INT: detail ? detail.RV_INT : null,
-                                    No_Sementara: detail
-                                        ? detail.No_Sementara
-                                        : null,
-                                };
-                            });
-
-                        const formulas = this.selectedTemplating.formula.map(
-                            (formula) => ({
-                                Id_Perhitungan: formula.id,
-                                Id_Jenis_Analisa: formula.Id_Jenis_Analisa,
-                                Hasil_Perhitungan:
-                                    row.formulaResults[formula.rumus] || 0,
-                                Rumus: formula.rumus,
-                                Digit: formula.digit,
-                                Range_Awal: formula.Range_Awal,
-                                Range_Akhir: formula.Range_Akhir,
-                            })
-                        );
-
-                        const firstDetail = Object.values(row.draftDetails)[0];
-                        const noSementaraForRow = firstDetail
-                            ? firstDetail.No_Sementara
-                            : null;
-
-                        const result = {
-                            No_Po_Sampel: this.No_Po_Sampel,
-                            Id_Jenis_Analisa: this.Id_Jenis_Analisa,
-                            No_Sementara: noSementaraForRow,
-                            parameters,
-                            formulas,
-                            is_multi_print: this.is_multi_print,
-                            id_mesin: this.Id_Mesin,
-                        };
-
-                        if (this.is_multi_print === "Y") {
-                            result.No_Po_Multi_Sampel = this.no_ticket;
-                        }
-
-                        return result;
-                    });
-                    const photoBase64 = localStorage.getItem(
-                        this.photoStorageKey
+                    throw new Error(
+                        response.data.message || "Gagal menyimpan data."
                     );
-                    const response = await axios.post(
-                        "/api/v1/formulator/hasil-trial/non-multi-qrcode",
-                        {
-                            analyses: payload,
-                            photo_data: photoBase64,
-                            flag_foto: this.Flag_Foto,
-                        },
-                        {
-                            headers: {
-                                "X-CSRF-TOKEN": document
-                                    .querySelector('meta[name="csrf-token"]')
-                                    .getAttribute("content"),
-                            },
-                        }
-                    );
-
-                    if (response.status === 201 && response.data.success) {
-                        if (this.Flag_Foto === "Y") {
-                            localStorage.removeItem(this.photoStorageKey);
-                        }
-                        Swal.fire({
-                            icon: "success",
-                            title: "Berhasil",
-                            text: "Semua data analisis berhasil disimpan!",
-                        }).then(() => {
-                            location.reload();
-                        });
-                    } else {
-                        throw new Error(
-                            response.data.message || "Gagal menyimpan data."
-                        );
-                    }
                 }
             } catch (error) {
                 console.error(error);
                 let errorMessage = "Terjadi Kesalahan";
-                if (error.response && error.response.data) {
+                if (error.response?.data) {
                     errorMessage =
                         error.response.data.message ||
                         error.response.data.error;
@@ -2733,8 +2434,10 @@ export default {
                 this.loading.saveToDatabase = false;
             }
         },
+
         async submitAnalysisSementara() {
             this.loading.saveToDatabase = true;
+            const isMulti = (this.is_multi_print || "").toString().trim();
 
             for (const [index, row] of this.rows.entries()) {
                 const isAnyInputFilled = this.selectedTemplating.parameter.some(
@@ -2757,74 +2460,60 @@ export default {
             }
 
             try {
-                if (this.is_multi_print === "Y") {
+                if (isMulti === "Y") {
                     const payload = this.rows.map((row) => {
-                        const parameters =
-                            this.selectedTemplating.parameter.map((param) => {
-                                const value = row.inputValues[param.id_qc];
-                                const detail = row.draftDetails[param.id_qc];
-                                console.log(
-                                    "DEBUG VALUE:",
-                                    param.nama_parameter,
-                                    value
-                                );
+                        const parameters = (
+                            this.selectedTemplating.parameter || []
+                        ).map((param) => {
+                            const value = row.inputValues[param.id_qc];
+                            const detail = row.draftDetails[param.id_qc];
 
-                                return {
-                                    Id_Quality_Control: param.id_qc,
-                                    Value_Parameter:
-                                        value === "" || value === null
-                                            ? null
-                                            : value,
-                                    No_Urut: detail ? detail.No_Urut : null,
-                                    No_Sementara: detail
-                                        ? detail.No_Sementara
-                                        : null,
-                                };
-                            });
+                            return {
+                                Id_Quality_Control: param.id_qc,
+                                Value_Parameter:
+                                    value === "" || value === null
+                                        ? null
+                                        : value,
+                                No_Urut: detail ? detail.No_Urut : null,
+                                No_Sementara: detail
+                                    ? detail.No_Sementara
+                                    : null,
+                            };
+                        });
 
-                        const formulas = this.selectedTemplating.formula.map(
-                            (formula) => {
-                                const rumusKey = formula.rumus;
-                                const hasilDraft =
-                                    row.hasilDraft?.[rumusKey] || {};
+                        const formulas = (
+                            this.selectedTemplating.formula || []
+                        ).map((formula) => {
+                            const rumus = formula.rumus;
+                            const hasilDraft = row.hasilDraft?.[rumus] || {};
+                            const hasil = row.formulaResults?.[rumus];
 
-                                return {
-                                    Id_Perhitungan: formula.id,
-                                    Id_Jenis_Analisa: formula.Id_Jenis_Analisa,
-                                    Hasil_Perhitungan:
-                                        row.formulaResults[rumusKey] || 0,
-                                    Rumus: formula.rumus,
-                                    Digit: formula.digit,
-                                    No_Urut: hasilDraft.No_Urut || null,
-                                    No_Sementara:
-                                        hasilDraft.No_Sementara || null,
-                                };
-                            }
-                        );
+                            return {
+                                Id_Jenis_Analisa: this.Id_Jenis_Analisa,
+                                Hasil_Perhitungan: hasil ?? null,
+                                No_Urut: hasilDraft.No_Urut ?? null,
+                                No_Sementara: hasilDraft.No_Sementara ?? null,
+                            };
+                        });
 
                         const firstDetail = Object.values(row.draftDetails)[0];
                         const noSementaraForRow = firstDetail
                             ? firstDetail.No_Sementara
                             : null;
 
-                        const result = {
+                        return {
                             No_Po_Sampel: this.No_Po_Sampel,
+                            No_Po_Multi_Sampel: this.No_Fak_Sub_Po,
                             Id_Jenis_Analisa: this.Id_Jenis_Analisa,
                             No_Sementara: noSementaraForRow,
                             parameters,
                             formulas,
                             is_multi_print: this.is_multi_print,
                         };
-
-                        if (this.is_multi_print === "Y") {
-                            result.No_Po_Multi_Sampel = this.no_ticket;
-                        }
-
-                        return result;
                     });
 
                     const response = await axios.post(
-                        "/api/v1/formulator/temp/uji-sampel/store-multi-rumus/sementara",
+                        "/api/v1/formulator/hasil-trial/multi-qr-code/not-perhitungan/temp",
                         { analyses: payload },
                         {
                             headers: {
@@ -2865,25 +2554,26 @@ export default {
                                     No_Sementara: detail
                                         ? detail.No_Sementara
                                         : null,
+                                    RV_INT: detail ? detail.RV_INT : null,
                                 };
                             });
 
-                        const formulas = this.selectedTemplating.formula.map(
+                        const formulas = this.selectedTemplating.parameter.map(
                             (formula) => {
-                                const rumusKey = formula.rumus;
-                                const hasilDraft =
-                                    row.hasilDraft?.[rumusKey] || {};
+                                const value = row.inputValues[formula.id_qc];
+                                const detail = row.draftDetails[formula.id_qc];
 
                                 return {
-                                    Id_Perhitungan: formula.id,
                                     Id_Jenis_Analisa: formula.Id_Jenis_Analisa,
-                                    Hasil_Perhitungan:
-                                        row.formulaResults[rumusKey] || 0,
-                                    Rumus: formula.rumus,
-                                    Digit: formula.digit,
-                                    No_Urut: hasilDraft.No_Urut || null,
-                                    No_Sementara:
-                                        hasilDraft.No_Sementara || null,
+                                    Value_Parameter:
+                                        value === "" || value === null
+                                            ? null
+                                            : value,
+                                    No_Urut: detail ? detail.No_Urut : null,
+                                    No_Sementara: detail
+                                        ? detail.No_Sementara
+                                        : null,
+                                    RV_INT: detail ? detail.RV_INT : null,
                                 };
                             }
                         );
@@ -2893,25 +2583,28 @@ export default {
                             ? firstDetail.No_Sementara
                             : null;
 
+                        // Objek utama yang akan dikirim
                         const result = {
                             No_Po_Sampel: this.No_Po_Sampel,
                             Id_Jenis_Analisa: this.Id_Jenis_Analisa,
                             No_Sementara: noSementaraForRow,
                             parameters,
                             formulas,
-                            is_multi_print: this.is_multi_print,
                         };
-
-                        if (this.is_multi_print === "Y") {
-                            result.No_Po_Multi_Sampel = this.no_ticket;
-                        }
 
                         return result;
                     });
 
                     const response = await axios.post(
-                        "/api/v1/formulator/temp/uji-sampel/store-not-rumus/sementara",
-                        { analyses: payload }
+                        "/api/v1/formulator/hasil-trial/single-qr-code/not-perhitungan/temp",
+                        { analyses: payload },
+                        {
+                            headers: {
+                                "X-CSRF-TOKEN": document
+                                    .querySelector('meta[name="csrf-token"]')
+                                    .getAttribute("content"),
+                            },
+                        }
                     );
 
                     if (response.status === 201 && response.data.success) {
@@ -2946,7 +2639,10 @@ export default {
                 this.loading.saveToDatabase = false;
             }
         },
+
         async updateAnalysisSementaraForDraft() {
+            this.loading.editForDatabase = true;
+
             const rowIndex = this.editingRowIndex;
 
             if (rowIndex === null) {
@@ -2979,11 +2675,11 @@ export default {
                 return;
             }
 
-            this.loading.editForDatabase = true;
-
             const row = this.rows[rowIndex];
 
-            const isAnyInputFilled = this.selectedTemplating.parameter.some(
+            const isAnyInputFilled = (
+                this.selectedTemplating.parameter || []
+            ).some(
                 (param) =>
                     row.inputValues[param.id_qc] !== null &&
                     row.inputValues[param.id_qc] !== ""
@@ -2997,212 +2693,116 @@ export default {
                         rowIndex + 1
                     } tidak memiliki input sama sekali. Minimal 1 parameter harus diisi.`,
                 });
-                this.loading.saveToDatabase = false;
+                this.loading.editForDatabase = false;
                 return;
             }
 
+            const isMulti = (this.is_multi_print || "").toString().trim();
+            const noSementara =
+                Object.values(row.draftDetails)[0]?.No_Sementara || "";
+
             try {
-                if (this.is_multi_print === "Y") {
-                    const noSementara =
-                        Object.values(row.draftDetails)[0]?.No_Sementara || "";
-                    const parameters = this.selectedTemplating.parameter.map(
-                        (param) => {
-                            const originalData =
-                                row.draftDetails[param.id_qc] || {};
-                            return {
-                                Id_Quality_Control: param.id_qc,
-                                Value_Parameter:
-                                    row.inputValues[param.id_qc] || 0,
-                                Value_Parameter_Lama:
-                                    originalData.Value_Parameter || 0,
-                                No_Urut: originalData.No_Urut || 0,
-                                Id_User: originalData.Id_User || 0,
-                                RV_INT: originalData.RV_INT || 0,
-                                IdUjiSample: originalData.IdUjiSample || 0,
-                            };
-                        }
-                    );
-
-                    // Prepare formulas data
-                    const formulas = this.selectedTemplating.formula.map(
-                        (formula) => ({
-                            Id_Jenis_Analisa: formula.Id_Jenis_Analisa,
-                            Hasil_Perhitungan:
-                                parseFloat(row.formulaResults[formula.rumus]) ||
-                                0,
-                            Rumus: formula.rumus,
-                            Digit: formula.digit,
-                        })
-                    );
-
-                    const originalData =
-                        row.draftDetails[this.editingParamIdQc];
-                    const newValue = row.inputValues[this.editingParamIdQc];
-
-                    const payload = {
-                        analyses: [
-                            {
-                                No_Urut: this.editingNoUrut,
-                                No_Po_Sampel: this.No_Po_Sampel,
-                                No_Sementara: noSementara,
-                                Id_Jenis_Analisa: this.Id_Jenis_Analisa,
-                                RV_INT: originalData.RV_INT,
-                                reason: this.reasonForChange,
-                                parameters: parameters,
-                                Value_Parameter_Lama:
-                                    originalData.Value_Parameter,
-                                Value_Parameter_Baru: newValue,
-                                formulas: formulas,
-                                is_multi_print: this.is_multi_print,
-                                No_Po_Multi_Sampel:
-                                    this.is_multi_print === "Y"
-                                        ? this.no_ticket
-                                        : null,
-                            },
-                        ],
+                const parameters = (
+                    this.selectedTemplating.parameter || []
+                ).map((param) => {
+                    const originalData = row.draftDetails[param.id_qc] || {};
+                    return {
+                        Id_Quality_Control: param.id_qc,
+                        Value_Parameter: row.inputValues[param.id_qc] || 0,
+                        Value_Parameter_Lama: originalData.Value_Parameter || 0,
+                        No_Urut: originalData.No_Urut || 0,
+                        Id_User: originalData.Id_User || 0,
+                        RV_INT: originalData.RV_INT || 0,
+                        IdUjiSample: originalData.IdUjiSample || 0,
                     };
+                });
 
-                    const response = await axios.post(
-                        `/api/v1/formulator/update-trial/multi-qrcode/${rowIndex}/sementara`,
-                        payload,
-                        {
-                            headers: {
-                                "X-CSRF-TOKEN": document
-                                    .querySelector('meta[name="csrf-token"]')
-                                    .getAttribute("content"),
-                            },
-                        }
-                    );
+                const formulas = (this.selectedTemplating.formula || []).map(
+                    (formula) => {
+                        const rumus = formula.rumus;
+                        const hasilDraft = row.hasilDraft?.[rumus] || {};
+                        const hasil = row.formulaResults?.[rumus];
 
-                    if (response.status === 201 && response.data.success) {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Berhasil",
-                            text: "Data analisis berhasil disimpan!",
-                        }).then(() => {
-                            this.selectedTemplating.parameter.forEach(
-                                (param) => {
-                                    row.lockedInputs[param.id_qc] = true;
-                                }
-                            );
-
-                            this.reasonForChange = "";
-                            (this.isEditing = false),
-                                (this.editingRowIndex = null);
-                            this.editingParamIdQc = null;
-                            $("#myModalEdit").modal("hide");
-                            this.fetchDraftData();
-                        });
-                    } else {
-                        throw new Error(
-                            response.data.message || "Gagal menyimpan data."
-                        );
+                        return {
+                            Id_Jenis_Analisa: this.Id_Jenis_Analisa,
+                            Hasil_Perhitungan: hasil ?? 0,
+                            Rumus: rumus,
+                            Digit: formula.digit,
+                            No_Urut: hasilDraft.No_Urut || 0,
+                            No_Sementara: hasilDraft.No_Sementara || null,
+                        };
                     }
+                );
+
+                const originalData =
+                    row.draftDetails[this.editingParamIdQc] || {};
+                const newValue = row.inputValues[this.editingParamIdQc] || null;
+
+                const payload = {
+                    analyses: [
+                        {
+                            No_Urut: this.editingNoUrut,
+                            No_Po_Sampel: this.No_Po_Sampel,
+                            No_Sementara: noSementara,
+                            Id_Jenis_Analisa: this.Id_Jenis_Analisa,
+                            RV_INT: originalData.RV_INT || 0,
+                            reason: this.reasonForChange,
+                            parameters: parameters,
+                            Value_Parameter_Lama:
+                                originalData.Value_Parameter || null,
+                            Value_Parameter_Baru: newValue,
+                            formulas: formulas,
+                            is_multi_print: this.is_multi_print,
+                            No_Po_Multi_Sampel:
+                                isMulti === "Y" ? this.no_ticket : null,
+                        },
+                    ],
+                };
+
+                const url =
+                    isMulti === "Y"
+                        ? `/api/v1/formulator/update-trial/non-multi-qrcode/${rowIndex}/sementara`
+                        : `/api/v1/formulator/hasil-trial/single-qr-code/not-perhitungan/${rowIndex}/sementara`;
+
+                const response = await axios.post(url, payload, {
+                    headers: {
+                        "X-CSRF-TOKEN": document
+                            .querySelector('meta[name="csrf-token"]')
+                            .getAttribute("content"),
+                    },
+                });
+
+                if (response.status === 201 && response.data.success) {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Berhasil",
+                        text: "Data analisis berhasil disimpan!",
+                    }).then(() => {
+                        (this.selectedTemplating.parameter || []).forEach(
+                            (param) => {
+                                row.lockedInputs[param.id_qc] = true;
+                            }
+                        );
+
+                        this.reasonForChange = "";
+                        this.editingRowIndex = null;
+                        this.isEditing = false;
+                        this.editingParamIdQc = null;
+
+                        $("#myModalEdit").modal("hide");
+                        this.fetchDraftData();
+                    });
                 } else {
-                    const noSementara =
-                        Object.values(row.draftDetails)[0]?.No_Sementara || "";
-                    // Prepare parameters data
-                    const parameters = this.selectedTemplating.parameter.map(
-                        (param) => {
-                            const originalData =
-                                row.draftDetails[param.id_qc] || {};
-                            return {
-                                Id_Quality_Control: param.id_qc,
-                                Value_Parameter:
-                                    row.inputValues[param.id_qc] || 0,
-                                Value_Parameter_Lama:
-                                    originalData.Value_Parameter || 0,
-                                No_Urut: originalData.No_Urut || 0,
-                                Id_User: originalData.Id_User || 0,
-                                RV_INT: originalData.RV_INT || 0,
-                                IdUjiSample: originalData.IdUjiSample || 0,
-                            };
-                        }
+                    throw new Error(
+                        response.data.message || "Gagal menyimpan data."
                     );
-
-                    const formulas = this.selectedTemplating.formula.map(
-                        (formula) => ({
-                            Id_Jenis_Analisa: formula.Id_Jenis_Analisa,
-                            Hasil_Perhitungan:
-                                parseFloat(row.formulaResults[formula.rumus]) ||
-                                0,
-                            Rumus: formula.rumus,
-                            Digit: formula.digit,
-                        })
-                    );
-
-                    const originalData =
-                        row.draftDetails[this.editingParamIdQc];
-                    const newValue = row.inputValues[this.editingParamIdQc];
-
-                    const payload = {
-                        analyses: [
-                            {
-                                No_Urut: this.editingNoUrut,
-                                No_Po_Sampel: this.No_Po_Sampel,
-                                No_Sementara: noSementara,
-                                Id_Jenis_Analisa: this.Id_Jenis_Analisa,
-                                RV_INT: originalData.RV_INT,
-                                reason: this.reasonForChange,
-                                parameters: parameters,
-                                Value_Parameter_Lama:
-                                    originalData.Value_Parameter,
-                                Value_Parameter_Baru: newValue,
-                                formulas: formulas,
-                                is_multi_print: this.is_multi_print,
-                                No_Po_Multi_Sampel:
-                                    this.is_multi_print === "Y"
-                                        ? this.no_ticket
-                                        : null,
-                            },
-                        ],
-                    };
-
-                    const response = await axios.post(
-                        `/api/v1/formulator/update-trial/non-multi-qrcode/${rowIndex}/sementara`,
-                        payload,
-                        {
-                            headers: {
-                                "X-CSRF-TOKEN": document
-                                    .querySelector('meta[name="csrf-token"]')
-                                    .getAttribute("content"),
-                            },
-                        }
-                    );
-
-                    if (response.status === 201 && response.data.success) {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Berhasil",
-                            text: "Data analisis berhasil disimpan!",
-                        }).then(() => {
-                            // Lock all inputs in the row
-                            this.selectedTemplating.parameter.forEach(
-                                (param) => {
-                                    row.lockedInputs[param.id_qc] = true;
-                                }
-                            );
-
-                            // Reset form
-                            this.reasonForChange = "";
-                            this.editingRowIndex = null;
-                            (this.isEditing = false),
-                                (this.editingParamIdQc = null);
-                            $("#myModalEdit").modal("hide");
-                            this.fetchDraftData();
-                        });
-                    } else {
-                        throw new Error(
-                            response.data.message || "Gagal menyimpan data."
-                        );
-                    }
                 }
             } catch (error) {
                 console.error(error);
                 let errorMessage = "Terjadi Kesalahan";
+
                 if (error.response && error.response.data) {
                     if (error.response.data.errors) {
-                        // Handle validation errors
                         const errors = Object.values(
                             error.response.data.errors
                         ).flat();
@@ -3215,15 +2815,17 @@ export default {
                 } else if (error.message) {
                     errorMessage = error.message;
                 }
+
                 Swal.fire({
                     icon: "error",
                     title: "Opss...",
-                    html: errorMessage.replace(/\n/g, "<br>"), // Display multiple errors with line breaks
+                    html: errorMessage.replace(/\n/g, "<br>"),
                 });
             } finally {
                 this.loading.editForDatabase = false;
             }
         },
+
         async deleteAnalysisSementaraForDraft() {
             const rowIndex = this.deleteRowIndex;
             const nomorSementara = this.deleteNoSementara;
@@ -3281,13 +2883,22 @@ export default {
                     };
                 }
             );
-            const formulas = this.selectedTemplating.formula.map((formula) => ({
-                Id_Jenis_Analisa: formula.Id_Jenis_Analisa,
-                Hasil_Perhitungan:
-                    parseFloat(row.formulaResults[formula.rumus]) || 0,
-                Rumus: formula.rumus,
-                Digit: formula.digit,
-            }));
+            const formulas = this.selectedTemplating.parameter.map(
+                (formula) => {
+                    const value = row.inputValues[formula.id_qc];
+                    const detail = row.draftDetails[formula.id_qc];
+
+                    return {
+                        Id_Jenis_Analisa: formula.Id_Jenis_Analisa,
+                        Value_Parameter:
+                            value === "" || value === null ? null : value,
+                        No_Urut: detail ? detail.No_Urut : null,
+                        No_Sementara: detail ? detail.No_Sementara : null,
+                        RV_INT: detail ? detail.RV_INT : null,
+                    };
+                }
+            );
+
             const noSementara =
                 Object.values(row.draftDetails)[0]?.No_Sementara || "";
 
@@ -3307,7 +2918,9 @@ export default {
                 ],
             };
 
-            if (this.is_multi_print === "Y") {
+            const isMulti = (this.is_multi_print || "").toString().trim();
+
+            if (isMulti === "Y") {
                 try {
                     const response = await axios.post(
                         `/api/v1/formulator/multi-qrcode/${nomorSementara}/delete`,
@@ -3373,7 +2986,7 @@ export default {
             } else {
                 try {
                     const response = await axios.post(
-                        `/api/v1/formulator/non-multi-qrcode/${nomorSementara}/delete`,
+                        `/api/v1/formulator/hasil-trial/single-qr-code/not-perhitungan/${nomorSementara}/sementara`,
                         payload,
                         {
                             headers: {
@@ -3436,6 +3049,7 @@ export default {
                 }
             }
         },
+
         checkDigit(event) {
             const allowedKeys = [
                 "Backspace",
@@ -3444,7 +3058,10 @@ export default {
                 "ArrowRight",
             ];
 
-            if (!/[\d.]/.test(event.key) && !allowedKeys.includes(event.key)) {
+            if (
+                !/[\d.+-]/.test(event.key) &&
+                !allowedKeys.includes(event.key)
+            ) {
                 event.preventDefault();
             }
         },
@@ -3468,41 +3085,6 @@ export default {
 </script>
 
 <style scoped>
-.loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.4); /* efek gelap */
-    backdrop-filter: blur(5px); /* efek blur */
-    z-index: 1050; /* pastikan di atas semua elemen */
-    pointer-events: auto; /* cegah klik di belakang */
-}
-
-.loading-box {
-    min-width: 320px;
-    max-width: 400px;
-}
-
-.loading-box p {
-    font-size: 1.1rem;
-    color: #ffffff !important;
-}
-
-.loading-spinner {
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
 .disabled-opacity {
     opacity: 0.6;
     cursor: not-allowed;
@@ -3514,11 +3096,6 @@ export default {
     opacity: 0.65;
     cursor: not-allowed;
 }
-
-.psz-wide-column {
-    min-width: 250px;
-}
-
 .action-button:disabled {
     background-color: #6c757d;
     border-color: #6c757d;

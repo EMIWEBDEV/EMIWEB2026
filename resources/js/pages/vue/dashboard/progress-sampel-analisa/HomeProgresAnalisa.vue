@@ -124,6 +124,7 @@
                                 <thead>
                                     <tr>
                                         <th>No</th>
+
                                         <th>No Po</th>
                                         <th>No Split</th>
                                         <th>Batch</th>
@@ -175,6 +176,7 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>No</th>
+                                        <th>Kategori</th>
                                         <th>Tanggal</th>
                                         <th>No Po</th>
                                         <th>No Split</th>
@@ -197,6 +199,23 @@
                                                 index +
                                                 1
                                             }}
+                                        </td>
+                                        <td>
+                                            <span
+                                                v-if="
+                                                    item.Flag_Trial_Produksi ===
+                                                    'Y'
+                                                "
+                                                class="badge bg-warning text-dark"
+                                            >
+                                                Trial Produksi
+                                            </span>
+                                            <span
+                                                v-else
+                                                class="badge bg-primary"
+                                            >
+                                                Produksi
+                                            </span>
                                         </td>
                                         <td>
                                             {{

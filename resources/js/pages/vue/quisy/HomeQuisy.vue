@@ -80,7 +80,7 @@
             <ul v-else>
                 <li
                     v-for="item in productionOrders"
-                    :key="item.No_Faktur || item.No_Faktur"
+                    :key="item.No_Faktur"
                     :class="{
                         selected: selected.productionOrder === item.No_Faktur,
                         disabled: isPoDisabled(item.No_Faktur),
@@ -88,32 +88,59 @@
                     @click="selectProductionOrder(item.No_Faktur)"
                 >
                     <div class="po-header">
-                        <span class="po-code">{{ item.No_Faktur }}</span>
+                        <div class="header-main">
+                            <span class="po-code">{{ item.No_Faktur }}</span>
+                            <!-- Badge Status Lebih Modern -->
+                            <span
+                                :class="[
+                                    'status-tag',
+                                    item.Flag_Trial_Produksi === 'Y'
+                                        ? 'is-trial'
+                                        : 'is-reguler',
+                                ]"
+                            >
+                                {{
+                                    item.Flag_Trial_Produksi === "Y"
+                                        ? "Trial"
+                                        : "Produksi"
+                                }}
+                            </span>
+                        </div>
+
+                        <!-- Status Complete Checkmark -->
                         <span
                             v-if="isPoComplete(item.No_Faktur)"
-                            class="status-badge complete"
-                            >✓</span
+                            class="status-badge-check"
                         >
-                        <button
-                            v-if="item.has_samples"
-                            @click.stop="confirmClosePO(item.No_Faktur)"
-                            class="btn btn-close-po"
-                        >
-                            <i class="fas fa-times"></i> Close PO
-                        </button>
+                            <i class="fas fa-check-circle"></i>
+                        </span>
                     </div>
+
                     <div class="po-details">
                         <span class="po-name">{{
                             item.Nama || "Unnamed Order"
                         }}</span>
-                        <div class="po-meta">
-                            <span class="po-qty"
-                                >{{ formatNumber(item.Jumlah) }}
-                                {{ item.Satuan }}</span
+
+                        <div class="po-meta-wrapper">
+                            <div class="meta-left">
+                                <span class="po-qty"
+                                    >{{ formatNumber(item.Jumlah) }}
+                                    {{ item.Satuan }}</span
+                                >
+                                <span class="po-date">{{
+                                    formatDate(item.Tanggal)
+                                }}</span>
+                            </div>
+
+                            <!-- Tombol Close PO dipindah ke pojok kanan bawah agar tidak 'balapan' di atas -->
+                            <div
+                                v-if="item.has_samples"
+                                @click.stop="confirmClosePO(item.No_Faktur)"
+                                class="btn-minimal-close"
+                                title="Close Production Order"
                             >
-                            <span class="po-date">{{
-                                formatDate(item.Tanggal)
-                            }}</span>
+                                Close PO
+                            </div>
                         </div>
                     </div>
                 </li>
@@ -294,7 +321,6 @@
                             @click="selectMachine(mesin)"
                         >
                             <div class="machine-header">
-                                <i class="fas fa-cogs machine-icon"></i>
                                 <div class="machine-info">
                                     <span class="machine-name">{{
                                         mesin.Nama_Mesin
@@ -1882,6 +1908,85 @@ export default {
 </script>
 
 <style scoped>
+/* Header styling */
+.po-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.header-main {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Jarak antara No Faktur dan Badge */
+}
+
+.po-code {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 13px;
+    letter-spacing: -0.2px;
+}
+
+/* Badge Status Style */
+.status-tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+}
+
+.status-tag.is-trial {
+    background-color: #fef3c7; /* Amber */
+    color: #92400e;
+}
+
+.status-tag.is-reguler {
+    background-color: #e0f2fe; /* Soft Blue */
+    color: #0369a1;
+}
+
+/* Meta Wrapper untuk bagian bawah */
+.po-meta-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 8px;
+}
+
+.meta-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Tombol Close Minimalis (Enterprise Style) */
+.btn-minimal-close {
+    background: #fff1f2;
+    border: 1px solid #e2e8f0;
+    color: #e11d48;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.btn-minimal-close:hover {
+    background: #fff1f2; /* Light red */
+    color: #e11d48; /* Crimson red */
+    border-color: #fecdd3;
+}
+
+/* Checkmark hijau jika selesai */
+.status-badge-check {
+    color: #10b981;
+    font-size: 16px;
+}
+
 /* Base Styles */
 * {
     box-sizing: border-box;
