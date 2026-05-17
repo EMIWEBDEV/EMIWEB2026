@@ -1,3129 +1,708 @@
 <template>
-    <div class="container-fluid mx-auto px-0">
-        <div class="card shadow-sm border-0">
-            <div class="card-body">
-                <div class="mb-4 text-center text-md-start">
-                    <h1 class="text-2xl md:text-3xl font-bold text-primary">
-                        Pra-Finalisasi
-                    </h1>
-                    <p class="text-sm md:text-base text-muted">
-                        Daftar Pra-Finalisasi Uji Trial PT. Evo Manufacturing
-                        Indonesia
-                    </p>
-                    <div class="divider my-3"></div>
+    <div class="vld-root">
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- TOP BAR                                                        -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div class="vld-topbar">
+            <div class="vld-topbar-left">
+                <i class="ri-shield-check-line vld-topbar-icon"></i>
+                <div>
+                    <span class="vld-topbar-title">Pra-Finalisasi</span>
+                    <span class="vld-topbar-sub">Validasi tahapan sampel sebelum finalisasi</span>
+                </div>
+            </div>
+            <div class="vld-topbar-right">
+                <div class="vld-stat" v-if="stats.total > 0">
+                    <span class="vld-stat-num">{{ stats.total }}</span>
+                    <span class="vld-stat-lbl">Total</span>
+                </div>
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2">
+                    <i class="ri-time-line me-1"></i>Menunggu Validasi
+                </span>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- MAIN LAYOUT                                                     -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div class="vld-body">
+            <!-- ─────────────────────────────── LEFT PANEL ─────────────── -->
+            <div class="vld-left" :class="{ 'vld-hidden-mobile': detailVisible && isMobile }">
+                <!-- Filter toolbar -->
+                <div class="vld-filter-bar">
+                    <div class="vld-search-wrap">
+                        <i class="ri-search-line vld-search-icon"></i>
+                        <input
+                            type="text"
+                            class="vld-search-input"
+                            placeholder="Cari No. Sampel..."
+                            v-model="searchQuery"
+                        />
+                    </div>
                 </div>
 
-                <div class="row g-4 mb-3">
-                    <div
-                        class="col-lg-12 d-flex justify-content-between align-items-center gap-3"
-                    >
-                        <div class="search-box flex-grow-1">
-                            <input
-                                type="search"
-                                class="form-control search"
-                                placeholder="Search..."
-                                v-model="searchQuery"
-                                @input="handleSearch"
-                            />
-                            <i class="ri-search-line search-icon"></i>
-                        </div>
+                <!-- List area -->
+                <div class="vld-list">
+                    <div v-if="loading.list" class="p-3">
+                        <div v-for="i in 7" :key="i" class="vld-skeleton mb-2"></div>
+                    </div>
 
-                        <div>
+                    <div v-else-if="listData.length === 0" class="vld-empty-list">
+                        <i class="ri-inbox-2-line"></i>
+                        <p>{{ emptyMessage }}</p>
+                        <button class="btn btn-sm btn-soft-primary" @click="resetFiltersAndFetch">
+                            <i class="ri-refresh-line me-1"></i>Reset
+                        </button>
+                    </div>
+
+                    <div v-else>
+                        <button
+                            v-for="(item, idx) in listData"
+                            :key="idx"
+                            @click="selectItem(item)"
+                            class="vld-item"
+                            :class="{
+                                'vld-item--active': isSelected(item),
+                                'vld-item--lolos': isSelesaiSemua(item),
+                                'vld-item--tidak': hasDitolak(item),
+                                'vld-item--warn': !isSelesaiSemua(item) && !hasDitolak(item),
+                            }"
+                        >
+                            <div class="vld-item-accent"></div>
+                            <div class="vld-item-body">
+                                <div class="vld-item-top">
+                                    <span class="vld-item-title">{{ item.No_Po_Sampel }}</span>
+                                    <span
+                                        class="vld-badge"
+                                        :class="isSelesaiSemua(item) ? 'vld-badge--success' : hasDitolak(item) ? 'vld-badge--danger' : 'vld-badge--orange'"
+                                    >
+                                        {{ isSelesaiSemua(item) ? 'Selesai' : hasDitolak(item) ? 'Ditolak' : 'Proses' }}
+                                    </span>
+                                </div>
+                                <div class="vld-item-meta">
+                                    <span class="vld-chip" :class="getChipClass(item.status_lock_view)">
+                                        <i class="ri-lock-line"></i> Lock
+                                    </span>
+                                    <span class="vld-chip" :class="getChipClass(item.status_analisa_lab)">
+                                        <i class="ri-flask-line"></i> Lab
+                                    </span>
+                                    <span class="vld-chip" :class="getChipClass(item.status_palatabilitas)">
+                                        <i class="ri-heart-pulse-line"></i> Palat
+                                    </span>
+                                </div>
+                            </div>
+                            <i class="ri-arrow-right-s-line vld-item-arrow"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Pagination footer -->
+                <div class="vld-list-footer" v-if="pagination.totalPage > 1">
+                    <span class="vld-page-info">{{ listData.length }} / {{ pagination.totalData }}</span>
+                    <div class="vld-page-btns">
+                        <button class="vld-page-btn" :disabled="pagination.page === 1" @click="changePage(pagination.page - 1)">
+                            <i class="ri-arrow-left-s-line"></i>
+                        </button>
+                        <span class="vld-page-current">{{ pagination.page }} / {{ pagination.totalPage }}</span>
+                        <button class="vld-page-btn" :disabled="pagination.page === pagination.totalPage" @click="changePage(pagination.page + 1)">
+                            <i class="ri-arrow-right-s-line"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────── RIGHT PANEL ────────────── -->
+            <div class="vld-right" :class="{ 'vld-hidden-mobile': !detailVisible && isMobile }">
+                <!-- Mobile back -->
+                <div v-if="isMobile && detailVisible" class="vld-mobile-back">
+                    <button class="btn btn-sm btn-soft-secondary" @click="detailVisible = false">
+                        <i class="ri-arrow-left-line me-1"></i>Daftar
+                    </button>
+                </div>
+
+                <!-- ── EMPTY STATE ─────────────────────────────────────── -->
+                <div v-if="!selectedItem" class="vld-detail-empty">
+                    <div class="vld-detail-empty-inner">
+                        <div class="vld-empty-icon-wrap">
+                            <i class="ri-shield-check-line"></i>
+                        </div>
+                        <h6>Pilih sampel untuk validasi</h6>
+                        <p>Klik salah satu item dari daftar di sebelah kiri untuk melihat detail tahapan validasi dan melakukan konfirmasi.</p>
+                    </div>
+                </div>
+
+                <!-- ── DETAIL CONTENT ──────────────────────────────────── -->
+                <template v-else>
+                    <!-- Sticky sample header -->
+                    <div class="vld-detail-header">
+                        <div class="vld-dh-main">
+                            <div class="vld-dh-icon" :class="isSelesaiSemua(selectedItem) ? 'vld-dh-icon--success' : 'vld-dh-icon--info'">
+                                <i :class="isSelesaiSemua(selectedItem) ? 'ri-checkbox-circle-line' : 'ri-shield-check-line'"></i>
+                            </div>
+                            <div>
+                                <div class="vld-dh-title">{{ selectedItem.No_Po_Sampel }}</div>
+                                <div class="vld-dh-sub">Validasi Pra-Finalisasi</div>
+                                <div class="vld-dh-badges">
+                                    <span class="vld-badge vld-badge--blue">
+                                        <i class="ri-barcode-line me-1"></i>{{ selectedItem.No_Po_Sampel }}
+                                    </span>
+                                    <span class="vld-badge" :class="getBadgeClass(selectedItem.status_lock_view)">
+                                        <i class="ri-lock-line me-1"></i>Lock: {{ selectedItem.status_lock_view }}
+                                    </span>
+                                    <span class="vld-badge" :class="getBadgeClass(selectedItem.status_analisa_lab)">
+                                        <i class="ri-flask-line me-1"></i>Lab: {{ selectedItem.status_analisa_lab }}
+                                    </span>
+                                    <span class="vld-badge" :class="getBadgeClass(selectedItem.status_palatabilitas)">
+                                        <i class="ri-heart-pulse-line me-1"></i>Palat: {{ selectedItem.status_palatabilitas }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step tabs bar -->
+                    <div class="vld-subpo-bar" v-if="listKlasifikasi.length > 0">
+                        <span class="vld-subpo-label"><i class="ri-git-branch-line me-1"></i>Tahapan</span>
+                        <div v-if="loading.detail" class="vld-subpo-loading">
+                            <span class="spinner-border spinner-border-sm text-primary"></span>
+                            <span class="ms-2 text-muted" style="font-size: 12px">Memuat...</span>
+                        </div>
+                        <div v-else class="vld-subpo-tabs">
                             <button
-                                type="button"
-                                class="btn btn-primary"
-                                @click="togglePrintModal"
+                                v-for="(step, si) in listKlasifikasi"
+                                :key="si"
+                                @click="activeStep = si"
+                                class="vld-subpo-tab"
+                                :class="{
+                                    'vld-subpo-tab--active': activeStep === si,
+                                    'vld-subpo-tab--ok': getStepStatus(step) === 'DISETUJUI',
+                                    'vld-subpo-tab--fail': getStepStatus(step) === 'DITOLAK',
+                                    'vld-subpo-tab--locked': getStepStatus(step) === 'TERKUNCI',
+                                }"
                             >
-                                <i class="ri-printer-line me-1"></i> Cetak
-                                Laporan
+                                <i :class="getStepIcon(step)" class="me-1"></i>
+                                {{ step.Nama_Aktivitas }}
                             </button>
                         </div>
                     </div>
-                </div>
 
-                <ul class="nav nav-tabs nav-justified mb-3" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <a
-                            class="nav-link"
-                            :class="{ active: activeTab === 'prafinalisasi' }"
-                            @click.prevent="switchTab('prafinalisasi')"
-                            href="#"
-                            role="tab"
-                            :aria-selected="activeTab === 'prafinalisasi'"
-                        >
-                            <i class="ri-flask-line me-1 align-middle"></i> List
-                            Pra Finalisasi
-                        </a>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <a
-                            class="nav-link"
-                            :class="{ active: activeTab === 'desktop' }"
-                            @click.prevent="switchTab('desktop')"
-                            href="#"
-                            role="tab"
-                            :aria-selected="activeTab === 'desktop'"
-                        >
-                            <i class="ri-computer-line me-1 align-middle"></i>
-                            Informasi Desktop
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- tabs -->
-                <div class="tab-content text-muted">
-                    <div
-                        class="tab-pane"
-                        :class="{ active: activeTab === 'prafinalisasi' }"
-                    >
-                        <div class="col-12 mt-3">
-                            <div
-                                class="modal fade"
-                                id="modalValidasi"
-                                tabindex="-1"
-                                aria-labelledby="modalValidasiLabel"
-                                aria-hidden="true"
-                                data-bs-backdrop="static"
-                            >
-                                <div
-                                    class="modal-dialog modal-xl modal-dialog-centered"
-                                >
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5
-                                                class="modal-title fw-bold"
-                                                id="modalValidasiLabel"
-                                            >
-                                                Validasi Sampel:
-                                                <span class="text-primary">{{
-                                                    selectedSampel
-                                                }}</span>
-                                            </h5>
-                                            <button
-                                                type="button"
-                                                class="btn-close"
-                                                data-bs-dismiss="modal"
-                                                aria-label="Close"
-                                                @click="resetModalValidasi"
-                                            ></button>
-                                        </div>
-                                        <div class="modal-body pb-0">
-                                            <div
-                                                v-if="loading.loadingModal"
-                                                class="d-flex justify-content-center py-5"
-                                            >
-                                                <div
-                                                    class="spinner-border text-primary"
-                                                    role="status"
-                                                >
-                                                    <span
-                                                        class="visually-hidden"
-                                                        >Loading...</span
-                                                    >
-                                                </div>
-                                            </div>
-                                            <div
-                                                v-else-if="
-                                                    listKlasifikasi.length > 0
-                                                "
-                                            >
-                                                <div
-                                                    style="
-                                                        overflow-x: auto;
-                                                        overflow-y: hidden;
-                                                    "
-                                                    class="pb-2"
-                                                >
-                                                    <el-steps
-                                                        :active="activeStep"
-                                                        finish-status="success"
-                                                        align-center
-                                                        class="mb-5 mt-3"
-                                                        style="min-width: 600px"
-                                                    >
-                                                        <el-step
-                                                            v-for="(
-                                                                step, index
-                                                            ) in listKlasifikasi"
-                                                            :key="index"
-                                                            :title="
-                                                                step.Nama_Aktivitas
-                                                            "
-                                                        ></el-step>
-                                                    </el-steps>
-                                                </div>
-
-                                                <div
-                                                    v-if="currentStepData"
-                                                    class="card border shadow-none mb-4"
-                                                >
-                                                    <div
-                                                        class="card-header bg-light"
-                                                    >
-                                                        <h6
-                                                            class="mb-0 fw-bold"
-                                                        >
-                                                            Daftar Item:
-                                                            {{
-                                                                currentStepData.Nama_Aktivitas
-                                                            }}
-                                                        </h6>
-                                                    </div>
-
-                                                    <div class="card-body p-0">
-                                                        <template
-                                                            v-if="
-                                                                (currentStepData.data_analisa &&
-                                                                    currentStepData
-                                                                        .data_analisa
-                                                                        .length >
-                                                                        0) ||
-                                                                (currentStepData.pending_analisa &&
-                                                                    currentStepData
-                                                                        .pending_analisa
-                                                                        .length >
-                                                                        0)
-                                                            "
-                                                        >
-                                                            <div
-                                                                class="p-3 border-bottom bg-light"
-                                                            >
-                                                                <div
-                                                                    v-if="
-                                                                        currentStepData.status_step ===
-                                                                            'DISETUJUI' ||
-                                                                        currentStepData.status_step ===
-                                                                            'DITOLAK'
-                                                                    "
-                                                                    class="alert shadow-sm border-0 border-start border-4 d-flex align-items-center mb-0"
-                                                                    :class="
-                                                                        currentStepData.status_step ===
-                                                                        'DISETUJUI'
-                                                                            ? 'alert-success border-success'
-                                                                            : 'alert-danger border-danger'
-                                                                    "
-                                                                    role="alert"
-                                                                >
-                                                                    <i
-                                                                        :class="
-                                                                            currentStepData.status_step ===
-                                                                            'DISETUJUI'
-                                                                                ? 'ri-checkbox-circle-fill text-success'
-                                                                                : 'ri-close-circle-fill text-danger'
-                                                                        "
-                                                                        class="fs-24 me-3"
-                                                                    ></i>
-                                                                    <div>
-                                                                        <h6
-                                                                            class="mb-0 fw-bold"
-                                                                            :class="
-                                                                                currentStepData.status_step ===
-                                                                                'DISETUJUI'
-                                                                                    ? 'text-success'
-                                                                                    : 'text-danger'
-                                                                            "
-                                                                        >
-                                                                            Tahapan
-                                                                            Selesai
-                                                                            ({{
-                                                                                currentStepData.status_step ===
-                                                                                "DISETUJUI"
-                                                                                    ? "Disetujui"
-                                                                                    : "Ditolak"
-                                                                            }})
-                                                                        </h6>
-                                                                        <p
-                                                                            class="mb-0 small text-dark"
-                                                                        >
-                                                                            Tahapan
-                                                                            ini
-                                                                            telah
-                                                                            divalidasi
-                                                                            dan
-                                                                            dikunci
-                                                                            dari
-                                                                            sistem.
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div
-                                                                    v-else-if="
-                                                                        currentStepData.pending_analisa &&
-                                                                        currentStepData
-                                                                            .pending_analisa
-                                                                            .length >
-                                                                            0
-                                                                    "
-                                                                    class="alert alert-warning shadow-sm border-0 border-start border-warning border-4 d-flex align-items-start mb-0"
-                                                                    role="alert"
-                                                                >
-                                                                    <i
-                                                                        class="ri-error-warning-fill fs-24 text-warning me-3 mt-1"
-                                                                    ></i>
-                                                                    <div>
-                                                                        <h6
-                                                                            class="mb-1 fw-bold text-warning-emphasis"
-                                                                        >
-                                                                            Perhatian:
-                                                                            Ada
-                                                                            Analisa
-                                                                            Belum
-                                                                            Selesai
-                                                                        </h6>
-                                                                        <p
-                                                                            class="mb-2 small text-dark"
-                                                                        >
-                                                                            Daftar
-                                                                            analisa
-                                                                            di
-                                                                            bawah
-                                                                            ini
-                                                                            belum
-                                                                            diselesaikan
-                                                                            atau
-                                                                            dikirim
-                                                                            oleh
-                                                                            Lab:
-                                                                        </p>
-                                                                        <ul
-                                                                            class="mb-2 ps-3 small fw-medium text-dark"
-                                                                        >
-                                                                            <li
-                                                                                v-for="(
-                                                                                    nama,
-                                                                                    idx
-                                                                                ) in currentStepData.pending_analisa"
-                                                                                :key="
-                                                                                    idx
-                                                                                "
-                                                                            >
-                                                                                {{
-                                                                                    nama
-                                                                                }}
-                                                                            </li>
-                                                                        </ul>
-                                                                        <div
-                                                                            class="form-check mt-2"
-                                                                        >
-                                                                            <input
-                                                                                class="form-check-input"
-                                                                                type="checkbox"
-                                                                                id="ackIncomplete"
-                                                                                v-model="
-                                                                                    acknowledgementChecked
-                                                                                "
-                                                                            />
-                                                                            <label
-                                                                                class="form-check-label small fw-bold text-dark"
-                                                                                for="ackIncomplete"
-                                                                            >
-                                                                                Saya
-                                                                                menyetujui
-                                                                                /
-                                                                                menolak
-                                                                                tahapan
-                                                                                ini
-                                                                                meskipun
-                                                                                terdapat
-                                                                                daftar
-                                                                                analisa
-                                                                                yang
-                                                                                belum
-                                                                                diselesaikan.
-                                                                            </label>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div
-                                                                    v-else
-                                                                    class="alert alert-info shadow-sm border-0 border-start border-info border-4 d-flex align-items-center mb-0"
-                                                                    role="alert"
-                                                                >
-                                                                    <i
-                                                                        class="ri-information-fill fs-24 text-info me-3"
-                                                                    ></i>
-                                                                    <div>
-                                                                        <h6
-                                                                            class="mb-0 fw-bold text-info"
-                                                                        >
-                                                                            Siap
-                                                                            Divalidasi!
-                                                                        </h6>
-                                                                        <p
-                                                                            class="mb-0 small text-dark"
-                                                                        >
-                                                                            Semua
-                                                                            analisa
-                                                                            pada
-                                                                            tahap
-                                                                            ini
-                                                                            sudah
-                                                                            selesai
-                                                                            dan
-                                                                            siap
-                                                                            untuk
-                                                                            Anda
-                                                                            setujui
-                                                                            atau
-                                                                            tolak.
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-
-                                                            <div
-                                                                v-if="
-                                                                    currentStepData.data_analisa &&
-                                                                    currentStepData
-                                                                        .data_analisa
-                                                                        .length >
-                                                                        0
-                                                                "
-                                                                class="p-3"
-                                                            >
-                                                                <div
-                                                                    v-if="
-                                                                        currentStepData.Kode_Aktivitas_Lab ===
-                                                                        'ANL'
-                                                                    "
-                                                                    class="accordion custom-accordionwithicon"
-                                                                    id="accordionANL"
-                                                                >
-                                                                    <div
-                                                                        class="accordion-item border mb-3 rounded overflow-hidden shadow-sm"
-                                                                        v-for="(
-                                                                            group,
-                                                                            gIdx
-                                                                        ) in groupedANLData"
-                                                                        :key="
-                                                                            gIdx
-                                                                        "
-                                                                    >
-                                                                        <h2
-                                                                            class="accordion-header"
-                                                                            :id="
-                                                                                'headingANL' +
-                                                                                gIdx
-                                                                            "
-                                                                        >
-                                                                            <button
-                                                                                class="accordion-button collapsed p-3 bg-white shadow-none"
-                                                                                type="button"
-                                                                                data-bs-toggle="collapse"
-                                                                                :data-bs-target="
-                                                                                    '#collapseANL' +
-                                                                                    gIdx
-                                                                                "
-                                                                                aria-expanded="false"
-                                                                                :aria-controls="
-                                                                                    'collapseANL' +
-                                                                                    gIdx
-                                                                                "
-                                                                            >
-                                                                                <div
-                                                                                    class="d-flex align-items-center w-100 pe-3"
-                                                                                >
-                                                                                    <div
-                                                                                        class="me-3"
-                                                                                    >
-                                                                                        <div
-                                                                                            class="d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded"
-                                                                                            style="
-                                                                                                width: 48px;
-                                                                                                height: 48px;
-                                                                                            "
-                                                                                        >
-                                                                                            <i
-                                                                                                class="ri-flask-line fs-24"
-                                                                                            ></i>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div
-                                                                                        class="flex-grow-1"
-                                                                                    >
-                                                                                        <h6
-                                                                                            class="mb-1 fw-bolder text-dark"
-                                                                                            style="
-                                                                                                font-size: 15px;
-                                                                                            "
-                                                                                        >
-                                                                                            {{
-                                                                                                group.Jenis_Analisa
-                                                                                            }}
-                                                                                        </h6>
-                                                                                        <div
-                                                                                            class="d-flex align-items-center gap-2 mt-2"
-                                                                                        >
-                                                                                            <span
-                                                                                                class="badge bg-light text-dark border"
-                                                                                            >
-                                                                                                <i
-                                                                                                    class="ri-list-check me-1 text-muted"
-                                                                                                ></i
-                                                                                                >{{
-                                                                                                    group
-                                                                                                        .items
-                                                                                                        .length
-                                                                                                }}
-                                                                                                Sub
-                                                                                                Sampel
-                                                                                            </span>
-
-                                                                                            <span
-                                                                                                class="badge bg-light text-dark border"
-                                                                                                v-if="
-                                                                                                    group.Flag_Perhitungan ===
-                                                                                                    'Y'
-                                                                                                "
-                                                                                            >
-                                                                                                <i
-                                                                                                    class="ri-calculator-line me-1 text-muted"
-                                                                                                ></i
-                                                                                                >Perhitungan
-                                                                                            </span>
-                                                                                            <span
-                                                                                                class="badge bg-light text-dark border"
-                                                                                                v-else
-                                                                                            >
-                                                                                                <i
-                                                                                                    class="ri-eye-line me-1 text-muted"
-                                                                                                ></i
-                                                                                                >Non-Perhitungan
-                                                                                            </span>
-
-                                                                                            <span
-                                                                                                :class="[
-                                                                                                    'badge border',
-                                                                                                    group.is_layak
-                                                                                                        ? 'bg-success-subtle text-success border-success'
-                                                                                                        : 'bg-danger-subtle text-danger border-danger',
-                                                                                                ]"
-                                                                                            >
-                                                                                                <i
-                                                                                                    :class="[
-                                                                                                        group.is_layak
-                                                                                                            ? 'ri-checkbox-circle-line'
-                                                                                                            : 'ri-close-circle-line',
-                                                                                                        'me-1',
-                                                                                                    ]"
-                                                                                                ></i>
-                                                                                                {{
-                                                                                                    group.is_layak
-                                                                                                        ? "Layak"
-                                                                                                        : "Tidak Layak"
-                                                                                                }}
-                                                                                            </span>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div
-                                                                                        class="text-end"
-                                                                                        v-if="
-                                                                                            group.Flag_Perhitungan ===
-                                                                                            'Y'
-                                                                                        "
-                                                                                    >
-                                                                                        <span
-                                                                                            class="text-muted d-block mb-1"
-                                                                                            style="
-                                                                                                font-size: 0.7rem;
-                                                                                                font-weight: 700;
-                                                                                                text-transform: uppercase;
-                                                                                                letter-spacing: 0.5px;
-                                                                                            "
-                                                                                            >Rata-Rata
-                                                                                            Hasil</span
-                                                                                        >
-                                                                                        <h4
-                                                                                            class="mb-0 fw-bolder text-primary"
-                                                                                        >
-                                                                                            {{
-                                                                                                group.RataRataHasil
-                                                                                            }}
-                                                                                        </h4>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </button>
-                                                                        </h2>
-                                                                        <div
-                                                                            :id="
-                                                                                'collapseANL' +
-                                                                                gIdx
-                                                                            "
-                                                                            class="accordion-collapse collapse"
-                                                                            :aria-labelledby="
-                                                                                'headingANL' +
-                                                                                gIdx
-                                                                            "
-                                                                            data-bs-parent="#accordionANL"
-                                                                        >
-                                                                            <div
-                                                                                class="accordion-body p-0 border-top"
-                                                                            >
-                                                                                <div
-                                                                                    class="table-responsive"
-                                                                                >
-                                                                                    <table
-                                                                                        class="table table-bordered align-middle mb-0 text-center text-nowrap"
-                                                                                    >
-                                                                                        <thead
-                                                                                            class="table-light"
-                                                                                        >
-                                                                                            <tr>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    No
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    No
-                                                                                                    Sampel
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    No
-                                                                                                    PO
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    No
-                                                                                                    Split
-                                                                                                    PO
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    Batch
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    Tanggal
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                    v-for="(
-                                                                                                        header,
-                                                                                                        hIdx
-                                                                                                    ) in group.paramHeaders"
-                                                                                                    :key="
-                                                                                                        'h-' +
-                                                                                                        hIdx
-                                                                                                    "
-                                                                                                >
-                                                                                                    {{
-                                                                                                        header
-                                                                                                    }}
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    Hasil
-                                                                                                    /
-                                                                                                    Keterangan
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    Status
-                                                                                                </th>
-                                                                                                <th
-                                                                                                    class="fw-semibold"
-                                                                                                >
-                                                                                                    Foto
-                                                                                                </th>
-                                                                                            </tr>
-                                                                                        </thead>
-                                                                                        <tbody>
-                                                                                            <tr
-                                                                                                v-for="(
-                                                                                                    item,
-                                                                                                    idx
-                                                                                                ) in group.items"
-                                                                                                :key="
-                                                                                                    idx
-                                                                                                "
-                                                                                                :class="{
-                                                                                                    'table-success':
-                                                                                                        item.Flag_Layak ===
-                                                                                                        'Y',
-                                                                                                    'table-danger':
-                                                                                                        item.Flag_Layak ===
-                                                                                                            'T' ||
-                                                                                                        item.Flag_Layak ===
-                                                                                                            'N',
-                                                                                                }"
-                                                                                            >
-                                                                                                <td>
-                                                                                                    {{
-                                                                                                        idx +
-                                                                                                        1
-                                                                                                    }}
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="fw-medium text-dark"
-                                                                                                >
-                                                                                                    {{
-                                                                                                        item.No_Fak_Sub_Po &&
-                                                                                                        item.No_Fak_Sub_Po !==
-                                                                                                            item.No_Po_Sampel
-                                                                                                            ? item.No_Fak_Sub_Po
-                                                                                                            : item.No_Po_Sampel
-                                                                                                    }}
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    {{
-                                                                                                        item.No_Po
-                                                                                                    }}
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    {{
-                                                                                                        item.No_Split_Po
-                                                                                                    }}
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    Batch
-                                                                                                    {{
-                                                                                                        item.No_Batch
-                                                                                                    }}
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    {{
-                                                                                                        formatTanggal(
-                                                                                                            item.Tanggal_Registrasi
-                                                                                                        )
-                                                                                                    }}
-                                                                                                </td>
-
-                                                                                                <td
-                                                                                                    v-for="(
-                                                                                                        param,
-                                                                                                        pIdx
-                                                                                                    ) in item.parameters"
-                                                                                                    :key="
-                                                                                                        'p-' +
-                                                                                                        pIdx
-                                                                                                    "
-                                                                                                >
-                                                                                                    {{
-                                                                                                        param.Hasil_Analisa
-                                                                                                    }}
-                                                                                                </td>
-
-                                                                                                <td
-                                                                                                    class="fw-bolder fs-14"
-                                                                                                >
-                                                                                                    <span
-                                                                                                        v-if="
-                                                                                                            item.Flag_Perhitungan !==
-                                                                                                                'Y' &&
-                                                                                                            item.Keterangan_Kriteria
-                                                                                                        "
-                                                                                                        class="text-primary"
-                                                                                                    >
-                                                                                                        {{
-                                                                                                            item.Keterangan_Kriteria
-                                                                                                        }}
-                                                                                                    </span>
-                                                                                                    <span
-                                                                                                        v-else
-                                                                                                    >
-                                                                                                        {{
-                                                                                                            item.Hasil ??
-                                                                                                            "-"
-                                                                                                        }}
-                                                                                                    </span>
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    <span
-                                                                                                        class="badge bg-success"
-                                                                                                        v-if="
-                                                                                                            item.Flag_Approval ===
-                                                                                                            'Y'
-                                                                                                        "
-                                                                                                        >Disetujui</span
-                                                                                                    >
-                                                                                                    <span
-                                                                                                        class="badge bg-danger"
-                                                                                                        v-else-if="
-                                                                                                            item.Flag_Approval ===
-                                                                                                            'T'
-                                                                                                        "
-                                                                                                        >Ditolak</span
-                                                                                                    >
-                                                                                                    <span
-                                                                                                        class="badge bg-warning text-dark"
-                                                                                                        v-else
-                                                                                                        >Menunggu</span
-                                                                                                    >
-                                                                                                </td>
-                                                                                                <td>
-                                                                                                    <template
-                                                                                                        v-if="
-                                                                                                            item.Flag_Foto ===
-                                                                                                            'Y'
-                                                                                                        "
-                                                                                                    >
-                                                                                                        <button
-                                                                                                            v-if="
-                                                                                                                item.File_Url
-                                                                                                            "
-                                                                                                            @click="
-                                                                                                                lihatFoto(
-                                                                                                                    item.File_Url
-                                                                                                                )
-                                                                                                            "
-                                                                                                            class="btn btn-sm btn-outline-info rounded-pill px-3"
-                                                                                                        >
-                                                                                                            <i
-                                                                                                                class="ri-image-line align-middle me-1"
-                                                                                                            ></i>
-                                                                                                            Lihat
-                                                                                                        </button>
-                                                                                                        <span
-                                                                                                            v-else
-                                                                                                            class="text-danger small fst-italic"
-                                                                                                            >Belum</span
-                                                                                                        >
-                                                                                                    </template>
-                                                                                                    <span
-                                                                                                        v-else
-                                                                                                        class="text-muted small"
-                                                                                                        >-</span
-                                                                                                    >
-                                                                                                </td>
-                                                                                            </tr>
-                                                                                            <tr
-                                                                                                v-if="
-                                                                                                    group.Flag_Perhitungan ===
-                                                                                                    'Y'
-                                                                                                "
-                                                                                                class="table-warning"
-                                                                                            >
-                                                                                                <td
-                                                                                                    :colspan="
-                                                                                                        6 +
-                                                                                                        group
-                                                                                                            .paramHeaders
-                                                                                                            .length
-                                                                                                    "
-                                                                                                    class="text-center fw-bolder text-dark fs-14"
-                                                                                                >
-                                                                                                    Rata-Rata
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    class="fw-bolder text-dark fs-14"
-                                                                                                >
-                                                                                                    {{
-                                                                                                        group.RataRataHasil
-                                                                                                    }}
-                                                                                                </td>
-                                                                                                <td
-                                                                                                    colspan="2"
-                                                                                                ></td>
-                                                                                            </tr>
-                                                                                        </tbody>
-                                                                                    </table>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div
-                                                                    v-else
-                                                                    class="table-responsive border rounded"
-                                                                    style="
-                                                                        max-height: 400px;
-                                                                        overflow-y: auto;
-                                                                    "
-                                                                >
-                                                                    <table
-                                                                        class="table table-bordered align-middle mb-0 text-center text-nowrap"
-                                                                    >
-                                                                        <thead
-                                                                            class="table-light"
-                                                                            style="
-                                                                                position: sticky;
-                                                                                top: 0;
-                                                                                z-index: 1;
-                                                                            "
-                                                                        >
-                                                                            <tr>
-                                                                                <th
-                                                                                    class="fw-semibold"
-                                                                                >
-                                                                                    No
-                                                                                </th>
-                                                                                <th
-                                                                                    class="fw-semibold"
-                                                                                >
-                                                                                    No
-                                                                                    Sub
-                                                                                    Sampel
-                                                                                </th>
-                                                                                <th
-                                                                                    class="fw-semibold"
-                                                                                >
-                                                                                    Jenis
-                                                                                    Analisa
-                                                                                </th>
-                                                                                <th
-                                                                                    class="fw-semibold"
-                                                                                >
-                                                                                    Hasil
-                                                                                    Akhir
-                                                                                </th>
-                                                                                <th
-                                                                                    class="fw-semibold"
-                                                                                >
-                                                                                    Status
-                                                                                </th>
-                                                                                <th
-                                                                                    class="fw-semibold"
-                                                                                >
-                                                                                    Foto
-                                                                                </th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody>
-                                                                            <tr
-                                                                                v-for="(
-                                                                                    item,
-                                                                                    idx
-                                                                                ) in currentStepData.data_analisa"
-                                                                                :key="
-                                                                                    idx
-                                                                                "
-                                                                                :class="{
-                                                                                    'table-success':
-                                                                                        item.Flag_Layak ===
-                                                                                        'Y',
-                                                                                    'table-danger':
-                                                                                        item.Flag_Layak ===
-                                                                                            'T' ||
-                                                                                        item.Flag_Layak ===
-                                                                                            'N',
-                                                                                }"
-                                                                            >
-                                                                                <td>
-                                                                                    {{
-                                                                                        idx +
-                                                                                        1
-                                                                                    }}
-                                                                                </td>
-                                                                                <td
-                                                                                    class="fw-medium text-dark"
-                                                                                >
-                                                                                    {{
-                                                                                        item.No_Fak_Sub_Po &&
-                                                                                        item.No_Fak_Sub_Po !==
-                                                                                            item.No_Po_Sampel
-                                                                                            ? item.No_Fak_Sub_Po
-                                                                                            : "-"
-                                                                                    }}
-                                                                                </td>
-                                                                                <td
-                                                                                    class="fw-medium"
-                                                                                >
-                                                                                    {{
-                                                                                        item.Jenis_Analisa
-                                                                                    }}
-                                                                                </td>
-                                                                                <td
-                                                                                    class="fw-bolder fs-14"
-                                                                                >
-                                                                                    <span
-                                                                                        v-if="
-                                                                                            item.Flag_Perhitungan !==
-                                                                                                'Y' &&
-                                                                                            item.Keterangan_Kriteria
-                                                                                        "
-                                                                                        class="text-primary"
-                                                                                    >
-                                                                                        {{
-                                                                                            item.Keterangan_Kriteria
-                                                                                        }}
-                                                                                    </span>
-                                                                                    <span
-                                                                                        v-else
-                                                                                    >
-                                                                                        {{
-                                                                                            item.Hasil ??
-                                                                                            "-"
-                                                                                        }}
-                                                                                    </span>
-                                                                                </td>
-                                                                                <td>
-                                                                                    <span
-                                                                                        class="badge bg-success"
-                                                                                        v-if="
-                                                                                            item.Flag_Approval ===
-                                                                                            'Y'
-                                                                                        "
-                                                                                        >Disetujui</span
-                                                                                    >
-                                                                                    <span
-                                                                                        class="badge bg-danger"
-                                                                                        v-else-if="
-                                                                                            item.Flag_Approval ===
-                                                                                            'T'
-                                                                                        "
-                                                                                        >Ditolak</span
-                                                                                    >
-                                                                                    <span
-                                                                                        class="badge bg-warning text-dark"
-                                                                                        v-else
-                                                                                        >Menunggu</span
-                                                                                    >
-                                                                                </td>
-                                                                                <td>
-                                                                                    <template
-                                                                                        v-if="
-                                                                                            item.Flag_Foto ===
-                                                                                            'Y'
-                                                                                        "
-                                                                                    >
-                                                                                        <button
-                                                                                            v-if="
-                                                                                                item.foto_list &&
-                                                                                                item
-                                                                                                    .foto_list
-                                                                                                    .length >
-                                                                                                    0
-                                                                                            "
-                                                                                            @click="
-                                                                                                bukaModalFoto(
-                                                                                                    item.foto_list
-                                                                                                )
-                                                                                            "
-                                                                                            class="btn btn-sm btn-outline-info rounded-pill px-3"
-                                                                                        >
-                                                                                            <i
-                                                                                                class="ri-image-line align-middle me-1"
-                                                                                            ></i
-                                                                                            >Lihat
-                                                                                            Foto
-                                                                                            ({{
-                                                                                                item
-                                                                                                    .foto_list
-                                                                                                    .length
-                                                                                            }})
-                                                                                        </button>
-                                                                                        <span
-                                                                                            v-else
-                                                                                            class="text-danger small fst-italic"
-                                                                                            >Belum
-                                                                                            Diupload</span
-                                                                                        >
-                                                                                    </template>
-                                                                                    <span
-                                                                                        v-else
-                                                                                        class="text-muted small"
-                                                                                        >-</span
-                                                                                    >
-                                                                                </td>
-                                                                            </tr>
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
-                                                            </div>
-                                                        </template>
-                                                        <template v-else>
-                                                            <div
-                                                                class="text-center p-5"
-                                                            >
-                                                                <i
-                                                                    class="ri-inbox-line text-muted"
-                                                                    style="
-                                                                        font-size: 3rem;
-                                                                    "
-                                                                ></i>
-                                                                <p
-                                                                    class="mt-2 text-muted fw-medium"
-                                                                >
-                                                                    Data belum
-                                                                    ada untuk
-                                                                    klasifikasi
-                                                                    ini.
-                                                                </p>
-                                                            </div>
-                                                        </template>
-                                                    </div>
-                                                </div>
-
-                                                <div
-                                                    v-else
-                                                    class="card border shadow-none mb-4"
-                                                >
-                                                    <div
-                                                        class="card-body p-5 text-center"
-                                                    >
-                                                        <i
-                                                            class="ri-inbox-line text-muted"
-                                                            style="
-                                                                font-size: 3rem;
-                                                            "
-                                                        ></i>
-                                                        <p
-                                                            class="mt-2 text-muted fw-medium"
-                                                        >
-                                                            Tahapan data belum
-                                                            tersedia di sistem.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div
-                                            class="modal-footer d-flex justify-content-between bg-light"
-                                        >
-                                            <div>
-                                                <button
-                                                    v-if="activeStep > 0"
-                                                    type="button"
-                                                    class="btn btn-secondary"
-                                                    @click="activeStep--"
-                                                >
-                                                    <i
-                                                        class="ri-arrow-left-line align-middle me-1"
-                                                    ></i>
-                                                    Kembali
-                                                </button>
-                                            </div>
-
-                                            <div
-                                                class="d-flex align-items-center"
-                                            >
-                                                <template
-                                                    v-if="
-                                                        currentStepData &&
-                                                        (currentStepData.status_step ===
-                                                            'DITOLAK' ||
-                                                            currentStepData.status_step ===
-                                                                'DISETUJUI')
-                                                    "
-                                                >
-                                                    <div
-                                                        class="d-flex align-items-center me-3"
-                                                        :class="
-                                                            currentStepData.status_step ===
-                                                            'DISETUJUI'
-                                                                ? 'text-success'
-                                                                : 'text-danger'
-                                                        "
-                                                    >
-                                                        <i
-                                                            :class="
-                                                                currentStepData.status_step ===
-                                                                'DISETUJUI'
-                                                                    ? 'ri-checkbox-circle-fill'
-                                                                    : 'ri-close-circle-fill'
-                                                            "
-                                                            class="me-1 fs-16"
-                                                        ></i>
-                                                        <span class="fw-bold">
-                                                            Tahapan ini telah
-                                                            {{
-                                                                currentStepData.status_step ===
-                                                                "DISETUJUI"
-                                                                    ? "Disetujui"
-                                                                    : "Ditolak"
-                                                            }}
-                                                        </span>
-                                                    </div>
-                                                </template>
-
-                                                <template
-                                                    v-else-if="
-                                                        currentStepData &&
-                                                        currentStepData.status_step ===
-                                                            'TERKUNCI'
-                                                    "
-                                                >
-                                                    <div
-                                                        class="d-flex align-items-center text-warning text-dark px-3 py-1 bg-warning-subtle rounded me-3"
-                                                    >
-                                                        <i
-                                                            class="ri-lock-fill me-1 fs-16"
-                                                        ></i>
-                                                        <span class="fw-medium"
-                                                            >Tahap ini belum
-                                                            dapat diakses.</span
-                                                        >
-                                                    </div>
-                                                </template>
-
-                                                <template
-                                                    v-if="
-                                                        currentStepData &&
-                                                        currentStepData.status_step ===
-                                                            'MENUNGGU VALIDASI'
-                                                    "
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        class="btn btn-danger me-2"
-                                                        :disabled="
-                                                            loading.loadingAction ||
-                                                            (currentStepData.pending_analisa &&
-                                                                currentStepData
-                                                                    .pending_analisa
-                                                                    .length >
-                                                                    0 &&
-                                                                !acknowledgementChecked)
-                                                        "
-                                                        @click="openModalTolak"
-                                                    >
-                                                        <i
-                                                            class="ri-close-circle-line align-middle me-1"
-                                                        ></i>
-                                                        Tolak
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        class="btn btn-success"
-                                                        :disabled="
-                                                            loading.loadingAction ||
-                                                            (currentStepData.pending_analisa &&
-                                                                currentStepData
-                                                                    .pending_analisa
-                                                                    .length >
-                                                                    0 &&
-                                                                !acknowledgementChecked)
-                                                        "
-                                                        @click="setujuiValidasi"
-                                                    >
-                                                        <i
-                                                            class="ri-check-double-line align-middle me-1"
-                                                        ></i>
-                                                        Setujui
-                                                    </button>
-                                                </template>
-
-                                                <button
-                                                    v-if="hasNextStepAvailable"
-                                                    type="button"
-                                                    class="btn btn-primary ms-3"
-                                                    @click="activeStep++"
-                                                >
-                                                    Lanjut
-                                                    <i
-                                                        class="ri-arrow-right-line align-middle ms-1"
-                                                    ></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div
-                                class="modal fade"
-                                id="modalAlasanTolak"
-                                tabindex="-1"
-                                aria-hidden="true"
-                                data-bs-backdrop="static"
-                            >
-                                <div class="modal-dialog modal-dialog-centered">
-                                    <div class="modal-content shadow-lg">
-                                        <div
-                                            class="modal-header bg-danger text-white"
-                                        >
-                                            <h5
-                                                class="modal-title text-capitalize text-white"
-                                            >
-                                                <i
-                                                    class="ri-error-warning-line me-1"
-                                                ></i>
-                                                Alasan Penolakan
-                                            </h5>
-                                            <button
-                                                type="button"
-                                                class="btn-close btn-close-white"
-                                                data-bs-dismiss="modal"
-                                                aria-label="Close"
-                                            ></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <div class="mb-3">
-                                                <label
-                                                    class="form-label fw-bold"
-                                                    >Mengapa sampel ini
-                                                    ditolak?</label
-                                                >
-                                                <textarea
-                                                    class="form-control"
-                                                    rows="4"
-                                                    v-model="formTolak.alasan"
-                                                    placeholder="Masukkan alasan minimal 8 karakter..."
-                                                ></textarea>
-                                                <div
-                                                    class="form-text text-danger"
-                                                    v-if="
-                                                        formTolak.alasan
-                                                            .length > 0 &&
-                                                        formTolak.alasan
-                                                            .length < 8
-                                                    "
-                                                >
-                                                    Minimal 8 karakter
-                                                    (Sekarang:
-                                                    {{
-                                                        formTolak.alasan.length
-                                                    }})
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button
-                                                type="button"
-                                                class="btn btn-light"
-                                                data-bs-dismiss="modal"
-                                            >
-                                                Batal
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="btn btn-danger"
-                                                :disabled="
-                                                    formTolak.alasan.length <
-                                                        8 ||
-                                                    loading.loadingAction
-                                                "
-                                                @click="submitTolak"
-                                            >
-                                                {{
-                                                    loading.loadingAction
-                                                        ? "Mengirim..."
-                                                        : "Kirim Penolakan"
-                                                }}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div
-                                class="modal fade"
-                                id="modalAlasanBatal"
-                                tabindex="-1"
-                                aria-hidden="true"
-                                data-bs-backdrop="static"
-                            >
-                                <div class="modal-dialog modal-dialog-centered">
-                                    <div class="modal-content shadow-lg">
-                                        <div
-                                            class="modal-header bg-danger text-white"
-                                        >
-                                            <h5
-                                                class="modal-title text-capitalize text-white"
-                                            >
-                                                <i
-                                                    class="ri-error-warning-line me-1"
-                                                ></i>
-                                                Alasan Pembatalan Sampel
-                                            </h5>
-                                            <button
-                                                type="button"
-                                                class="btn-close btn-close-white"
-                                                data-bs-dismiss="modal"
-                                                aria-label="Close"
-                                            ></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <div class="mb-3">
-                                                <label
-                                                    class="form-label fw-bold"
-                                                    >Mengapa sampel ini
-                                                    dibatalkan secara
-                                                    keseluruhan?</label
-                                                >
-                                                <textarea
-                                                    class="form-control"
-                                                    rows="4"
-                                                    v-model="formBatal.alasan"
-                                                    placeholder="Masukkan alasan minimal 8 karakter..."
-                                                ></textarea>
-                                                <div
-                                                    class="form-text text-danger"
-                                                    v-if="
-                                                        formBatal.alasan
-                                                            .length > 0 &&
-                                                        formBatal.alasan
-                                                            .length < 8
-                                                    "
-                                                >
-                                                    Minimal 8 karakter
-                                                    (Sekarang:
-                                                    {{
-                                                        formBatal.alasan.length
-                                                    }})
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button
-                                                type="button"
-                                                class="btn btn-light"
-                                                data-bs-dismiss="modal"
-                                            >
-                                                Kembali
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="btn btn-danger"
-                                                :disabled="
-                                                    formBatal.alasan.length <
-                                                        8 ||
-                                                    loading.loadingAction
-                                                "
-                                                @click="submitBatal"
-                                            >
-                                                {{
-                                                    loading.loadingAction
-                                                        ? "Memproses..."
-                                                        : "Batalkan Sampel"
-                                                }}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div v-if="loading.loadingDataList">
-                                <div class="table-wrapper">
-                                    <table
-                                        class="skeleton-table"
-                                        aria-busy="true"
-                                    >
-                                        <thead>
-                                            <tr>
-                                                <th>No</th>
-                                                <th>No Sampel</th>
-                                                <th>Lock View</th>
-                                                <th>Analisa Lab</th>
-                                                <th>Palatabilitas</th>
-                                                <th>Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr
-                                                v-for="n in 5"
-                                                :key="n"
-                                                class="skeleton-row"
-                                            >
-                                                <td v-for="col in 6" :key="col">
-                                                    <div
-                                                        class="skeleton-cell"
-                                                    ></div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div v-else>
-                                <div
-                                    v-if="detailDataList.length"
-                                    class="table-responsive shadow-sm rounded"
-                                >
-                                    <table
-                                        class="table table-bordered text-center align-middle"
-                                    >
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th class="text-nowrap">No</th>
-                                                <th class="text-nowrap">
-                                                    No Sampel
-                                                </th>
-                                                <th class="text-nowrap">
-                                                    Lock View
-                                                </th>
-                                                <th class="text-nowrap">
-                                                    Analisa Lab
-                                                </th>
-                                                <th class="text-nowrap">
-                                                    Palatabilitas
-                                                </th>
-                                                <th class="text-nowrap">
-                                                    Aksi
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr
-                                                v-for="(
-                                                    item, index
-                                                ) in detailDataList"
-                                                :key="index"
-                                            >
-                                                <td class="fw-medium">
-                                                    {{
-                                                        (pagination.page - 1) *
-                                                            pagination.limit +
-                                                        index +
-                                                        1
-                                                    }}
-                                                </td>
-                                                <td
-                                                    class="fw-bold text-primary text-nowrap"
-                                                >
-                                                    <i
-                                                        class="ri-qr-code-line me-1 align-middle text-muted"
-                                                    ></i
-                                                    >{{ item.No_Po_Sampel }}
-                                                </td>
-                                                <td class="text-nowrap">
-                                                    <span
-                                                        :class="
-                                                            getBadgeClass(
-                                                                item.status_lock_view
-                                                            )
-                                                        "
-                                                    >
-                                                        <i
-                                                            :class="
-                                                                getBadgeIcon(
-                                                                    item.status_lock_view
-                                                                )
-                                                            "
-                                                        ></i
-                                                        >{{
-                                                            item.status_lock_view
-                                                        }}
-                                                    </span>
-                                                </td>
-                                                <td class="text-nowrap">
-                                                    <span
-                                                        :class="
-                                                            getBadgeClass(
-                                                                item.status_analisa_lab
-                                                            )
-                                                        "
-                                                    >
-                                                        <i
-                                                            :class="
-                                                                getBadgeIcon(
-                                                                    item.status_analisa_lab
-                                                                )
-                                                            "
-                                                        ></i
-                                                        >{{
-                                                            item.status_analisa_lab
-                                                        }}
-                                                    </span>
-                                                </td>
-                                                <td class="text-nowrap">
-                                                    <span
-                                                        :class="
-                                                            getBadgeClass(
-                                                                item.status_palatabilitas
-                                                            )
-                                                        "
-                                                    >
-                                                        <i
-                                                            :class="
-                                                                getBadgeIcon(
-                                                                    item.status_palatabilitas
-                                                                )
-                                                            "
-                                                        ></i
-                                                        >{{
-                                                            item.status_palatabilitas
-                                                        }}
-                                                    </span>
-                                                </td>
-                                                <td class="text-nowrap">
-                                                    <div
-                                                        class="d-flex justify-content-center gap-2"
-                                                    >
-                                                        <template
-                                                            v-if="
-                                                                !isSelesaiSemua(
-                                                                    item
-                                                                )
-                                                            "
-                                                        >
-                                                            <button
-                                                                @click="
-                                                                    validasiData(
-                                                                        item
-                                                                    )
-                                                                "
-                                                                class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm d-flex align-items-center"
-                                                            >
-                                                                <i
-                                                                    class="ri-shield-check-line me-1 fs-14"
-                                                                ></i
-                                                                >Validasi
-                                                            </button>
-                                                        </template>
-
-                                                        <template v-else>
-                                                            <button
-                                                                @click="
-                                                                    showModalFinalisasi(
-                                                                        item
-                                                                    )
-                                                                "
-                                                                class="btn btn-sm btn-success rounded-pill px-3 shadow-sm d-flex align-items-center"
-                                                            >
-                                                                <i
-                                                                    class="ri-check-double-line me-1 fs-14"
-                                                                ></i
-                                                                >Validasi Final
-                                                            </button>
-                                                        </template>
-
-                                                        <button
-                                                            v-if="
-                                                                item.has_validasi ==
-                                                                1
-                                                            "
-                                                            @click="
-                                                                openModalBatal(
-                                                                    item.No_Po_Sampel
-                                                                )
-                                                            "
-                                                            class="btn btn-sm btn-danger rounded-pill px-3 shadow-sm d-flex align-items-center"
-                                                        >
-                                                            <i
-                                                                class="ri-delete-bin-line me-1 fs-14"
-                                                            ></i
-                                                            >Batalkan Sampel
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div
-                                    class="align-items-center mt-3 row g-3 text-center text-sm-start"
-                                    v-if="
-                                        pagination.totalData > pagination.limit
-                                    "
-                                >
-                                    <div class="col-sm">
-                                        <div class="text-muted">
-                                            Total Data
-                                            <span
-                                                class="fw-semibold text-primary"
-                                                >{{
-                                                    pagination.totalData
-                                                }}</span
-                                            >
-                                            Hasil
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-auto">
-                                        <ul
-                                            class="pagination pagination-separated pagination-sm justify-content-center justify-content-sm-start mb-0"
-                                        >
-                                            <li
-                                                class="page-item"
-                                                :class="{
-                                                    disabled:
-                                                        pagination.page === 1,
-                                                }"
-                                            >
-                                                <a
-                                                    href="#"
-                                                    class="page-link"
-                                                    @click.prevent="prevPage"
-                                                    ><i
-                                                        class="ri-arrow-left-s-line align-middle"
-                                                    ></i
-                                                ></a>
-                                            </li>
-                                            <li
-                                                class="page-item"
-                                                v-for="page in visiblePages"
-                                                :key="page"
-                                                :class="{
-                                                    active:
-                                                        page ===
-                                                        pagination.page,
-                                                }"
-                                            >
-                                                <a
-                                                    href="#"
-                                                    class="page-link"
-                                                    @click.prevent="
-                                                        changePage(page)
-                                                    "
-                                                    >{{ page }}</a
-                                                >
-                                            </li>
-                                            <li
-                                                class="page-item"
-                                                :class="{
-                                                    disabled:
-                                                        pagination.page ===
-                                                        pagination.totalPage,
-                                                }"
-                                            >
-                                                <a
-                                                    href="#"
-                                                    class="page-link"
-                                                    @click.prevent="nextPage"
-                                                    ><i
-                                                        class="ri-arrow-right-s-line align-middle"
-                                                    ></i
-                                                ></a>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                <div
-                                    v-if="!detailDataList.length"
-                                    class="d-flex justify-content-center mt-4 text-center"
-                                >
-                                    <div class="flex-column align-items-center">
-                                        <DotLottieVue
-                                            style="
-                                                height: 120px;
-                                                width: 120px;
-                                                margin: 0 auto;
-                                            "
-                                            autoplay
-                                            loop
-                                            src="/animation/empty2.json"
-                                        />
-                                        <h6 class="text-muted mt-3 fw-medium">
-                                            <i
-                                                class="ri-error-warning-line align-middle me-1"
-                                            ></i
-                                            >Data Tidak Ditemukan!
-                                        </h6>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div
-                        class="tab-pane"
-                        :class="{ active: activeTab === 'desktop' }"
-                    >
-                        <div
-                            class="alert alert-info border-0 shadow-sm mt-3 mb-3 d-flex align-items-start"
-                        >
-                            <i
-                                class="ri-information-fill fs-20 me-3 mt-1 text-info"
-                            ></i>
-                            <div>
-                                <strong class="text-info"
-                                    >Informasi Laporan Desktop:</strong
-                                ><br />
-                                <span class="text-dark small"
-                                    >Data pada daftar ini hanya bersifat
-                                    informasi dan melacak status validasi sampel
-                                    yang telah diterima oleh tim Formulator
-                                    Desktop.</span
-                                >
-                            </div>
+                    <!-- Scrollable detail body -->
+                    <div class="vld-detail-body">
+                        <!-- Loading -->
+                        <div v-if="loading.detail" class="vld-loading-state">
+                            <div class="spinner-border text-primary"></div>
+                            <p class="mt-3 text-muted small">Memuat data validasi...</p>
                         </div>
 
-                        <div class="col-12">
-                            <div v-if="loading.loadingDesktop">
-                                <div class="table-wrapper">
-                                    <table
-                                        class="skeleton-table"
-                                        aria-busy="true"
-                                    >
-                                        <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                <th>Nama Mesin</th>
-                                                <th>Nama Barang</th>
-                                                <th>No PO</th>
-                                                <th>No Split</th>
-                                                <th>Status Penerimaan</th>
-                                                <th>Last Update</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr
-                                                v-for="n in 5"
-                                                :key="n"
-                                                class="skeleton-row"
-                                            >
-                                                <td v-for="col in 7" :key="col">
-                                                    <div
-                                                        class="skeleton-cell"
-                                                    ></div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                        <!-- No detail data yet -->
+                        <div v-else-if="detailValidasiData.length === 0" class="vld-loading-state">
+                            <i class="ri-file-unknow-line fs-1 text-muted"></i>
+                            <p class="mt-2 text-muted small">Tidak ada data validasi.</p>
+                        </div>
+
+                        <!-- Step content -->
+                        <template v-else-if="currentStepData">
+                            <!-- Step status alert -->
+                            <div v-if="currentStepData.status_step === 'DISETUJUI'" class="vld-alert-ok mb-3">
+                                <i class="ri-checkbox-circle-line me-2"></i>
+                                <div><strong>Tahapan ini telah Disetujui</strong></div>
+                            </div>
+                            <div v-else-if="currentStepData.status_step === 'DITOLAK'" class="vld-alert-no mb-3">
+                                <i class="ri-close-circle-line me-2"></i>
+                                <div>
+                                    <strong>Tahapan ini telah Ditolak</strong>
+                                    <span v-if="currentStepData.alasan_tolak" class="d-block text-muted" style="font-size: 11px">Alasan: {{ currentStepData.alasan_tolak }}</span>
                                 </div>
                             </div>
-                            <div v-else>
-                                <div
-                                    v-if="desktopDataList.length"
-                                    class="table-responsive shadow-sm rounded"
-                                >
-                                    <table
-                                        class="table table-bordered text-center align-middle mb-0"
-                                    >
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th width="50">#</th>
-                                                <th>Nama Mesin</th>
-                                                <th>Nama Barang</th>
-                                                <th>No PO</th>
-                                                <th>No Split PO</th>
-                                                <th>Status Penerimaan</th>
-                                                <th>Last Update</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <template
-                                                v-for="(
-                                                    item, index
-                                                ) in desktopDataList"
-                                                :key="
-                                                    item.No_Split_Po +
-                                                    '_' +
-                                                    item.Nama_Mesin
-                                                "
-                                            >
-                                                <tr class="master-row bg-white">
-                                                    <td>
-                                                        <button
-                                                            class="btn btn-sm btn-light border toggle-btn text-primary"
-                                                            :class="{
-                                                                expanded:
-                                                                    expandedRows.includes(
-                                                                        item.No_Split_Po +
-                                                                            '_' +
-                                                                            item.Nama_Mesin
-                                                                    ),
-                                                            }"
-                                                            @click="
-                                                                toggleDetail(
-                                                                    item.No_Split_Po +
-                                                                        '_' +
-                                                                        item.Nama_Mesin
-                                                                )
-                                                            "
-                                                        >
-                                                            <span
-                                                                class="toggle-icon fw-bold"
-                                                                >{{
-                                                                    expandedRows.includes(
-                                                                        item.No_Split_Po +
-                                                                            "_" +
-                                                                            item.Nama_Mesin
-                                                                    )
-                                                                        ? "▼"
-                                                                        : "▶"
-                                                                }}</span
-                                                            >
-                                                        </button>
-                                                    </td>
-                                                    <td class="fw-medium">
-                                                        {{ item.Nama_Mesin }}
-                                                    </td>
-                                                    <td class="fw-medium">
-                                                        {{ item.Nama_Barang }}
-                                                    </td>
-                                                    <td class="text-nowrap">
-                                                        {{ item.No_Po }}
-                                                    </td>
-                                                    <td
-                                                        class="fw-bold text-primary text-nowrap"
+                            <div v-else-if="currentStepData.status_step === 'TERKUNCI'" class="vld-alert-warn mb-3">
+                                <i class="ri-lock-line me-2"></i>
+                                <div>
+                                    <strong>Tahap ini belum dapat diakses</strong>
+                                    <span class="d-block text-muted" style="font-size: 11px">Selesaikan tahapan sebelumnya terlebih dahulu.</span>
+                                </div>
+                            </div>
+
+                            <!-- Pending analisa warning -->
+                            <div v-if="currentStepData.pending_analisa && currentStepData.pending_analisa.length > 0" class="vld-alert-warn mb-3">
+                                <i class="ri-alert-line me-2 flex-shrink-0"></i>
+                                <div style="flex: 1">
+                                    <strong>{{ currentStepData.pending_analisa.length }} analisa belum selesai</strong>
+                                    <div class="d-flex flex-wrap gap-1 mt-1">
+                                        <span
+                                            v-for="(nama, ni) in currentStepData.pending_analisa"
+                                            :key="ni"
+                                            class="badge bg-warning-subtle text-warning border border-warning-subtle"
+                                            style="font-size: 10px; font-weight: 500"
+                                        >{{ nama }}</span>
+                                    </div>
+                                    <label class="d-flex align-items-center gap-2 mt-2 mb-0" style="font-size: 12px; cursor: pointer;">
+                                        <input type="checkbox" v-model="acknowledgementChecked" />
+                                        Saya memahami dan tetap ingin melanjutkan
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Mini stats -->
+                            <div class="vld-mini-stats mb-3" v-if="currentStepData.data_analisa && currentStepData.data_analisa.length > 0">
+                                <div class="vld-ms-item">
+                                    <span class="vld-ms-val">{{ currentStepData.data_analisa.length }}</span>
+                                    <span class="vld-ms-lbl">Total</span>
+                                </div>
+                                <div class="vld-ms-item vld-ms-item--success">
+                                    <span class="vld-ms-val">{{ currentStepData.data_analisa.filter(d => d.Flag_Layak === 'Y').length }}</span>
+                                    <span class="vld-ms-lbl">Layak</span>
+                                </div>
+                                <div class="vld-ms-item vld-ms-item--danger">
+                                    <span class="vld-ms-val">{{ currentStepData.data_analisa.filter(d => d.Flag_Layak === 'T' || d.Flag_Layak === 'N').length }}</span>
+                                    <span class="vld-ms-lbl">Tidak Layak</span>
+                                </div>
+                            </div>
+
+                            <!-- ANL step: grouped by Jenis_Analisa -->
+                            <template v-if="currentStepData.Kode_Aktivitas_Lab === 'ANL' && groupedANLData.length > 0">
+                                <div v-for="(group, gi) in groupedANLData" :key="gi" class="vld-section">
+                                    <div class="vld-section-hd">
+                                        <span>
+                                            <i class="ri-flask-line me-2 text-primary"></i>{{ group.Jenis_Analisa }}
+                                        </span>
+                                        <span :class="group.is_layak ? 'badge bg-success-subtle text-success' : 'badge bg-danger-subtle text-danger'">
+                                            {{ group.is_layak ? 'Layak' : 'Tidak Layak' }}
+                                        </span>
+                                    </div>
+                                    <div class="vld-section-body p-0">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered align-middle mb-0 vld-table text-center text-nowrap">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 36px">#</th>
+                                                        <th>No Sub Sampel</th>
+                                                        <th>No PO</th>
+                                                        <th>Split PO</th>
+                                                        <th>Batch</th>
+                                                        <th>Tanggal</th>
+                                                        <th v-for="(header, hIdx) in group.paramHeaders" :key="'h-' + hIdx">{{ header }}</th>
+                                                        <th>Hasil / Ket</th>
+                                                        <th>Status</th>
+                                                        <th>Foto</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr
+                                                        v-for="(item, idx) in group.items"
+                                                        :key="idx"
+                                                        :class="{ 'table-success': item.Flag_Layak === 'Y', 'table-danger': item.Flag_Layak === 'T' || item.Flag_Layak === 'N' }"
                                                     >
-                                                        {{ item.No_Split_Po }}
-                                                    </td>
-                                                    <td class="text-nowrap">
-                                                        <span
-                                                            class="badge mb-1 px-2 py-1"
-                                                            :class="
-                                                                item.Status_Desktop ===
-                                                                'Selesai Diterima'
-                                                                    ? 'bg-success'
-                                                                    : item.Status_Desktop ===
-                                                                      'Diterima Sebagian'
-                                                                    ? 'bg-warning text-dark'
-                                                                    : 'bg-danger'
-                                                            "
-                                                        >
-                                                            {{
-                                                                item.Status_Desktop
-                                                            }} </span
-                                                        ><br />
-                                                        <small
-                                                            class="text-muted fw-medium"
-                                                            >{{ item.count_y }}
-                                                            /
-                                                            {{
-                                                                item.total_sampel
-                                                            }}
-                                                            Sampel</small
-                                                        >
-                                                    </td>
-                                                    <td class="text-nowrap">
-                                                        <div
-                                                            v-if="
-                                                                item.Last_Update_Tanggal
-                                                            "
-                                                        >
-                                                            <span
-                                                                class="d-block small fw-bold text-dark"
-                                                                >{{
-                                                                    item.Last_Update_Tanggal
-                                                                }}</span
-                                                            >
-                                                            <span
-                                                                class="d-block small text-muted"
-                                                                >{{
-                                                                    item.Last_Update_Jam
-                                                                }}</span
-                                                            >
-                                                            <span
-                                                                class="d-block small text-primary fw-medium"
-                                                                ><i
-                                                                    class="ri-user-line me-1"
-                                                                ></i
-                                                                >{{
-                                                                    item.Validasi_Oleh
-                                                                }}</span
-                                                            >
-                                                        </div>
-                                                        <span
-                                                            v-else
-                                                            class="text-muted"
-                                                            >-</span
-                                                        >
-                                                    </td>
+                                                        <td class="text-center fw-semibold">{{ idx + 1 }}</td>
+                                                        <td class="fw-medium text-dark">
+                                                            {{ item.No_Fak_Sub_Po && item.No_Fak_Sub_Po !== item.No_Po_Sampel ? item.No_Fak_Sub_Po : item.No_Po_Sampel }}
+                                                        </td>
+                                                        <td>{{ item.No_Po }}</td>
+                                                        <td>{{ item.No_Split_Po }}</td>
+                                                        <td>Batch {{ item.No_Batch }}</td>
+                                                        <td>{{ formatTanggal(item.Tanggal_Registrasi) }}</td>
+                                                        <td v-for="(param, pIdx) in item.parameters" :key="'p-' + pIdx">{{ param.Hasil_Analisa }}</td>
+                                                        <td class="fw-bolder">
+                                                            <span v-if="item.Flag_Perhitungan !== 'Y' && item.Keterangan_Kriteria" class="text-primary">{{ item.Keterangan_Kriteria }}</span>
+                                                            <span v-else>{{ item.Hasil ?? '—' }}</span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-success" v-if="item.Flag_Approval === 'Y'">Disetujui</span>
+                                                            <span class="badge bg-danger" v-else-if="item.Flag_Approval === 'T'">Ditolak</span>
+                                                            <span class="badge bg-warning text-dark" v-else>Menunggu</span>
+                                                        </td>
+                                                        <td>
+                                                            <template v-if="item.Flag_Foto === 'Y'">
+                                                                <button v-if="item.File_Url" @click="lihatFoto(item.File_Url)" class="btn btn-sm btn-outline-info rounded-pill px-2">
+                                                                    <i class="ri-image-line me-1"></i>Lihat
+                                                                </button>
+                                                                <span v-else class="text-danger small fst-italic">Belum</span>
+                                                            </template>
+                                                            <span v-else class="text-muted small">—</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr v-if="group.Flag_Perhitungan === 'Y'" class="vld-row--avg">
+                                                        <td :colspan="6 + group.paramHeaders.length" class="text-end fw-bold pe-3">Rata-Rata</td>
+                                                        <td class="fw-bold text-primary">{{ group.RataRataHasil }}</td>
+                                                        <td colspan="3"></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Non-ANL step: simple table -->
+                            <template v-else-if="currentStepData.data_analisa && currentStepData.data_analisa.length > 0">
+                                <div class="vld-section">
+                                    <div class="vld-section-hd">
+                                        <span><i class="ri-table-line me-2 text-primary"></i>Data Analisa</span>
+                                        <span class="badge bg-primary-subtle text-primary">{{ currentStepData.data_analisa.length }} baris</span>
+                                    </div>
+                                    <div class="vld-section-body p-0">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered align-middle mb-0 vld-table text-center text-nowrap">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 36px">#</th>
+                                                        <th>No Sub Sampel</th>
+                                                        <th>Jenis Analisa</th>
+                                                        <th>Hasil Akhir</th>
+                                                        <th>Status</th>
+                                                        <th>Foto</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr
+                                                        v-for="(item, idx) in currentStepData.data_analisa"
+                                                        :key="idx"
+                                                        :class="{ 'table-success': item.Flag_Layak === 'Y', 'table-danger': item.Flag_Layak === 'T' || item.Flag_Layak === 'N' }"
+                                                    >
+                                                        <td class="text-center fw-semibold">{{ idx + 1 }}</td>
+                                                        <td class="fw-medium">
+                                                            {{ item.No_Fak_Sub_Po && item.No_Fak_Sub_Po !== item.No_Po_Sampel ? item.No_Fak_Sub_Po : item.No_Po_Sampel }}
+                                                        </td>
+                                                        <td>{{ item.Jenis_Analisa || '—' }}</td>
+                                                        <td class="fw-bolder">
+                                                            <span v-if="item.Flag_Perhitungan !== 'Y' && item.Keterangan_Kriteria" class="text-primary">{{ item.Keterangan_Kriteria }}</span>
+                                                            <span v-else>{{ item.Hasil ?? '—' }}</span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-success" v-if="item.Flag_Approval === 'Y'">Disetujui</span>
+                                                            <span class="badge bg-danger" v-else-if="item.Flag_Approval === 'T'">Ditolak</span>
+                                                            <span class="badge bg-warning text-dark" v-else>Menunggu</span>
+                                                        </td>
+                                                        <td>
+                                                            <template v-if="item.Flag_Foto === 'Y'">
+                                                                <button v-if="item.File_Url" @click="lihatFoto(item.File_Url)" class="btn btn-sm btn-outline-info rounded-pill px-2">
+                                                                    <i class="ri-image-line me-1"></i>Lihat
+                                                                </button>
+                                                                <span v-else class="text-danger small fst-italic">Belum</span>
+                                                            </template>
+                                                            <span v-else class="text-muted small">—</span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Pending analisa table -->
+                            <div v-if="currentStepData.pending_analisa && currentStepData.pending_analisa.length > 0" class="vld-section">
+                                <div class="vld-section-hd">
+                                    <span><i class="ri-time-line me-2 text-warning"></i>Analisa Belum Selesai</span>
+                                    <span class="badge bg-warning-subtle text-warning">{{ currentStepData.pending_analisa.length }} item</span>
+                                </div>
+                                <div class="vld-section-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered align-middle mb-0 vld-table text-center text-nowrap">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width: 36px">#</th>
+                                                    <th>Jenis Analisa</th>
+                                                    <th>Status</th>
                                                 </tr>
-
-                                                <tr
-                                                    v-show="
-                                                        expandedRows.includes(
-                                                            item.No_Split_Po +
-                                                                '_' +
-                                                                item.Nama_Mesin
-                                                        )
-                                                    "
-                                                    class="detail-row bg-light"
-                                                >
-                                                    <td
-                                                        colspan="7"
-                                                        class="text-start p-3 border-bottom"
-                                                    >
-                                                        <div
-                                                            class="bg-white p-3 border rounded shadow-sm"
-                                                        >
-                                                            <h6
-                                                                class="fw-bold mb-3 text-primary"
-                                                            >
-                                                                <i
-                                                                    class="ri-list-check me-2"
-                                                                ></i
-                                                                >Rincian Sampel:
-                                                                {{
-                                                                    item.No_Split_Po
-                                                                }}
-                                                                ({{
-                                                                    item.Nama_Mesin
-                                                                }})
-                                                            </h6>
-                                                            <table
-                                                                class="table table-sm table-bordered text-center align-middle mb-0"
-                                                            >
-                                                                <thead
-                                                                    class="table-secondary"
-                                                                >
-                                                                    <tr>
-                                                                        <th>
-                                                                            No
-                                                                            Sampel
-                                                                        </th>
-                                                                        <th>
-                                                                            Status
-                                                                            Validasi
-                                                                            Formulator
-                                                                        </th>
-                                                                        <th>
-                                                                            Tgl
-                                                                            Verifikasi
-                                                                        </th>
-                                                                        <th>
-                                                                            Jam
-                                                                            Verifikasi
-                                                                        </th>
-                                                                        <th>
-                                                                            Diverifikasi
-                                                                            Oleh
-                                                                        </th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    <tr
-                                                                        v-for="child in item.Detail_Sampel"
-                                                                        :key="
-                                                                            child.No_Sampel
-                                                                        "
-                                                                    >
-                                                                        <td
-                                                                            class="fw-bold"
-                                                                        >
-                                                                            {{
-                                                                                child.No_Sampel
-                                                                            }}
-                                                                        </td>
-                                                                        <td>
-                                                                            <span
-                                                                                class="badge"
-                                                                                :class="
-                                                                                    child.Flag_Validasi_Formulator_Desktop ===
-                                                                                    'Y'
-                                                                                        ? 'bg-success'
-                                                                                        : 'bg-secondary'
-                                                                                "
-                                                                            >
-                                                                                {{
-                                                                                    child.Flag_Validasi_Formulator_Desktop ===
-                                                                                    "Y"
-                                                                                        ? "Sudah Diterima"
-                                                                                        : "Menunggu"
-                                                                                }}
-                                                                            </span>
-                                                                        </td>
-                                                                        <td>
-                                                                            {{
-                                                                                child.Tanggal_Validasi_Formulator_Desktop ||
-                                                                                "-"
-                                                                            }}
-                                                                        </td>
-                                                                        <td>
-                                                                            {{
-                                                                                child.Jam_Validasi_Formulator_Desktop ||
-                                                                                "-"
-                                                                            }}
-                                                                        </td>
-                                                                        <td>
-                                                                            {{
-                                                                                child.Id_User_Validasi_Formulator_Desktop ||
-                                                                                "-"
-                                                                            }}
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr
-                                                                        v-if="
-                                                                            !item.Detail_Sampel ||
-                                                                            item
-                                                                                .Detail_Sampel
-                                                                                .length ===
-                                                                                0
-                                                                        "
-                                                                    >
-                                                                        <td
-                                                                            colspan="5"
-                                                                            class="text-muted fst-italic"
-                                                                        >
-                                                                            Tidak
-                                                                            ada
-                                                                            detail
-                                                                            sampel.
-                                                                        </td>
-                                                                    </tr>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </td>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="(nama, idx) in currentStepData.pending_analisa" :key="idx" class="table-warning">
+                                                    <td class="fw-semibold">{{ idx + 1 }}</td>
+                                                    <td class="text-start fw-medium">{{ nama }}</td>
+                                                    <td><span class="badge bg-warning text-dark">Belum Selesai</span></td>
                                                 </tr>
-                                            </template>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div
-                                    class="align-items-center mt-3 row g-3 text-center text-sm-start"
-                                    v-if="
-                                        paginationDesktop.totalData >
-                                        paginationDesktop.limit
-                                    "
-                                >
-                                    <div class="col-sm">
-                                        <div class="text-muted">
-                                            Total Data
-                                            <span
-                                                class="fw-semibold text-primary"
-                                                >{{
-                                                    paginationDesktop.totalData
-                                                }}</span
-                                            >
-                                            Hasil
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-auto">
-                                        <ul
-                                            class="pagination pagination-separated pagination-sm justify-content-center justify-content-sm-start mb-0"
-                                        >
-                                            <li
-                                                class="page-item"
-                                                :class="{
-                                                    disabled:
-                                                        paginationDesktop.page ===
-                                                        1,
-                                                }"
-                                            >
-                                                <a
-                                                    href="#"
-                                                    class="page-link"
-                                                    @click.prevent="
-                                                        prevPageDesktop
-                                                    "
-                                                    ><i
-                                                        class="ri-arrow-left-s-line align-middle"
-                                                    ></i
-                                                ></a>
-                                            </li>
-                                            <li
-                                                class="page-item"
-                                                v-for="page in visiblePagesDesktop"
-                                                :key="page"
-                                                :class="{
-                                                    active:
-                                                        page ===
-                                                        paginationDesktop.page,
-                                                }"
-                                            >
-                                                <a
-                                                    href="#"
-                                                    class="page-link"
-                                                    @click.prevent="
-                                                        changePageDesktop(page)
-                                                    "
-                                                    >{{ page }}</a
-                                                >
-                                            </li>
-                                            <li
-                                                class="page-item"
-                                                :class="{
-                                                    disabled:
-                                                        paginationDesktop.page ===
-                                                        paginationDesktop.totalPage,
-                                                }"
-                                            >
-                                                <a
-                                                    href="#"
-                                                    class="page-link"
-                                                    @click.prevent="
-                                                        nextPageDesktop
-                                                    "
-                                                    ><i
-                                                        class="ri-arrow-right-s-line align-middle"
-                                                    ></i
-                                                ></a>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-
-                                <div
-                                    v-if="!desktopDataList.length"
-                                    class="d-flex justify-content-center mt-4 text-center"
-                                >
-                                    <div class="flex-column align-items-center">
-                                        <DotLottieVue
-                                            style="
-                                                height: 120px;
-                                                width: 120px;
-                                                margin: 0 auto;
-                                            "
-                                            autoplay
-                                            loop
-                                            src="/animation/empty2.json"
-                                        />
-                                        <h6 class="text-muted mt-3 fw-medium">
-                                            <i
-                                                class="ri-error-warning-line align-middle me-1"
-                                            ></i
-                                            >Data Desktop Tidak Ditemukan!
-                                        </h6>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
+                        </template>
+
+                        <!-- No step data -->
+                        <div v-else-if="!loading.detail" class="vld-loading-state">
+                            <i class="ri-file-unknow-line fs-1 text-muted"></i>
+                            <p class="mt-2 text-muted small">Tidak ada data untuk tahapan ini.</p>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- modal -->
-        <div
-            class="modal fade"
-            id="printModal"
-            tabindex="-1"
-            aria-hidden="true"
-        >
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content border-0 shadow">
-                    <div class="modal-header bg-primary">
-                        <h5 class="modal-title text-white">
-                            <i class="fas fa-print me-2"></i>
-                            Cetak Laporan Analisis Sampel
-                        </h5>
-                        <button
-                            type="button"
-                            class="btn-close btn-close-white"
-                            @click="closePrintModal"
-                        ></button>
-                    </div>
-
-                    <div class="modal-body">
-                        <div
-                            class="steps-progress mb-4 d-flex justify-content-center gap-4"
-                        >
-                            <div
-                                class="step"
-                                :class="{ active: currentStep === 1 }"
-                            >
-                                <div
-                                    class="step-number bg-primary text-white rounded-circle text-center"
-                                    style="
-                                        width: 30px;
-                                        height: 30px;
-                                        line-height: 30px;
-                                    "
-                                >
-                                    1
-                                </div>
-                                <div
-                                    class="step-label mt-1 text-center fw-bold"
-                                >
-                                    Pilih Sampel
-                                </div>
-                            </div>
-                            <div
-                                class="step"
-                                :class="{ active: currentStep === 2 }"
-                            >
-                                <div
-                                    class="step-number text-center rounded-circle"
-                                    :class="
-                                        currentStep === 2
-                                            ? 'bg-primary text-white'
-                                            : 'bg-secondary text-white'
-                                    "
-                                    style="
-                                        width: 30px;
-                                        height: 30px;
-                                        line-height: 30px;
-                                    "
-                                >
-                                    2
-                                </div>
-                                <div
-                                    class="step-label mt-1 text-center fw-bold"
-                                >
-                                    Preview & Cetak
-                                </div>
-                            </div>
+                    <!-- Sticky action bar -->
+                    <div class="vld-action-bar">
+                        <div class="vld-action-info" v-if="currentStepData">
+                            <i class="ri-information-line text-muted me-1"></i>
+                            <span class="text-muted" style="font-size: 11px">
+                                {{ currentStepData.Nama_Aktivitas }} — {{ currentStepData.status_step }}
+                            </span>
                         </div>
-
-                        <div
-                            class="alert alert-warning d-flex align-items-start gap-2"
-                            role="alert"
-                        >
-                            <i
-                                class="fas fa-exclamation-triangle text-warning fa-lg mt-1"
-                            ></i>
-                            <div>
-                                <strong>Perhatian!</strong><br />
-                                Pilih nomor sampel yang ingin Anda cetak
-                                laporannya. Pastikan sampel tersebut sudah
-                                difinalisasi.
-                            </div>
-                        </div>
-
-                        <div v-show="currentStep === 1" class="step-content">
-                            <h6 class="fw-bold mb-3 text-primary">
-                                <i class="fas fa-flask me-2"></i> Pilih Nomor
-                                Sampel
-                            </h6>
-
-                            <div class="input-group mb-3">
-                                <span class="input-group-text"
-                                    ><i class="fas fa-search"></i
-                                ></span>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    v-model="searchSampleQuery"
-                                    placeholder="Cari berdasarkan Nomor Sampel..."
-                                />
-                            </div>
-
-                            <div
-                                class="analysis-selector list-group"
-                                style="max-height: 300px; overflow-y: auto"
+                        <div class="vld-action-info" v-else></div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <!-- Cancel whole sample -->
+                            <button
+                                class="btn btn-sm btn-outline-danger"
+                                data-bs-toggle="offcanvas"
+                                data-bs-target="#offcanvasBatal"
+                                @click="openBatal"
                             >
+                                <i class="ri-close-line me-1"></i>Batalkan
+                            </button>
+
+                            <!-- Finalisasi when all steps approved -->
+                            <button
+                                v-if="allStepsApproved"
+                                class="btn btn-sm btn-primary"
+                                @click="doFinalisasi(selectedItem)"
+                                :disabled="loading.action"
+                            >
+                                <span v-if="loading.action" class="spinner-border spinner-border-sm me-1"></span>
+                                <i v-else class="ri-check-double-line me-1"></i>Finalisasi
+                            </button>
+
+                            <!-- Next step -->
+                            <button
+                                v-if="hasNextStepAvailable"
+                                class="btn btn-sm btn-outline-primary"
+                                @click="activeStep++"
+                            >
+                                Lanjut <i class="ri-arrow-right-line ms-1"></i>
+                            </button>
+
+                            <!-- Reject + Approve for waiting step -->
+                            <template v-if="currentStepData && currentStepData.status_step === 'MENUNGGU VALIDASI'">
                                 <button
-                                    v-for="item in filteredPrintSamples"
-                                    :key="item.No_Po_Sampel"
-                                    type="button"
-                                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                                    :class="{
-                                        active:
-                                            selectedPrintSample ===
-                                            item.No_Po_Sampel,
-                                    }"
-                                    @click="
-                                        selectedPrintSample = item.No_Po_Sampel
-                                    "
+                                    class="btn btn-sm btn-danger"
+                                    data-bs-toggle="offcanvas"
+                                    data-bs-target="#offcanvasTolak"
+                                    @click="openTolak"
+                                    :disabled="loading.action || pendingBlocked"
                                 >
-                                    <div>
-                                        <i class="fas fa-vial me-2"></i>
-                                        <span class="fw-bold">{{
-                                            item.No_Po_Sampel
-                                        }}</span>
-                                    </div>
-                                    <i
-                                        v-if="
-                                            selectedPrintSample ===
-                                            item.No_Po_Sampel
-                                        "
-                                        class="fas fa-check-circle text-white"
-                                    ></i>
+                                    <i class="ri-close-circle-line me-1"></i>Tolak
                                 </button>
-
-                                <div
-                                    v-if="filteredPrintSamples.length === 0"
-                                    class="text-center text-muted p-3"
+                                <button
+                                    class="btn btn-sm btn-success"
+                                    @click="setujuiValidasi"
+                                    :disabled="loading.action || pendingBlocked"
                                 >
-                                    <i class="fas fa-box-open fa-2x mb-2"></i>
-                                    <p>Data sampel tidak ditemukan.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div v-show="currentStep === 2" class="step-content">
-                            <h6 class="fw-bold mb-3 text-primary">
-                                <i class="fas fa-eye me-2"></i> Ringkasan
-                                Laporan
-                            </h6>
-
-                            <div class="report-summary">
-                                <div class="summary-card">
-                                    <div class="summary-header">
-                                        <i class="fas fa-info-circle"></i>
-                                        <h5>Detail Laporan</h5>
-                                    </div>
-                                    <div class="summary-body">
-                                        <div class="summary-item">
-                                            <span>Nomor Sampel Terpilih:</span>
-                                            <strong
-                                                class="ms-2 text-primary fs-5"
-                                                >{{
-                                                    selectedPrintSample || "-"
-                                                }}</strong
-                                            >
-                                        </div>
-
-                                        <div class="summary-item mb-3">
-                                            <span class="d-block mb-1"
-                                                >Jenis Cetakan:</span
-                                            >
-                                            <el-select
-                                                v-model="selectedJenisPrint"
-                                                placeholder="Pilih Jenis Cetakan"
-                                                style="width: 100%"
-                                            >
-                                                <el-option
-                                                    label="Cetak Ringkas (Hasil Akhir Analisa Saja)"
-                                                    value="ringkas"
-                                                />
-
-                                                <el-option
-                                                    label="Cetak Detail (Per Analisa)"
-                                                    value="detail"
-                                                />
-                                            </el-select>
-                                        </div>
-
-                                        <div class="summary-item">
-                                            <span>Format:</span>
-                                            <div class="format-options">
-                                                <div
-                                                    class="form-check form-check-inline"
-                                                >
-                                                    <input
-                                                        class="form-check-input"
-                                                        type="radio"
-                                                        id="formatExcel"
-                                                        value="excel"
-                                                        v-model="exportFormat"
-                                                    />
-                                                    <label
-                                                        class="form-check-label"
-                                                        for="formatExcel"
-                                                    >
-                                                        <i
-                                                            class="far fa-file-excel text-success me-1"
-                                                        ></i>
-                                                        Excel
-                                                    </label>
-                                                </div>
-                                                <!-- <div
-                                                    class="form-check form-check-inline"
-                                                >
-                                                    <input
-                                                        class="form-check-input"
-                                                        type="radio"
-                                                        id="formatPdf"
-                                                        value="pdf"
-                                                        v-model="exportFormat"
-                                                    />
-                                                    <label
-                                                        class="form-check-label"
-                                                        for="formatPdf"
-                                                    >
-                                                        <i
-                                                            class="far fa-file-pdf text-danger me-1"
-                                                        ></i>
-                                                        Pdf
-                                                    </label>
-                                                </div> -->
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="preview-note mt-3">
-                                    <div
-                                        v-if="isPszReportSelected"
-                                        class="psz-warning-section mt-3"
-                                    >
-                                        <div
-                                            class="alert alert-warning d-flex align-items-start gap-2"
-                                            role="alert"
-                                        >
-                                            <i
-                                                class="fas fa-exclamation-triangle text-warning fa-lg mt-1"
-                                            ></i>
-                                            <div>
-                                                <strong
-                                                    >Peringatan Khusus!</strong
-                                                ><br />
-                                                Anda memilih "Final Report
-                                                Particle Size". Laporan ini
-                                                <strong
-                                                    >hanya akan mencetak data
-                                                    dari analisa Particle Size
-                                                    (PSZ)</strong
-                                                >, meskipun Anda memilih
-                                                beberapa jenis analisa lain
-                                                (contoh: Ash, Moisture, dll).
-
-                                                <!-- Checkbox di bawah teks -->
-                                                <div class="form-check mt-2">
-                                                    <input
-                                                        class="form-check-input"
-                                                        type="checkbox"
-                                                        v-model="
-                                                            pszConfirmation
-                                                        "
-                                                        id="pszConfirmCheck"
-                                                    />
-                                                    <label
-                                                        class="form-check-label fw-bold"
-                                                        for="pszConfirmCheck"
-                                                    >
-                                                        Saya mengerti dan setuju
-                                                        untuk melanjutkan.
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle me-2"></i>
-                                        Laporan akan dihasilkan berdasarkan
-                                        kriteria di atas. Pastikan data sudah
-                                        benar sebelum mencetak.
-                                    </div>
-                                </div>
-                            </div>
+                                    <span v-if="loading.action" class="spinner-border spinner-border-sm me-1"></span>
+                                    <i v-else class="ri-check-double-line me-1"></i>Setujui
+                                </button>
+                            </template>
                         </div>
                     </div>
+                </template>
+            </div>
+        </div>
 
-                    <div class="modal-footer border-top">
-                        <button
-                            type="button"
-                            class="btn btn-outline-secondary"
-                            @click="currentStep--"
-                            v-if="currentStep === 2"
-                        >
-                            <i class="fas fa-arrow-left me-1"></i> Kembali
-                        </button>
-                        <button
-                            type="button"
-                            class="btn btn-primary"
-                            @click="currentStep++"
-                            v-if="currentStep === 1"
-                            :disabled="!selectedPrintSample"
-                        >
-                            Lanjut <i class="fas fa-arrow-right ms-1"></i>
-                        </button>
-                        <button
-                            type="button"
-                            class="btn btn-success"
-                            @click="generateReport"
-                            v-if="currentStep === 2"
-                            :disabled="
-                                !selectedPrintSample || loading.loadingAction
-                            "
-                        >
-                            <i class="fas fa-file-export me-1"></i>
-                            {{
-                                loading.loadingAction
-                                    ? "Memproses..."
-                                    : "Generate Laporan"
-                            }}
-                        </button>
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- OFFCANVAS: TOLAK                                               -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasTolak">
+            <div class="offcanvas-header border-bottom">
+                <h5 class="mb-0 fw-semibold fs-6">
+                    <i class="ri-close-circle-line me-2 text-danger"></i>Alasan Penolakan
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" @click="formTolak.alasan = ''"></button>
+            </div>
+            <div class="offcanvas-body">
+                <div class="mb-3">
+                    <p class="text-muted small">
+                        Berikan alasan penolakan untuk tahapan
+                        <strong>{{ currentStepData?.Nama_Aktivitas }}</strong>
+                        sampel <strong>{{ selectedItem?.No_Po_Sampel }}</strong>.
+                    </p>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-semibold small">Alasan Penolakan</label>
+                    <textarea
+                        class="form-control"
+                        rows="4"
+                        v-model="formTolak.alasan"
+                        placeholder="Masukkan alasan minimal 8 karakter..."
+                    ></textarea>
+                    <div class="form-text text-danger" v-if="formTolak.alasan.length > 0 && formTolak.alasan.length < 8">
+                        Minimal 8 karakter (Sekarang: {{ formTolak.alasan.length }})
                     </div>
+                </div>
+                <div class="d-grid">
+                    <button
+                        type="button"
+                        class="btn btn-danger"
+                        :disabled="formTolak.alasan.length < 8 || loading.action"
+                        @click="submitTolak"
+                    >
+                        <span v-if="loading.action" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else class="ri-send-plane-line me-1"></i>
+                        Kirim Penolakan
+                    </button>
                 </div>
             </div>
         </div>
-        <!-- end modal -->
 
-        <!-- modal foto -->
-        <div
-            class="modal fade"
-            id="modalGaleriFoto"
-            tabindex="-1"
-            aria-labelledby="modalGaleriFotoLabel"
-            aria-hidden="true"
-        >
-            <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
-                <div class="modal-content bg-black text-white">
-                    <div class="modal-header border-secondary bg-black">
-                        <h5
-                            class="modal-title fw-bold text-white"
-                            id="modalGaleriFotoLabel"
-                        >
-                            Galeri Foto Analisa
-                        </h5>
-                        <button
-                            type="button"
-                            class="btn-close btn-close-white"
-                            data-bs-dismiss="modal"
-                            aria-label="Close"
-                        ></button>
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- OFFCANVAS: BATALKAN SAMPEL                                     -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasBatal">
+            <div class="offcanvas-header border-bottom">
+                <h5 class="mb-0 fw-semibold fs-6">
+                    <i class="ri-error-warning-line me-2 text-danger"></i>Batalkan Sampel
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" @click="formBatal.alasan = ''"></button>
+            </div>
+            <div class="offcanvas-body">
+                <div class="mb-3">
+                    <div class="alert alert-danger border-0 border-start border-danger border-3 py-2">
+                        <small>Pembatalan bersifat <strong>permanen</strong> dan akan membatalkan seluruh proses validasi untuk sampel ini.</small>
                     </div>
-                    <div class="modal-body p-4 p-md-5 bg-black">
-                        <div v-if="selectedPhotos.length > 0" class="row g-4">
-                            <div
-                                v-for="(foto, index) in selectedPhotos"
-                                :key="index"
-                                class="col-12 col-md-6"
-                            >
-                                <div
-                                    class="card h-100 border-0 shadow-lg rounded"
-                                    style="background-color: #ffffff"
-                                >
-                                    <div
-                                        class="card-body p-3 d-flex flex-column"
-                                    >
-                                        <div
-                                            class="bg-light rounded d-flex align-items-center justify-content-center"
-                                            style="
-                                                height: 400px;
-                                                border: 1px solid #e9ecef;
-                                                overflow: hidden;
-                                            "
-                                        >
-                                            <el-image
-                                                :src="foto.url"
-                                                :preview-src-list="allPhotoUrls"
-                                                :initial-index="index"
-                                                fit="contain"
-                                                style="
-                                                    width: 100%;
-                                                    height: 100%;
-                                                    cursor: pointer;
-                                                "
-                                                hide-on-click-modal
-                                            >
-                                                <template #placeholder>
-                                                    <div
-                                                        class="d-flex justify-content-center align-items-center w-100 h-100"
-                                                    >
-                                                        <div
-                                                            class="spinner-border text-primary"
-                                                            role="status"
-                                                        >
-                                                            <span
-                                                                class="visually-hidden"
-                                                                >Loading...</span
-                                                            >
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                                <template #error>
-                                                    <div
-                                                        class="d-flex justify-content-center align-items-center w-100 h-100 bg-light text-muted flex-column"
-                                                    >
-                                                        <i
-                                                            class="ri-image-line fs-1 mb-2"
-                                                        ></i>
-                                                        <span
-                                                            >Gagal memuat
-                                                            gambar</span
-                                                        >
-                                                    </div>
-                                                </template>
-                                            </el-image>
-                                        </div>
-                                        <div
-                                            class="mt-4 flex-grow-1 overflow-auto pe-2"
-                                            style="max-height: 250px"
-                                        >
-                                            <h6
-                                                class="fw-bolder text-dark mb-2 text-uppercase"
-                                                style="
-                                                    letter-spacing: 0.5px;
-                                                    border-bottom: 2px solid
-                                                        #f0f0f0;
-                                                    padding-bottom: 8px;
-                                                "
-                                            >
-                                                Keterangan Catatan
-                                            </h6>
-                                            <p
-                                                class="mb-0 text-dark"
-                                                style="
-                                                    white-space: pre-wrap;
-                                                    line-height: 1.7;
-                                                    font-size: 15px;
-                                                    font-weight: 500;
-                                                "
-                                            >
-                                                {{
-                                                    foto.keterangan ||
-                                                    "Tidak ada keterangan untuk foto ini."
-                                                }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div v-else class="text-center py-5">
-                            <p class="text-muted">
-                                Tidak ada foto untuk ditampilkan.
-                            </p>
-                        </div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-semibold small">Alasan Pembatalan</label>
+                    <textarea
+                        class="form-control"
+                        rows="4"
+                        v-model="formBatal.alasan"
+                        placeholder="Masukkan alasan minimal 8 karakter..."
+                    ></textarea>
+                    <div class="form-text text-danger" v-if="formBatal.alasan.length > 0 && formBatal.alasan.length < 8">
+                        Minimal 8 karakter (Sekarang: {{ formBatal.alasan.length }})
                     </div>
-                    <div class="modal-footer border-secondary bg-black">
-                        <button
-                            type="button"
-                            class="btn btn-outline-light px-4 rounded-pill"
-                            data-bs-dismiss="modal"
-                        >
-                            Tutup Galeri
-                        </button>
-                    </div>
+                </div>
+                <div class="d-grid">
+                    <button
+                        type="button"
+                        class="btn btn-danger"
+                        :disabled="formBatal.alasan.length < 8 || loading.action"
+                        @click="submitBatal"
+                    >
+                        <span v-if="loading.action" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else class="ri-alert-line me-1"></i>
+                        Batalkan Sampel
+                    </button>
                 </div>
             </div>
         </div>
-        <!-- end modal foto -->
     </div>
 </template>
 
 <script>
-import { debounce } from "lodash";
 import axios from "axios";
-import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
-import {
-    ElSelect,
-    ElOption,
-    ElMessage,
-    ElStep,
-    ElSteps,
-    ElMessageBox,
-    ElNotification,
-    ElImage,
-} from "element-plus";
+import { debounce } from "lodash";
 
 export default {
-    components: {
-        DotLottieVue,
-        ElStep,
-        ElSteps,
-        ElMessageBox,
-        ElNotification,
-        ElSelect,
-        ElOption,
-        ElImage,
-    },
     data() {
         return {
-            activeTab: "prafinalisasi",
+            listData: [],
             searchQuery: "",
-            detailDataList: [],
+            pagination: { page: 1, limit: 12, totalPage: 0, totalData: 0 },
+            loading: { list: false, detail: false, action: false },
+
+            selectedItem: null,
+            detailVisible: false,
+            isMobile: window.innerWidth < 992,
+
             listKlasifikasi: [],
             detailValidasiData: [],
-            selectedJenisPrint: "",
-            selectedSampel: "",
             activeStep: 0,
-            selectedPhotos: [],
-            formTolak: { alasan: "" },
-            formBatal: { noPo: "", alasan: "" },
-            loading: {
-                loadingDataList: false,
-                loadingModal: false,
-                loadingAction: false,
-                loadingDesktop: false,
-            },
-            pagination: { page: 1, limit: 10, totalPage: 0, totalData: 0 },
-            desktopDataList: [],
-            paginationDesktop: {
-                page: 1,
-                limit: 10,
-                totalPage: 0,
-                totalData: 0,
-            },
-            expandedRows: [],
-
-            currentStep: 1,
-            searchSampleQuery: "",
-            selectedPrintSample: null,
-            exportFormat: "excel",
+            templateDataMap: {},
             acknowledgementChecked: false,
 
-            templateDataMap: {},
+            formTolak: { alasan: "" },
+            formBatal: { alasan: "" },
         };
     },
+
     computed: {
-        allPhotoUrls() {
-            return this.selectedPhotos.map((foto) => foto.url);
+        stats() {
+            return { total: this.pagination.totalData };
         },
+
+        emptyMessage() {
+            return this.searchQuery
+                ? "Tidak ada data sesuai pencarian."
+                : "Belum ada data menunggu validasi.";
+        },
+
         currentStepData() {
-            if (!this.detailValidasiData.length || !this.listKlasifikasi.length)
-                return null;
-            const activeIndex =
-                this.activeStep >= this.listKlasifikasi.length
-                    ? this.listKlasifikasi.length - 1
-                    : this.activeStep;
-            const currentAktivitas =
-                this.listKlasifikasi[activeIndex].Kode_Aktivitas_Lab;
-            return this.detailValidasiData.find(
-                (item) => item.Kode_Aktivitas_Lab === currentAktivitas
-            );
+            if (!this.detailValidasiData.length || !this.listKlasifikasi.length) return null;
+            const idx = Math.min(this.activeStep, this.listKlasifikasi.length - 1);
+            const kode = this.listKlasifikasi[idx].Kode_Aktivitas_Lab;
+            return this.detailValidasiData.find(s => s.Kode_Aktivitas_Lab === kode) || null;
         },
+
         groupedANLData() {
-            if (
-                !this.currentStepData ||
-                this.currentStepData.Kode_Aktivitas_Lab !== "ANL"
-            )
-                return [];
-
+            if (!this.currentStepData || this.currentStepData.Kode_Aktivitas_Lab !== "ANL") return [];
             const groups = {};
-
-            this.currentStepData.data_analisa.forEach((item) => {
+            (this.currentStepData.data_analisa || []).forEach(item => {
                 if (!groups[item.Jenis_Analisa]) {
                     groups[item.Jenis_Analisa] = {
-                        Id_Jenis_Analisa: item.Id_Jenis_Analisa,
-                        Id_Jenis_Analisa_Hash: item.Id_Jenis_Analisa_Hash,
                         Jenis_Analisa: item.Jenis_Analisa,
                         Flag_Perhitungan: item.Flag_Perhitungan,
-                        Digit_Desimal:
-                            item.Digit_Desimal !== null
-                                ? parseInt(item.Digit_Desimal)
-                                : 2,
+                        Digit_Desimal: item.Digit_Desimal !== null ? parseInt(item.Digit_Desimal) : 2,
                         items: [],
                         paramHeaders: [],
                         is_layak: true,
                     };
                 }
-
-                if (
-                    item.Id_Jenis_Analisa_Hash &&
-                    this.templateDataMap[item.Id_Jenis_Analisa_Hash]
-                ) {
-                    const templateParams =
-                        this.templateDataMap[item.Id_Jenis_Analisa_Hash];
-                    if (
-                        groups[item.Jenis_Analisa].paramHeaders.length === 0 &&
-                        templateParams.length > 0
-                    ) {
-                        groups[item.Jenis_Analisa].paramHeaders =
-                            templateParams.map((p) => p.nama_parameter);
+                const g = groups[item.Jenis_Analisa];
+                if (item.Id_Jenis_Analisa_Hash && this.templateDataMap[item.Id_Jenis_Analisa_Hash]) {
+                    if (g.paramHeaders.length === 0) {
+                        g.paramHeaders = this.templateDataMap[item.Id_Jenis_Analisa_Hash].map(p => p.nama_parameter);
                     }
-                } else if (
-                    groups[item.Jenis_Analisa].paramHeaders.length === 0 &&
-                    item.parameters
-                ) {
-                    groups[item.Jenis_Analisa].paramHeaders =
-                        item.parameters.map((_, i) => `Param ${i + 1}`);
+                } else if (g.paramHeaders.length === 0 && Array.isArray(item.parameters)) {
+                    g.paramHeaders = item.parameters.map((_, i) => `Param ${i + 1}`);
                 }
-
-                groups[item.Jenis_Analisa].items.push(item);
-
-                if (item.Flag_Layak === "T" || item.Flag_Layak === "N") {
-                    groups[item.Jenis_Analisa].is_layak = false;
-                }
+                g.items.push(item);
+                if (item.Flag_Layak === "T" || item.Flag_Layak === "N") g.is_layak = false;
             });
-
-            return Object.values(groups).map((group) => {
+            return Object.values(groups).map(group => {
                 if (group.Flag_Perhitungan === "Y") {
-                    let totalHasil = 0;
-                    let countHasil = 0;
-
-                    group.items.forEach((i) => {
-                        let val = parseFloat(i.Hasil);
-                        if (!isNaN(val)) {
-                            totalHasil += val;
-                            countHasil++;
-                        }
+                    let total = 0, count = 0;
+                    group.items.forEach(i => {
+                        const v = parseFloat(i.Hasil);
+                        if (!isNaN(v)) { total += v; count++; }
                     });
-
-                    group.RataRataHasil =
-                        countHasil > 0
-                            ? (totalHasil / countHasil).toFixed(
-                                  group.Digit_Desimal
-                              )
-                            : "-";
+                    group.RataRataHasil = count > 0 ? (total / count).toFixed(group.Digit_Desimal) : "—";
                 } else {
                     group.RataRataHasil = null;
                 }
                 return group;
             });
         },
-        isStepTerkunci() {
-            return (
-                this.currentStepData &&
-                this.currentStepData.status_step === "TERKUNCI"
-            );
-        },
-        visiblePages() {
-            const total = this.pagination.totalPage;
-            const current = this.pagination.page;
-            let start = Math.max(1, current - 2);
-            let end = Math.min(total, current + 2);
-            if (total <= 5) {
-                start = 1;
-                end = total;
-            }
-            const pages = [];
-            for (let i = start; i <= end; i++) pages.push(i);
-            return pages;
-        },
+
         hasNextStepAvailable() {
-            if (!this.detailValidasiData.length || !this.currentStepData)
-                return false;
-            if (this.currentStepData.status_step === "MENUNGGU VALIDASI")
-                return false;
-            const nextIndex = this.activeStep + 1;
-            if (nextIndex < this.detailValidasiData.length) {
-                const nextStep = this.detailValidasiData[nextIndex];
-                return nextStep.status_step !== "TERKUNCI";
-            }
-            return false;
+            if (!this.currentStepData) return false;
+            if (this.currentStepData.status_step === "MENUNGGU VALIDASI") return false;
+            const nextIdx = this.activeStep + 1;
+            if (nextIdx >= this.listKlasifikasi.length) return false;
+            const nextKode = this.listKlasifikasi[nextIdx].Kode_Aktivitas_Lab;
+            const next = this.detailValidasiData.find(s => s.Kode_Aktivitas_Lab === nextKode);
+            return next && next.status_step !== "TERKUNCI";
         },
-        filteredPrintSamples() {
-            if (!this.searchSampleQuery) return this.detailDataList;
-            return this.detailDataList.filter((item) =>
-                item.No_Po_Sampel.toLowerCase().includes(
-                    this.searchSampleQuery.toLowerCase()
-                )
+
+        allStepsApproved() {
+            return (
+                this.detailValidasiData.length > 0 &&
+                this.detailValidasiData.every(s => s.status_step === "DISETUJUI")
             );
         },
-        showPszOption() {
-            return true;
-        },
-        isPszReportSelected() {
-            return this.selectedJenisPrint === "psz";
-        },
-        isGenerateButtonDisabled() {
-            if (!this.selectedPrintSample) return true;
-            if (!this.selectedJenisPrint) return true;
-            if (this.isPszReportSelected && !this.pszConfirmation) return true;
-            if (this.loading.loadingAction) return true;
-            return false;
+
+        pendingBlocked() {
+            if (!this.currentStepData) return false;
+            return !!(
+                this.currentStepData.pending_analisa &&
+                this.currentStepData.pending_analisa.length > 0 &&
+                !this.acknowledgementChecked
+            );
         },
     },
+
     watch: {
-        activeStep() {
-            this.acknowledgementChecked = false;
-        },
+        searchQuery() { this.debouncedFetch(); },
+        activeStep() { this.acknowledgementChecked = false; },
     },
+
     methods: {
-        bukaModalFoto(fotoList) {
-            this.selectedPhotos = fotoList;
-            const modalElement = document.getElementById("modalGaleriFoto");
-            const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
-            modal.show();
+        isSelected(item) {
+            return this.selectedItem && this.selectedItem.No_Po_Sampel === item.No_Po_Sampel;
         },
-        async fetchTemplateParameter(idHash) {
-            if (!idHash || this.templateDataMap[idHash]) return;
-            try {
-                const response = await axios.get(
-                    `/fetch/lab/lama/${idHash}/parameter-perhitungan-old`
-                );
-                if (
-                    response.data &&
-                    response.data.success &&
-                    response.data.result
-                ) {
-                    this.templateDataMap[idHash] =
-                        response.data.result.parameter || [];
-                }
-            } catch (e) {
-                console.error("Gagal fetch parameter:", e);
-            }
-        },
-        switchTab(tab) {
-            this.activeTab = tab;
-            this.searchQuery = "";
-            if (tab === "desktop" && this.desktopDataList.length === 0) {
-                this.fetchDesktop();
-            } else if (
-                tab === "prafinalisasi" &&
-                this.detailDataList.length === 0
-            ) {
-                this.fetchValidasi();
-            }
-        },
-        toggleDetail(splitPo) {
-            const index = this.expandedRows.indexOf(splitPo);
-            if (index > -1) {
-                this.expandedRows.splice(index, 1);
-            } else {
-                this.expandedRows.push(splitPo);
-            }
-        },
-        togglePrintModal() {
-            this.currentStep = 1;
-            this.searchSampleQuery = "";
-            this.selectedPrintSample = null;
-            const modal = new bootstrap.Modal(
-                document.getElementById("printModal")
-            );
-            modal.show();
-        },
-        closePrintModal() {
-            const modalElement = document.getElementById("printModal");
-            const modal = bootstrap.Modal.getInstance(modalElement);
-            if (modal) modal.hide();
-        },
-        async generateReport() {
-            Swal.fire({
-                title: "Mohon Tunggu",
-                html: "Laporan sedang diproses dan dibuat...",
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                },
-            });
 
-            try {
-                const csrfToken = document
-                    .querySelector('meta[name="csrf-token"]')
-                    .getAttribute("content");
-                let urlLink;
-                const exportFormat = this.exportFormat;
-
-                if (this.selectedJenisPrint === "psz") {
-                    if (!this.pszConfirmation) {
-                        Swal.fire(
-                            "Peringatan",
-                            "Konfirmasi PSZ harus dicentang.",
-                            "warning"
-                        );
-                        return;
-                    }
-                    urlLink =
-                        exportFormat === "pdf"
-                            ? "/rekap-sampel/pdf/particle-size"
-                            : "/rekap-sampel/excell/particle-size";
-                } else {
-                    const isRingkas = this.selectedJenisPrint === "ringkas";
-                    urlLink =
-                        exportFormat === "pdf"
-                            ? isRingkas
-                                ? "/api/v2/formulator/rekap-sampel/pdf"
-                                : "/api/v1/formulator/rekap-sampel/pdf"
-                            : isRingkas
-                            ? "/api/v2/formulator/rekap-sampel/excell/pra-finalisasi"
-                            : "/api/v1/formulator/download-rekap/analisa/pra-finalisasi";
-                }
-
-                const payload = {
-                    No_Po_Sampel: this.selectedPrintSample,
-                    format: exportFormat,
-                };
-
-                const response = await axios.post(urlLink, payload, {
-                    headers: { "X-CSRF-TOKEN": csrfToken },
-                    responseType: "blob",
-                });
-
-                Swal.close();
-
-                const blob = new Blob([response.data], {
-                    type: response.headers["content-type"],
-                });
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-
-                let fileName = `laporan-rekap-sampel-${
-                    this.selectedPrintSample
-                }.${exportFormat === "pdf" ? "pdf" : "xlsx"}`;
-                const contentDisposition =
-                    response.headers["content-disposition"] ||
-                    response.headers["Content-Disposition"];
-
-                if (contentDisposition) {
-                    const fileNameMatch = contentDisposition.match(
-                        /filename\*?=(?:(?:UTF-8'')?["']?)([^;"']+)/i
-                    );
-                    if (fileNameMatch && fileNameMatch[1]) {
-                        fileName = decodeURIComponent(fileNameMatch[1]);
-                    }
-                }
-
-                link.setAttribute("download", fileName);
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                window.URL.revokeObjectURL(url);
-
-                ElMessage.success("Laporan berhasil diunduh.");
-            } catch (error) {
-                console.error("Gagal membuat laporan:", error);
-                try {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        try {
-                            const responseText = reader.result;
-                            const parsed = JSON.parse(responseText);
-                            const message =
-                                parsed?.message ||
-                                "Terjadi kesalahan saat membuat laporan.";
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Gagal/Tidak Ditemukan",
-                                text: message,
-                            });
-                        } catch (parseError) {
-                            Swal.fire({
-                                icon: "error",
-                                title: "Gagal Memproses Laporan",
-                                text: "Terjadi kesalahan internal. Silakan coba lagi nanti.",
-                            });
-                        }
-                    };
-                    reader.readAsText(error.response?.data);
-                } catch (readError) {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Gagal Memproses Laporan",
-                        text: "Terjadi kesalahan tidak terduga.",
-                    });
-                }
-            }
-        },
-        getBadgeIcon(status) {
-            if (status === "DISETUJUI")
-                return "ri-checkbox-circle-fill align-middle fs-14 me-1";
-            if (status === "TIDAK ADA")
-                return "ri-close-circle-fill align-middle fs-14 me-1";
-            return "ri-timer-fill align-middle fs-14 me-1";
-        },
-        getBadgeClass(status) {
-            if (status === "DISETUJUI") return "badge bg-success";
-            if (status === "TIDAK ADA") return "badge bg-secondary";
-            return "badge bg-warning text-dark";
-        },
-        async fetchKlasifikasiAktivitas() {
-            try {
-                const response = await axios.get(
-                    "/api/v1/validasi/pra-finalisasi/options/klasifikasi-lab"
-                );
-                if (response.status === 200)
-                    this.listKlasifikasi = response.data.result;
-            } catch (error) {
-                console.error(error);
-            }
-        },
-        async validasiData(item) {
-            this.selectedSampel = item.No_Po_Sampel;
-            this.activeStep = 0;
-            this.detailValidasiData = [];
-            this.acknowledgementChecked = false;
-            const modalElement = document.getElementById("modalValidasi");
-            if (modalElement)
-                bootstrap.Modal.getOrCreateInstance(modalElement).show();
-            this.loading.loadingModal = true;
-            try {
-                const response = await axios.get(
-                    `/api/v1/validasi/pra-finalisasi/detail/by/${item.No_Po_Sampel}`
-                );
-                if (response.status === 200 && response.data.result?.steps) {
-                    this.detailValidasiData = response.data.result.steps;
-
-                    // 🔥 TRIGGER FETCH TEMPLATE PARAMETER KALO ADA STEP ANL
-                    const anlStep = this.detailValidasiData.find(
-                        (s) => s.Kode_Aktivitas_Lab === "ANL"
-                    );
-                    if (anlStep && anlStep.data_analisa) {
-                        const uniqueHashes = [
-                            ...new Set(
-                                anlStep.data_analisa
-                                    .map((d) => d.Id_Jenis_Analisa_Hash)
-                                    .filter(Boolean)
-                            ),
-                        ];
-                        uniqueHashes.forEach((hash) => {
-                            this.fetchTemplateParameter(hash);
-                        });
-                    }
-
-                    const activeIndex = this.detailValidasiData.findIndex(
-                        (step) => step.status_step === "MENUNGGU VALIDASI"
-                    );
-                    if (activeIndex !== -1) this.activeStep = activeIndex;
-                    else if (
-                        this.detailValidasiData.every(
-                            (step) => step.status_step === "DISETUJUI"
-                        )
-                    )
-                        this.activeStep = this.listKlasifikasi.length;
-                    else {
-                        const firstNotOk = this.detailValidasiData.findIndex(
-                            (step) => step.status_step !== "DISETUJUI"
-                        );
-                        this.activeStep = firstNotOk !== -1 ? firstNotOk : 0;
-                    }
-                }
-            } catch (error) {
-                ElNotification.error("Gagal memuat detail.");
-            } finally {
-                this.loading.loadingModal = false;
-            }
-        },
-        goToNextStep() {
-            if (this.hasNextStepAvailable) {
-                this.activeStep++;
-            }
-        },
-        lihatFoto(url) {
-            if (url) window.open(url, "_blank", "noopener,noreferrer");
-        },
         isSelesaiSemua(item) {
             return (
                 item.status_lock_view === "DISETUJUI" &&
@@ -3131,1061 +710,759 @@ export default {
                 item.status_palatabilitas === "DISETUJUI"
             );
         },
-        resetModalValidasi() {
-            this.selectedSampel = "";
-            this.detailValidasiData = [];
-            this.activeStep = 0;
-            this.acknowledgementChecked = false;
+
+        hasDitolak(item) {
+            return (
+                item.status_lock_view === "DITOLAK" ||
+                item.status_analisa_lab === "DITOLAK" ||
+                item.status_palatabilitas === "DITOLAK"
+            );
         },
+
+        getChipClass(status) {
+            if (status === "DISETUJUI") return "vld-chip--success";
+            if (status === "DITOLAK") return "vld-chip--danger";
+            if (status === "TIDAK ADA") return "vld-chip--gray";
+            return "vld-chip--orange";
+        },
+
+        getBadgeClass(status) {
+            if (status === "DISETUJUI") return "vld-badge--success";
+            if (status === "DITOLAK") return "vld-badge--danger";
+            if (status === "TIDAK ADA") return "vld-badge--gray";
+            return "vld-badge--orange";
+        },
+
+        getStepStatus(step) {
+            const found = this.detailValidasiData.find(s => s.Kode_Aktivitas_Lab === step.Kode_Aktivitas_Lab);
+            return found ? found.status_step : "TERKUNCI";
+        },
+
+        getStepIcon(step) {
+            const status = this.getStepStatus(step);
+            if (status === "DISETUJUI") return "ri-checkbox-circle-fill";
+            if (status === "DITOLAK") return "ri-close-circle-fill";
+            if (status === "TERKUNCI") return "ri-lock-fill";
+            return "ri-time-fill";
+        },
+
+        async fetchList(page = 1) {
+            this.loading.list = true;
+            try {
+                const res = await axios.get("/api/v1/validasi/pra-finalisasi/current-home", {
+                    params: { page, limit: this.pagination.limit, search: this.searchQuery },
+                });
+                if (res.data?.result) {
+                    this.listData = res.data.result;
+                    const pg = res.data.pagination;
+                    this.pagination = {
+                        page: pg.current_page,
+                        totalPage: pg.total_pages,
+                        totalData: pg.total,
+                        limit: pg.per_page,
+                    };
+                } else {
+                    this.listData = [];
+                }
+            } catch {
+                this.listData = [];
+            } finally {
+                this.loading.list = false;
+            }
+        },
+
+        debouncedFetch: debounce(function () {
+            this.pagination.page = 1;
+            this.fetchList(1);
+        }, 500),
+
+        changePage(page) {
+            if (page !== this.pagination.page) this.fetchList(page);
+        },
+
+        resetFiltersAndFetch() {
+            this.searchQuery = "";
+            this.fetchList(1);
+        },
+
+        async selectItem(item) {
+            this.selectedItem = item;
+            this.detailVisible = true;
+            this.activeStep = 0;
+            this.detailValidasiData = [];
+            this.acknowledgementChecked = false;
+            await this.fetchDetail(item.No_Po_Sampel);
+        },
+
+        async fetchDetail(noSampel) {
+            this.loading.detail = true;
+            try {
+                const res = await axios.get(`/api/v1/validasi/pra-finalisasi/detail/by/${noSampel}`);
+                if (res.status === 200 && res.data?.result?.steps) {
+                    this.detailValidasiData = res.data.result.steps;
+
+                    const anlStep = this.detailValidasiData.find(s => s.Kode_Aktivitas_Lab === "ANL");
+                    if (anlStep && anlStep.data_analisa) {
+                        const hashes = [...new Set(anlStep.data_analisa.map(d => d.Id_Jenis_Analisa_Hash).filter(Boolean))];
+                        hashes.forEach(h => this.fetchTemplateParameter(h));
+                    }
+
+                    const waitingIdx = this.detailValidasiData.findIndex(s => s.status_step === "MENUNGGU VALIDASI");
+                    if (waitingIdx !== -1) {
+                        this.activeStep = waitingIdx;
+                    } else if (this.detailValidasiData.every(s => s.status_step === "DISETUJUI")) {
+                        this.activeStep = Math.max(0, this.listKlasifikasi.length - 1);
+                    } else {
+                        const firstNotOk = this.detailValidasiData.findIndex(s => s.status_step !== "DISETUJUI");
+                        this.activeStep = firstNotOk !== -1 ? firstNotOk : 0;
+                    }
+                }
+            } catch {
+                this.detailValidasiData = [];
+            } finally {
+                this.loading.detail = false;
+            }
+        },
+
+        async fetchTemplateParameter(idHash) {
+            if (!idHash || this.templateDataMap[idHash]) return;
+            try {
+                const res = await axios.get(`/fetch/lab/lama/${idHash}/parameter-perhitungan-old`);
+                if (res.data?.success && res.data?.result) {
+                    this.templateDataMap[idHash] = res.data.result.parameter || [];
+                }
+            } catch {}
+        },
+
+        async fetchKlasifikasiAktivitas() {
+            try {
+                const res = await axios.get("/api/v1/validasi/pra-finalisasi/options/klasifikasi-lab");
+                if (res.status === 200) this.listKlasifikasi = res.data.result;
+            } catch {}
+        },
+
         async setujuiValidasi() {
             if (!this.currentStepData) return;
-            this.loading.loadingAction = true;
+            this.loading.action = true;
             try {
                 const payload = {
-                    No_Po_Sampel: this.selectedSampel,
+                    No_Po_Sampel: this.selectedItem.No_Po_Sampel,
                     Kode_Aktivitas_Lab: this.currentStepData.Kode_Aktivitas_Lab,
                     Status_Action: "setuju",
                     Force_Submit: this.acknowledgementChecked,
-                    Items: this.currentStepData.data_analisa.map((item) => ({
+                    Items: (this.currentStepData.data_analisa || []).map(item => ({
                         No_Fak_Sub_Po: item.No_Fak_Sub_Po,
                     })),
                 };
-                const res = await axios.post(
-                    "/api/v1/validasi/pra-finalisasi/store-hirarki",
-                    payload
-                );
+                const res = await axios.post("/api/v1/validasi/pra-finalisasi/store-hirarki", payload);
                 if (res.status === 200) {
-                    ElMessage.success("Tahap berhasil disetujui.");
-                    this.validasiData({ No_Po_Sampel: this.selectedSampel });
-                    this.fetchValidasi();
+                    Swal.fire({ icon: "success", title: "Berhasil", text: "Tahap berhasil disetujui.", timer: 1500, showConfirmButton: false });
+                    this.fetchDetail(this.selectedItem.No_Po_Sampel);
+                    this.fetchList(this.pagination.page);
                 }
             } catch (e) {
-                ElMessage.error("Gagal menyetujui.");
+                Swal.fire("Gagal!", e.response?.data?.message || "Gagal menyetujui.", "error");
             } finally {
-                this.loading.loadingAction = false;
+                this.loading.action = false;
             }
         },
-        openModalTolak() {
-            this.formTolak.alasan = "";
-            const modal = new bootstrap.Modal(
-                document.getElementById("modalAlasanTolak")
-            );
-            modal.show();
-        },
+
+        openTolak() { this.formTolak.alasan = ""; },
+        openBatal() { this.formBatal.alasan = ""; },
+
         async submitTolak() {
-            this.loading.loadingAction = true;
+            this.loading.action = true;
             try {
                 const payload = {
-                    No_Po_Sampel: this.selectedSampel,
+                    No_Po_Sampel: this.selectedItem.No_Po_Sampel,
                     Kode_Aktivitas_Lab: this.currentStepData.Kode_Aktivitas_Lab,
                     Status_Action: "tolak",
                     Alasan: this.formTolak.alasan,
                     Force_Submit: this.acknowledgementChecked,
-                    Items: this.currentStepData.data_analisa.map((item) => ({
+                    Items: (this.currentStepData.data_analisa || []).map(item => ({
                         No_Fak_Sub_Po: item.No_Fak_Sub_Po,
                     })),
                 };
-                const res = await axios.post(
-                    "/api/v1/validasi/pra-finalisasi/store-hirarki",
-                    payload
-                );
+                const res = await axios.post("/api/v1/validasi/pra-finalisasi/store-hirarki", payload);
                 if (res.status === 200) {
-                    ElMessage.warning("Data berhasil ditolak.");
-                    bootstrap.Modal.getInstance(
-                        document.getElementById("modalAlasanTolak")
-                    ).hide();
-                    this.validasiData({ No_Po_Sampel: this.selectedSampel });
-                    this.fetchValidasi();
+                    const el = document.getElementById("offcanvasTolak");
+                    if (el) bootstrap.Offcanvas.getInstance(el)?.hide();
+                    Swal.fire({ icon: "warning", title: "Ditolak", text: "Tahap berhasil ditolak.", timer: 1500, showConfirmButton: false });
+                    this.fetchDetail(this.selectedItem.No_Po_Sampel);
+                    this.fetchList(this.pagination.page);
                 }
             } catch (e) {
-                ElMessage.error("Gagal menolak.");
+                Swal.fire("Gagal!", e.response?.data?.message || "Gagal menolak.", "error");
             } finally {
-                this.loading.loadingAction = false;
+                this.loading.action = false;
             }
         },
-        openModalBatal(noPo) {
-            this.formBatal.noPo = noPo;
-            this.formBatal.alasan = "";
-            const modal = new bootstrap.Modal(
-                document.getElementById("modalAlasanBatal")
-            );
-            modal.show();
-        },
+
         async submitBatal() {
-            this.loading.loadingAction = true;
+            this.loading.action = true;
             try {
-                const payload = {
-                    No_Po_Sampel: this.formBatal.noPo,
+                const res = await axios.post("/api/v1/formulator/validasi/pra-finalisasi/cancel", {
+                    No_Po_Sampel: this.selectedItem.No_Po_Sampel,
                     Alasan: this.formBatal.alasan,
-                };
-                const res = await axios.post(
-                    "/api/v1/formulator/validasi/pra-finalisasi/cancel",
-                    payload
-                );
+                });
                 if (res.status === 200) {
-                    ElMessage.success(
-                        "Sampel berhasil dibatalkan secara keseluruhan."
-                    );
-                    bootstrap.Modal.getInstance(
-                        document.getElementById("modalAlasanBatal")
-                    ).hide();
-                    this.fetchValidasi();
-                }
-            } catch (e) {
-                ElMessage.error("Gagal membatalkan sampel.");
-            } finally {
-                this.loading.loadingAction = false;
-            }
-        },
-        async showModalFinalisasi(item) {
-            try {
-                await ElMessageBox.confirm(
-                    `Apakah Anda yakin ingin memfinalisasi sampel ${item.No_Po_Sampel}?`,
-                    "Konfirmasi Finalisasi",
-                    {
-                        confirmButtonText: "Ya, Finalisasi",
-                        cancelButtonText: "Batal",
-                        type: "success",
-                        center: true,
-                    }
-                );
-
-                this.loading.loadingAction = true;
-
-                await axios.post(
-                    `/api/v1/formulator/validasi/pra-finalisasi/approve`,
-                    { No_Po_Sampel: item.No_Po_Sampel }
-                );
-
-                ElMessage.success("Sampel Berhasil Di-Finalisasi.");
-                this.fetchValidasi();
-            } catch (error) {
-                if (error !== "cancel") {
-                    if (error.response && error.response.status === 422) {
-                        const responseData = error.response.data;
-                        const daftarBermasalah =
-                            responseData.detail?.Analisa_Bermasalah || [];
-
-                        let htmlList = "";
-                        if (daftarBermasalah.length > 0) {
-                            htmlList =
-                                "<ul class='mt-2 ps-3 mb-0 text-start' style='font-size: 13px;'>";
-                            daftarBermasalah.forEach((analisa) => {
-                                htmlList += `<li><strong>${analisa}</strong></li>`;
-                            });
-                            htmlList += "</ul>";
-                        }
-
-                        ElNotification({
-                            title: "Perhatian",
-                            message: `<div class='text-start'>${responseData.message}${htmlList}</div>`,
-                            dangerouslyUseHTMLString: true,
-                            type: "warning",
-                            duration: 8000,
+                    const el = document.getElementById("offcanvasBatal");
+                    if (el) bootstrap.Offcanvas.getInstance(el)?.hide();
+                    Swal.fire({ icon: "success", title: "Berhasil", text: "Sampel berhasil dibatalkan.", timer: 1500, showConfirmButton: false })
+                        .then(() => {
+                            this.selectedItem = null;
+                            this.detailVisible = false;
+                            this.fetchList(1);
                         });
-                    } else {
-                        ElMessage.error(
-                            error.response?.data?.message ||
-                                "Gagal melakukan finalisasi."
-                        );
-                    }
-                }
-            } finally {
-                this.loading.loadingAction = false;
-            }
-        },
-        async fetchValidasi(page = 1, query = "") {
-            this.loading.loadingDataList = true;
-            try {
-                const res = await axios.get(
-                    "/api/v1/validasi/pra-finalisasi/current-home",
-                    { params: { page, limit: 10, search: query } }
-                );
-                if (res.status === 200 && res.data?.result) {
-                    this.detailDataList = res.data.result;
-                    this.pagination = {
-                        page: res.data.pagination.current_page,
-                        totalPage: res.data.pagination.total_pages,
-                        totalData: res.data.pagination.total,
-                        limit: res.data.pagination.per_page,
-                    };
                 }
             } catch (e) {
-                this.detailDataList = [];
+                Swal.fire("Gagal!", e.response?.data?.message || "Gagal membatalkan.", "error");
             } finally {
-                this.loading.loadingDataList = false;
+                this.loading.action = false;
             }
         },
-        async fetchDesktop(page = 1, query = "") {
-            this.loading.loadingDesktop = true;
+
+        async doFinalisasi(item) {
+            const r = await Swal.fire({
+                title: "Konfirmasi Finalisasi",
+                text: `Finalisasi sampel ${item.No_Po_Sampel}? Tindakan ini tidak dapat dibatalkan.`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#405189",
+                confirmButtonText: "Ya, Finalisasi!",
+                cancelButtonText: "Batal",
+            });
+            if (!r.isConfirmed) return;
+            this.loading.action = true;
+            Swal.fire({ title: "Memproses...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             try {
-                // GANTI URL INI SESUAI DENGAN ROUTE API BACKEND ANDA
-                const res = await axios.get(
-                    "/api/v1/validasi/pra-finalisasi/informasi/validasi-desktop",
-                    { params: { page, limit: 10, search: query } }
-                );
-                if (res.status === 200 && res.data?.result) {
-                    this.desktopDataList = res.data.result;
-                    this.paginationDesktop = {
-                        page: res.data.pagination.current_page,
-                        totalPage: res.data.pagination.total_pages,
-                        totalData: res.data.pagination.total,
-                        limit: res.data.pagination.per_page,
-                    };
+                const res = await axios.post("/api/v1/formulator/validasi/pra-finalisasi/approve", {
+                    No_Po_Sampel: item.No_Po_Sampel,
+                });
+                if (res.status === 200) {
+                    Swal.fire({ icon: "success", title: "Berhasil!", text: "Sampel berhasil di-finalisasi.", timer: 2000 })
+                        .then(() => {
+                            this.selectedItem = null;
+                            this.detailVisible = false;
+                            this.fetchList(1);
+                        });
                 }
             } catch (e) {
-                this.desktopDataList = [];
+                if (e.response?.status === 422) {
+                    const daftar = e.response.data?.detail?.Analisa_Bermasalah || [];
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Perhatian",
+                        html: `<div>${e.response.data.message}${daftar.length ? '<ul class="text-start mt-2 ps-3">' + daftar.map(a => `<li><strong>${a}</strong></li>`).join("") + "</ul>" : ""}</div>`,
+                    });
+                } else {
+                    Swal.fire("Gagal!", e.response?.data?.message || "Gagal finalisasi.", "error");
+                }
             } finally {
-                this.loading.loadingDesktop = false;
+                this.loading.action = false;
             }
         },
-        formatTanggal(tanggalString) {
-            if (!tanggalString) return "-";
-            const date = new Date(tanggalString);
-            if (isNaN(date.getTime())) return tanggalString;
-            const options = { day: "2-digit", month: "short", year: "numeric" };
-            return date.toLocaleDateString("en-GB", options);
-        },
-        nextPageDesktop() {
-            if (this.paginationDesktop.page < this.paginationDesktop.totalPage)
-                this.fetchDesktop(
-                    this.paginationDesktop.page + 1,
-                    this.searchQuery
-                );
-        },
-        prevPageDesktop() {
-            if (this.paginationDesktop.page > 1)
-                this.fetchDesktop(
-                    this.paginationDesktop.page - 1,
-                    this.searchQuery
-                );
-        },
-        changePageDesktop(page) {
-            if (page !== this.paginationDesktop.page)
-                this.fetchDesktop(page, this.searchQuery);
+
+        lihatFoto(url) {
+            if (url) window.open(url, "_blank", "noopener,noreferrer");
         },
 
-        handleSearch: debounce(function () {
-            if (this.activeTab === "prafinalisasi") {
-                this.pagination.page = 1;
-                this.fetchValidasi(1, this.searchQuery);
-            } else {
-                this.paginationDesktop.page = 1;
-                this.fetchDesktop(1, this.searchQuery);
-            }
-        }, 500),
+        formatTanggal(s) {
+            if (!s) return "—";
+            return new Date(s).toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            });
+        },
 
-        nextPage() {
-            if (this.pagination.page < this.pagination.totalPage)
-                this.fetchValidasi(this.pagination.page + 1, this.searchQuery);
-        },
-        prevPage() {
-            if (this.pagination.page > 1)
-                this.fetchValidasi(this.pagination.page - 1, this.searchQuery);
-        },
-        changePage(page) {
-            if (page !== this.pagination.page)
-                this.fetchValidasi(page, this.searchQuery);
+        handleResize() {
+            this.isMobile = window.innerWidth < 992;
         },
     },
+
     mounted() {
         this.fetchKlasifikasiAktivitas();
-        this.fetchValidasi();
+        this.fetchList();
+        window.addEventListener("resize", this.handleResize);
+    },
+    beforeUnmount() {
+        window.removeEventListener("resize", this.handleResize);
     },
 };
 </script>
 
 <style scoped>
-.toggle-btn {
-    width: 28px;
-    height: 28px;
+/* ════════════════════════════════════════════════════════════════════════
+   ROOT
+   ════════════════════════════════════════════════════════════════════════ */
+.vld-root {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: inherit;
+}
+
+/* ── Top bar ──────────────────────────────────────────────────────────── */
+.vld-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: #fff;
+    border-bottom: 1px solid #e9ebec;
+    flex-shrink: 0;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.vld-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.vld-topbar-icon {
+    font-size: 22px;
+    color: #405189;
+    background: #eef0f9;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.vld-topbar-title {
+    display: block;
+    font-weight: 600;
+    font-size: 15px;
+    color: #1a1d23;
+    line-height: 1.2;
+}
+.vld-topbar-sub {
+    display: block;
+    font-size: 11px;
+    color: #878a99;
+    line-height: 1.3;
+}
+.vld-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.vld-stat { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.vld-stat-num { font-size: 18px; font-weight: 700; color: #1a1d23; }
+.vld-stat-lbl { font-size: 10px; color: #878a99; text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* ── Main split layout ────────────────────────────────────────────────── */
+.vld-body { display: flex; flex: 1; overflow: hidden; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   LEFT PANEL
+   ════════════════════════════════════════════════════════════════════════ */
+.vld-left {
+    width: 320px;
+    min-width: 260px;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #e9ebec;
+    background: #fff;
+    flex-shrink: 0;
+}
+
+.vld-filter-bar {
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ebec;
+    flex-shrink: 0;
+}
+.vld-search-wrap { position: relative; }
+.vld-search-icon {
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #878a99;
+    font-size: 13px;
+    pointer-events: none;
+}
+.vld-search-input {
+    width: 100%;
+    padding: 6px 10px 6px 28px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 12px;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.vld-search-input:focus { border-color: #405189; box-shadow: 0 0 0 2px rgba(64,81,137,.12); }
+
+.vld-list { flex: 1; overflow-y: auto; overflow-x: hidden; }
+.vld-list::-webkit-scrollbar { width: 4px; }
+.vld-list::-webkit-scrollbar-track { background: transparent; }
+.vld-list::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 4px; }
+
+.vld-skeleton {
+    height: 66px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #f0f2f5 25%, #e4e7ec 50%, #f0f2f5 75%);
+    background-size: 400% 100%;
+    animation: vld-shimmer 1.4s infinite;
+}
+@keyframes vld-shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+.vld-empty-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 20px;
+    color: #878a99;
+    gap: 8px;
+    font-size: 12px;
+    text-align: center;
+}
+.vld-empty-list i { font-size: 36px; color: #ced4da; }
+.vld-empty-list p { margin: 0; }
+
+.vld-item {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #f0f2f5;
     padding: 0;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: left;
+}
+.vld-item:hover { background: #f8f9fa; }
+.vld-item--active { background: #eef0f9 !important; }
+
+.vld-item-accent { width: 3px; flex-shrink: 0; background: transparent; transition: background 0.15s; }
+.vld-item--lolos .vld-item-accent { background: #0ab39c; }
+.vld-item--tidak .vld-item-accent { background: #f06548; }
+.vld-item--warn .vld-item-accent { background: #f7b731; }
+.vld-item--active .vld-item-accent { width: 4px; }
+
+.vld-item-body { flex: 1; min-width: 0; padding: 10px 8px 10px 10px; }
+.vld-item-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+.vld-item-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a1d23;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+.vld-item-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.vld-item-arrow { align-self: center; flex-shrink: 0; padding: 0 6px; color: #ced4da; font-size: 16px; }
+.vld-item--active .vld-item-arrow { color: #405189; }
+
+.vld-list-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-top: 1px solid #e9ebec;
+    background: #f8f9fa;
+    flex-shrink: 0;
+}
+.vld-page-info { font-size: 11px; color: #878a99; }
+.vld-page-btns { display: flex; align-items: center; gap: 4px; }
+.vld-page-btn {
+    width: 26px; height: 26px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #495057;
+    transition: all 0.15s;
+}
+.vld-page-btn:hover:not(:disabled) { background: #405189; color: #fff; border-color: #405189; }
+.vld-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.vld-page-current { font-size: 11px; color: #495057; min-width: 36px; text-align: center; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   RIGHT PANEL
+   ════════════════════════════════════════════════════════════════════════ */
+.vld-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #f3f6f9;
+    min-width: 0;
+}
+
+.vld-mobile-back {
+    padding: 8px 12px;
+    background: #fff;
+    border-bottom: 1px solid #e9ebec;
+    flex-shrink: 0;
+}
+
+.vld-detail-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+}
+.vld-detail-empty-inner { text-align: center; max-width: 320px; }
+.vld-empty-icon-wrap {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: #eef0f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+}
+.vld-empty-icon-wrap i { font-size: 32px; color: #405189; }
+.vld-detail-empty-inner h6 { font-weight: 600; color: #1a1d23; margin-bottom: 8px; }
+.vld-detail-empty-inner p { font-size: 12px; color: #878a99; line-height: 1.6; margin: 0; }
+
+/* ── Sticky detail header ─────────────────────────────────────────────── */
+.vld-detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #fff;
+    border-bottom: 1px solid #e9ebec;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+.vld-dh-main { display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0; }
+.vld-dh-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.vld-dh-icon--success { background: #d1f8ef; color: #0ab39c; }
+.vld-dh-icon--info { background: #eef0f9; color: #405189; }
+.vld-dh-title { font-size: 14px; font-weight: 700; color: #1a1d23; line-height: 1.2; margin-bottom: 2px; }
+.vld-dh-sub { font-size: 11px; color: #878a99; margin-bottom: 6px; }
+.vld-dh-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* ── Step tabs bar ────────────────────────────────────────────────────── */
+.vld-subpo-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: #fafbfc;
+    border-bottom: 1px solid #e9ebec;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+.vld-subpo-label { font-size: 11px; font-weight: 600; color: #495057; white-space: nowrap; flex-shrink: 0; }
+.vld-subpo-tabs { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+.vld-subpo-loading { display: flex; align-items: center; }
+
+.vld-subpo-tab {
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid #ced4da;
+    background: #fff;
+    font-size: 11px;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.vld-subpo-tab:hover { border-color: #405189; color: #405189; background: #eef0f9; }
+.vld-subpo-tab--active { background: #405189; border-color: #405189; color: #fff; font-weight: 600; }
+.vld-subpo-tab--ok { border-color: #0ab39c; color: #0ab39c; }
+.vld-subpo-tab--ok.vld-subpo-tab--active { background: #0ab39c; border-color: #0ab39c; color: #fff; }
+.vld-subpo-tab--fail { border-color: #f06548; color: #f06548; }
+.vld-subpo-tab--fail.vld-subpo-tab--active { background: #f06548; border-color: #f06548; color: #fff; }
+.vld-subpo-tab--locked { border-color: #adb5bd; color: #adb5bd; cursor: not-allowed; }
+
+/* ── Scrollable body ──────────────────────────────────────────────────── */
+.vld-detail-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
+.vld-detail-body::-webkit-scrollbar { width: 5px; }
+.vld-detail-body::-webkit-scrollbar-track { background: transparent; }
+.vld-detail-body::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 4px; }
+
+.vld-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #878a99;
+}
+
+/* Section cards */
+.vld-section {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e9ebec;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+.vld-section-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a1d23;
+    background: #fafbfc;
+    border-bottom: 1px solid #e9ebec;
+    user-select: none;
+}
+.vld-section-body { padding: 12px 14px; }
+
+/* Mini stats */
+.vld-mini-stats { display: flex; gap: 8px; flex-wrap: wrap; }
+.vld-ms-item {
+    flex: 1; min-width: 80px;
+    background: #fff;
+    border: 1px solid #e9ebec;
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.vld-ms-item--success { border-left: 3px solid #0ab39c; }
+.vld-ms-item--danger { border-left: 3px solid #f06548; }
+.vld-ms-val { font-size: 20px; font-weight: 700; color: #1a1d23; line-height: 1.1; }
+.vld-ms-lbl { font-size: 10px; color: #878a99; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+.vld-ms-item--success .vld-ms-val { color: #0ab39c; }
+.vld-ms-item--danger .vld-ms-val { color: #f06548; }
+
+/* Alerts */
+.vld-alert-warn, .vld-alert-ok, .vld-alert-no {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+}
+.vld-alert-warn { background: #fff8ec; border: 1px solid #f7b731; color: #856404; }
+.vld-alert-ok { background: #d1f8ef; border: 1px solid #0ab39c; color: #0a5a4a; }
+.vld-alert-no { background: #fde8e4; border: 1px solid #f06548; color: #7b2f20; }
+
+/* Table */
+.vld-table thead tr th {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    background: #f3f6f9;
+    color: #495057;
+    border-bottom: 2px solid #e9ebec;
+    padding: 7px 10px;
+}
+.vld-table tbody td { font-size: 12px; padding: 7px 10px; }
+.vld-row--avg { background: #fffbeb !important; }
+
+/* Badges */
+.vld-badge {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-}
-.toggle-btn.expanded {
-    background-color: #3a0ca3 !important;
-    color: white !important;
-    border-color: #3a0ca3 !important;
-}
-.nav-tabs-custom .nav-item .nav-link.active {
-    color: #3a0ca3;
-    background-color: transparent;
-    border-bottom: 2px solid #3a0ca3;
-}
-
-.table-wrapper {
-    width: 100%;
-    overflow-x: auto;
-}
-
-table.skeleton-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-}
-
-.skeleton-table thead th {
-    padding: 12px;
-    text-align: left;
-    border: 1px solid #ccc;
-    background-color: #f9f9f9;
-}
-
-.skeleton-row .skeleton-cell {
-    position: relative;
-    height: 40px;
-    background: #e0e0e0;
-    border-radius: 6px;
-    margin: 6px 0;
-    overflow: hidden;
-}
-
-.skeleton-cell::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -150px;
-    width: 150px;
-    height: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.4),
-        transparent
-    );
-    animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-    100% {
-        left: 100%;
-    }
-}
-
-@media (max-width: 600px) {
-    .skeleton-cell {
-        height: 30px;
-    }
-}
-</style>
-<style>
-/* Existing styles remain */
-.print-controls {
-    position: sticky;
-    top: 20px;
-    z-index: 100;
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 20px;
-    padding-right: 15px;
-}
-
-.btn-print-action {
-    background: linear-gradient(135deg, #405189 0%, #384677 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 20px;
+    font-size: 10px;
     font-weight: 600;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    display: flex;
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+.vld-badge--success { background: #d1f8ef; color: #0ab39c; }
+.vld-badge--danger { background: #fde8e4; color: #f06548; }
+.vld-badge--blue { background: #eef0f9; color: #405189; }
+.vld-badge--gray { background: #f0f2f5; color: #6c757d; }
+.vld-badge--orange { background: #fef3c7; color: #d97706; }
+
+/* Chips */
+.vld-chip {
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.btn-print-action:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-}
-
-.btn-print-action:active {
-    transform: translateY(0);
-}
-
-.btn-print-action i {
-    font-size: 1.1rem;
-}
-
-.btn-text {
-    font-size: 0.95rem;
-}
-
-.tooltip {
-    position: absolute;
-    bottom: -40px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #333;
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-}
-
-.btn-print-action:hover .tooltip {
-    opacity: 1;
-}
-
-/* Perbaikan untuk tombol di modal */
-.modal-footer .btn {
-    min-width: 120px;
-    padding: 10px 15px;
+    gap: 2px;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
     font-weight: 500;
+}
+.vld-chip--success { background: #d1f8ef; color: #0ab39c; }
+.vld-chip--danger { background: #fde8e4; color: #f06548; }
+.vld-chip--blue { background: #eef0f9; color: #405189; }
+.vld-chip--gray { background: #f0f2f5; color: #6c757d; }
+.vld-chip--orange { background: #fef3c7; color: #d97706; }
+
+/* ── Sticky action bar ────────────────────────────────────────────────── */
+.vld-action-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.btn-success {
-    background-color: #28a745;
-    border-color: #28a745;
-}
-
-.btn-success:hover {
-    background-color: #218838;
-    border-color: #1e7e34;
-}
-/* New styles for print feature */
-.btn-print-floating {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    z-index: 1000;
-    border-radius: 50px;
-    padding: 12px 20px;
-    font-weight: 600;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
-}
-
-.btn-print-floating:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-}
-
-/* Steps progress */
-.steps-progress {
-    display: flex;
     justify-content: space-between;
-    position: relative;
-    margin-bottom: 30px;
-}
-
-.steps-progress::before {
-    content: "";
-    position: absolute;
-    top: 15px;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background-color: #e9ecef;
-    z-index: 0;
-}
-
-.step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    z-index: 1;
-    flex: 1;
-}
-
-.step.active .step-number {
-    background-color: #0d6efd;
-    color: white;
-    border-color: #0d6efd;
-}
-
-.step.active .step-label {
-    color: #0d6efd;
-    font-weight: 600;
-}
-
-.step-number {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background-color: #e9ecef;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 8px;
-    border: 2px solid #e9ecef;
-    transition: all 0.3s ease;
-}
-
-.step-label {
-    font-size: 0.85rem;
-    color: #6c757d;
-    text-align: center;
-}
-
-/* Analysis selector */
-.analysis-selector {
-    max-height: 400px; /* Atur sesuai kebutuhan */
-    overflow-y: auto;
-    padding-right: 8px; /* Supaya isi tidak terpotong oleh scrollbar */
-}
-
-/* Optional: Kustom scrollbar (untuk Webkit-based browsers seperti Chrome, Edge, Safari) */
-.analysis-selector::-webkit-scrollbar {
-    width: 8px;
-}
-
-.analysis-selector::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-.analysis-selector::-webkit-scrollbar-thumb {
-    background: #405189;
-    border-radius: 4px;
-}
-
-.analysis-selector::-webkit-scrollbar-thumb:hover {
-    background: #1e2849;
-}
-
-.analysis-option {
-    display: flex;
-    align-items: center;
-    padding: 12px 15px;
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background-color: white;
-}
-
-.analysis-option:hover {
-    border-color: #86b7fe;
-    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
-}
-
-.analysis-option.selected {
-    border-color: #0d6efd;
-    background-color: rgba(13, 110, 253, 0.05);
-}
-
-.option-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    background-color: rgba(13, 110, 253, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 15px;
-    color: #0d6efd;
-    font-size: 1.1rem;
-}
-
-.option-details {
-    flex: 1;
-}
-
-.option-details h6 {
-    margin: 0;
-    font-size: 0.95rem;
-}
-
-.option-check {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background-color: #0d6efd;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
-
-.analysis-option.selected .option-check {
-    opacity: 1;
-}
-
-/* Date range picker */
-.date-range-picker {
-    background-color: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-}
-
-.date-presets {
-    background-color: white;
-    padding: 15px;
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
-}
-
-/* Report summary */
-.report-summary {
-    background-color: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-}
-
-.summary-card {
-    background-color: white;
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
-    overflow: hidden;
-}
-
-.summary-header {
-    background-color: #f8f9fa;
-    padding: 12px 15px;
-    border-bottom: 1px solid #dee2e6;
-    display: flex;
-    align-items: center;
-}
-
-.summary-header i {
-    color: #0d6efd;
-    margin-right: 10px;
-    font-size: 1.1rem;
-}
-
-.summary-header h5 {
-    margin: 0;
-    font-size: 1rem;
-}
-
-.summary-body {
-    padding: 15px;
-}
-
-.summary-item {
-    display: flex;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px dashed #e9ecef;
-}
-
-.summary-item:last-child {
-    margin-bottom: 0;
-    padding-bottom: 0;
-    border-bottom: none;
-}
-
-.summary-item span {
-    width: 120px;
-    color: #6c757d;
-    font-size: 0.9rem;
-}
-
-.summary-item strong {
-    flex: 1;
-    font-weight: 500;
-}
-
-.format-options {
-    display: flex;
-    gap: 15px;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .steps-progress {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 20px;
-    }
-
-    .steps-progress::before {
-        display: none;
-    }
-
-    .step {
-        flex-direction: row;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .step-number {
-        margin-bottom: 0;
-    }
-
-    .summary-item {
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    .summary-item span {
-        width: auto;
-    }
-}
-</style>
-<style>
-/* Existing styles remain */
-.print-controls {
-    position: sticky;
-    top: 20px;
-    z-index: 100;
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 20px;
-    padding-right: 15px;
-}
-
-.btn-print-action {
-    background: linear-gradient(135deg, #405189 0%, #384677 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 20px;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    display: flex;
-    align-items: center;
+    padding: 10px 16px;
+    background: #fff;
+    border-top: 1px solid #e9ebec;
+    flex-shrink: 0;
     gap: 10px;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
+    flex-wrap: wrap;
 }
-
-.btn-print-action:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-}
-
-.btn-print-action:active {
-    transform: translateY(0);
-}
-
-.btn-print-action i {
-    font-size: 1.1rem;
-}
-
-.btn-text {
-    font-size: 0.95rem;
-}
-
-.tooltip {
-    position: absolute;
-    bottom: -40px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #333;
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-}
-
-.btn-print-action:hover .tooltip {
-    opacity: 1;
-}
-
-/* Perbaikan untuk tombol di modal */
-.modal-footer .btn {
-    min-width: 120px;
-    padding: 10px 15px;
-    font-weight: 500;
+.vld-action-info {
+    font-size: 11px;
+    color: #878a99;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
+    gap: 4px;
+    min-width: 0;
 }
 
-.btn-success {
-    background-color: #28a745;
-    border-color: #28a745;
+/* ════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════════════════════════ */
+.vld-hidden-mobile { display: none !important; }
+
+@media (min-width: 992px) {
+    .vld-hidden-mobile { display: flex !important; }
 }
 
-.btn-success:hover {
-    background-color: #218838;
-    border-color: #1e7e34;
-}
-/* New styles for print feature */
-.btn-print-floating {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    z-index: 1000;
-    border-radius: 50px;
-    padding: 12px 20px;
-    font-weight: 600;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
+@media (max-width: 991px) {
+    .vld-root { height: calc(100vh - 60px); }
+    .vld-left { width: 100%; max-width: 100%; border-right: none; }
+    .vld-right { width: 100%; }
+    .vld-body { flex-direction: column; }
 }
 
-.btn-print-floating:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-}
-
-/* Steps progress */
-.steps-progress {
-    display: flex;
-    justify-content: space-between;
-    position: relative;
-    margin-bottom: 30px;
-}
-
-.steps-progress::before {
-    content: "";
-    position: absolute;
-    top: 15px;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background-color: #e9ecef;
-    z-index: 0;
-}
-
-.step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    z-index: 1;
-    flex: 1;
-}
-
-.step.active .step-number {
-    background-color: #0d6efd;
-    color: white;
-    border-color: #0d6efd;
-}
-
-.step.active .step-label {
-    color: #0d6efd;
-    font-weight: 600;
-}
-
-.step-number {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background-color: #e9ecef;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 8px;
-    border: 2px solid #e9ecef;
-    transition: all 0.3s ease;
-}
-
-.step-label {
-    font-size: 0.85rem;
-    color: #6c757d;
-    text-align: center;
-}
-
-/* Analysis selector */
-.analysis-selector {
-    max-height: 400px; /* Atur sesuai kebutuhan */
-    overflow-y: auto;
-    padding-right: 8px; /* Supaya isi tidak terpotong oleh scrollbar */
-}
-
-/* Optional: Kustom scrollbar (untuk Webkit-based browsers seperti Chrome, Edge, Safari) */
-.analysis-selector::-webkit-scrollbar {
-    width: 8px;
-}
-
-.analysis-selector::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-.analysis-selector::-webkit-scrollbar-thumb {
-    background: #405189;
-    border-radius: 4px;
-}
-
-.analysis-selector::-webkit-scrollbar-thumb:hover {
-    background: #1e2849;
-}
-
-.analysis-option {
-    display: flex;
-    align-items: center;
-    padding: 12px 15px;
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background-color: white;
-}
-
-.analysis-option:hover {
-    border-color: #86b7fe;
-    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
-}
-
-.analysis-option.selected {
-    border-color: #0d6efd;
-    background-color: rgba(13, 110, 253, 0.05);
-}
-
-.option-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    background-color: rgba(13, 110, 253, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 15px;
-    color: #0d6efd;
-    font-size: 1.1rem;
-}
-
-.option-details {
-    flex: 1;
-}
-
-.option-details h6 {
-    margin: 0;
-    font-size: 0.95rem;
-}
-
-.option-check {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background-color: #0d6efd;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
-
-.analysis-option.selected .option-check {
-    opacity: 1;
-}
-
-/* Date range picker */
-.date-range-picker {
-    background-color: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-}
-
-.date-presets {
-    background-color: white;
-    padding: 15px;
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
-}
-
-/* Report summary */
-.report-summary {
-    background-color: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-}
-
-.summary-card {
-    background-color: white;
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
-    overflow: hidden;
-}
-
-.summary-header {
-    background-color: #f8f9fa;
-    padding: 12px 15px;
-    border-bottom: 1px solid #dee2e6;
-    display: flex;
-    align-items: center;
-}
-
-.summary-header i {
-    color: #0d6efd;
-    margin-right: 10px;
-    font-size: 1.1rem;
-}
-
-.summary-header h5 {
-    margin: 0;
-    font-size: 1rem;
-}
-
-.summary-body {
-    padding: 15px;
-}
-
-.summary-item {
-    display: flex;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px dashed #e9ecef;
-}
-
-.summary-item:last-child {
-    margin-bottom: 0;
-    padding-bottom: 0;
-    border-bottom: none;
-}
-
-.summary-item span {
-    width: 120px;
-    color: #6c757d;
-    font-size: 0.9rem;
-}
-
-.summary-item strong {
-    flex: 1;
-    font-weight: 500;
-}
-
-.format-options {
-    display: flex;
-    gap: 15px;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .steps-progress {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 20px;
-    }
-
-    .steps-progress::before {
-        display: none;
-    }
-
-    .step {
-        flex-direction: row;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .step-number {
-        margin-bottom: 0;
-    }
-
-    .summary-item {
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    .summary-item span {
-        width: auto;
-    }
+@media (max-width: 480px) {
+    .vld-topbar { flex-direction: column; align-items: flex-start; }
+    .vld-topbar-right { flex-wrap: wrap; }
+    .vld-mini-stats { flex-direction: row; }
+    .vld-ms-item { min-width: calc(50% - 4px); }
 }
 </style>

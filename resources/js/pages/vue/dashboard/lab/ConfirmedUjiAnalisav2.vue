@@ -1,562 +1,1286 @@
 <template>
-    <div class="container-fluid py-4">
-        <div class="row">
-            <div class="col-12">
-                <div class="card shadow-sm border-0 main-card">
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <div class="d-flex align-items-center">
-                                <i
-                                    class="fas fa-vial text-primary me-3 fa-2x"
-                                ></i>
-                                <div>
-                                    <h1 class="h2 fw-bold text-primary mb-1">
-                                        Kumpulan Data Uji Analisis
-                                    </h1>
-                                    <p class="text-muted mb-0">
-                                        <i class="fas fa-building me-1"></i>
-                                        Koleksi data uji laboratorium PT. Evo
-                                        Manufacturing Indonesia
-                                    </p>
-                                </div>
-                            </div>
-                            <hr class="my-4" />
-                        </div>
+    <div class="vld-root">
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- TOP BAR                                                        -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div class="vld-topbar">
+            <div class="vld-topbar-left">
+                <i class="ri-flask-line vld-topbar-icon"></i>
+                <div>
+                    <span class="vld-topbar-title">Validasi Hasil Analisa</span>
+                    <span class="vld-topbar-sub"
+                        >Konfirmasi data laboratorium sebelum finalisasi</span
+                    >
+                </div>
+            </div>
+            <div class="vld-topbar-right">
+                <div class="vld-stat" v-if="stats.total > 0">
+                    <span class="vld-stat-num">{{ stats.total }}</span>
+                    <span class="vld-stat-lbl">Total</span>
+                </div>
 
-                        <div
-                            class="alert alert-primary d-flex align-items-start"
-                            role="alert"
+                <span
+                    class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2"
+                >
+                    <i class="ri-time-line me-1"></i>Menunggu Validasi
+                </span>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- MAIN LAYOUT                                                     -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div class="vld-body">
+            <!-- ─────────────────────────────── LEFT PANEL ─────────────── -->
+            <div
+                class="vld-left"
+                :class="{ 'vld-hidden-mobile': detailVisible && isMobile }"
+            >
+                <!-- Filter toolbar -->
+                <div class="vld-filter-bar">
+                    <div class="vld-search-wrap">
+                        <i class="ri-search-line vld-search-icon"></i>
+                        <input
+                            type="text"
+                            class="vld-search-input"
+                            placeholder="Cari No. Sampel, PO, Batch..."
+                            v-model="searchQuery"
+                        />
+                    </div>
+                    <div class="vld-filter-row">
+                        <input
+                            type="date"
+                            class="vld-date-input"
+                            v-model="filters.tanggal.mulai"
+                            title="Dari Tanggal"
+                        />
+                        <span
+                            class="text-muted"
+                            style="font-size: 11px; flex-shrink: 0"
+                            >—</span
                         >
-                            <i class="fas fa-info-circle fa-lg me-3 mt-1"></i>
-                            <div>
-                                <h5 class="alert-heading fw-bold">Penting!</h5>
-                                <p class="mb-0">
-                                    Data yang ditampilkan merupakan hasil submit
-                                    terakhir dari analisa laboratorium. Untuk
-                                    menjaga keamanan data, segera lakukan
-                                    <strong>konfirmasi penyelesaian</strong>
-                                    setelah verifikasi. Data yang sudah
-                                    dikonfirmasi akan difinalisasi dan tidak
-                                    dapat diubah kembali.
-                                </p>
-                            </div>
-                        </div>
+                        <input
+                            type="date"
+                            class="vld-date-input"
+                            v-model="filters.tanggal.selesai"
+                            title="Sampai Tanggal"
+                        />
+                        <select class="vld-select" v-model="filters.qrcode">
+                            <option value="">Semua QR</option>
+                            <option value="multi">Multi QR</option>
+                            <option value="single">Single QR</option>
+                        </select>
+                    </div>
+                </div>
 
-                        <div class="card card-body my-4 filter-card">
-                            <div class="row g-3">
-                                <div class="col-lg-12">
-                                    <label class="form-label small"
-                                        >Pencarian Global</label
-                                    >
-                                    <div class="input-group">
-                                        <span class="input-group-text"
-                                            ><i class="fas fa-search"></i
-                                        ></span>
-                                        <input
-                                            type="text"
-                                            class="form-control"
-                                            placeholder="Cari No. Sampel, PO, Split PO, Batch..."
-                                            v-model="searchQuery"
-                                        />
-                                    </div>
-                                </div>
-                                <div class="col-lg-6 col-md-6">
-                                    <label class="form-label small"
-                                        >Dari Tanggal Uji</label
-                                    >
-                                    <input
-                                        type="date"
-                                        class="form-control"
-                                        v-model="filters.tanggal.mulai"
-                                    />
-                                </div>
-                                <div class="col-lg-6 col-md-6">
-                                    <label class="form-label small"
-                                        >Sampai Tanggal Uji</label
-                                    >
-                                    <input
-                                        type="date"
-                                        class="form-control"
-                                        v-model="filters.tanggal.selesai"
-                                    />
-                                </div>
-                                <div class="col-lg-12">
-                                    <label class="form-label small"
-                                        >Tipe QRCode</label
-                                    >
-                                    <v-select
-                                        :options="filterOptions.qrcode"
-                                        placeholder="Semua Tipe"
-                                        v-model="filters.qrcode"
-                                        :clearable="true"
-                                    ></v-select>
-                                </div>
-                            </div>
-                        </div>
+                <!-- List area -->
+                <div class="vld-list">
+                    <!-- Skeleton -->
+                    <div v-if="loading.list" class="p-3">
+                        <div
+                            v-for="i in 7"
+                            :key="i"
+                            class="vld-skeleton mb-2"
+                        ></div>
+                    </div>
 
-                        <div class="mt-4 content-area">
-                            <ListSkeleton
-                                :count="10"
-                                v-if="loading.loadingListData"
-                            />
+                    <!-- Empty -->
+                    <div
+                        v-else-if="listData.length === 0"
+                        class="vld-empty-list"
+                    >
+                        <i class="ri-inbox-2-line"></i>
+                        <p>{{ emptyMessage }}</p>
+                        <button
+                            class="btn btn-sm btn-soft-primary"
+                            @click="resetFiltersAndFetch"
+                        >
+                            <i class="ri-refresh-line me-1"></i>Reset
+                        </button>
+                    </div>
 
-                            <div v-else-if="listData.length > 0">
-                                <div class="list-container">
-                                    <a
-                                        v-for="(item, kode) in listData"
-                                        :key="kode"
-                                        :href="
-                                            item.Flag_Multi_QrCode === 'Y'
-                                                ? `/lab/confirmed-analisis/v2/${item.No_Po_Sampel}/multi/${item.Id_Jenis_Analisa}`
-                                                : `/lab/confirmed-analisis/v2/${item.No_Po_Sampel}/single-qrCode`
+                    <!-- Items -->
+                    <div v-else>
+                        <button
+                            v-for="(item, idx) in listData"
+                            :key="idx"
+                            @click="selectItem(item)"
+                            class="vld-item"
+                            :class="{
+                                'vld-item--active': isSelected(item),
+                                'vld-item--lolos':
+                                    item.Status_Sampel === 'Lolos Uji',
+                                'vld-item--tidak':
+                                    item.Status_Sampel === 'Tidak Lolos Uji',
+                            }"
+                        >
+                            <div class="vld-item-accent"></div>
+                            <div class="vld-item-body">
+                                <div class="vld-item-top">
+                                    <span class="vld-item-title">{{
+                                        item.Jenis_Analisa
+                                    }}</span>
+                                    <span
+                                        class="vld-badge"
+                                        :class="
+                                            item.Status_Sampel === 'Lolos Uji'
+                                                ? 'vld-badge--success'
+                                                : 'vld-badge--danger'
                                         "
-                                        class="analisa-card"
-                                        :class="[
-                                            statusClass(item),
-                                            {
-                                                'status-lolos':
-                                                    item.Status_Sampel ===
-                                                    'Lolos Uji',
-                                                'status-tidak':
-                                                    item.Status_Sampel ===
-                                                    'Tidak Lolos Uji',
-                                            },
-                                        ]"
                                     >
-                                        <!-- STATUS ICON -->
-                                        <div class="analisa-card-status">
-                                            <i
-                                                class="fas"
-                                                :class="statusIcon(item)"
-                                            ></i>
-                                        </div>
-
-                                        <!-- KONTEN -->
-                                        <div class="analisa-card-content">
-                                            <!-- HEADER -->
-                                            <div class="content-header">
-                                                <div class="title-group">
-                                                    <h6>
-                                                        {{
-                                                            item.po_info
-                                                                ?.Kode_Barang
-                                                        }}-{{
-                                                            item.Nama_Barang
-                                                        }}
-                                                    </h6>
-                                                    <h5 class="title">
-                                                        {{ item.Jenis_Analisa }}
-                                                    </h5>
-
-                                                    <div class="subtitle-group">
-                                                        <span
-                                                            class="subtitle-kode"
-                                                            >{{
-                                                                item.No_Po_Sampel
-                                                            }}</span
-                                                        >
-
-                                                        <!-- BADGE MULTI/SINGLE QR -->
-                                                        <span
-                                                            v-if="
-                                                                item.Flag_Multi_QrCode ===
-                                                                'Y'
-                                                            "
-                                                            class="badge-custom badge-multi"
-                                                        >
-                                                            <i
-                                                                class="fas fa-clone"
-                                                            ></i>
-                                                            Multi QR
-                                                        </span>
-                                                        <span
-                                                            v-else
-                                                            class="badge-custom badge-single"
-                                                        >
-                                                            <i
-                                                                class="fas fa-qrcode"
-                                                            ></i>
-                                                            Single QR
-                                                        </span>
-
-                                                        <!-- BADGE TRIAL / PRODUKSI -->
-                                                        <span
-                                                            v-if="
-                                                                item.po_info
-                                                                    ?.Flag_Trial_Produksi ===
-                                                                'Y'
-                                                            "
-                                                            class="badge-custom"
-                                                            style="
-                                                                background-color: #ff9800;
-                                                                color: white;
-                                                            "
-                                                        >
-                                                            <i
-                                                                class="fas fa-vial"
-                                                            ></i>
-                                                            Trial Produksi
-                                                        </span>
-                                                        <span
-                                                            v-else
-                                                            class="badge-custom"
-                                                            style="
-                                                                background-color: #2196f3;
-                                                                color: white;
-                                                            "
-                                                        >
-                                                            <i
-                                                                class="fas fa-industry"
-                                                            ></i>
-                                                            Produksi
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <span
-                                                    :class="[
-                                                        'badge-custom',
-                                                        getBadgeClass(item),
-                                                    ]"
-                                                >
-                                                    <i
-                                                        :class="[
-                                                            'fas',
-                                                            statusIcon(item),
-                                                        ]"
-                                                    ></i>
-                                                    {{ item.Status_Sampel }}
-                                                </span>
-                                            </div>
-
-                                            <div class="content-details">
-                                                <div class="detail-pair">
-                                                    <span class="label"
-                                                        ><i
-                                                            class="fas fa-cogs"
-                                                        ></i>
-                                                        Nama Mesin</span
-                                                    >
-                                                    <span class="value">{{
-                                                        item.po_info
-                                                            ?.Nama_Mesin || "-"
-                                                    }}</span>
-                                                </div>
-
-                                                <div class="detail-pair">
-                                                    <span class="label"
-                                                        ><i
-                                                            class="fas fa-receipt"
-                                                        ></i>
-                                                        No. PO</span
-                                                    >
-                                                    <span class="value">{{
-                                                        item.po_info?.No_Po ||
-                                                        "-"
-                                                    }}</span>
-                                                </div>
-
-                                                <div class="detail-pair">
-                                                    <span class="label"
-                                                        ><i
-                                                            class="fas fa-receipt"
-                                                        ></i>
-                                                        No. Split PO</span
-                                                    >
-                                                    <span class="value">{{
-                                                        item.po_info
-                                                            ?.No_Split_Po || "-"
-                                                    }}</span>
-                                                </div>
-
-                                                <div class="detail-pair">
-                                                    <span class="label"
-                                                        ><i
-                                                            class="fas fa-hashtag"
-                                                        ></i>
-                                                        No. Batch</span
-                                                    >
-                                                    <span class="value"
-                                                        >Batch
-                                                        {{
-                                                            item.po_info
-                                                                ?.No_Batch ||
-                                                            "-"
-                                                        }}</span
-                                                    >
-                                                </div>
-
-                                                <div class="detail-pair">
-                                                    <span class="label"
-                                                        ><i
-                                                            class="fas fa-calendar-plus"
-                                                        ></i>
-                                                        Tgl Registrasi
-                                                        Sampel</span
-                                                    >
-                                                    <span class="value">
-                                                        {{
-                                                            formatTanggal(
-                                                                item.Tanggal_Registrasi
-                                                            )
-                                                        }}
-                                                        {{
-                                                            item.Jam_Registrasi
-                                                        }}
-                                                    </span>
-                                                </div>
-
-                                                <div class="detail-pair">
-                                                    <span class="label"
-                                                        ><i
-                                                            class="fas fa-flask"
-                                                        ></i>
-                                                        Tgl Pengujian</span
-                                                    >
-                                                    <span class="value"
-                                                        >{{
-                                                            formatTanggal(
-                                                                item.Tanggal
-                                                            )
-                                                        }}
-                                                        {{ item.Jam }}</span
-                                                    >
-                                                </div>
-
-                                                <div class="detail-pair">
-                                                    <span class="label"
-                                                        ><i
-                                                            class="fas fa-user"
-                                                        ></i>
-                                                        Analyzer</span
-                                                    >
-                                                    <span class="value">{{
-                                                        item.Id_User || "-"
-                                                    }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </a>
+                                        {{
+                                            item.Status_Sampel === "Lolos Uji"
+                                                ? "Lolos Uji"
+                                                : "Tidak Lolos"
+                                        }}
+                                    </span>
                                 </div>
-
-                                <div
-                                    class="row align-items-center mt-4"
-                                    v-if="
-                                        pagination.totalData > pagination.limit
-                                    "
-                                >
-                                    <div class="col-sm">
-                                        <div class="text-muted">
-                                            Menampilkan
-                                            <span class="fw-semibold">{{
-                                                listData.length
-                                            }}</span>
-                                            dari
-                                            <span class="fw-semibold">{{
-                                                pagination.totalData
-                                            }}</span>
-                                            Data
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-auto mt-3 mt-sm-0">
-                                        <ul
-                                            class="pagination pagination-separated pagination-sm mb-0"
-                                        >
-                                            <li
-                                                class="page-item"
-                                                :class="{
-                                                    disabled:
-                                                        pagination.page === 1,
-                                                }"
-                                            >
-                                                <a
-                                                    href="#"
-                                                    class="page-link"
-                                                    @click.prevent="prevPage"
-                                                    >←</a
-                                                >
-                                            </li>
-                                            <li
-                                                class="page-item"
-                                                v-for="page in visiblePages"
-                                                :key="page"
-                                                :class="{
-                                                    active:
-                                                        page ===
-                                                        pagination.page,
-                                                }"
-                                            >
-                                                <a
-                                                    href="#"
-                                                    class="page-link"
-                                                    @click.prevent="
-                                                        changePage(page)
-                                                    "
-                                                    >{{ page }}</a
-                                                >
-                                            </li>
-                                            <li
-                                                class="page-item"
-                                                :class="{
-                                                    disabled:
-                                                        pagination.page ===
-                                                        pagination.totalPage,
-                                                }"
-                                            >
-                                                <a
-                                                    href="#"
-                                                    class="page-link"
-                                                    @click.prevent="nextPage"
-                                                    >→</a
-                                                >
-                                            </li>
-                                        </ul>
-                                    </div>
+                                <div class="vld-item-sub">
+                                    {{ item.po_info?.Kode_Barang || "" }}
+                                    <template v-if="item.Nama_Barang">
+                                        — {{ item.Nama_Barang }}</template
+                                    >
+                                </div>
+                                <div class="vld-item-meta">
+                                    <code class="vld-code">{{
+                                        item.No_Po_Sampel
+                                    }}</code>
+                                    <span
+                                        class="vld-chip"
+                                        :class="
+                                            item.Flag_Multi_QrCode === 'Y'
+                                                ? 'vld-chip--blue'
+                                                : 'vld-chip--gray'
+                                        "
+                                    >
+                                        <i class="ri-qr-code-line"></i>
+                                        {{
+                                            item.Flag_Multi_QrCode === "Y"
+                                                ? "Multi"
+                                                : "Single"
+                                        }}
+                                    </span>
+                                    <span
+                                        class="vld-chip vld-chip--gray"
+                                        v-if="item.Tanggal"
+                                    >
+                                        <i class="ri-calendar-line"></i
+                                        >{{ formatTanggal(item.Tanggal) }}
+                                    </span>
                                 </div>
                             </div>
+                            <i class="ri-arrow-right-s-line vld-item-arrow"></i>
+                        </button>
+                    </div>
+                </div>
 
-                            <div v-else class="text-center py-5">
-                                <div class="d-flex justify-content-center mb-3">
-                                    <DotLottieVue
-                                        style="height: 200px; width: 200px"
-                                        autoplay
-                                        loop
-                                        src="/animation/empty.lottie"
-                                    />
+                <!-- Pagination footer -->
+                <div class="vld-list-footer" v-if="pagination.totalPage > 1">
+                    <span class="vld-page-info"
+                        >{{ listData.length }} /
+                        {{ pagination.totalData }}</span
+                    >
+                    <div class="vld-page-btns">
+                        <button
+                            class="vld-page-btn"
+                            :disabled="pagination.page === 1"
+                            @click="changePage(pagination.page - 1)"
+                        >
+                            <i class="ri-arrow-left-s-line"></i>
+                        </button>
+                        <span class="vld-page-current"
+                            >{{ pagination.page }} /
+                            {{ pagination.totalPage }}</span
+                        >
+                        <button
+                            class="vld-page-btn"
+                            :disabled="pagination.page === pagination.totalPage"
+                            @click="changePage(pagination.page + 1)"
+                        >
+                            <i class="ri-arrow-right-s-line"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────── RIGHT PANEL ────────────── -->
+            <div
+                class="vld-right"
+                :class="{ 'vld-hidden-mobile': !detailVisible && isMobile }"
+            >
+                <!-- Mobile back -->
+                <div v-if="isMobile && detailVisible" class="vld-mobile-back">
+                    <button
+                        class="btn btn-sm btn-soft-secondary"
+                        @click="detailVisible = false"
+                    >
+                        <i class="ri-arrow-left-line me-1"></i>Daftar
+                    </button>
+                </div>
+
+                <!-- ── EMPTY STATE ─────────────────────────────────────── -->
+                <div v-if="!selectedItem" class="vld-detail-empty">
+                    <div class="vld-detail-empty-inner">
+                        <div class="vld-empty-icon-wrap">
+                            <i class="ri-flask-line"></i>
+                        </div>
+                        <h6>Pilih sampel untuk validasi</h6>
+                        <p>
+                            Klik salah satu item dari daftar di sebelah kiri
+                            untuk melihat detail hasil analisa dan melakukan
+                            konfirmasi.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- ── DETAIL CONTENT ──────────────────────────────────── -->
+                <template v-else>
+                    <!-- Sticky sample header -->
+                    <div class="vld-detail-header">
+                        <div class="vld-dh-main">
+                            <div
+                                class="vld-dh-icon"
+                                :class="
+                                    selectedItem.Status_Sampel === 'Lolos Uji'
+                                        ? 'vld-dh-icon--success'
+                                        : 'vld-dh-icon--danger'
+                                "
+                            >
+                                <i
+                                    :class="
+                                        selectedItem.Status_Sampel ===
+                                        'Lolos Uji'
+                                            ? 'ri-checkbox-circle-line'
+                                            : 'ri-close-circle-line'
+                                    "
+                                ></i>
+                            </div>
+                            <div>
+                                <div class="vld-dh-title">
+                                    {{ selectedItem.Jenis_Analisa }}
                                 </div>
-                                <h5 class="text-muted mb-2">
-                                    Data Tidak Ditemukan
-                                </h5>
-                                <p class="text-muted">{{ emptyMessage }}</p>
-                                <button
-                                    @click="resetFiltersAndFetch"
-                                    class="btn btn-primary mt-3"
-                                >
-                                    <i class="fas fa-sync-alt me-1"></i> Muat
-                                    Ulang & Reset Filter
-                                </button>
+                                <div class="vld-dh-sub">
+                                    {{ selectedItem.po_info?.Kode_Barang }}
+                                    <template v-if="selectedItem.Nama_Barang">
+                                        —
+                                        {{ selectedItem.Nama_Barang }}</template
+                                    >
+                                </div>
+                                <div class="vld-dh-badges">
+                                    <span class="vld-badge vld-badge--blue">
+                                        <i class="ri-barcode-line me-1"></i
+                                        >{{ selectedItem.No_Po_Sampel }}
+                                    </span>
+                                    <span
+                                        class="vld-badge"
+                                        :class="
+                                            selectedItem.Flag_Multi_QrCode ===
+                                            'Y'
+                                                ? 'vld-badge--blue'
+                                                : 'vld-badge--gray'
+                                        "
+                                    >
+                                        <i class="ri-qr-code-line me-1"></i>
+                                        {{
+                                            selectedItem.Flag_Multi_QrCode ===
+                                            "Y"
+                                                ? "Multi QR"
+                                                : "Single QR"
+                                        }}
+                                    </span>
+                                    <span
+                                        class="vld-badge"
+                                        :class="
+                                            selectedItem.Status_Sampel ===
+                                            'Lolos Uji'
+                                                ? 'vld-badge--success'
+                                                : 'vld-badge--danger'
+                                        "
+                                    >
+                                        <i
+                                            :class="
+                                                selectedItem.Status_Sampel ===
+                                                'Lolos Uji'
+                                                    ? 'ri-checkbox-circle-line'
+                                                    : 'ri-close-circle-line'
+                                            "
+                                            class="me-1"
+                                        ></i>
+                                        {{ selectedItem.Status_Sampel }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="vld-dh-meta">
+                            <div class="vld-dh-meta-row">
+                                <i class="ri-settings-3-line"></i>
+                                {{ selectedItem.po_info?.Nama_Mesin || "—" }}
+                            </div>
+                            <div class="vld-dh-meta-row">
+                                <i class="ri-receipt-line"></i>
+                                {{ selectedItem.po_info?.No_Po || "—" }}
+                            </div>
+                            <div class="vld-dh-meta-row">
+                                <i class="ri-git-branch-line"></i>
+                                {{ selectedItem.po_info?.No_Split_Po || "—" }}
+                            </div>
+                            <div class="vld-dh-meta-row">
+                                <i class="ri-stack-line"></i> Batch
+                                {{ selectedItem.po_info?.No_Batch || "—" }}
+                            </div>
+                            <div class="vld-dh-meta-row">
+                                <i class="ri-user-3-line"></i>
+                                {{ selectedItem.Id_User || "—" }}
                             </div>
                         </div>
                     </div>
-                </div>
+
+                    <!-- Sub-PO selector (Multi QR only) -->
+                    <div
+                        v-if="selectedItem.Flag_Multi_QrCode === 'Y'"
+                        class="vld-subpo-bar"
+                    >
+                        <span class="vld-subpo-label">
+                            <i class="ri-layers-line me-1"></i>Sub Sampel
+                        </span>
+                        <div v-if="loading.subPo" class="vld-subpo-loading">
+                            <span
+                                class="spinner-border spinner-border-sm text-primary"
+                            ></span>
+                            <span
+                                class="ms-2 text-muted"
+                                style="font-size: 12px"
+                                >Memuat...</span
+                            >
+                        </div>
+                        <div v-else class="vld-subpo-tabs">
+                            <button
+                                v-for="(sub, si) in subPoList"
+                                :key="si"
+                                @click="selectSubPo(sub)"
+                                class="vld-subpo-tab"
+                                :class="{
+                                    'vld-subpo-tab--active':
+                                        selectedSubPo &&
+                                        selectedSubPo.No_Fak_Sub_Po ===
+                                            sub.No_Fak_Sub_Po,
+                                }"
+                            >
+                                <i class="ri-file-list-3-line me-1"></i>
+                                {{ sub.No_Fak_Sub_Po || sub.No_Po_Sampel }}
+                            </button>
+                            <span
+                                v-if="subPoList.length === 0"
+                                class="text-muted"
+                                style="font-size: 12px"
+                                >Tidak ada sub sampel</span
+                            >
+                        </div>
+                        <span class="vld-subpo-count" v-if="subPoList.length"
+                            >{{ subPoList.length }} sub</span
+                        >
+                    </div>
+
+                    <!-- Scrollable detail body -->
+                    <div class="vld-detail-body">
+                        <!-- Loading -->
+                        <div v-if="loading.detail" class="vld-loading-state">
+                            <div class="spinner-border text-primary"></div>
+                            <p class="mt-3 text-muted small">
+                                Memuat data hasil analisa...
+                            </p>
+                        </div>
+
+                        <!-- Prompt select sub-PO -->
+                        <div
+                            v-else-if="
+                                selectedItem.Flag_Multi_QrCode === 'Y' &&
+                                !selectedSubPo
+                            "
+                            class="vld-loading-state"
+                        >
+                            <i class="ri-cursor-line fs-1 text-muted"></i>
+                            <p class="mt-2 text-muted small">
+                                Pilih sub sampel di atas
+                            </p>
+                        </div>
+
+                        <!-- Main detail -->
+                        <template v-else-if="detailData.length > 0">
+                            <!-- Standard config warning -->
+                            <div
+                                v-if="!hasStandardConfiguration"
+                                class="vld-alert-warn mb-3"
+                            >
+                                <i class="ri-alert-line me-2"></i>
+                                <div>
+                                    <strong>Standar belum dikonfigurasi</strong>
+                                    <span
+                                        class="d-block text-muted"
+                                        style="font-size: 11px"
+                                        >Tidak ada standar rentang — hasil
+                                        dianggap layak secara otomatis.</span
+                                    >
+                                </div>
+                            </div>
+
+                            <!-- Mini stats row -->
+                            <div class="vld-mini-stats mb-3">
+                                <div class="vld-ms-item">
+                                    <span class="vld-ms-val">{{
+                                        detailData.length
+                                    }}</span>
+                                    <span class="vld-ms-lbl">Sampel Uji</span>
+                                </div>
+                                <div class="vld-ms-item vld-ms-item--success">
+                                    <span class="vld-ms-val">{{
+                                        detailData.filter(
+                                            (d) => d.Flag_Layak === "Y"
+                                        ).length
+                                    }}</span>
+                                    <span class="vld-ms-lbl">Layak</span>
+                                </div>
+                                <div class="vld-ms-item vld-ms-item--danger">
+                                    <span class="vld-ms-val">{{
+                                        detailData.filter(
+                                            (d) => d.Flag_Layak !== "Y"
+                                        ).length
+                                    }}</span>
+                                    <span class="vld-ms-lbl">Tidak Layak</span>
+                                </div>
+                                <div
+                                    class="vld-ms-item vld-ms-item--info"
+                                    v-if="formulaAverages.length > 0"
+                                >
+                                    <span class="vld-ms-val">{{
+                                        formulaAverages[0]
+                                    }}</span>
+                                    <span class="vld-ms-lbl">Rata-rata</span>
+                                </div>
+                            </div>
+
+                            <!-- Section: Chart -->
+                            <div class="vld-section">
+                                <div
+                                    class="vld-section-hd"
+                                    @click="sections.chart = !sections.chart"
+                                    style="cursor: pointer"
+                                >
+                                    <span
+                                        ><i
+                                            class="ri-bar-chart-2-line me-2 text-primary"
+                                        ></i
+                                        >Durasi Proses</span
+                                    >
+                                    <i
+                                        :class="
+                                            sections.chart
+                                                ? 'ri-arrow-up-s-line'
+                                                : 'ri-arrow-down-s-line'
+                                        "
+                                        class="text-muted"
+                                    ></i>
+                                </div>
+                                <div
+                                    v-if="sections.chart"
+                                    class="vld-section-body p-0"
+                                >
+                                    <apexchart
+                                        height="180"
+                                        type="bar"
+                                        :options="durationChartOptions"
+                                        :series="durationChartSeries"
+                                    ></apexchart>
+                                </div>
+                            </div>
+
+                            <!-- Section: Data Table -->
+                            <div class="vld-section">
+                                <div class="vld-section-hd">
+                                    <span
+                                        ><i
+                                            class="ri-table-line me-2 text-primary"
+                                        ></i
+                                        >Data Hasil Analisa</span
+                                    >
+                                    <span
+                                        class="badge bg-primary-subtle text-primary"
+                                        >{{ detailData.length }} baris</span
+                                    >
+                                </div>
+                                <div class="vld-section-body p-0">
+                                    <div class="table-responsive">
+                                        <table
+                                            class="table table-sm table-bordered align-middle mb-0 vld-table"
+                                        >
+                                            <thead>
+                                                <tr>
+                                                    <th
+                                                        class="text-center"
+                                                        style="width: 36px"
+                                                    >
+                                                        #
+                                                    </th>
+                                                    <th>No Transaksi</th>
+                                                    <th>No Sampel</th>
+                                                    <th>No PO</th>
+                                                    <th>Split PO</th>
+                                                    <th>Batch</th>
+                                                    <th>Tanggal</th>
+                                                    <th
+                                                        v-for="param in template.parameter"
+                                                        :key="param.id_qc"
+                                                    >
+                                                        {{
+                                                            param.nama_parameter
+                                                        }}
+                                                    </th>
+                                                    <template
+                                                        v-if="
+                                                            template.formula &&
+                                                            template.formula
+                                                                .length > 0 &&
+                                                            formulaAverages.length >
+                                                                0
+                                                        "
+                                                    >
+                                                        <th
+                                                            v-for="(
+                                                                f, fi
+                                                            ) in template.formula"
+                                                            :key="'fh-' + fi"
+                                                            class="text-primary"
+                                                        >
+                                                            {{ f.nama_kolom }}
+                                                        </th>
+                                                    </template>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr
+                                                    v-for="(
+                                                        row, ri
+                                                    ) in detailData"
+                                                    :key="ri"
+                                                    :class="
+                                                        row.Kode_Analisa ===
+                                                        'MBLG-STR'
+                                                            ? ''
+                                                            : row.Flag_Layak ===
+                                                              'Y'
+                                                            ? 'table-success'
+                                                            : 'table-danger'
+                                                    "
+                                                >
+                                                    <td
+                                                        class="text-center fw-semibold"
+                                                    >
+                                                        {{ ri + 1 }}
+                                                    </td>
+                                                    <td>{{ row.No_Faktur }}</td>
+                                                    <td>
+                                                        {{ row.No_Po_Sampel }}
+                                                    </td>
+                                                    <td>{{ row.No_Po }}</td>
+                                                    <td>
+                                                        {{ row.No_Split_Po }}
+                                                    </td>
+                                                    <td>{{ row.No_Batch }}</td>
+                                                    <td>
+                                                        {{
+                                                            formatTanggal(
+                                                                row.Tanggal
+                                                            )
+                                                        }}
+                                                    </td>
+                                                    <td
+                                                        v-for="(
+                                                            pv, pi
+                                                        ) in row.parameters"
+                                                        :key="
+                                                            'p-' + ri + '-' + pi
+                                                        "
+                                                    >
+                                                        {{ pv }}
+                                                    </td>
+                                                    <template
+                                                        v-if="
+                                                            template.formula &&
+                                                            template.formula
+                                                                .length > 0 &&
+                                                            formulaAverages.length >
+                                                                0
+                                                        "
+                                                    >
+                                                        <td
+                                                            v-for="(
+                                                                f, fi
+                                                            ) in template.formula"
+                                                            :key="
+                                                                'fc-' +
+                                                                ri +
+                                                                '-' +
+                                                                fi
+                                                            "
+                                                            class="fw-semibold"
+                                                        >
+                                                            {{
+                                                                row.results[
+                                                                    fi
+                                                                ] &&
+                                                                row.results[fi]
+                                                                    .value !==
+                                                                    undefined
+                                                                    ? row
+                                                                          .results[
+                                                                          fi
+                                                                      ].value
+                                                                    : "—"
+                                                            }}
+                                                        </td>
+                                                    </template>
+                                                </tr>
+                                                <!-- Rata-rata row -->
+                                                <tr
+                                                    v-if="
+                                                        template.formula &&
+                                                        template.formula
+                                                            .length > 0 &&
+                                                        formulaAverages.length >
+                                                            0
+                                                    "
+                                                    class="vld-row--avg"
+                                                >
+                                                    <td
+                                                        :colspan="
+                                                            7 +
+                                                            (template.parameter
+                                                                ? template
+                                                                      .parameter
+                                                                      .length
+                                                                : 0)
+                                                        "
+                                                        class="text-end fw-bold pe-3"
+                                                    >
+                                                        Rata-Rata
+                                                    </td>
+                                                    <td
+                                                        v-for="(
+                                                            avg, ai
+                                                        ) in formulaAverages"
+                                                        :key="'avg-' + ai"
+                                                        class="fw-bold text-primary"
+                                                    >
+                                                        {{ avg }}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section: Photos -->
+                            <div
+                                v-if="
+                                    informasiData &&
+                                    informasiData.sesi_foto === 'Y'
+                                "
+                                class="vld-section"
+                            >
+                                <div
+                                    class="vld-section-hd"
+                                    @click="sections.foto = !sections.foto"
+                                    style="cursor: pointer"
+                                >
+                                    <span
+                                        ><i
+                                            class="ri-camera-line me-2 text-primary"
+                                        ></i
+                                        >Dokumentasi Foto</span
+                                    >
+                                    <i
+                                        :class="
+                                            sections.foto
+                                                ? 'ri-arrow-up-s-line'
+                                                : 'ri-arrow-down-s-line'
+                                        "
+                                        class="text-muted"
+                                    ></i>
+                                </div>
+                                <div
+                                    v-if="sections.foto"
+                                    class="vld-section-body"
+                                >
+                                    <template
+                                        v-for="(row, ri) in detailData"
+                                        :key="'fp-' + ri"
+                                    >
+                                        <div
+                                            v-if="
+                                                row.foto_analisa &&
+                                                row.foto_analisa.length > 0
+                                            "
+                                            class="mb-3"
+                                        >
+                                            <p
+                                                class="text-muted mb-2"
+                                                style="font-size: 11px"
+                                            >
+                                                <i
+                                                    class="ri-barcode-line me-1"
+                                                ></i
+                                                >{{ row.No_Faktur }}
+                                            </p>
+                                            <div class="row g-2">
+                                                <div
+                                                    v-for="foto in row.foto_analisa"
+                                                    :key="foto.Berkas_Key"
+                                                    class="col-6 col-md-4 col-xl-3"
+                                                >
+                                                    <div
+                                                        class="border rounded overflow-hidden"
+                                                    >
+                                                        <div
+                                                            v-if="
+                                                                !fotoBlobUrls[
+                                                                    foto
+                                                                        .Berkas_Key
+                                                                ]
+                                                            "
+                                                            class="d-flex align-items-center justify-content-center bg-light"
+                                                            style="
+                                                                height: 100px;
+                                                            "
+                                                        >
+                                                            <div
+                                                                class="spinner-grow spinner-grow-sm text-primary"
+                                                            ></div>
+                                                        </div>
+                                                        <el-image
+                                                            v-else
+                                                            class="w-100"
+                                                            style="
+                                                                height: 100px;
+                                                                display: block;
+                                                            "
+                                                            :src="
+                                                                fotoBlobUrls[
+                                                                    foto
+                                                                        .Berkas_Key
+                                                                ]
+                                                            "
+                                                            :preview-src-list="
+                                                                row.foto_analisa
+                                                                    .map(
+                                                                        (f) =>
+                                                                            fotoBlobUrls[
+                                                                                f
+                                                                                    .Berkas_Key
+                                                                            ]
+                                                                    )
+                                                                    .filter(
+                                                                        Boolean
+                                                                    )
+                                                            "
+                                                            :initial-index="
+                                                                row.foto_analisa.findIndex(
+                                                                    (f) =>
+                                                                        f.Berkas_Key ===
+                                                                        foto.Berkas_Key
+                                                                )
+                                                            "
+                                                            fit="cover"
+                                                            hide-on-click-modal
+                                                            @contextmenu.prevent
+                                                            @dragstart.prevent
+                                                        >
+                                                            <template #error>
+                                                                <div
+                                                                    class="d-flex align-items-center justify-content-center bg-light text-muted w-100"
+                                                                    style="
+                                                                        height: 100px;
+                                                                    "
+                                                                >
+                                                                    <i
+                                                                        class="ri-image-line fs-4"
+                                                                    ></i>
+                                                                </div>
+                                                            </template>
+                                                        </el-image>
+                                                        <p
+                                                            class="text-center text-muted mb-0 py-1"
+                                                            style="
+                                                                font-size: 10px;
+                                                            "
+                                                        >
+                                                            {{
+                                                                foto.Keterangan ||
+                                                                "—"
+                                                            }}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Section: Timeline -->
+                            <div class="vld-section">
+                                <div
+                                    class="vld-section-hd"
+                                    @click="
+                                        sections.timeline = !sections.timeline
+                                    "
+                                    style="cursor: pointer"
+                                >
+                                    <span
+                                        ><i
+                                            class="ri-calendar-event-line me-2 text-primary"
+                                        ></i
+                                        >Timeline Proses</span
+                                    >
+                                    <i
+                                        :class="
+                                            sections.timeline
+                                                ? 'ri-arrow-up-s-line'
+                                                : 'ri-arrow-down-s-line'
+                                        "
+                                        class="text-muted"
+                                    ></i>
+                                </div>
+                                <div
+                                    v-if="sections.timeline"
+                                    class="vld-section-body p-0"
+                                >
+                                    <apexchart
+                                        height="200"
+                                        type="rangeBar"
+                                        :options="timelineChartOptions"
+                                        :series="timelineChartSeries"
+                                    ></apexchart>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- No data -->
+                        <div
+                            v-else-if="!loading.detail"
+                            class="vld-loading-state"
+                        >
+                            <i class="ri-file-unknow-line fs-1 text-muted"></i>
+                            <p class="mt-2 text-muted small">
+                                Tidak ada data hasil analisa.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Sticky action bar -->
+                    <div
+                        class="vld-action-bar"
+                        v-if="
+                            detailData.length > 0 ||
+                            (selectedItem &&
+                                selectedItem.Flag_Multi_QrCode !== 'Y')
+                        "
+                    >
+                        <div
+                            class="vld-action-info"
+                            v-if="
+                                selectedSubPo ||
+                                selectedItem.Flag_Multi_QrCode !== 'Y'
+                            "
+                        >
+                            <i class="ri-information-line text-muted me-1"></i>
+                            <span class="text-muted" style="font-size: 11px">
+                                {{
+                                    selectedSubPo
+                                        ? selectedSubPo.No_Fak_Sub_Po
+                                        : selectedItem.No_Po_Sampel
+                                }}
+                            </span>
+                        </div>
+                        <div class="vld-action-info" v-else></div>
+                        <div class="d-flex gap-2">
+                            <button
+                                class="btn btn-sm btn-warning text-white"
+                                v-if="detailData.length > 0"
+                                @click="openReanalisis"
+                                data-bs-toggle="offcanvas"
+                                data-bs-target="#offcanvasReanalisis"
+                            >
+                                <i class="ri-refresh-line me-1"></i>Uji Ulang
+                            </button>
+                            <button
+                                class="btn btn-sm btn-success"
+                                v-if="detailData.length > 0"
+                                @click="selesaikanAnalisa"
+                                :disabled="loading.saving"
+                            >
+                                <span
+                                    v-if="loading.saving"
+                                    class="spinner-border spinner-border-sm me-1"
+                                ></span>
+                                <i v-else class="ri-check-double-line me-1"></i>
+                                Konfirmasi & Simpan
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- OFFCANVAS: REANALISIS                                          -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div
+            class="offcanvas offcanvas-end"
+            tabindex="-1"
+            id="offcanvasReanalisis"
+        >
+            <div class="offcanvas-header border-bottom">
+                <h5 class="mb-0 fw-semibold fs-6">
+                    <i class="ri-refresh-line me-2 text-warning"></i>Uji Ulang
+                    (Reanalisis)
+                </h5>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="offcanvas"
+                    @click="resetReanalisisForm"
+                ></button>
+            </div>
+            <div class="offcanvas-body">
+                <!-- ── SINGLE QR MODE ─────────────────────────────────── -->
+                <template v-if="reanalisisForm.isSingle">
+                    <div class="vld-reanalisis-info-box mb-4">
+                        <div class="vld-rib-icon">
+                            <i class="ri-qr-code-line"></i>
+                        </div>
+                        <div>
+                            <p class="fw-semibold mb-1" style="font-size: 13px">
+                                Single QRCode Terdeteksi
+                            </p>
+                            <p
+                                class="text-muted mb-0"
+                                style="font-size: 12px; line-height: 1.6"
+                            >
+                                Sampel ini menggunakan
+                                <strong>Single QRCode</strong>, sehingga
+                                pengujian ulang akan menggunakan nomor sampel
+                                yang sama. Tidak perlu memilih nomor sampel
+                                baru.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small"
+                            >No Sampel (akan diuji ulang)</label
+                        >
+                        <div class="d-flex align-items-center gap-2">
+                            <input
+                                :value="reanalisisForm.noUjiSebelumnya"
+                                type="text"
+                                disabled
+                                class="form-control form-control-sm bg-light"
+                            />
+                            <span
+                                class="badge bg-secondary-subtle text-secondary border"
+                                style="white-space: nowrap; font-size: 10px"
+                            >
+                                <i class="ri-qr-code-line me-1"></i>Single QR
+                            </span>
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            @click="submitReanalisisSingle"
+                            :disabled="loading.reanalisis"
+                        >
+                            <span
+                                v-if="loading.reanalisis"
+                                class="spinner-border spinner-border-sm me-2"
+                            ></span>
+                            <i v-else class="ri-send-plane-line me-1"></i>
+                            Lakukan Uji Ulang
+                        </button>
+                    </div>
+                </template>
+
+                <!-- ── MULTI QR MODE ──────────────────────────────────── -->
+                <template v-else>
+                    <div
+                        class="alert alert-warning border-0 border-start border-warning border-3 py-2 mb-4"
+                    >
+                        <small class="text-muted"
+                            >Pilih nomor sub sampel reanalisis untuk
+                            menggantikan pengujian saat ini.</small
+                        >
+                    </div>
+                    <form @submit.prevent="submitReanalisis">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small"
+                                >No Uji Sebelumnya</label
+                            >
+                            <input
+                                :value="reanalisisForm.noUjiSebelumnya"
+                                type="text"
+                                disabled
+                                class="form-control form-control-sm bg-light"
+                            />
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold small"
+                                >No Sampel Reanalisis</label
+                            >
+                            <div
+                                v-if="loading.reanalisisOptions"
+                                class="placeholder-glow"
+                            >
+                                <span
+                                    class="placeholder col-12 bg-secondary rounded"
+                                    style="height: 38px; opacity: 0.3"
+                                ></span>
+                            </div>
+                            <v-select
+                                v-else
+                                v-model="reanalisisForm.selectedOption"
+                                :options="reanalisisOptions"
+                                label="name"
+                                placeholder="— Pilih No Sampel —"
+                            />
+                        </div>
+                        <div class="d-grid">
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                                :disabled="
+                                    loading.reanalisis ||
+                                    loading.reanalisisOptions ||
+                                    !reanalisisForm.selectedOption
+                                "
+                            >
+                                <span
+                                    v-if="loading.reanalisis"
+                                    class="spinner-border spinner-border-sm me-2"
+                                ></span>
+                                <i v-else class="ri-send-plane-line me-1"></i>
+                                Lakukan Uji Ulang
+                            </button>
+                        </div>
+                    </form>
+                </template>
             </div>
         </div>
     </div>
 </template>
 
 <script>
-import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
+import ApexChart from "vue3-apexcharts";
+import { ElImage } from "element-plus";
 import axios from "axios";
-import ListSkeleton from "@/pages/vue/ui/ListSkeleton.vue";
-import ConfirmedMultiQr from "../../../components/ConfirmedMultiQr.vue";
 import vSelect from "vue-select";
 import { debounce } from "lodash";
 
 export default {
-    components: {
-        ListSkeleton,
-        DotLottieVue,
-        ConfirmedMultiQr,
-        vSelect,
-    },
+    components: { apexchart: ApexChart, ElImage, vSelect },
+
     data() {
         return {
-            listData: [], // listData akan berupa array
-            loading: {
-                loadingListData: false,
-            },
+            listData: [],
             searchQuery: "",
-            filters: {
-                tanggal: {
-                    mulai: "",
-                    selesai: "",
-                },
-                qrcode: null,
+            filters: { tanggal: { mulai: "", selesai: "" }, qrcode: "" },
+            pagination: { page: 1, limit: 12, totalPage: 0, totalData: 0 },
+            loading: {
+                list: false,
+                subPo: false,
+                detail: false,
+                saving: false,
+                reanalisis: false,
+                reanalisisOptions: false,
             },
-            filterOptions: {
-                qrcode: [
-                    { label: "Multi QRCode", value: "multi" },
-                    { label: "Single QRCode", value: "single" },
-                ],
-            },
-            pagination: {
-                page: 1,
-                limit: 10,
-                totalPage: 0,
-                totalData: 0,
+
+            selectedItem: null,
+            detailVisible: false,
+            isMobile: window.innerWidth < 992,
+
+            subPoList: [],
+            selectedSubPo: null,
+
+            detailData: [],
+            formulaAverages: [],
+            informasiData: null,
+            hasStandardConfiguration: true,
+            template: { parameter: [], formula: [] },
+            fotoBlobUrls: {},
+
+            sections: { chart: true, foto: true, timeline: false },
+
+            reanalisisOptions: [],
+            reanalisisForm: {
+                isSingle: false,
+                noUjiSebelumnya: null,
+                selectedOption: null,
+                noPo: null,
+                idJenisAnalisa: null,
             },
         };
     },
+
     computed: {
-        visiblePages() {
-            const total = this.pagination.totalPage;
-            const current = this.pagination.page;
-            let start = current - 2;
-            let end = current + 2;
-
-            if (start < 1) {
-                start = 1;
-                end = Math.min(5, total);
-            }
-
-            if (end > total) {
-                end = total;
-                start = Math.max(1, total - 4);
-            }
-
-            const pages = [];
-            for (let i = start; i <= end; i++) {
-                pages.push(i);
-            }
-            return pages;
+        stats() {
+            const total = this.pagination.totalData;
+            const lolos = this.listData.filter(
+                (i) => i.Status_Sampel === "Lolos Uji"
+            ).length;
+            return { total, lolos, tidakLolos: total - lolos };
         },
 
-        isFiltering() {
-            return (
-                this.searchQuery ||
+        emptyMessage() {
+            return this.searchQuery ||
                 this.filters.tanggal.mulai ||
                 this.filters.qrcode
-            );
+                ? "Tidak ada data sesuai filter."
+                : "Belum ada data menunggu validasi.";
         },
-        emptyMessage() {
-            if (this.isFiltering) {
-                return "Tidak ada data yang cocok dengan kriteria pencarian atau filter Anda.";
-            }
-            return "Saat ini belum ada data uji analisis yang tersedia.";
+
+        durationChartSeries() {
+            if (!this.detailData.length) return [];
+            return [
+                {
+                    name: "Lama Proses (Hari)",
+                    data: this.detailData.map((item) => {
+                        if (!item.Tanggal_Registrasi || !item.Tanggal) return 0;
+                        return Math.max(
+                            0,
+                            Math.round(
+                                (new Date(item.Tanggal) -
+                                    new Date(item.Tanggal_Registrasi)) /
+                                    86400000
+                            )
+                        );
+                    }),
+                },
+            ];
+        },
+
+        durationChartOptions() {
+            if (!this.detailData.length) return {};
+            return {
+                chart: {
+                    type: "bar",
+                    height: 180,
+                    toolbar: { show: false },
+                    fontFamily: "inherit",
+                },
+                plotOptions: {
+                    bar: {
+                        columnWidth: "45%",
+                        dataLabels: { position: "top" },
+                    },
+                },
+                dataLabels: {
+                    enabled: true,
+                    formatter: (v) => v + "h",
+                    offsetY: -14,
+                    style: { fontSize: "11px", colors: ["#304758"] },
+                },
+                xaxis: {
+                    categories: this.detailData.map(
+                        (i) => i.No_Faktur || i.No_Po_Sampel
+                    ),
+                    labels: { style: { fontSize: "10px" } },
+                },
+                yaxis: { labels: { style: { fontSize: "10px" } } },
+                grid: { padding: { top: 0, bottom: 0 } },
+                colors: ["#4f9cf9"],
+            };
+        },
+
+        timelineChartSeries() {
+            if (!this.detailData.length) return [];
+            const proses = [],
+                tunggu = [];
+            this.detailData.forEach((item) => {
+                if (!item.Tanggal_Registrasi || !item.Tanggal) return;
+                const reg = new Date(item.Tanggal_Registrasi),
+                    test = new Date(item.Tanggal);
+                proses.push({
+                    x: item.No_Faktur || item.No_Po_Sampel,
+                    y: [reg.getTime(), test.getTime()],
+                });
+                const ts = new Date(reg);
+                ts.setDate(reg.getDate() + 1);
+                ts.setHours(0, 0, 0, 0);
+                const te = new Date(test);
+                te.setDate(test.getDate() - 1);
+                te.setHours(23, 59, 59, 999);
+                if (te > ts)
+                    tunggu.push({
+                        x: item.No_Faktur || item.No_Po_Sampel,
+                        y: [ts.getTime(), te.getTime()],
+                    });
+            });
+            return [
+                { name: "Total Proses", data: proses },
+                { name: "Periode Tunggu", data: tunggu },
+            ];
+        },
+
+        timelineChartOptions() {
+            return {
+                chart: {
+                    type: "rangeBar",
+                    height: 200,
+                    toolbar: { show: false },
+                    fontFamily: "inherit",
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        barHeight: "60%",
+                        rangeBarGroupRows: true,
+                    },
+                },
+                colors: ["#4f9cf9", "#ff6b6b"],
+                fill: { type: "solid", opacity: 0.85 },
+                xaxis: {
+                    type: "datetime",
+                    labels: {
+                        datetimeUTC: false,
+                        format: "dd MMM",
+                        style: { fontSize: "10px" },
+                    },
+                },
+                yaxis: { labels: { style: { fontSize: "10px" } } },
+                legend: { position: "top", fontSize: "11px" },
+                grid: { padding: { top: 0 } },
+            };
         },
     },
+
     methods: {
-        statusClass(item) {
-            const status = item.Status_Sampel.toLowerCase();
-            if (status === "lolos uji") return "status-terima";
-            if (status === "tidak lolos uji") return "status-tolak";
-            return "";
+        isSelected(item) {
+            return (
+                this.selectedItem &&
+                this.selectedItem.No_Po_Sampel === item.No_Po_Sampel &&
+                this.selectedItem.Id_Jenis_Analisa === item.Id_Jenis_Analisa
+            );
         },
 
-        statusIcon(item) {
-            const status = item.Status_Sampel.toLowerCase();
-            if (status === "lolos uji") return "fa-check-circle";
-            if (status === "tidak lolos uji") return "fa-times-circle";
-            return "fa-flask";
-        },
-        getBadgeClass(item) {
-            const status = item.Status_Sampel?.toLowerCase() || "";
-            if (status === "lolos uji") return "badge-success";
-            if (status === "tidak lolos uji") return "badge-danger";
-            return "badge-secondary"; // default
-        },
-        async fetchConfirmedUjiAnalisa(page = 1) {
-            this.loading.loadingListData = true;
+        async fetchList(page = 1) {
+            this.loading.list = true;
             try {
                 const params = {
-                    page: page,
-                    q: this.searchQuery,
+                    page,
                     limit: this.pagination.limit,
-                    qrcode: this.filters.qrcode
-                        ? this.filters.qrcode.value
-                        : null,
+                    q: this.searchQuery,
+                    qrcode: this.filters.qrcode || null,
                 };
-
                 if (
                     this.filters.tanggal.mulai &&
                     this.filters.tanggal.selesai
@@ -564,74 +1288,408 @@ export default {
                     params.tanggal_mulai = this.filters.tanggal.mulai;
                     params.tanggal_selesai = this.filters.tanggal.selesai;
                 }
-
-                const response = await axios.get(
+                const res = await axios.get(
                     "/api/v2/lab/confirmed-selesai/uji-sampel",
                     { params }
                 );
-
-                if (response.status === 200 && response.data?.result) {
-                    this.listData = response.data.result.data;
-                    this.pagination = response.data.result.pagination;
+                if (res.data?.result) {
+                    this.listData = res.data.result.data;
+                    this.pagination = res.data.result.pagination;
                 } else {
                     this.listData = [];
-                    this.pagination.totalData = 0;
                 }
-            } catch (error) {
-                console.error(
-                    "Gagal mengambil data confirmed uji analisa:",
-                    error
-                );
+            } catch {
                 this.listData = [];
-                this.pagination.totalData = 0;
             } finally {
-                this.loading.loadingListData = false;
+                this.loading.list = false;
             }
         },
 
-        // Fungsi debounce untuk memanggil fetch
         debouncedFetch: debounce(function () {
             this.pagination.page = 1;
-            this.fetchConfirmedUjiAnalisa(1);
+            this.fetchList(1);
         }, 500),
-
-        // Fungsi-fungsi untuk navigasi halaman
-        nextPage() {
-            if (this.pagination.page < this.pagination.totalPage) {
-                this.fetchConfirmedUjiAnalisa(this.pagination.page + 1);
-            }
-        },
-        prevPage() {
-            if (this.pagination.page > 1) {
-                this.fetchConfirmedUjiAnalisa(this.pagination.page - 1);
-            }
-        },
         changePage(page) {
-            if (page !== this.pagination.page) {
-                this.fetchConfirmedUjiAnalisa(page);
+            if (page !== this.pagination.page) this.fetchList(page);
+        },
+        resetFiltersAndFetch() {
+            this.searchQuery = "";
+            this.filters = { tanggal: { mulai: "", selesai: "" }, qrcode: "" };
+            this.fetchList(1);
+        },
+
+        async selectItem(item) {
+            this.selectedItem = item;
+            this.selectedSubPo = null;
+            this.subPoList = [];
+            this.clearDetail();
+            this.detailVisible = true;
+            if (item.Flag_Multi_QrCode === "Y") {
+                await this.fetchSubPoList(
+                    item.No_Po_Sampel,
+                    item.Id_Jenis_Analisa
+                );
+            } else {
+                await this.fetchDetailSingle(
+                    item.No_Po_Sampel,
+                    item.Id_Jenis_Analisa
+                );
             }
         },
 
-        // Helper untuk format tanggal jika dibutuhkan di template
-        formatTanggal(tanggalString) {
-            if (!tanggalString) return "-";
-            const date = new Date(tanggalString);
-            const options = { day: "2-digit", month: "short", year: "numeric" };
-            return date.toLocaleDateString("id-ID", options);
+        clearDetail() {
+            this.detailData = [];
+            this.formulaAverages = [];
+            this.informasiData = null;
+            this.hasStandardConfiguration = true;
+            this.template = { parameter: [], formula: [] };
+            this.revokeBlobUrls();
         },
 
-        getDetailLink(item) {
-            return item.Flag_Multi_QrCode === "Y"
-                ? `/lab/confirmed-analisis/v2/${item.No_Po_Sampel}/multi`
-                : `/lab/confirmed-analisis/v2/${item.No_Po_Sampel}/single-qrCode`;
+        async fetchSubPoList(noPo, idJenisAnalisa) {
+            this.loading.subPo = true;
+            try {
+                const res = await axios.get(
+                    `/api/v2/lab/validasi-selesai/uji-sampel/${noPo}/${idJenisAnalisa}`
+                );
+                this.subPoList = res.data?.success ? res.data.result || [] : [];
+            } catch {
+                this.subPoList = [];
+            } finally {
+                this.loading.subPo = false;
+            }
+        },
+
+        async selectSubPo(sub) {
+            this.selectedSubPo = sub;
+            this.clearDetail();
+            await this.fetchDetailMulti(
+                this.selectedItem.No_Po_Sampel,
+                sub.No_Fak_Sub_Po,
+                this.selectedItem.Id_Jenis_Analisa
+            );
+        },
+
+        async fetchDetailMulti(noPo, noFakSub, idJenisAnalisa) {
+            this.loading.detail = true;
+            try {
+                const [dataRes, tplRes] = await Promise.all([
+                    axios.get(
+                        `/api/v2/lab/verifikasi-analisa/multi/${idJenisAnalisa}/${noPo}/${noFakSub}`
+                    ),
+                    axios.get(
+                        `/fetch/lab/lama/${idJenisAnalisa}/parameter-perhitungan-old`
+                    ),
+                ]);
+                this.applyDetail(dataRes, tplRes);
+            } catch {
+                this.detailData = [];
+            } finally {
+                this.loading.detail = false;
+            }
+        },
+
+        async fetchDetailSingle(noPo, idJenisAnalisa) {
+            this.loading.detail = true;
+            try {
+                const [dataRes, tplRes] = await Promise.all([
+                    axios.get(
+                        `/api/v2/lab/verifikasi-analisa/single-qrcode/${idJenisAnalisa}/${noPo}`
+                    ),
+                    axios.get(
+                        `/fetch/lab/lama/${idJenisAnalisa}/parameter-perhitungan-old`
+                    ),
+                ]);
+                this.applyDetail(dataRes, tplRes);
+            } catch {
+                this.detailData = [];
+            } finally {
+                this.loading.detail = false;
+            }
+        },
+
+        applyDetail(dataRes, tplRes) {
+            if (
+                dataRes.data?.success &&
+                Array.isArray(dataRes.data.result?.sampel)
+            ) {
+                this.template = tplRes.data?.result || {
+                    parameter: [],
+                    formula: [],
+                };
+                this.informasiData = dataRes.data.result.informasi;
+                this.hasStandardConfiguration =
+                    dataRes.data.result.informasi?.has_standard_configuration ??
+                    true;
+                const { data, formulaAverages } = this.processItems(
+                    dataRes.data.result.sampel,
+                    this.template
+                );
+                this.detailData = data;
+                this.formulaAverages = formulaAverages;
+                this.fetchBlobPhotos();
+            }
+        },
+
+        processItems(items, template) {
+            if (!Array.isArray(items) || !items.length)
+                return { data: [], formulaAverages: [] };
+            const grouped = items.reduce((acc, item) => {
+                (acc[item.No_Faktur] = acc[item.No_Faktur] || []).push(item);
+                return acc;
+            }, {});
+            const processedData = Object.values(grouped).map((group) => {
+                const first = group[0];
+                return {
+                    No_Po: first.No_Po || "—",
+                    No_Split_Po: first.No_Split_Po || "—",
+                    No_Batch: first.No_Batch || "—",
+                    No_Faktur: first.No_Faktur || "—",
+                    Kode_Analisa: first.Kode_Analisa || "—",
+                    Flag_Layak: first.Flag_Layak || "—",
+                    No_Po_Sampel: first.No_Po_Sampel || "—",
+                    No_Fak_Sub_Po: first.No_Fak_Sub_Po || "—",
+                    Id_Mesin: first.Id_Mesin,
+                    Id_Jenis_Analisa: first.Id_Jenis_Analisa,
+                    Tahapan_Ke: first.Tahapan_Ke,
+                    Flag_Multi_QrCode: first.Flag_Multi_QrCode,
+                    Tanggal: first.Tanggal_Pengujian || "—",
+                    Tanggal_Registrasi: first.Tanggal_Registrasi || "—",
+                    parameters: Array.isArray(first.parameter)
+                        ? first.parameter.map((p) => p.Hasil_Analisa ?? "—")
+                        : [],
+                    results: group.map((item) => ({
+                        value: item.Hasil_Akhir_Analisa ?? "—",
+                        Flag_Layak: item.Flag_Layak,
+                        pembulatan: item.Pembulatan ?? 4,
+                    })),
+                    Range_Awal: first.Range_Awal,
+                    Range_Akhir: first.Range_Akhir,
+                    foto_analisa: first.foto_analisa || [],
+                };
+            });
+            const numFormula =
+                template?.formula?.length ||
+                (processedData[0]?.results?.length ?? 0);
+            const formulaAverages = Array.from(
+                { length: numFormula },
+                (_, i) => {
+                    let total = 0,
+                        count = 0,
+                        dec = 4;
+                    processedData.forEach((row) => {
+                        const r = row.results[i];
+                        if (r && r.value !== "—") {
+                            const v = parseFloat(r.value);
+                            if (!isNaN(v)) {
+                                total += v;
+                                count++;
+                                if (r.pembulatan) dec = parseInt(r.pembulatan);
+                            }
+                        }
+                    });
+                    return count > 0 ? (total / count).toFixed(dec) : "—";
+                }
+            );
+            return { data: processedData, formulaAverages };
+        },
+
+        async fetchBlobPhotos() {
+            if (this.informasiData?.sesi_foto !== "Y") return;
+            const allKeys = this.detailData.flatMap((item) =>
+                (item.foto_analisa || []).map((f) => f.Berkas_Key)
+            );
+            if (!allKeys.length) return;
+            const tokenRes = await axios.post(
+                "/api/v1/lab/hasil-uji/berkas/foto/token/bulk",
+                { keys: allKeys }
+            );
+            const tokenMap = tokenRes.data;
+            for (const key of allKeys) {
+                const res = await axios.get(
+                    `/api/v1/lab/berkas/stream/foto-uji/${key}?token=${tokenMap[key]}`,
+                    { responseType: "blob" }
+                );
+                this.fotoBlobUrls[key] = URL.createObjectURL(res.data);
+            }
+        },
+
+        revokeBlobUrls() {
+            Object.values(this.fotoBlobUrls).forEach((url) =>
+                URL.revokeObjectURL(url)
+            );
+            this.fotoBlobUrls = {};
+        },
+
+        async selesaikanAnalisa() {
+            const r = await Swal.fire({
+                title: "Konfirmasi",
+                text: "Data akan difinalisasi dan tidak bisa diubah kembali. Lanjutkan?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#198754",
+                confirmButtonText: "Ya, Konfirmasi!",
+                cancelButtonText: "Batal",
+            });
+            if (!r.isConfirmed) return;
+            this.loading.saving = true;
+            Swal.fire({
+                title: "Menyimpan...",
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading(),
+            });
+            try {
+                const res = await axios.post("/api/v2/uji-sampel/confirmed", {
+                    analyses: this.detailData,
+                });
+                if (res.data.success) {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Berhasil!",
+                        text: "Data analisa berhasil dikonfirmasi.",
+                        timer: 2000,
+                    }).then(() => {
+                        this.selectedItem = null;
+                        this.clearDetail();
+                        this.fetchList(this.pagination.page);
+                    });
+                } else throw new Error(res.data.message || "Gagal menyimpan.");
+            } catch (e) {
+                Swal.fire(
+                    "Gagal!",
+                    e.response?.data?.message || e.message,
+                    "error"
+                );
+            } finally {
+                this.loading.saving = false;
+            }
+        },
+
+        openReanalisis() {
+            if (!this.selectedItem) return;
+            const isSingle = this.selectedItem.Flag_Multi_QrCode !== "Y";
+            const noFak =
+                this.selectedSubPo?.No_Fak_Sub_Po ||
+                this.selectedItem.No_Po_Sampel;
+            this.reanalisisForm = {
+                isSingle,
+                noUjiSebelumnya: noFak,
+                selectedOption: null,
+                noPo: this.selectedItem.No_Po_Sampel,
+                idJenisAnalisa: this.selectedItem.Id_Jenis_Analisa,
+            };
+            if (!isSingle) this.fetchReanalisisOptions();
+        },
+
+        async fetchReanalisisOptions() {
+            this.loading.reanalisisOptions = true;
+            try {
+                const res = await axios.get(
+                    `/api/v1/lab/laboratorium/no-uji/sampel/sub/all/${this.reanalisisForm.noPo}/${this.reanalisisForm.idJenisAnalisa}`
+                );
+                this.reanalisisOptions = res.data?.result
+                    ? res.data.result.map((i) => ({
+                          value: i.No_Po_Multi,
+                          name: i.No_Po_Multi,
+                      }))
+                    : [];
+            } catch {
+                this.reanalisisOptions = [];
+            } finally {
+                this.loading.reanalisisOptions = false;
+            }
+        },
+
+        async submitReanalisis() {
+            this.loading.reanalisis = true;
+            try {
+                const res = await axios.post(
+                    "/api/v1/lab/resampeling/reanalisis",
+                    {
+                        No_Po_Sampel: this.reanalisisForm.noPo,
+                        No_Sampel_Resampling_Origin:
+                            this.reanalisisForm.noUjiSebelumnya,
+                        No_Sampel_Resampling:
+                            this.reanalisisForm.selectedOption?.value,
+                        Id_Jenis_Analisa: this.reanalisisForm.idJenisAnalisa,
+                    }
+                );
+                if (res.data.success) {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Berhasil",
+                        text: res.data.message,
+                        timer: 1500,
+                        showConfirmButton: false,
+                    }).then(() => this.fetchList(1));
+                } else throw new Error(res.data.message);
+            } catch (e) {
+                Swal.fire("Error", e.message, "error");
+            } finally {
+                this.loading.reanalisis = false;
+            }
+        },
+
+        async submitReanalisisSingle() {
+            this.loading.reanalisis = true;
+            try {
+                const res = await axios.post(
+                    "/api/v1/lab/resampling-single/reanalisis",
+                    {
+                        No_Po_Sampel: this.reanalisisForm.noPo,
+                        No_Sampel: this.reanalisisForm.noUjiSebelumnya,
+                        Id_Jenis_Analisa: this.reanalisisForm.idJenisAnalisa,
+                    }
+                );
+                if (res.data.success) {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Berhasil",
+                        text: res.data.message,
+                        timer: 1500,
+                        showConfirmButton: false,
+                    }).then(() => this.fetchList(1));
+                } else throw new Error(res.data.message || "Gagal menyimpan.");
+            } catch (e) {
+                Swal.fire(
+                    "Error",
+                    e.response?.data?.message || e.message,
+                    "error"
+                );
+            } finally {
+                this.loading.reanalisis = false;
+            }
+        },
+
+        resetReanalisisForm() {
+            this.reanalisisForm = {
+                isSingle: false,
+                noUjiSebelumnya: null,
+                selectedOption: null,
+                noPo: null,
+                idJenisAnalisa: null,
+            };
+            this.reanalisisOptions = [];
+        },
+
+        formatTanggal(s) {
+            if (!s) return "—";
+            return new Date(s).toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            });
+        },
+
+        handleResize() {
+            this.isMobile = window.innerWidth < 992;
         },
     },
+
     watch: {
-        // Watcher untuk memantau perubahan pada global search
         searchQuery() {
             this.debouncedFetch();
         },
-        // Watcher untuk memantau perubahan pada semua filter
         filters: {
             handler() {
                 this.debouncedFetch();
@@ -639,247 +1697,226 @@ export default {
             deep: true,
         },
     },
+
     mounted() {
-        this.fetchConfirmedUjiAnalisa();
+        this.fetchList();
+        window.addEventListener("resize", this.handleResize);
+    },
+    beforeUnmount() {
+        this.revokeBlobUrls();
+        window.removeEventListener("resize", this.handleResize);
     },
 };
 </script>
 
 <style scoped>
-*,
-*::before,
-*::after {
-    --primary: #2563eb;
-    --success: #16a34a;
-    --danger: #dc2626;
-    --warning: #d97706;
-    --info: #0891b2;
-    --gray-50: #f9fafb;
-    --gray-100: #f3f4f6;
-    --gray-200: #e5e7eb;
-    --gray-300: #d1d5db;
-    --gray-400: #9ca3af;
-    --gray-500: #6b7280;
-    --gray-600: #4b5563;
-    --gray-700: #374151;
-    --gray-800: #1f2937;
-    --gray-900: #111827;
-    --border-radius: 12px;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-        0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-        0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-.analisa-card {
+/* ════════════════════════════════════════════════════════════════════════
+   ROOT — full viewport height, no page scroll
+   ════════════════════════════════════════════════════════════════════════ */
+.vld-root {
     display: flex;
-    background-color: white;
-    border-radius: var(--border-radius);
-    margin-bottom: 20px;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--gray-200);
-    text-decoration: none;
-    color: inherit;
-    transition: all 0.2s ease;
+    flex-direction: column;
     overflow: hidden;
+    font-family: inherit;
 }
 
-.analisa-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
-/* Status border */
-.status-lolos {
-    border-left: 4px solid var(--success);
-}
-
-.status-tidak {
-    border-left: 4px solid var(--danger);
-}
-
-.status-default {
-    border-left: 4px solid var(--gray-400);
-}
-
-/* Status icon section */
-.analisa-card-status {
-    flex-shrink: 0;
+/* ── Top bar ──────────────────────────────────────────────────────────── */
+.vld-topbar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 80px;
-    background-color: var(--gray-50);
-}
-
-.status-lolos .analisa-card-status {
-    background-color: #f0fdf4;
-    color: var(--success);
-}
-
-.status-tidak .analisa-card-status {
-    background-color: #fef2f2;
-    color: var(--danger);
-}
-
-.status-default .analisa-card-status {
-    background-color: var(--gray-50);
-    color: var(--gray-500);
-}
-
-.analisa-card-status i {
-    font-size: 24px;
-}
-
-/* Main content */
-.analisa-card-content {
-    flex-grow: 1;
-    padding: 20px;
-}
-
-/* Header section */
-.content-header {
-    display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 16px;
+    padding: 10px 20px;
+    background: #fff;
+    border-bottom: 1px solid #e9ebec;
+    flex-shrink: 0;
+    gap: 12px;
     flex-wrap: wrap;
+}
+
+.vld-topbar-left {
+    display: flex;
+    align-items: center;
     gap: 12px;
 }
 
-.title-group h6 {
-    font-size: 14px;
-    color: var(--gray-500);
-    font-weight: 500;
-    margin-bottom: 4px;
-}
-
-.title-group h5 {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--gray-800);
-    margin-bottom: 8px;
-}
-
-.subtitle-group {
+.vld-topbar-icon {
+    font-size: 22px;
+    color: #405189;
+    background: #eef0f9;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.vld-topbar-title {
+    display: block;
+    font-weight: 600;
+    font-size: 15px;
+    color: #1a1d23;
+    line-height: 1.2;
+}
+
+.vld-topbar-sub {
+    display: block;
+    font-size: 11px;
+    color: #878a99;
+    line-height: 1.3;
+}
+
+.vld-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
     flex-wrap: wrap;
 }
 
-.subtitle-kode {
-    font-family: "Courier New", monospace;
-    font-size: 13px;
-    color: var(--gray-600);
-    background-color: var(--gray-100);
-    padding: 4px 8px;
-    border-radius: 4px;
-}
-
-/* Badges */
-.badge-custom {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    padding: 4px 10px;
-    border-radius: 100px;
-}
-
-.badge-multi {
-    background-color: #eff6ff;
-    color: var(--primary);
-}
-
-.badge-single {
-    background-color: var(--gray-100);
-    color: var(--gray-600);
-}
-
-.badge-success {
-    background-color: #dcfce7;
-    color: var(--success);
-}
-
-.badge-danger {
-    background-color: #fef2f2;
-    color: var(--danger);
-}
-
-.badge-secondary {
-    background-color: var(--gray-100);
-    color: var(--gray-600);
-}
-
-/* Details grid */
-.content-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
-}
-
-.detail-pair {
+.vld-stat {
     display: flex;
     flex-direction: column;
-}
-
-.detail-pair .label {
-    display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--gray-500);
-    margin-bottom: 4px;
+    line-height: 1.1;
+}
+.vld-stat-num {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1d23;
+}
+.vld-stat-lbl {
+    font-size: 10px;
+    color: #878a99;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 500;
+    letter-spacing: 0.4px;
+}
+.vld-stat.text-success .vld-stat-num {
+    color: #0ab39c;
+}
+.vld-stat.text-danger .vld-stat-num {
+    color: #f06548;
 }
 
-.detail-pair .label i {
-    font-size: 14px;
-    width: 16px;
+/* ── Main split layout ────────────────────────────────────────────────── */
+.vld-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    gap: 0;
 }
 
-.detail-pair .value {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--gray-800);
-    word-break: break-word;
+/* ════════════════════════════════════════════════════════════════════════
+   LEFT PANEL
+   ════════════════════════════════════════════════════════════════════════ */
+.vld-left {
+    width: 340px;
+    min-width: 280px;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #e9ebec;
+    background: #fff;
+    flex-shrink: 0;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .content-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .content-details {
-        grid-template-columns: 1fr;
-    }
-
-    .analisa-card {
-        flex-direction: column;
-    }
-
-    .analisa-card-status {
-        width: 100%;
-        padding: 12px;
-        border-bottom: 1px solid var(--gray-200);
-    }
+/* Filter bar */
+.vld-filter-bar {
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ebec;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
 }
 
-.skeleton {
-    animation: pulse 1.5s infinite;
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 37%, #f0f0f0 63%);
-    background-size: 400% 100%;
+.vld-search-wrap {
+    position: relative;
+}
+.vld-search-icon {
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #878a99;
+    font-size: 13px;
+    pointer-events: none;
+}
+.vld-search-input {
+    width: 100%;
+    padding: 6px 10px 6px 28px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 12px;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.vld-search-input:focus {
+    border-color: #405189;
+    box-shadow: 0 0 0 2px rgba(64, 81, 137, 0.12);
+}
+
+.vld-filter-row {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+.vld-date-input {
+    flex: 1;
+    min-width: 0;
+    padding: 5px 6px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 11px;
+    background: #fff;
+    outline: none;
+}
+.vld-date-input:focus {
+    border-color: #405189;
+}
+
+.vld-select {
+    padding: 5px 6px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 11px;
+    background: #fff;
+    outline: none;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.vld-select:focus {
+    border-color: #405189;
+}
+
+/* List scroll area */
+.vld-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.vld-list::-webkit-scrollbar {
+    width: 4px;
+}
+.vld-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.vld-list::-webkit-scrollbar-thumb {
+    background: #dee2e6;
     border-radius: 4px;
 }
 
-@keyframes pulse {
+/* Skeleton */
+.vld-skeleton {
+    height: 72px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #f0f2f5 25%, #e4e7ec 50%, #f0f2f5 75%);
+    background-size: 400% 100%;
+    animation: vld-shimmer 1.4s infinite;
+}
+@keyframes vld-shimmer {
     0% {
         background-position: 100% 50%;
     }
@@ -888,1232 +1925,655 @@ export default {
     }
 }
 
-.skeleton-line {
-    height: 20px;
-    margin-bottom: 10px;
-}
-
-.skeleton-btn {
-    height: 40px;
-    width: 100%;
-    margin-bottom: 15px;
-}
-
-.skeleton-table-cell {
-    height: 25px;
-    margin: 5px 0;
-}
-
-/* Container Styles */
-.data-uji-container {
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.main-card {
-    border-radius: 12px;
-    overflow: hidden;
-    background-color: #ffffff;
-}
-
-.section-header {
-    padding: 0 1.5rem;
-}
-
-.header-content {
-    padding-top: 1rem;
-}
-
-.header-icon {
-    transition: transform 0.3s ease;
-}
-
-.header-icon:hover {
-    transform: scale(1.1);
-}
-
-.main-title {
-    font-size: 1.75rem;
-    letter-spacing: -0.5px;
-}
-
-.subtitle {
-    font-size: 0.95rem;
-    opacity: 0.85;
-}
-
-.divider {
-    height: 1px;
-    background: linear-gradient(
-        90deg,
-        rgba(13, 110, 253, 0.1) 0%,
-        rgba(13, 110, 253, 0.5) 50%,
-        rgba(13, 110, 253, 0.1) 100%
-    );
-}
-
-/* Accordion Styles */
-.custom-accordion {
-    --bs-accordion-border-width: 0;
-}
-
-.accordion-item-custom {
-    transition: all 0.3s ease;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.accordion-item-custom:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    border-color: rgba(13, 110, 253, 0.2);
-}
-
-.accordion-btn {
-    background-color: #ffffff;
-    box-shadow: none;
-}
-
-.accordion-btn:not(.collapsed) {
-    background-color: rgba(13, 110, 253, 0.05);
-    color: #0d6efd;
-}
-
-.accordion-btn:focus {
-    box-shadow: none;
-    border-color: rgba(13, 110, 253, 0.2);
-}
-
-.icon-wrapper {
-    transition: all 0.3s ease;
-}
-
-.accordion-btn:hover .icon-wrapper {
-    background-color: rgba(13, 110, 253, 0.15);
-}
-
-.analysis-icon {
-    width: 24px;
-    height: 24px;
+/* Empty list */
+.vld-empty-list {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    padding: 48px 20px;
+    color: #878a99;
+    gap: 8px;
+    font-size: 12px;
+    text-align: center;
+}
+.vld-empty-list i {
+    font-size: 36px;
+    color: #ced4da;
+}
+.vld-empty-list p {
+    margin: 0;
 }
 
-.info-text {
+/* List item */
+.vld-item {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #f0f2f5;
+    padding: 0;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: left;
+    position: relative;
+}
+.vld-item:hover {
+    background: #f8f9fa;
+}
+.vld-item--active {
+    background: #eef0f9 !important;
+}
+
+.vld-item-accent {
+    width: 3px;
+    flex-shrink: 0;
+    border-radius: 0;
+    background: transparent;
+    transition: background 0.15s;
+}
+.vld-item--lolos .vld-item-accent {
+    background: #0ab39c;
+}
+.vld-item--tidak .vld-item-accent {
+    background: #f06548;
+}
+.vld-item--active.vld-item--lolos .vld-item-accent {
+    background: #0ab39c;
+}
+.vld-item--active.vld-item--tidak .vld-item-accent {
+    background: #f06548;
+}
+.vld-item--active .vld-item-accent {
+    width: 4px;
+}
+
+.vld-item-body {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 8px 10px 10px;
+}
+
+.vld-item-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 2px;
+}
+
+.vld-item-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a1d23;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
     min-width: 0;
 }
 
-.badge-container {
+.vld-item-sub {
+    font-size: 10px;
+    color: #878a99;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vld-item-meta {
+    display: flex;
+    align-items: center;
     flex-wrap: wrap;
+    gap: 4px;
 }
 
-.code-badge {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 180px;
-    display: inline-flex;
+.vld-item-arrow {
+    align-self: center;
+    flex-shrink: 0;
+    padding: 0 6px;
+    color: #ced4da;
+    font-size: 16px;
+}
+.vld-item--active .vld-item-arrow {
+    color: #405189;
+}
+
+/* List footer */
+.vld-list-footer {
+    display: flex;
     align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-top: 1px solid #e9ebec;
+    background: #f8f9fa;
+    flex-shrink: 0;
 }
-
-.date-badge {
-    display: inline-flex;
+.vld-page-info {
+    font-size: 11px;
+    color: #878a99;
+}
+.vld-page-btns {
+    display: flex;
     align-items: center;
+    gap: 4px;
+}
+.vld-page-btn {
+    width: 26px;
+    height: 26px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #495057;
+    transition: all 0.15s;
+}
+.vld-page-btn:hover:not(:disabled) {
+    background: #405189;
+    color: #fff;
+    border-color: #405189;
+}
+.vld-page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.vld-page-current {
+    font-size: 11px;
+    color: #495057;
+    min-width: 36px;
+    text-align: center;
 }
 
-.analysis-name {
-    white-space: nowrap;
+/* ════════════════════════════════════════════════════════════════════════
+   RIGHT PANEL
+   ════════════════════════════════════════════════════════════════════════ */
+.vld-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
+    background: #f3f6f9;
+    min-width: 0;
 }
 
-.action-buttons {
+/* Mobile back */
+.vld-mobile-back {
+    padding: 8px 12px;
+    background: #fff;
+    border-bottom: 1px solid #e9ebec;
     flex-shrink: 0;
 }
 
-.confirm-btn {
-    transition: all 0.2s ease;
-    min-width: 110px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.confirm-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(25, 135, 84, 0.2);
-}
-
-.menu-btn {
-    width: 32px;
-    height: 32px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-}
-
-.menu-btn:hover {
-    background-color: rgba(108, 117, 125, 0.1);
-}
-
-/* Accordion Body Styles */
-.inner-accordion-body {
-    background-color: #f9fafb;
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.loading-spinner {
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-/* Tab Styles */
-.result-tabs {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.nav-tabs-custom .nav-link {
-    border: none;
-    padding: 0.75rem 1.5rem;
-    color: #6c757d;
-    font-weight: 500;
-    border-bottom: 3px solid transparent;
-    transition: all 0.2s ease;
-    position: relative;
-    margin-bottom: -1px;
-}
-
-.nav-tabs-custom .nav-link.active {
-    color: #0d6efd;
-    border-bottom-color: #0d6efd;
-    background-color: transparent;
-}
-
-.nav-tabs-custom .nav-link:hover:not(.active) {
-    color: #495057;
-    border-bottom-color: rgba(13, 110, 253, 0.2);
-}
-
-/* Nested Accordion Styles */
-.nested-accordion-item {
-    background-color: #ffffff;
-    border-radius: 8px !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    margin-bottom: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.nested-accordion-btn {
-    border-radius: 8px !important;
-    padding: 0.75rem 1.25rem;
-}
-
-.nested-accordion-btn:not(.collapsed) {
-    background-color: rgba(13, 110, 253, 0.05);
-    color: #0d6efd;
-}
-
-.nested-accordion-body {
-    padding: 1.25rem;
-    border-radius: 0 0 8px 8px;
-}
-
-/* Detail Card Styles */
-.detail-card {
-    background-color: transparent;
-}
-
-.detail-header {
-    border-radius: 8px 8px 0 0 !important;
-}
-
-.detail-title {
-    font-size: 1.1rem;
+/* ── Empty state ──────────────────────────────────────────────────────── */
+.vld-detail-empty {
+    flex: 1;
     display: flex;
     align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+}
+.vld-detail-empty-inner {
+    text-align: center;
+    max-width: 320px;
+}
+.vld-empty-icon-wrap {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #eef0f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+}
+.vld-empty-icon-wrap i {
+    font-size: 32px;
+    color: #405189;
+}
+.vld-detail-empty-inner h6 {
+    font-weight: 600;
+    color: #1a1d23;
+    margin-bottom: 8px;
+}
+.vld-detail-empty-inner p {
+    font-size: 12px;
+    color: #878a99;
+    line-height: 1.6;
+    margin: 0;
 }
 
-.time-value {
-    font-size: 0.85em;
-}
-
-/* Action Buttons */
-.action-buttons-bottom {
-    animation: fadeInUp 0.3s ease;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.complete-btn {
-    transition: all 0.3s ease;
-    min-width: 180px;
-}
-
-.complete-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.25);
-}
-
-/* Empty State Styles */
-.empty-state {
-    animation: fadeIn 0.5s ease;
-}
-
-.empty-title {
-    font-size: 1.25rem;
-    font-weight: 500;
-}
-
-.empty-message {
-    max-width: 400px;
-    margin: 0 auto;
-}
-
-.empty-action {
-    transition: all 0.3s ease;
-    padding: 0.5rem 1.5rem;
-}
-
-.empty-action:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25);
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-    .header-content {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .header-icon {
-        margin-bottom: 1rem;
-    }
-
-    .accordion-content {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .action-buttons {
-        margin-top: 1rem;
-        width: 100%;
-        justify-content: flex-end;
-    }
-
-    .detail-col {
-        width: 100%;
-    }
-
-    .detail-row {
-        flex-direction: column;
-    }
-}
-
-@media (max-width: 576px) {
-    .main-title {
-        font-size: 1.5rem;
-    }
-
-    .nav-tabs-custom .nav-link {
-        padding: 0.5rem 1rem;
-        font-size: 0.9rem;
-    }
-
-    .complete-btn {
-        width: 100%;
-    }
-}
-</style>
-
-<style>
-.informasi-penting {
-    margin: 1.5rem 0;
-    animation: fadeIn 0.5s ease;
-}
-
-.info-container {
-    background-color: rgba(13, 110, 253, 0.08);
-    border-left: 4px solid #0d6efd;
-    border-radius: 0 8px 8px 0;
-    padding: 1.25rem;
+/* ── Sticky detail header ─────────────────────────────────────────────── */
+.vld-detail-header {
     display: flex;
     align-items: flex-start;
-    transition: all 0.3s ease;
-}
-
-.info-container:hover {
-    background-color: rgba(13, 110, 253, 0.12);
-    transform: translateX(3px);
-}
-
-.info-icon {
-    color: #0d6efd;
-    font-size: 1.5rem;
-    margin-right: 1rem;
-    margin-top: 0.2rem;
-}
-
-.info-content {
-    flex: 1;
-}
-
-.info-title {
-    color: #0d6efd;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-}
-
-.info-text {
-    color: #495057;
-    line-height: 1.7;
-    margin-bottom: 0.75rem;
-}
-
-.info-footer {
-    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #fff;
+    border-bottom: 1px solid #e9ebec;
+    flex-shrink: 0;
     flex-wrap: wrap;
-    gap: 0.5rem;
 }
 
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(13, 110, 253, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
-    }
+.vld-dh-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
 }
-
-@media (max-width: 768px) {
-    .info-container {
-        flex-direction: column;
-    }
-
-    .info-icon {
-        margin-bottom: 0.5rem;
-    }
-}
-
-.badge {
-    transition: all 0.2s ease;
-}
-
-.badge:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-</style>
-
-<style>
-:root {
-    --warna-primer: #4361ee;
-    --warna-sekunder: #3f37c9;
-    --warna-sukses: #4cc9f0;
-    --warna-info: #4895ef;
-    --warna-peringatan: #f72585;
-    --warna-bahaya: #b5179e;
-    --warna-latar: #f8f9fa;
-    --warna-gelap: #212529;
-    --warna-teks-primer: #2b2d42;
-    --warna-teks-sekunder: #8d99ae;
-    --radius-border: 12px;
-    --bayangan: 0 10px 30px rgba(0, 0, 0, 0.08);
-    --transisi: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.header-kalkulator {
-    text-align: center;
-    margin-bottom: 1rem;
-    padding-bottom: 1.5rem;
-}
-
-.judul-kalkulator {
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: #3f5189;
-    margin-bottom: 0.5rem;
+.vld-dh-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.75rem;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.vld-dh-icon--success {
+    background: #d1f8ef;
+    color: #0ab39c;
+}
+.vld-dh-icon--danger {
+    background: #fde8e4;
+    color: #f06548;
 }
 
-.deskripsi-kalkulator {
-    font-size: 1.1rem;
-    color: #35477b;
-    max-width: 700px;
-    margin: 0 auto;
+.vld-dh-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1d23;
+    line-height: 1.2;
+    margin-bottom: 2px;
+}
+.vld-dh-sub {
+    font-size: 11px;
+    color: #878a99;
+    margin-bottom: 6px;
+}
+.vld-dh-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
 }
 
-.isi-dokumentasi {
-    margin-bottom: 1rem;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+.vld-dh-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: right;
+    flex-shrink: 0;
+}
+.vld-dh-meta-row {
+    font-size: 11px;
+    color: #878a99;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+}
+.vld-dh-meta-row i {
+    font-size: 11px;
 }
 
-/* Base Styles */
-.calculation-container {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    font-family: "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    color: #333;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 1rem;
+/* ── Sub-PO selector bar ──────────────────────────────────────────────── */
+.vld-subpo-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: #fafbfc;
+    border-bottom: 1px solid #e9ebec;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+.vld-subpo-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #495057;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.vld-subpo-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    flex: 1;
+}
+.vld-subpo-loading {
+    display: flex;
+    align-items: center;
+}
+.vld-subpo-count {
+    font-size: 10px;
+    color: #878a99;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
-/* Section Headers */
-.section-header {
-    margin-bottom: 1.5rem;
+.vld-subpo-tab {
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid #ced4da;
+    background: #fff;
+    font-size: 11px;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.vld-subpo-tab:hover {
+    border-color: #405189;
+    color: #405189;
+    background: #eef0f9;
+}
+.vld-subpo-tab--active {
+    background: #405189;
+    border-color: #405189;
+    color: #fff;
+    font-weight: 600;
 }
 
-.section-badge {
+/* ── Scrollable body ──────────────────────────────────────────────────── */
+.vld-detail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px;
+}
+.vld-detail-body::-webkit-scrollbar {
+    width: 5px;
+}
+.vld-detail-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.vld-detail-body::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 4px;
+}
+
+/* Loading / empty inside body */
+.vld-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #878a99;
+}
+
+/* Section cards */
+.vld-section {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e9ebec;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+.vld-section-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a1d23;
+    background: #fafbfc;
+    border-bottom: 1px solid #e9ebec;
+    user-select: none;
+}
+.vld-section-body {
+    padding: 12px 14px;
+}
+
+/* Mini stats */
+.vld-mini-stats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.vld-ms-item {
+    flex: 1;
+    min-width: 80px;
+    background: #fff;
+    border: 1px solid #e9ebec;
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.vld-ms-item--success {
+    border-left: 3px solid #0ab39c;
+}
+.vld-ms-item--danger {
+    border-left: 3px solid #f06548;
+}
+.vld-ms-item--info {
+    border-left: 3px solid #405189;
+}
+.vld-ms-val {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1d23;
+    line-height: 1.1;
+}
+.vld-ms-lbl {
+    font-size: 10px;
+    color: #878a99;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 2px;
+}
+.vld-ms-item--success .vld-ms-val {
+    color: #0ab39c;
+}
+.vld-ms-item--danger .vld-ms-val {
+    color: #f06548;
+}
+.vld-ms-item--info .vld-ms-val {
+    color: #405189;
+}
+
+/* Warning alert */
+.vld-alert-warn {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #fff8ec;
+    border: 1px solid #f7b731;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #856404;
+}
+
+/* Table */
+.vld-table thead tr th {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    background: #f3f6f9;
+    color: #495057;
+    border-bottom: 2px solid #e9ebec;
+    padding: 7px 10px;
+}
+.vld-table tbody td {
+    font-size: 12px;
+    padding: 7px 10px;
+}
+.vld-row--pass {
+    background: #f0fdf4 !important;
+}
+.vld-row--fail {
+    background: #fff5f4 !important;
+}
+.vld-row--avg {
+    background: #fffbeb !important;
+}
+
+/* Code inline */
+.vld-code {
+    font-family: "Courier New", monospace;
+    font-size: 11px;
+    color: #405189;
+    background: #eef0f9;
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+.vld-code-sm {
+    font-family: "Courier New", monospace;
+    font-size: 10px;
+    color: #405189;
+}
+
+/* Badges */
+.vld-badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
+    font-size: 10px;
     font-weight: 600;
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.section-badge i {
-    margin-right: 0.5rem;
-}
-
-.formula-badge {
-    background-color: rgba(13, 110, 253, 0.1);
-    color: #0d6efd;
-    border-left: 4px solid #0d6efd;
-}
-
-.result-badge {
-    background-color: rgba(25, 135, 84, 0.1);
-    color: #198754;
-    border-left: 4px solid #198754;
-}
-
-.section-description {
-    font-size: 0.9rem;
-    color: #6c757d;
-    margin-left: 0.25rem;
-}
-
-/* Parameter Table */
-.parameter-table-container {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    overflow: hidden;
-}
-
-.responsive-table-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.parameter-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 600px;
-}
-
-.parameter-table th {
-    background-color: #f8f9fa;
-    padding: 0.75rem 1rem;
-    text-align: left;
-    font-weight: 600;
-    color: #495057;
-    border-bottom: 2px solid #e9ecef;
-}
-
-.parameter-table td {
-    padding: 1rem;
-    vertical-align: middle;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.parameter-index {
-    font-weight: 500;
-    color: #6c757d;
-    width: 50px;
-}
-
-.parameter-name {
-    font-weight: 500;
-    min-width: 200px;
-}
-
-.parameter-unit {
-    color: #6c757d;
-    font-size: 0.85em;
-    margin-left: 0.25rem;
-}
-
-.parameter-input-cell {
-    min-width: 200px;
-}
-
-.input-group {
-    display: flex;
-    align-items: stretch;
-}
-
-.parameter-input {
-    flex: 1;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #ced4da;
-    border-radius: 4px 0 0 4px;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.parameter-input:focus {
-    border-color: #86b7fe;
-    outline: 0;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-.unit-display {
-    background-color: #e9ecef;
-    border: 1px solid #ced4da;
-    border-left: 0;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0 4px 4px 0;
-    color: #495057;
-}
-
-/* Results Section */
-.results-container {
-    display: grid;
-    gap: 1rem;
-}
-
-.result-card {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    padding: 1.25rem;
-    border-left: 4px solid #198754;
-}
-
-.result-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.result-title {
-    font-weight: 600;
-    color: #212529;
-    display: flex;
-    align-items: center;
-}
-
-.result-title i {
-    color: #198754;
-    margin-right: 0.5rem;
-    font-size: 1.1rem;
-}
-
-.result-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #198754;
-    background-color: rgba(25, 135, 84, 0.1);
-    padding: 0.25rem 0.75rem;
+    padding: 2px 8px;
     border-radius: 20px;
-    min-width: 80px;
-    text-align: center;
 }
-
-.result-notes {
-    background-color: #f8f9fa;
-    border-radius: 6px;
-    padding: 0.75rem;
-    margin-bottom: 1rem;
+.vld-badge--success {
+    background: #d1f8ef;
+    color: #0ab39c;
 }
-
-.notes-header {
-    display: flex;
-    align-items: center;
-    font-size: 0.85rem;
-    color: #6c757d;
-    margin-bottom: 0.25rem;
+.vld-badge--danger {
+    background: #fde8e4;
+    color: #f06548;
 }
-
-.notes-header i {
-    margin-right: 0.5rem;
+.vld-badge--blue {
+    background: #eef0f9;
+    color: #405189;
 }
-
-.notes-content {
-    font-size: 0.9rem;
-    color: #495057;
-    line-height: 1.5;
-}
-
-.result-footer {
-    display: flex;
-    justify-content: flex-end;
-}
-
-.calculation-method {
-    font-size: 0.8rem;
+.vld-badge--gray {
+    background: #f0f2f5;
     color: #6c757d;
 }
 
-.method-label {
-    font-weight: 500;
-    margin-right: 0.25rem;
-}
-
-/* Highlight Effect */
-.parameter-row.highlighted {
-    background-color: rgba(13, 110, 253, 0.05);
-    transition: background-color 0.3s ease;
-}
-
-/* Responsive Layout */
-@media (min-width: 992px) {
-    .calculation-container {
-        grid-template-columns: 1fr 1fr;
-    }
-}
-
-@media (min-width: 1200px) {
-    .calculation-container {
-        grid-template-columns: 2fr 1fr;
-    }
-}
-
-/* Animation */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.result-card {
-    animation: fadeIn 0.3s ease-out forwards;
-}
-
-/* Print Styles */
-@media print {
-    .calculation-container {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .parameter-table-container,
-    .result-card {
-        box-shadow: none;
-        border: 1px solid #ddd;
-    }
-}
-
-/* animasi skeleton */
-@keyframes pulseSkeleton {
-    0% {
-        background-color: #e0e0e0;
-    }
-    50% {
-        background-color: #f0f0f0;
-    }
-    100% {
-        background-color: #e0e0e0;
-    }
-}
-
-.skeleton {
-    animation: pulseSkeleton 1.5s infinite;
-    border-radius: 8px;
-}
-.skeleton-image {
-    width: 100%;
-    height: 200px;
-    margin-bottom: 16px;
-}
-
-.analysis-container {
-    background: rgba(255, 255, 255, 0.98);
-    border-radius: 20px;
-    padding: 28px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.analysis-container:hover {
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
-}
-
-.section-title {
-    font-weight: 800;
-    font-size: 1.25rem;
-    position: relative;
-    padding-bottom: 16px;
-    margin-bottom: 24px;
-    color: #495057; /* Updated to use #495057 */
-    letter-spacing: -0.5px;
-}
-
-.section-title::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 80px;
-    height: 5px;
-    background: #495057;
-    border-radius: 5px;
-    box-shadow: 0 2px 8px rgba(19, 24, 50, 0.3);
-}
-
-.text-gradient {
-    background: #495057;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-
-/* Base Styles */
-.cleaning-system-container {
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f8fafc;
-    min-height: 100vh;
-    color: #334155;
-}
-
-.system-header {
-    background: linear-gradient(135deg, #456290 0%, #25335e 100%);
-    color: white;
-    padding: 1.5rem 2rem;
-    display: flex;
-    justify-content: space-between;
+/* Chips (small) */
+.vld-chip {
+    display: inline-flex;
     align-items: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.header-content {
-    flex: 1;
-}
-
-.system-title {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin: 0;
-    color: white;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.system-subtitle {
-    font-size: 1rem;
-    opacity: 0.9;
-    margin: 0.25rem 0 0;
-    font-weight: 400;
-}
-
-.header-actions {
-    display: flex;
-    gap: 1rem;
-}
-
-.btn-help {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-help:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.content-wrapper {
-    max-width: 100%;
-    margin: 2rem auto;
-    padding: 0 2rem;
-}
-
-/* Panel Styles */
-.search-panel,
-.details-panel,
-.template-panel,
-.form-panel {
-    background: white;
+    gap: 2px;
+    font-size: 10px;
+    padding: 1px 6px;
     border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    margin-bottom: 1.5rem;
-    overflow: hidden;
+    font-weight: 500;
+}
+.vld-chip--blue {
+    background: #eef0f9;
+    color: #405189;
+}
+.vld-chip--gray {
+    background: #f0f2f5;
+    color: #6c757d;
 }
 
-.panel-header {
-    padding: 1.25rem 1.5rem;
-    background-color: #f1f5f9;
-    border-bottom: 1px solid #e2e8f0;
+/* ── Sticky action bar ────────────────────────────────────────────────── */
+.vld-action-bar {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
+    padding: 10px 16px;
+    background: #fff;
+    border-top: 1px solid #e9ebec;
+    flex-shrink: 0;
+    gap: 10px;
 }
-
-.panel-header.with-tabs {
-    border-bottom: none;
-}
-
-.panel-header h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0;
+.vld-action-info {
+    font-size: 11px;
+    color: #878a99;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 4px;
+    min-width: 0;
 }
 
-.panel-body {
-    padding: 1.5rem;
+/* ════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════════════════════════ */
+.vld-hidden-mobile {
+    display: none !important;
 }
 
-/* Search Form */
-.search-form {
-    max-width: 600px;
+@media (min-width: 992px) {
+    .vld-hidden-mobile {
+        display: flex !important;
+    }
 }
 
-.form-label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #475569;
+@media (max-width: 991px) {
+    .vld-root {
+        height: calc(100vh - 60px);
+    }
+    .vld-left {
+        width: 100%;
+        max-width: 100%;
+        border-right: none;
+    }
+    .vld-right {
+        width: 100%;
+    }
+    .vld-body {
+        flex-direction: column;
+    }
+    .vld-dh-meta {
+        display: none;
+    }
 }
 
-.input-with-button {
+/* ── Reanalisis Single QR info box ─────────────────────────────────── */
+.vld-reanalisis-info-box {
     display: flex;
-    gap: 0.5rem;
+    gap: 12px;
+    align-items: flex-start;
+    background: #eef0f9;
+    border: 1px solid #c5cae9;
+    border-left: 4px solid #405189;
+    border-radius: 10px;
+    padding: 14px;
 }
-
-.form-input {
-    flex: 1;
-    padding: 0.75rem 1rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 1rem;
-    transition: all 0.2s ease;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
-}
-
-.btn-search {
-    background-color: #3b82f6;
-    color: white;
-    border: none;
-    padding: 0 1.5rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-search:hover {
-    background-color: #2563eb;
-}
-
-/* Detail Grid */
-.detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.detail-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.detail-label {
-    font-weight: 500;
-    color: #64748b;
-}
-
-.detail-value {
-    font-weight: 500;
-    color: #1e293b;
-}
-
-.detail-value.highlight {
-    color: #3b82f6;
-    font-weight: 600;
-}
-
-.status-badge {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.badge.active {
-    background-color: #d1fae5;
-    color: #065f46;
-}
-
-.badge.priority {
-    background-color: #3eb1df;
-    color: #ffffff;
-}
-
-/* Notes Section */
-.notes-section {
-    background-color: #f8fafc;
-    border-radius: 8px;
-    padding: 1rem;
-    margin-top: 1.5rem;
-    border-left: 4px solid #60a5fa;
-}
-
-.notes-header {
-    margin-bottom: 0.5rem;
-}
-
-.notes-label {
-    font-weight: 600;
-    color: #475569;
+.vld-rib-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #405189;
+    color: #fff;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
 }
 
-.notes-content {
-    color: #475569;
-    line-height: 1.5;
-}
-
-/* Form Panels */
-.form-panel .panel-header {
-    background-color: #f8fafc;
-}
-
-.btn-add {
-    background-color: #10b981;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-add:hover {
-    background-color: #059669;
-}
-
-.btn-add-param {
-    background-color: #f59e0b;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-    margin-right: 0.5rem;
-}
-
-.btn-add-param:hover {
-    background-color: #d97706;
-}
-
-/* Multi Table */
-.multi-table {
-    overflow-x: auto;
-}
-
-.multi-table table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-}
-
-.multi-table th {
-    background-color: #f1f5f9;
-    color: #475569;
-    font-weight: 600;
-    padding: 0.75rem 1rem;
-    text-align: left;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.multi-table td {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: middle;
-}
-
-.multi-table input {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-}
-
-.multi-table input:focus {
-    outline: none;
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
-}
-
-.multi-table td.actions {
-    text-align: center;
-}
-/* Form Actions */
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid #f1f5f9;
-}
-
-.btn-submit {
-    background-color: #3b82f6;
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-submit:hover {
-    background-color: #2563eb;
-}
-
-.btn-save {
-    background-color: #8b5cf6;
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-save:hover {
-    background-color: #7c3aed;
-}
-
-.modern-form {
-    font-family: "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-
-    margin: 0 auto;
-}
-
-.sample-info-card {
-    background: #f8f9ff;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 24px;
-    display: flex;
-    gap: 32px;
-    border: 1px solid #e0e7ff;
-}
-
-.info-item {
-    display: flex;
-    align-items: center;
-}
-
-.info-label {
-    font-weight: 500;
-    color: #4b5563;
-    margin-right: 8px;
-}
-
-.info-value {
-    font-weight: 600;
-    color: #1e293b;
-}
-
-/* Modern Table Styles */
-.analysis-table-container {
-    overflow-x: auto;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-}
-
-.modern-analysis-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
+@media (max-width: 480px) {
+    .vld-topbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .vld-topbar-right {
+        flex-wrap: wrap;
+    }
+    .vld-mini-stats {
+        flex-direction: row;
+    }
+    .vld-ms-item {
+        min-width: calc(50% - 4px);
+    }
 }
 </style>

@@ -3,7 +3,7 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "optimize": "php artisan optimize && php artisan config:cache && php artisan config:clear"
+        "clear": "php artisan route:clear && php artisan config:clear && php artisan view:clear && php artisan cache:clear"
     },
     "devDependencies": {
         "@types/image-to-base64": "^2.1.0",

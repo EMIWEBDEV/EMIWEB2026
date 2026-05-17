@@ -53,6 +53,7 @@ Route::get('/api/v1/formulator/validasi-hasil/uji-tial/multi-qrcode/{no_sampel}/
 Route::get('/api/v1/formulator/validasi-hasil/uji-trial/verifikasi-analisa/multi/{id_jenis_analisa}/{no_po_sampel}/{no_sub}', [FormulatorTrialSampelController::class, 'getVerifikasiHasilAnalisaPerhitunganByMultiV2']);
 Route::get('/api/v1/formulator/validasi-hasil/uji-trial/verifikasi-analisa/single-qrcode/{id_jenis_analisa}/{no_po_sampel}', [FormulatorTrialSampelController::class, 'getVerifikasiHasilAnalisaPerhitunganBySingleQrV2']);
 Route::get('/api/v1/formulator/validasi-hasil/uji-trial/sub/all/{no_sampel}/{id_jenis_analisa}', [FormulatorTrialSampelController::class, 'getDataSubSampelCurrentV1']);
+Route::get('/api/v1/formulator/validasi-hasil/uji-trial/sub/menunggu/{no_sampel}/{id_jenis_analisa}', [FormulatorTrialSampelController::class, 'getSubPoMenungguValidasi']);
 Route::post('/api/v1/formulator/validasi-hasil/uji-trial/resampeling/reanalisis', [FormulatorTrialSampelController::class, 'resampelingAnalisa']);
 Route::post('/api/v1/formulator/validasi-hasil/uji-trial/resampling-single/reanalisis', [FormulatorTrialSampelController::class, 'resampelingAnalisaSingle']);
 Route::post('/api/v1/formulator/validasi-hasil/uji-trial/approve', [FormulatorTrialSampelController::class, 'storeConfirmedUjiSampelV2']);
