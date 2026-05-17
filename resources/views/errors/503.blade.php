@@ -1,271 +1,300 @@
 <!DOCTYPE html>
 <html lang="id">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>503</title>
-        <link
-            href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;500;800&display=swap"
-            rel="stylesheet"
-        />
-        <style>
-            :root {
-                --primary: #505f91;
-                --darker: #2c3552;
-                --light: #ffffff;
-                --glass: rgba(255, 255, 255, 0.05);
-                --border: rgba(255, 255, 255, 0.1);
-            }
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>503 – Layanan Tidak Tersedia | EMI Lab</title>
+    <style>
+        :root {
+            --accent: #eab308;
+            --accent-dark: #a16207;
+            --accent-rgb: 234, 179, 8;
+        }
 
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-            body {
-                font-family: "Outfit", sans-serif;
-                height: 100vh;
-                width: 100vw;
-                overflow: hidden;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                /* Gradient Background Elegan dari warna #505F91 */
-                background: radial-gradient(
-                    circle at 50% 50%,
-                    #505f91 0%,
-                    #1e2438 100%
-                );
-                color: var(--light);
-            }
+        html, body {
+            height: 100%;
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        }
 
-            /* Canvas untuk partikel background */
-            #noise-canvas {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                z-index: 1;
-                opacity: 0.4;
-            }
+        body {
+            min-height: 100vh;
+            background: #0d1117;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #e2e8f0;
+            overflow: hidden;
+            position: relative;
+            padding: 80px 20px 64px;
+        }
 
-            /* Container Kartu Glassmorphism */
-            .glass-panel {
-                position: relative;
-                z-index: 10;
-                background: var(--glass);
-                backdrop-filter: blur(15px);
-                -webkit-backdrop-filter: blur(15px);
-                border: 1px solid var(--border);
-                border-radius: 24px;
-                padding: 4rem 3rem;
-                text-align: center;
-                max-width: 500px;
-                width: 90%;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        .bg-mesh {
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 70% 50% at 15% 55%, rgba(var(--accent-rgb), 0.12) 0%, transparent 65%),
+                radial-gradient(ellipse 50% 40% at 85% 25%, rgba(var(--accent-rgb), 0.08) 0%, transparent 60%),
+                linear-gradient(180deg, #0d1117 0%, #111827 50%, #0d1117 100%);
+            animation: meshBreath 14s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 0;
+        }
+        @keyframes meshBreath {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.06); }
+        }
 
-                /* Persiapan untuk efek 3D Tilt */
-                transform-style: preserve-3d;
-                transform: perspective(1000px);
-                transition: transform 0.1s ease-out;
-            }
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(70px);
+            pointer-events: none;
+            z-index: 0;
+            animation: orbDrift ease-in-out infinite alternate;
+        }
+        .orb-1 { width: 420px; height: 420px; top: -15%; left: -12%; background: rgba(var(--accent-rgb), 0.18); animation-duration: 16s; }
+        .orb-2 { width: 300px; height: 300px; bottom: -12%; right: -8%; background: rgba(var(--accent-rgb), 0.12); animation-duration: 12s; animation-delay: -4s; }
+        .orb-3 { width: 160px; height: 160px; top: 40%; left: 65%; background: rgba(var(--accent-rgb), 0.07); animation-duration: 9s; animation-delay: -7s; }
+        @keyframes orbDrift {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(35px, -45px); }
+        }
 
-            /* Elemen Dekorasi di dalam kartu */
-            .status-badge {
-                display: inline-block;
-                padding: 8px 16px;
-                background: rgba(255, 87, 87, 0.15);
-                color: #ff6b6b;
-                border-radius: 50px;
-                font-size: 0.75rem;
-                font-weight: 500;
-                letter-spacing: 2px;
-                text-transform: uppercase;
-                margin-bottom: 2rem;
-                border: 1px solid rgba(255, 87, 87, 0.3);
-                /* Efek kedalaman 3D */
-                transform: translateZ(20px);
-            }
+        .logo-bar {
+            position: fixed;
+            top: 22px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 20;
+            white-space: nowrap;
+            animation: fadeDown 0.6s ease 0.9s both;
+        }
+        .logo-chip {
+            background: linear-gradient(135deg, #405189, rgba(var(--accent-rgb), 0.9));
+            color: white;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 5px 14px;
+            border-radius: 50px;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+        }
+        .logo-name { font-size: 0.78rem; color: #374151; }
+        @keyframes fadeDown {
+            0% { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+            100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
 
-            h1 {
-                font-size: 8rem;
-                line-height: 1;
-                font-weight: 800;
-                margin-bottom: 0.5rem;
-                background: linear-gradient(to bottom right, #ffffff, #8a9bc7);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                /* Efek kedalaman 3D lebih tinggi */
-                transform: translateZ(50px);
-                text-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            }
+        .error-card {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.035);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 28px;
+            padding: 48px 44px 44px;
+            max-width: 490px;
+            width: 100%;
+            box-shadow:
+                0 0 0 1px rgba(255,255,255,0.04) inset,
+                0 1px 0 rgba(255,255,255,0.08) inset,
+                0 40px 80px rgba(0,0,0,0.5);
+            animation: cardReveal 1s cubic-bezier(0.34, 1.36, 0.64, 1) both;
+        }
+        @keyframes cardReveal {
+            0% { opacity: 0; transform: translateY(60px) scale(0.9); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
 
-            h2 {
-                font-size: 1.5rem;
-                font-weight: 500;
-                margin-bottom: 1rem;
-                color: #dbe4ff;
-                transform: translateZ(30px);
-            }
+        .icon-circle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 76px; height: 76px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.9), rgba(var(--accent-rgb), 0.6));
+            margin-bottom: 20px;
+            animation: iconFloat 4s ease-in-out infinite;
+            box-shadow:
+                0 16px 40px rgba(var(--accent-rgb), 0.35),
+                0 0 0 10px rgba(var(--accent-rgb), 0.07),
+                0 0 0 22px rgba(var(--accent-rgb), 0.03);
+        }
+        .icon-circle svg { width: 34px; height: 34px; fill: white; }
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-13px) rotate(10deg); }
+        }
 
-            p {
-                font-size: 0.95rem;
-                color: #8f9bb3;
-                line-height: 1.6;
-                font-weight: 200;
-                transform: translateZ(20px);
-            }
+        .error-num {
+            font-size: 6.5rem;
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -0.04em;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, rgba(var(--accent-rgb), 1) 0%, rgba(var(--accent-rgb), 0.6) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: numReveal 0.8s cubic-bezier(0.34, 1.5, 0.64, 1) 0.2s both;
+            display: block;
+        }
+        @keyframes numReveal {
+            0% { opacity: 0; transform: scale(0.5); }
+            100% { opacity: 1; transform: scale(1); }
+        }
 
-            /* Garis progres animasi */
-            .loading-bar {
-                width: 100%;
-                height: 2px;
-                background: rgba(255, 255, 255, 0.1);
-                margin-top: 3rem;
-                position: relative;
-                overflow: hidden;
-                border-radius: 2px;
-                transform: translateZ(10px);
-            }
+        .divider {
+            width: 40px; height: 3px;
+            background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.8), rgba(var(--accent-rgb), 0.2));
+            border-radius: 2px;
+            margin: 14px auto 18px;
+            animation: divExpand 0.5s ease 0.6s both;
+        }
+        @keyframes divExpand {
+            0% { width: 0; opacity: 0; }
+            100% { width: 40px; opacity: 1; }
+        }
 
-            .loading-bar::after {
-                content: "";
-                position: absolute;
-                top: 0;
-                left: 0;
-                height: 100%;
-                width: 30%;
-                background: #505f91;
-                box-shadow: 0 0 10px #505f91;
-                animation: loading 2s infinite ease-in-out;
-            }
+        .error-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #f0f4f8;
+            margin-bottom: 10px;
+            letter-spacing: -0.02em;
+            animation: fadeUp 0.5s ease 0.5s both;
+        }
 
-            @keyframes loading {
-                0% {
-                    left: -30%;
-                }
-                100% {
-                    left: 100%;
-                }
-            }
+        .error-msg {
+            font-size: 0.9rem;
+            color: #6b7280;
+            line-height: 1.75;
+            margin-bottom: 32px;
+            animation: fadeUp 0.5s ease 0.6s both;
+        }
+        @keyframes fadeUp {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
 
-            /* Responsif */
-            @media (max-width: 768px) {
-                h1 {
-                    font-size: 5rem;
-                }
-                .glass-panel {
-                    padding: 2rem;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <canvas id="noise-canvas"></canvas>
+        .btn-wrap {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeUp 0.5s ease 0.7s both;
+        }
 
-        <div class="glass-panel" id="tilt-card">
-            <div class="status-badge">● Disconnected</div>
+        .btn-main {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: rgba(var(--accent-rgb), 0.85);
+            color: white;
+            text-decoration: none;
+            padding: 12px 26px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 8px 20px rgba(var(--accent-rgb), 0.35);
+        }
+        .btn-main:hover {
+            background: rgba(var(--accent-rgb), 1);
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 16px 36px rgba(var(--accent-rgb), 0.5);
+            color: white;
+            text-decoration: none;
+        }
 
-            <h1>503</h1>
-            <h2>Layanan Tidak Tersedia</h2>
-            <div class="loading-bar"></div>
+        .page-footer {
+            position: fixed;
+            bottom: 20px;
+            left: 0; right: 0;
+            text-align: center;
+            font-size: 0.73rem;
+            color: #1e293b;
+            letter-spacing: 0.04em;
+            z-index: 20;
+            animation: fadeUp 0.5s ease 1.2s both;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; transform: translateY(0) scale(0.5); }
+            50% { opacity: 1; transform: translateY(-28px) scale(1); }
+        }
+
+        @media (max-width: 480px) {
+            .error-card { padding: 36px 24px 32px; }
+            .error-num { font-size: 5rem; }
+            .logo-name { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-mesh"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="logo-bar">
+        <span class="logo-chip">EMI Lab</span>
+        <span class="logo-name">Laboratory Information Management System</span>
+    </div>
+
+    <div class="error-card">
+        <div class="icon-circle">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>
+            </svg>
         </div>
+        <span class="error-num">503</span>
+        <div class="divider"></div>
+        <h1 class="error-title">Layanan Tidak Tersedia</h1>
+        <p class="error-msg">
+            Server sedang sibuk atau dalam proses pemeliharaan.<br>
+            Silakan tunggu sebentar dan coba kembali.
+        </p>
+        <div class="btn-wrap">
+            <a href="javascript:location.reload()" class="btn-main">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                Coba Lagi
+            </a>
+        </div>
+    </div>
 
-        <script>
-            // --- BAGIAN 1: BACKGROUND PARTICLES (Floating Data) ---
-            const canvas = document.getElementById("noise-canvas");
-            const ctx = canvas.getContext("2d");
+    <div class="page-footer">
+        PT Evo Manufacturing Indonesia &nbsp;·&nbsp; EMI Laboratory Information Management System
+    </div>
 
-            let width, height;
-            let particles = [];
-
-            function resize() {
-                width = canvas.width = window.innerWidth;
-                height = canvas.height = window.innerHeight;
+    <script>
+        (function () {
+            var rgb = '234, 179, 8';
+            for (var i = 0; i < 28; i++) {
+                var p = document.createElement('div');
+                var sz = Math.random() * 3.5 + 1;
+                p.style.cssText = [
+                    'position:fixed', 'pointer-events:none', 'z-index:1', 'border-radius:50%',
+                    'width:' + sz + 'px', 'height:' + sz + 'px',
+                    'background:rgba(' + rgb + ',' + (Math.random() * 0.45 + 0.05) + ')',
+                    'top:' + (Math.random() * 100) + 'vh',
+                    'left:' + (Math.random() * 100) + 'vw',
+                    'animation:sparkle ' + (Math.random() * 5 + 4) + 's ease-in-out infinite',
+                    'animation-delay:-' + (Math.random() * 9) + 's'
+                ].join(';');
+                document.body.appendChild(p);
             }
-
-            class Particle {
-                constructor() {
-                    this.x = Math.random() * width;
-                    this.y = Math.random() * height;
-                    this.vx = (Math.random() - 0.5) * 0.5; // Gerakan lambat
-                    this.vy = (Math.random() - 0.5) * 0.5;
-                    this.size = Math.random() * 2;
-                    this.alpha = Math.random() * 0.5;
-                }
-
-                update() {
-                    this.x += this.vx;
-                    this.y += this.vy;
-
-                    // Memantul pelan di dinding
-                    if (this.x < 0 || this.x > width) this.vx *= -1;
-                    if (this.y < 0 || this.y > height) this.vy *= -1;
-
-                    // Efek kedip (flicker) seperti sinyal hilang
-                    if (Math.random() > 0.98) {
-                        this.alpha = Math.random() * 0.5;
-                    }
-                }
-
-                draw() {
-                    ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-
-            function initParticles() {
-                particles = [];
-                for (let i = 0; i < 150; i++) {
-                    // Jumlah partikel
-                    particles.push(new Particle());
-                }
-            }
-
-            function animate() {
-                ctx.clearRect(0, 0, width, height);
-                particles.forEach((p) => {
-                    p.update();
-                    p.draw();
-                });
-                requestAnimationFrame(animate);
-            }
-
-            window.addEventListener("resize", () => {
-                resize();
-                initParticles();
-            });
-
-            // --- BAGIAN 2: 3D TILT EFFECT (Interaksi Mouse Mewah) ---
-            const card = document.getElementById("tilt-card");
-
-            document.addEventListener("mousemove", (e) => {
-                const xAxis = (window.innerWidth / 2 - e.pageX) / 25; // Sensitivitas X
-                const yAxis = (window.innerHeight / 2 - e.pageY) / 25; // Sensitivitas Y
-
-                // Rotasi kartu berdasarkan posisi mouse
-                card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg) perspective(1000px)`;
-            });
-
-            // Kembalikan ke posisi semula saat mouse keluar (opsional, tapi bagus untuk UX)
-            document.addEventListener("mouseleave", () => {
-                card.style.transform = `rotateY(0deg) rotateX(0deg) perspective(1000px)`;
-                card.style.transition = "transform 0.5s ease";
-            });
-
-            // Hapus transisi saat mouse masuk agar gerakan responsif
-            document.addEventListener("mouseenter", () => {
-                card.style.transition = "none";
-            });
-
-            // Inisialisasi
-            resize();
-            initParticles();
-            animate();
-        </script>
-    </body>
+        }());
+    </script>
+</body>
 </html>

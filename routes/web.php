@@ -28,8 +28,22 @@ use App\Http\Controllers\UjiSampelController;
 use App\Http\Controllers\UjiValidasiFinalController;
 
 Route::get('/', [AuthController::class, 'form_login'])->name('login.form')->middleware('guest', 'autotrack');
+
 Route::post('/proses_login', [AuthController::class, 'proses_login'])->name('proses_login')->middleware('guest', 'web');
 Route::get('/logout-clear', [AuthController::class, 'logoutclear']);
+
+Route::get('/checking', function (\Illuminate\Http\Request $request) {
+    $key = $request->query('key');
+    if ($key === 'maintenance-true') {
+        session(['maintenance_bypass' => true]);
+        return redirect('/dashboard');
+    }
+    if ($key === 'maintenance-false') {
+        session()->forget('maintenance_bypass');
+        return redirect('/');
+    }
+    abort(404);
+});
 
 
 Route::middleware(['auth'])->group(function () {
@@ -71,6 +85,33 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get('/api/v1/dashboard/grafik/frekuensi-uji-sampel-berdasarkan-jenis-analisa', [DashboardController::class, 'getFrekuensiUjiSampelBerdasarkanJenisAnalisa']);
     Route::get('/api/v1/dashboard/grafik/pie-status-uji-sampel', [DashboardController::class, 'getPieStatusPenyelesaianUji']);
     Route::get('/api/v1/dashboard/grafik/scatter-sebaran-hasil', [DashboardController::class, 'getScatterSebaranHasilAnalisa']);
+
+    // QA Dashboard (no permission middleware)
+    Route::get('/dashboard-qa', [DashboardController::class, 'getDashboardQaPage'])->name('dashboard-qa')->middleware('autotrack');
+    Route::get('/api/v1/dashboard-qa/kpi-hari-ini', [DashboardController::class, 'getKpiQaHariIni']);
+    Route::get('/api/v1/dashboard-qa/grafik/tren-sampel', [DashboardController::class, 'getTrenSampelQa']);
+    Route::get('/api/v1/dashboard-qa/grafik/status-ringkasan', [DashboardController::class, 'getStatusRingkasanQa']);
+    Route::get('/api/v1/dashboard-qa/grafik/distribusi-mesin', [DashboardController::class, 'getDistribusiSampelPerMesinQa']);
+    Route::get('/api/v1/dashboard-qa/grafik/distribusi-user', [DashboardController::class, 'getDistribusiSampelPerUserQa']);
+    Route::get('/api/v1/dashboard-qa/aktivitas-terbaru', [DashboardController::class, 'getAktivitasTerbaruQa']);
+
+    // Dashboard Lab – Produksi tab
+    Route::get('/api/v1/dashboard/produksi/kpi', [DashboardController::class, 'getKpiProduksi']);
+    Route::get('/api/v1/dashboard/produksi/grafik/tren', [DashboardController::class, 'getTrenProduksi']);
+    Route::get('/api/v1/dashboard/produksi/validasi-final-terbaru', [DashboardController::class, 'getValidasiFinalTerbaru']);
+
+    // Dashboard Lab – Atasan tab (legacy, kept for compatibility)
+    Route::get('/api/v1/dashboard/atasan/summary', [DashboardController::class, 'getSummaryAtasan']);
+    Route::get('/api/v1/dashboard/atasan/pass-rate-jenis-analisa', [DashboardController::class, 'getPassRatePerJenisAnalisa']);
+
+    // Dashboard Atasan – dedicated page
+    Route::get('/dashboard-atasan', [DashboardController::class, 'getDashboardAtasanPage'])->name('dashboard-atasan')->middleware('autotrack', 'permission:Dashboard,VIEW');
+    Route::get('/api/v1/dashboard-atasan/kpi-bulanan', [DashboardController::class, 'getKpiAtasanBulanan']);
+    Route::get('/api/v1/dashboard-atasan/tren-bulanan', [DashboardController::class, 'getTrenBulananAtasan']);
+    Route::get('/api/v1/dashboard-atasan/beban-mesin', [DashboardController::class, 'getBebanMesinAtasan']);
+    Route::get('/api/v1/dashboard-atasan/status-overall', [DashboardController::class, 'getStatusOverallAtasan']);
+    Route::get('/api/v1/dashboard-atasan/pass-rate-jenis', [DashboardController::class, 'getPassRatePerJenisAnalisa']);
+    Route::get('/api/v1/dashboard-atasan/top-analis', [DashboardController::class, 'getTopAnalisAtasan']);
 
     Route::get('/po/{computer_keys}', [QuisyController::class, 'getPoListWithCompletionStatus'])->name('api.podata');
     Route::get('/api/v2/po/{computer_keys}', [QuisyController::class, 'getPoListWithCompletionStatusV2']);
@@ -305,6 +346,11 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get("/api/v1/role-menu/home-current", [RoleMenuController::class, 'getDataRoleMenu']);
     Route::post("/api/v1/role-menu/store", [RoleMenuController::class, 'store']);
     Route::put("/api/v1/role-menu/update/{id_role_menu}", [RoleMenuController::class, 'update']);
+    Route::get("/api/v1/role-menu/all/{UserId}", [RoleMenuController::class, 'getAllMenuByUser']);
+    Route::put("/api/v1/role-menu/reorder", [RoleMenuController::class, 'reorder']);
+    Route::put("/api/v1/page-access/update/{IdPageAccess}", [RoleMenuController::class, 'updatePageAccess']);
+    Route::get("/api/v1/role-menu/available/{UserId}", [RoleMenuController::class, 'getAvailableMenus']);
+    Route::post("/api/v1/page-access/batch-save/{UserId}", [RoleMenuController::class, 'batchSavePageAccess']);
 
     Route::get("/serial-kabel", [MasterSerialController::class, 'index']);
 

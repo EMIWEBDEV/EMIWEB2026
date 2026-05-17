@@ -11622,13 +11622,31 @@ class UjiSampelController extends Controller
         }
 
         // --- PENYESUAIAN RESPONSE JSON ---
+        $firstUji = $ujiSampel->first();
+        $flagPerhitunganCheck = $firstUji->Flag_Perhitungan ?? null;
+        $idMesinCheck = $firstUji->Id_Mesin ?? null;
+        $kodeBarangCheck = $firstUji->Kode_Barang ?? null;
+
+        if ($flagPerhitunganCheck === 'Y') {
+            $hasStdConfig = DB::table('N_EMI_LAB_Standar_Rentang')
+                ->where('Id_Jenis_Analisa', $id_jenis_analisa_decoded)
+                ->where('Kode_Barang', $kodeBarangCheck)
+                ->where('Id_Master_Mesin', $idMesinCheck)
+                ->exists();
+        } else {
+            $hasStdConfig = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
+                ->where('Id_Jenis_Analisa', $id_jenis_analisa_decoded)
+                ->exists();
+        }
+
         return response()->json([
             'success' => true,
             'status' => 200,
             'message' => 'Data Ditemukan',
             'result' => [
                 'informasi' => [
-                    'sesi_foto' => $hasSesiFoto
+                    'sesi_foto' => $hasSesiFoto,
+                    'has_standard_configuration' => $hasStdConfig,
                 ],
                 'sampel' => $result
             ]
@@ -11796,13 +11814,31 @@ class UjiSampelController extends Controller
             }
 
             // --- PENYESUAIAN RESPONSE JSON ---
+            $firstSampel = $ujiSampel->first();
+            $flagPerhitunganSingle = $firstSampel->Flag_Perhitungan ?? null;
+            $idMesinSingle = $firstSampel->Id_Mesin ?? null;
+            $kodeBarangSingle = $firstSampel->Kode_Barang ?? null;
+
+            if ($flagPerhitunganSingle === 'Y') {
+                $hasStdConfigSingle = DB::table('N_EMI_LAB_Standar_Rentang')
+                    ->where('Id_Jenis_Analisa', $id_jenis_analisa_int)
+                    ->where('Kode_Barang', $kodeBarangSingle)
+                    ->where('Id_Master_Mesin', $idMesinSingle)
+                    ->exists();
+            } else {
+                $hasStdConfigSingle = DB::table('N_EMI_LAB_Standar_Rentang_Non_Perhitungan')
+                    ->where('Id_Jenis_Analisa', $id_jenis_analisa_int)
+                    ->exists();
+            }
+
             return response()->json([
                 'success' => true,
                 'status' => 200,
                 'message' => 'Data Ditemukan',
                 'result' => [
                     'informasi' => [
-                        'sesi_foto' => $hasSesiFoto
+                        'sesi_foto' => $hasSesiFoto,
+                        'has_standard_configuration' => $hasStdConfigSingle,
                     ],
                     'sampel' => $result
                 ]

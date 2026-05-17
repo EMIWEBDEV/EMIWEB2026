@@ -32,13 +32,13 @@
 
 <style>
     .noread {
-        background: #F3F3F9; 
+        background: #F3F3F9;
     }
     .quest:hover{
       color: #405189 !important;
     }
     .view-all-fixed {
-        position: fixed;
+        position: sticky;
         bottom: 0;
         left: 0;
         width: 100%;
@@ -46,6 +46,16 @@
         padding: 10px 15px;
         border-top: 1px solid #dee2e6;
         z-index: 1050;
+    }
+    /* Mobile: topbar title */
+    @media (max-width: 767.98px) {
+        #page-topbar .d-none.d-xl-inline-block,
+        #page-topbar .d-none.d-xl-block {
+            display: none !important;
+        }
+        .topbar-user .btn {
+            padding: 4px 6px !important;
+        }
     }
 </style>
 <header id="page-topbar">
@@ -81,6 +91,12 @@
                         <span></span>
                     </span>
                 </button>
+                {{-- Mobile page title (center) --}}
+                <div class="d-flex d-md-none align-items-center ms-1">
+                    <img src="{{ URL::asset('assets/images/evo.png') }}"
+                         alt="EMI Lab" height="28"
+                         style="border-radius:6px; opacity:.9;">
+                </div>
             </div>
 
             <div class="d-flex align-items-center">

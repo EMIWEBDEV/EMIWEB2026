@@ -761,12 +761,10 @@ class DashboardController extends Controller
     public function updateFlagBacaRead()
     {
         try {
-            // Cek apakah masih ada notifikasi yang belum dibaca
             $jumlahBelumDibaca = DB::table('N_EMI_LAB_PO_Sampel')
                 ->whereNull('Flag_Baca')
                 ->count();
 
-            // Jika semua sudah dibaca
             if ($jumlahBelumDibaca === 0) {
                 return response()->json([
                     'status' => 200,
@@ -774,19 +772,11 @@ class DashboardController extends Controller
                 ]);
             }
 
-            // Jika masih ada yang belum dibaca, lakukan update
             DB::beginTransaction();
-
-            DB::table('N_EMI_LAB_PO_Sampel')
-                ->whereNull('Flag_Baca')
-                ->update(['Flag_Baca' => 'Y']);
-
+            DB::table('N_EMI_LAB_PO_Sampel')->whereNull('Flag_Baca')->update(['Flag_Baca' => 'Y']);
             DB::commit();
 
-            return response()->json([
-                'status' => 200,
-                'message' => 'Status baca berhasil diperbarui.',
-            ]);
+            return response()->json(['status' => 200, 'message' => 'Status baca berhasil diperbarui.']);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -796,6 +786,540 @@ class DashboardController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    // ============================================================
+    // QA DASHBOARD
+    // ============================================================
+
+    public function getDashboardQaPage()
+    {
+        return inertia('vue/dashboard/dashboard-qa/DashboardQA');
+    }
+
+    public function getKpiQaHariIni()
+    {
+        $start = Carbon::today()->startOfDay();
+        $end   = Carbon::today()->endOfDay();
+
+        $data = DB::table('N_EMI_LAB_PO_Sampel')
+            ->whereNull('Status')
+            ->whereBetween('Tanggal', [$start, $end])
+            ->selectRaw("
+                COUNT(*) as total_sampel,
+                COUNT(CASE WHEN Flag_Selesai = 'Y' THEN 1 END) as total_selesai,
+                COUNT(CASE WHEN Flag_Selesai IS NULL THEN 1 END) as total_pending,
+                COUNT(CASE WHEN Flag_Trial_Produksi = 'Y' THEN 1 END) as total_trial,
+                COUNT(CASE WHEN Flag_Khusus = 'Y' THEN 1 END) as total_khusus,
+                COUNT(CASE WHEN Flag_Close_Po = 'Y' THEN 1 END) as total_close_po
+            ")
+            ->first();
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                ['title' => 'Total Sampel Hari Ini', 'value' => (int)($data->total_sampel  ?? 0), 'icon' => 'ri-test-tube-line',       'color' => '#405189', 'bg' => 'rgba(64,81,137,0.12)',   'sub' => 'Terdaftar hari ini'],
+                ['title' => 'Sampel Selesai',        'value' => (int)($data->total_selesai  ?? 0), 'icon' => 'ri-checkbox-circle-line', 'color' => '#0ab39c', 'bg' => 'rgba(10,179,156,0.12)',  'sub' => 'Pengujian selesai'],
+                ['title' => 'Sampel Pending',        'value' => (int)($data->total_pending  ?? 0), 'icon' => 'ri-time-line',            'color' => '#f7b84b', 'bg' => 'rgba(247,184,75,0.12)',  'sub' => 'Menunggu pengujian'],
+                ['title' => 'Trial Produksi',        'value' => (int)($data->total_trial    ?? 0), 'icon' => 'ri-flask-line',           'color' => '#4b93f7', 'bg' => 'rgba(75,147,247,0.12)',  'sub' => 'Sampel trial produksi'],
+                ['title' => 'Sampel Khusus',         'value' => (int)($data->total_khusus   ?? 0), 'icon' => 'ri-star-line',            'color' => '#6f42c1', 'bg' => 'rgba(111,66,193,0.12)',  'sub' => 'Analisa khusus/berkala'],
+                ['title' => 'PO Closed',             'value' => (int)($data->total_close_po ?? 0), 'icon' => 'ri-lock-line',            'color' => '#f06548', 'bg' => 'rgba(240,101,72,0.12)',  'sub' => 'PO telah ditutup'],
+            ],
+        ]);
+    }
+
+    public function getTrenSampelQa(Request $request)
+    {
+        $days      = max(7, min(30, (int) $request->query('days', 7)));
+        $endDate   = Carbon::today();
+        $startDate = $endDate->copy()->subDays($days - 1);
+
+        $rawData = DB::table('N_EMI_LAB_PO_Sampel')
+            ->whereNull('Status')
+            ->whereBetween('Tanggal', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->select(
+                DB::raw("FORMAT(Tanggal, 'yyyy-MM-dd') as date"),
+                DB::raw('COUNT(*) as total'),
+                DB::raw("COUNT(CASE WHEN Flag_Selesai = 'Y' THEN 1 END) as selesai"),
+                DB::raw("COUNT(CASE WHEN Flag_Trial_Produksi = 'Y' THEN 1 END) as trial")
+            )
+            ->groupBy(DB::raw("FORMAT(Tanggal, 'yyyy-MM-dd')"))
+            ->get()
+            ->keyBy('date');
+
+        $period = CarbonPeriod::create($startDate, $endDate);
+        $categories = $totalArr = $selesaiArr = $trialArr = [];
+
+        foreach ($period as $date) {
+            $key          = $date->format('Y-m-d');
+            $categories[] = $date->format('d M');
+            $row          = $rawData->get($key);
+            $totalArr[]   = (int)($row->total   ?? 0);
+            $selesaiArr[] = (int)($row->selesai ?? 0);
+            $trialArr[]   = (int)($row->trial   ?? 0);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'categories' => $categories,
+                'series' => [
+                    ['name' => 'Total Sampel',  'data' => $totalArr],
+                    ['name' => 'Selesai',        'data' => $selesaiArr],
+                    ['name' => 'Trial Produksi', 'data' => $trialArr],
+                ],
+            ],
+        ]);
+    }
+
+    public function getStatusRingkasanQa()
+    {
+        $data = DB::table('N_EMI_LAB_PO_Sampel')
+            ->whereNull('Status')
+            ->selectRaw("
+                COUNT(CASE WHEN Flag_Selesai = 'Y' THEN 1 END) as selesai,
+                COUNT(CASE WHEN Flag_Selesai IS NULL AND (Flag_Trial_Produksi IS NULL OR Flag_Trial_Produksi != 'Y') THEN 1 END) as pending,
+                COUNT(CASE WHEN Flag_Trial_Produksi = 'Y' THEN 1 END) as trial
+            ")
+            ->first();
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'selesai' => (int)($data->selesai ?? 0),
+                'pending' => (int)($data->pending ?? 0),
+                'trial'   => (int)($data->trial   ?? 0),
+            ],
+        ]);
+    }
+
+    public function getDistribusiSampelPerMesinQa()
+    {
+        $data = DB::table('N_EMI_LAB_PO_Sampel as ps')
+            ->join('EMI_Master_Mesin as mm', 'ps.Id_Mesin', '=', 'mm.Id_Master_Mesin')
+            ->whereNull('ps.Status')
+            ->select('mm.Nama_Mesin', DB::raw('COUNT(*) as total'))
+            ->groupBy('mm.Nama_Mesin')
+            ->orderByDesc('total')
+            ->get();
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'categories' => $data->pluck('Nama_Mesin')->toArray(),
+                'data'       => $data->pluck('total')->map(fn($v) => (int)$v)->values()->toArray(),
+            ],
+        ]);
+    }
+
+    public function getDistribusiSampelPerUserQa()
+    {
+        $data = DB::table('N_EMI_LAB_PO_Sampel')
+            ->whereNull('Status')
+            ->select('Id_User', DB::raw('COUNT(*) as total'))
+            ->groupBy('Id_User')
+            ->orderByDesc('total')
+            ->take(10)
+            ->get();
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'categories' => $data->pluck('Id_User')->toArray(),
+                'data'       => $data->pluck('total')->map(fn($v) => (int)$v)->values()->toArray(),
+            ],
+        ]);
+    }
+
+    public function getAktivitasTerbaruQa()
+    {
+        $data = DB::table('N_EMI_LAB_PO_Sampel as ps')
+            ->join('EMI_Master_Mesin as mm', 'ps.Id_Mesin', '=', 'mm.Id_Master_Mesin')
+            ->whereNull('ps.Status')
+            ->select(
+                'ps.No_Sampel', 'ps.Kode_Barang', 'ps.No_Po', 'ps.No_Split_Po', 'ps.No_Batch',
+                'ps.Id_User', 'ps.Tanggal', 'ps.Jam', 'ps.Flag_Selesai',
+                'ps.Flag_Trial_Produksi', 'ps.Flag_Khusus', 'ps.Berat_Sampel',
+                'mm.Nama_Mesin'
+            )
+            ->orderByDesc('ps.Tanggal')
+            ->orderByDesc('ps.Jam')
+            ->take(10)
+            ->get()
+            ->map(fn($item) => array_merge((array)$item, [
+                'Tanggal' => Carbon::parse($item->Tanggal)->format('d M Y'),
+            ]));
+
+        return response()->json(['status' => 200, 'result' => $data]);
+    }
+
+    // ============================================================
+    // PRODUKSI TAB (main dashboard)
+    // ============================================================
+
+    public function getKpiProduksi()
+    {
+        $po = DB::table('N_EMI_LAB_PO_Sampel')
+            ->whereNull('Status')
+            ->selectRaw("
+                COUNT(DISTINCT No_Po) as total_po,
+                COUNT(DISTINCT No_Split_Po) as total_split_po,
+                COUNT(*) as total_sampel,
+                COUNT(CASE WHEN Flag_Selesai = 'Y' THEN 1 END) as total_selesai,
+                COUNT(CASE WHEN Flag_Trial_Produksi = 'Y' THEN 1 END) as total_trial,
+                COUNT(CASE WHEN Flag_Close_Po = 'Y' THEN 1 END) as total_close_po
+            ")
+            ->first();
+
+        $validasi = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
+            ->selectRaw("
+                COUNT(*) as total_validasi,
+                COUNT(CASE WHEN Flag_Ok = 'Y' THEN 1 END) as total_ok,
+                COUNT(CASE WHEN Flag_FG = 'Y' THEN 1 END) as total_fg
+            ")
+            ->first();
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'total_po'       => (int)($po->total_po       ?? 0),
+                'total_split_po' => (int)($po->total_split_po ?? 0),
+                'total_sampel'   => (int)($po->total_sampel   ?? 0),
+                'total_selesai'  => (int)($po->total_selesai  ?? 0),
+                'total_trial'    => (int)($po->total_trial    ?? 0),
+                'total_close_po' => (int)($po->total_close_po ?? 0),
+                'total_validasi' => (int)($validasi->total_validasi ?? 0),
+                'total_ok'       => (int)($validasi->total_ok       ?? 0),
+                'total_fg'       => (int)($validasi->total_fg       ?? 0),
+            ],
+        ]);
+    }
+
+    public function getTrenProduksi()
+    {
+        $endDate   = Carbon::today();
+        $startDate = $endDate->copy()->subDays(13);
+
+        $rawData = DB::table('N_EMI_LAB_PO_Sampel')
+            ->whereBetween('Tanggal', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->select(
+                DB::raw("FORMAT(Tanggal, 'yyyy-MM-dd') as date"),
+                DB::raw('COUNT(*) as total_sampel'),
+                DB::raw("COUNT(CASE WHEN Flag_Trial_Produksi = 'Y' THEN 1 END) as trial_sampel")
+            )
+            ->groupBy(DB::raw("FORMAT(Tanggal, 'yyyy-MM-dd')"))
+            ->get()
+            ->keyBy('date');
+
+        $period = CarbonPeriod::create($startDate, $endDate);
+        $categories = $totalArr = $trialArr = [];
+
+        foreach ($period as $date) {
+            $key          = $date->format('Y-m-d');
+            $categories[] = $date->format('d M');
+            $row          = $rawData->get($key);
+            $totalArr[]   = (int)($row->total_sampel ?? 0);
+            $trialArr[]   = (int)($row->trial_sampel ?? 0);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'categories' => $categories,
+                'series' => [
+                    ['name' => 'Total Sampel',  'data' => $totalArr],
+                    ['name' => 'Trial Produksi', 'data' => $trialArr],
+                ],
+            ],
+        ]);
+    }
+
+    public function getValidasiFinalTerbaru()
+    {
+        $data = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
+            ->orderByDesc('Tanggal')
+            ->orderByDesc('Jam')
+            ->take(10)
+            ->get()
+            ->map(fn($item) => array_merge((array)$item, [
+                'Tanggal' => Carbon::parse($item->Tanggal)->format('d M Y'),
+            ]));
+
+        return response()->json(['status' => 200, 'result' => $data]);
+    }
+
+    // ============================================================
+    // ATASAN TAB (main dashboard)
+    // ============================================================
+
+    public function getSummaryAtasan()
+    {
+        $bulanIni = Carbon::now()->month;
+        $tahunIni = Carbon::now()->year;
+        $monthNames = ['','Januari','Februari','Maret','April','Mei','Juni',
+            'Juli','Agustus','September','Oktober','November','Desember'];
+        $namaBulan = $monthNames[$bulanIni] . ' ' . $tahunIni;
+
+        $sampelBulanIni = DB::table('N_EMI_LAB_PO_Sampel')
+            ->whereNull('Status')
+            ->whereMonth('Tanggal', $bulanIni)
+            ->whereYear('Tanggal', $tahunIni)
+            ->count();
+
+        $ujiSelesaiBulanIni = DB::table('N_EMI_LAB_Uji_Sampel')
+            ->whereNull('Status')
+            ->where('Flag_Selesai', 'Y')
+            ->whereMonth('Tanggal', $bulanIni)
+            ->whereYear('Tanggal', $tahunIni)
+            ->count();
+
+        $passRateData = DB::table('N_EMI_LAB_Uji_Sampel')
+            ->whereNull('Status')
+            ->where('Flag_Selesai', 'Y')
+            ->selectRaw("COUNT(*) as total, COUNT(CASE WHEN Flag_Layak = 'Y' THEN 1 END) as layak")
+            ->first();
+
+        $passRatePct = ($passRateData->total ?? 0) > 0
+            ? round(($passRateData->layak / $passRateData->total) * 100, 1)
+            : 0;
+
+        $tatMinutes = DB::table('N_EMI_LAB_Uji_Sampel as uji')
+            ->join('N_EMI_LAB_PO_Sampel as po', 'uji.No_Po_Sampel', '=', 'po.No_Sampel')
+            ->where('uji.Flag_Selesai', 'Y')
+            ->whereNull('uji.Status')
+            ->whereMonth('uji.Tanggal', $bulanIni)
+            ->whereYear('uji.Tanggal', $tahunIni)
+            ->select(DB::raw("AVG(CAST(DATEDIFF(minute, po.Tanggal, uji.Tanggal) AS BIGINT)) as avg_tat"))
+            ->value('avg_tat');
+
+        $validasiBulanIni = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
+            ->whereMonth('Tanggal', $bulanIni)
+            ->whereYear('Tanggal', $tahunIni)
+            ->count();
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'periode'               => $namaBulan,
+                'sampel_bulan_ini'      => $sampelBulanIni,
+                'uji_selesai_bulan_ini' => $ujiSelesaiBulanIni,
+                'pass_rate_pct'         => $passRatePct,
+                'tat_hours'             => (int)floor(($tatMinutes ?? 0) / 60),
+                'tat_minutes'           => (int)(($tatMinutes ?? 0) % 60),
+                'validasi_bulan_ini'    => $validasiBulanIni,
+            ],
+        ]);
+    }
+
+    public function getPassRatePerJenisAnalisa()
+    {
+        $data = DB::table('N_EMI_LAB_Uji_Sampel as us')
+            ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
+            ->whereNull('us.Status')
+            ->where('us.Flag_Selesai', 'Y')
+            ->select(
+                'ja.Jenis_Analisa',
+                DB::raw('COUNT(*) as total'),
+                DB::raw("COUNT(CASE WHEN us.Flag_Layak = 'Y' THEN 1 END) as layak")
+            )
+            ->groupBy('ja.Jenis_Analisa', 'ja.id')
+            ->orderByDesc(DB::raw('COUNT(*)'))
+            ->get();
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'categories' => $data->pluck('Jenis_Analisa')->toArray(),
+                'data'       => $data->map(fn($d) => $d->total > 0
+                    ? round(($d->layak / $d->total) * 100, 1) : 0)->values()->toArray(),
+            ],
+        ]);
+    }
+
+    // ============================================================
+    // DASHBOARD ATASAN (dedicated page)
+    // ============================================================
+
+    public function getDashboardAtasanPage()
+    {
+        $namaPengguna = Auth::user()->Nama ?? Auth::user()->UserId;
+        return inertia('vue/dashboard/dashboard-atasan/DashboardAtasan', [
+            'namaPengguna' => $namaPengguna,
+        ]);
+    }
+
+    public function getKpiAtasanBulanan()
+    {
+        $bulanIni = Carbon::now()->month;
+        $tahunIni = Carbon::now()->year;
+        $monthNames = ['','Januari','Februari','Maret','April','Mei','Juni',
+            'Juli','Agustus','September','Oktober','November','Desember'];
+        $namaBulan = $monthNames[$bulanIni] . ' ' . $tahunIni;
+
+        [$sampel, $uji, $tatRow, $validasi] = [
+            DB::table('N_EMI_LAB_PO_Sampel')
+                ->whereNull('Status')
+                ->selectRaw("
+                    COUNT(*) as total,
+                    COUNT(CASE WHEN Flag_Selesai = 'Y' THEN 1 END) as selesai,
+                    COUNT(CASE WHEN Flag_Trial_Produksi = 'Y' THEN 1 END) as trial
+                ")
+                ->whereMonth('Tanggal', $bulanIni)->whereYear('Tanggal', $tahunIni)
+                ->first(),
+
+            DB::table('N_EMI_LAB_Uji_Sampel')
+                ->whereNull('Status')->where('Flag_Selesai', 'Y')
+                ->selectRaw("COUNT(*) as total, COUNT(CASE WHEN Flag_Layak = 'Y' THEN 1 END) as layak")
+                ->whereMonth('Tanggal', $bulanIni)->whereYear('Tanggal', $tahunIni)
+                ->first(),
+
+            DB::table('N_EMI_LAB_Uji_Sampel as uji')
+                ->join('N_EMI_LAB_PO_Sampel as po', 'uji.No_Po_Sampel', '=', 'po.No_Sampel')
+                ->where('uji.Flag_Selesai', 'Y')->whereNull('uji.Status')
+                ->whereMonth('uji.Tanggal', $bulanIni)->whereYear('uji.Tanggal', $tahunIni)
+                ->selectRaw("AVG(CAST(DATEDIFF(minute, po.Tanggal, uji.Tanggal) AS BIGINT)) as avg_tat")
+                ->first(),
+
+            DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
+                ->selectRaw("COUNT(*) as total, COUNT(CASE WHEN Flag_Ok='Y' THEN 1 END) as ok, COUNT(CASE WHEN Flag_FG='Y' THEN 1 END) as fg")
+                ->whereMonth('Tanggal', $bulanIni)->whereYear('Tanggal', $tahunIni)
+                ->first(),
+        ];
+
+        $passRate = ($uji->total ?? 0) > 0 ? round(($uji->layak / $uji->total) * 100, 1) : 0;
+        $tatMin   = (int)($tatRow->avg_tat ?? 0);
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'periode'          => $namaBulan,
+                'sampel_bulan_ini' => (int)($sampel->total   ?? 0),
+                'sampel_selesai'   => (int)($sampel->selesai ?? 0),
+                'sampel_trial'     => (int)($sampel->trial   ?? 0),
+                'uji_selesai'      => (int)($uji->total      ?? 0),
+                'pass_rate_pct'    => $passRate,
+                'tat_hours'        => (int)floor($tatMin / 60),
+                'tat_minutes'      => (int)($tatMin % 60),
+                'validasi_bulan'   => (int)($validasi->total ?? 0),
+                'validasi_ok'      => (int)($validasi->ok    ?? 0),
+                'validasi_fg'      => (int)($validasi->fg    ?? 0),
+            ],
+        ]);
+    }
+
+    public function getTrenBulananAtasan()
+    {
+        $monthNames = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+        $tahun = Carbon::now()->year;
+        $categories = $sampelArr = $ujiArr = $validasiArr = [];
+
+        $sampelRaw = DB::table('N_EMI_LAB_PO_Sampel')
+            ->whereNull('Status')->whereYear('Tanggal', $tahun)
+            ->selectRaw("MONTH(Tanggal) as m, COUNT(*) as total")
+            ->groupBy(DB::raw('MONTH(Tanggal)'))->get()->keyBy('m');
+
+        $ujiRaw = DB::table('N_EMI_LAB_Uji_Sampel')
+            ->whereNull('Status')->where('Flag_Selesai', 'Y')->whereYear('Tanggal', $tahun)
+            ->selectRaw("MONTH(Tanggal) as m, COUNT(*) as total")
+            ->groupBy(DB::raw('MONTH(Tanggal)'))->get()->keyBy('m');
+
+        $validasiRaw = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
+            ->whereYear('Tanggal', $tahun)
+            ->selectRaw("MONTH(Tanggal) as m, COUNT(*) as total")
+            ->groupBy(DB::raw('MONTH(Tanggal)'))->get()->keyBy('m');
+
+        $bulanSekarang = Carbon::now()->month;
+        for ($m = 1; $m <= $bulanSekarang; $m++) {
+            $categories[]  = $monthNames[$m];
+            $sampelArr[]   = (int)($sampelRaw->get($m)->total   ?? 0);
+            $ujiArr[]      = (int)($ujiRaw->get($m)->total      ?? 0);
+            $validasiArr[] = (int)($validasiRaw->get($m)->total ?? 0);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'categories' => $categories,
+                'series' => [
+                    ['name' => 'Registrasi Sampel', 'data' => $sampelArr],
+                    ['name' => 'Uji Selesai',        'data' => $ujiArr],
+                    ['name' => 'Validasi Final',      'data' => $validasiArr],
+                ],
+            ],
+        ]);
+    }
+
+    public function getBebanMesinAtasan()
+    {
+        $data = DB::table('N_EMI_LAB_PO_Sampel as ps')
+            ->join('EMI_Master_Mesin as mm', 'ps.Id_Mesin', '=', 'mm.Id_Master_Mesin')
+            ->whereNull('ps.Status')
+            ->select('mm.Nama_Mesin',
+                DB::raw('COUNT(*) as total'),
+                DB::raw("COUNT(CASE WHEN ps.Flag_Selesai = 'Y' THEN 1 END) as selesai")
+            )
+            ->groupBy('mm.Nama_Mesin')
+            ->orderByDesc('total')
+            ->get();
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'categories' => $data->pluck('Nama_Mesin')->toArray(),
+                'total'      => $data->pluck('total')->map(fn($v) => (int)$v)->values()->toArray(),
+                'selesai'    => $data->pluck('selesai')->map(fn($v) => (int)$v)->values()->toArray(),
+            ],
+        ]);
+    }
+
+    public function getStatusOverallAtasan()
+    {
+        $po = DB::table('N_EMI_LAB_PO_Sampel')
+            ->whereNull('Status')
+            ->selectRaw("
+                COUNT(*) as total,
+                COUNT(CASE WHEN Flag_Selesai = 'Y' THEN 1 END) as selesai,
+                COUNT(CASE WHEN Flag_Trial_Produksi = 'Y' THEN 1 END) as trial,
+                COUNT(CASE WHEN Flag_Close_Po = 'Y' THEN 1 END) as close_po
+            ")
+            ->first();
+
+        $pending = max(0, (int)($po->total ?? 0) - (int)($po->selesai ?? 0));
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'selesai'  => (int)($po->selesai   ?? 0),
+                'pending'  => $pending,
+                'trial'    => (int)($po->trial     ?? 0),
+                'close_po' => (int)($po->close_po  ?? 0),
+            ],
+        ]);
+    }
+
+    public function getTopAnalisAtasan()
+    {
+        $bulanIni = Carbon::now()->month;
+        $tahunIni = Carbon::now()->year;
+
+        $data = DB::table('N_EMI_LAB_Uji_Sampel')
+            ->whereNull('Status')
+            ->where('Flag_Selesai', 'Y')
+            ->whereMonth('Tanggal', $bulanIni)
+            ->whereYear('Tanggal', $tahunIni)
+            ->select('Id_User', DB::raw('COUNT(*) as total'))
+            ->groupBy('Id_User')
+            ->orderByDesc('total')
+            ->take(8)
+            ->get();
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'categories' => $data->pluck('Id_User')->toArray(),
+                'data'       => $data->pluck('total')->map(fn($v) => (int)$v)->values()->toArray(),
+            ],
+        ]);
     }
 
 }

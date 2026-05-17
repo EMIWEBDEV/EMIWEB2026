@@ -1,212 +1,187 @@
 <template>
-    <div class="container-fluid mx-auto px-0">
-        <div class="card shadow-sm border-0">
-            <div class="card-body">
-                <div class="mb-4 text-center text-md-start">
-                    <h1 class="text-2xl md:text-3xl font-bold text-primary">
-                        Barang Analisa
-                    </h1>
-                    <p class="text-sm md:text-base text-muted">
-                        Daftar Barang Analisa PT. Evo Manufacturing Indonesia
-                    </p>
-                    <div class="divider my-3"></div>
-                </div>
+    <div class="bad-page">
+        <!-- Breadcrumb / Back -->
+        <div class="bad-breadcrumb">
+            <a href="/barang-jenis-analisa" class="bad-back-link">
+                <i class="ri-arrow-left-s-line"></i>
+                Kembali ke Daftar Jenis Analisa
+            </a>
+        </div>
 
-                <div class="search-box">
+        <!-- Page Header -->
+        <div class="bad-page-header">
+            <div class="bad-page-header-left">
+                <div class="bad-page-icon">
+                    <i class="ri-test-tube-2-line"></i>
+                </div>
+                <div>
+                    <h4 class="bad-page-title">Detail Barang Analisa</h4>
+                    <p class="bad-page-subtitle">Daftar barang yang terdaftar pada jenis analisa ini</p>
+                </div>
+            </div>
+            <div class="bad-total-chip" v-if="!loading.loadingDataList">
+                <i class="ri-database-2-line"></i>
+                <span>Total:</span>
+                <strong>{{ pagination.totalData }}</strong>
+                <span>data</span>
+            </div>
+        </div>
+
+        <!-- Search & Table Card -->
+        <div class="bad-card">
+            <!-- Search Bar -->
+            <div class="bad-card-toolbar">
+                <div class="bad-search-wrap">
+                    <i class="ri-search-line bad-search-icon"></i>
                     <input
                         type="search"
-                        class="form-control search"
-                        placeholder="Search..."
+                        class="bad-search-input"
+                        placeholder="Cari kode barang, nama barang..."
                         v-model="searchQuery"
                         @input="handleSearch"
                     />
-                    <i class="ri-search-line search-icon"></i>
+                    <button
+                        v-if="searchQuery"
+                        class="bad-search-clear"
+                        @click="searchQuery = ''; debouncedSearch()"
+                    >
+                        <i class="ri-close-line"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading Skeleton -->
+            <div v-if="loading.loadingDataList" class="bad-table-wrap">
+                <table class="bad-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px">#</th>
+                            <th>Kode Analisa</th>
+                            <th>Jenis Analisa</th>
+                            <th>Kode Barang</th>
+                            <th>Nama Barang</th>
+                            <th>Nama Mesin</th>
+                            <th>Pengguna</th>
+                            <th style="width: 90px">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="n in 8" :key="n">
+                            <td><div class="bad-sk-line" style="width: 24px"></div></td>
+                            <td><div class="bad-sk-line" style="width: 80px"></div></td>
+                            <td><div class="bad-sk-line" style="width: 120px"></div></td>
+                            <td><div class="bad-sk-line" style="width: 90px"></div></td>
+                            <td><div class="bad-sk-line" style="width: 150px"></div></td>
+                            <td><div class="bad-sk-line" style="width: 100px"></div></td>
+                            <td><div class="bad-sk-line" style="width: 80px"></div></td>
+                            <td><div class="bad-sk-line" style="width: 60px; border-radius: 10px"></div></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Data Table -->
+            <div v-else>
+                <div v-if="detailDataList.length" class="bad-table-wrap">
+                    <table class="bad-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px">#</th>
+                                <th>Kode Analisa</th>
+                                <th>Jenis Analisa</th>
+                                <th>Kode Barang</th>
+                                <th>Nama Barang</th>
+                                <th>Nama Mesin</th>
+                                <th>Pengguna</th>
+                                <th style="width: 90px; text-align: center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(item, index) in detailDataList" :key="index">
+                                <td class="bad-cell-no">
+                                    {{ (pagination.page - 1) * pagination.limit + index + 1 }}
+                                </td>
+                                <td>
+                                    <span class="bad-code-badge">{{ item.kode_analisa ?? '-' }}</span>
+                                </td>
+                                <td class="bad-cell-analisa">{{ item.jenis_analisa ?? '-' }}</td>
+                                <td>
+                                    <span class="bad-kode-text">{{ item.kode_barang ?? '-' }}</span>
+                                </td>
+                                <td class="bad-cell-name">{{ item.nama_barang ?? '-' }}</td>
+                                <td>
+                                    <span class="bad-mesin-text">
+                                        <i class="ri-settings-3-line me-1"></i>
+                                        {{ item.nama_mesin ?? '-' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="bad-user-badge">
+                                        <i class="ri-user-3-line me-1"></i>
+                                        {{ item.Id_User ?? '-' }}
+                                    </span>
+                                </td>
+                                <td style="text-align: center">
+                                    <span v-if="item.Flag_Aktif === 'Y'" class="bad-status-badge bad-status-active">
+                                        <i class="ri-checkbox-circle-line me-1"></i>Aktif
+                                    </span>
+                                    <span v-else class="bad-status-badge bad-status-inactive">
+                                        <i class="ri-close-circle-line me-1"></i>Nonaktif
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
-                <div class="col-12 mt-3">
-                    <div v-if="loading.loadingDataList">
-                        <div class="table-wrapper">
-                            <table
-                                class="skeleton-table"
-                                aria-busy="true"
-                                aria-label="Loading data"
-                            >
-                                <thead>
-                                    <tr class="text-center">
-                                        <th>No</th>
-                                        <th>Kode Analisa</th>
-                                        <th>Jenis Analisa</th>
-                                        <th>Kode Barang</th>
-                                        <th>Nama Barang</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr
-                                        v-for="n in 5"
-                                        :key="n"
-                                        class="skeleton-row"
-                                    >
-                                        <td>
-                                            <div class="skeleton-cell"></div>
-                                        </td>
-                                        <td>
-                                            <div class="skeleton-cell"></div>
-                                        </td>
-                                        <td>
-                                            <div class="skeleton-cell"></div>
-                                        </td>
-                                        <td>
-                                            <div class="skeleton-cell"></div>
-                                        </td>
-                                        <td>
-                                            <div class="skeleton-cell"></div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                <!-- Empty State -->
+                <div v-if="!detailDataList.length" class="bad-empty">
+                    <DotLottieVue
+                        style="height: 120px; width: 120px"
+                        autoplay
+                        loop
+                        src="/animation/empty2.json"
+                    />
+                    <div class="bad-empty-title">Data Tidak Ditemukan</div>
+                    <div class="bad-empty-sub" v-if="searchQuery">
+                        Tidak ada hasil untuk "<strong>{{ searchQuery }}</strong>"
                     </div>
+                    <div class="bad-empty-sub" v-else>Belum ada barang yang terdaftar</div>
+                </div>
 
-                    <div v-else>
-                        <div
-                            v-if="detailDataList.length"
-                            class="table-responsive"
+                <!-- Pagination -->
+                <div v-if="detailDataList.length" class="bad-pagination">
+                    <div class="bad-pagination-info">
+                        Menampilkan
+                        <strong>{{ (pagination.page - 1) * pagination.limit + 1 }}</strong>
+                        –
+                        <strong>{{ Math.min(pagination.page * pagination.limit, pagination.totalData) }}</strong>
+                        dari <strong>{{ pagination.totalData }}</strong> data
+                    </div>
+                    <div class="bad-pagination-controls">
+                        <button
+                            class="bad-page-btn"
+                            :disabled="pagination.page === 1"
+                            @click="prevPage"
                         >
-                            <table
-                                class="table table-bordered text-center align-middle"
-                            >
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>No</th>
-                                        <th>Kode Analisa</th>
-                                        <th>Jenis Analisa</th>
-                                        <th>Kode Barang</th>
-                                        <th>Nama Barang</th>
-                                        <th>Nama Mesin</th>
-                                        <th>Pengguna</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr
-                                        v-for="(item, index) in detailDataList"
-                                        :key="index"
-                                    >
-                                        <td>
-                                            {{
-                                                (pagination.page - 1) *
-                                                    pagination.limit +
-                                                index +
-                                                1
-                                            }}
-                                        </td>
-                                        <td>
-                                            {{ item.kode_analisa ?? "-" }}
-                                        </td>
-                                        <td>{{ item.jenis_analisa ?? "-" }}</td>
-                                        <td>{{ item.kode_barang ?? "-" }}</td>
-                                        <td>{{ item.nama_barang ?? "-" }}</td>
-                                        <td>{{ item.nama_mesin ?? "-" }}</td>
-                                        <td>{{ item.Id_User ?? "-" }}</td>
-                                        <td>
-                                            <span
-                                                v-if="item.Flag_Aktif === 'Y'"
-                                                class="badge bg-success"
-                                            >
-                                                Aktif
-                                            </span>
-
-                                            <span
-                                                v-else
-                                                class="badge bg-danger"
-                                            >
-                                                Tidak Aktif
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div
-                            class="align-items-center mt-2 row g-3 text-center text-sm-start"
+                            <i class="ri-arrow-left-s-line"></i>
+                        </button>
+                        <button
+                            v-for="page in visiblePages"
+                            :key="page"
+                            class="bad-page-btn"
+                            :class="{ active: page === pagination.page }"
+                            @click="changePage(page)"
                         >
-                            <div class="col-sm">
-                                <div class="text-muted">
-                                    Total Data
-                                    <span class="fw-semibold">{{
-                                        pagination.totalData
-                                    }}</span>
-                                    Hasil
-                                </div>
-                            </div>
-                            <div class="col-sm-auto">
-                                <ul
-                                    class="pagination pagination-separated pagination-sm justify-content-center justify-content-sm-start mb-0"
-                                >
-                                    <li
-                                        class="page-item"
-                                        :class="{
-                                            disabled: pagination.page === 1,
-                                        }"
-                                    >
-                                        <a
-                                            href="#"
-                                            class="page-link"
-                                            @click="prevPage"
-                                            >←</a
-                                        >
-                                    </li>
-
-                                    <li
-                                        class="page-item"
-                                        v-for="page in visiblePages"
-                                        :key="page"
-                                        :class="{
-                                            active: page === pagination.page,
-                                        }"
-                                    >
-                                        <a
-                                            href="#"
-                                            class="page-link"
-                                            @click="changePage(page)"
-                                            >{{ page }}</a
-                                        >
-                                    </li>
-
-                                    <li
-                                        class="page-item"
-                                        :class="{
-                                            disabled:
-                                                pagination.page ===
-                                                pagination.totalPage,
-                                        }"
-                                    >
-                                        <a
-                                            href="#"
-                                            class="page-link"
-                                            @click="nextPage"
-                                            >→</a
-                                        >
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div
-                            v-if="!detailDataList.length"
-                            class="d-flex justify-content-center"
+                            {{ page }}
+                        </button>
+                        <button
+                            class="bad-page-btn"
+                            :disabled="pagination.page === pagination.totalPage"
+                            @click="nextPage"
                         >
-                            <div class="flex-column align-content-center">
-                                <DotLottieVue
-                                    style="height: 100px; width: 100px"
-                                    autoplay
-                                    loop
-                                    src="/animation/empty2.json"
-                                />
-                                <p class="text-center">
-                                    Data Tidak Ditemukan !
-                                </p>
-                            </div>
-                        </div>
+                            <i class="ri-arrow-right-s-line"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -325,6 +300,9 @@ export default {
                 this.searchQuery
             );
         }, 500),
+        handleSearch() {
+            this.debouncedSearch();
+        },
         nextPage() {
             if (this.pagination.page < this.pagination.totalPage) {
                 this.fetchDetailBindingIdentity(
@@ -358,59 +336,374 @@ export default {
 };
 </script>
 
-<style>
-.table-wrapper {
-    width: 100%;
-    overflow-x: auto;
+<style scoped>
+/* ── Layout ─────────────────────────────────────────────── */
+.bad-page {
+    font-family: "Inter", "Segoe UI", sans-serif;
+    color: #343a40;
 }
 
-table.skeleton-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
+/* ── Breadcrumb ──────────────────────────────────────────── */
+.bad-breadcrumb {
+    margin-bottom: 14px;
 }
 
-.skeleton-table thead th {
-    padding: 12px;
-    text-align: left;
-    border: 1px solid #ccc;
-    background-color: #f9f9f9;
+.bad-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #6c757d;
+    text-decoration: none;
+    transition: color 0.2s;
 }
 
-.skeleton-row .skeleton-cell {
-    position: relative;
-    height: 40px;
-    background: #e0e0e0;
-    border-radius: 6px;
-    margin: 6px 0;
+.bad-back-link:hover {
+    color: #405189;
+}
+
+/* ── Page Header ─────────────────────────────────────────── */
+.bad-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 20px 24px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(64, 81, 137, 0.08);
+    border: 1px solid #e9ecef;
+}
+
+.bad-page-header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.bad-page-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: rgba(64, 81, 137, 0.1);
+    color: #405189;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.bad-page-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #212529;
+    margin: 0 0 3px;
+}
+
+.bad-page-subtitle {
+    font-size: 12px;
+    color: #878a99;
+    margin: 0;
+}
+
+.bad-total-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 16px;
+    background: rgba(64, 81, 137, 0.08);
+    border-radius: 20px;
+    font-size: 13px;
+    color: #495057;
+    border: 1px solid rgba(64, 81, 137, 0.15);
+}
+
+.bad-total-chip strong {
+    color: #405189;
+    font-size: 15px;
+}
+
+/* ── Card ────────────────────────────────────────────────── */
+.bad-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+    box-shadow: 0 1px 4px rgba(64, 81, 137, 0.06);
     overflow: hidden;
 }
 
-.skeleton-cell::after {
-    content: "";
+/* ── Toolbar ─────────────────────────────────────────────── */
+.bad-card-toolbar {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f0f2f5;
+    background: #fcfcfd;
+}
+
+.bad-search-wrap {
+    position: relative;
+    max-width: 360px;
+}
+
+.bad-search-icon {
     position: absolute;
-    top: 0;
-    left: -150px;
-    width: 150px;
-    height: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.4),
-        transparent
-    );
-    animation: shimmer 1.5s infinite;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #adb5bd;
+    font-size: 15px;
+    pointer-events: none;
 }
 
-@keyframes shimmer {
-    100% {
-        left: 100%;
-    }
+.bad-search-input {
+    width: 100%;
+    padding: 9px 36px;
+    border: 1px solid #dee2e6;
+    border-radius: 9px;
+    font-size: 13px;
+    color: #343a40;
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
 }
 
-@media (max-width: 600px) {
-    .skeleton-cell {
-        height: 30px;
-    }
+.bad-search-input:focus {
+    border-color: #405189;
+    box-shadow: 0 0 0 3px rgba(64, 81, 137, 0.1);
+}
+
+.bad-search-clear {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #adb5bd;
+    cursor: pointer;
+    padding: 2px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+}
+
+.bad-search-clear:hover {
+    color: #6c757d;
+}
+
+/* ── Table ───────────────────────────────────────────────── */
+.bad-table-wrap {
+    overflow-x: auto;
+}
+
+.bad-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.bad-table thead tr {
+    background: #f8f9fc;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.bad-table thead th {
+    padding: 11px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+}
+
+.bad-table tbody tr {
+    border-bottom: 1px solid #f0f2f5;
+    transition: background 0.15s;
+}
+
+.bad-table tbody tr:hover {
+    background: #f8f9fc;
+}
+
+.bad-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.bad-table tbody td {
+    padding: 12px 16px;
+    color: #343a40;
+}
+
+.bad-cell-no {
+    color: #878a99 !important;
+    font-weight: 500;
+    text-align: center;
+}
+
+.bad-code-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    background: rgba(64, 81, 137, 0.1);
+    color: #405189;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+}
+
+.bad-cell-analisa {
+    font-weight: 500;
+    color: #212529;
+}
+
+.bad-kode-text {
+    font-family: "Courier New", monospace;
+    font-size: 12px;
+    color: #495057;
+}
+
+.bad-cell-name {
+    font-weight: 500;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bad-mesin-text {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.bad-user-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    color: #6c757d;
+    background: #f3f6f9;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid #e9ecef;
+}
+
+.bad-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.bad-status-active {
+    background: rgba(10, 179, 156, 0.1);
+    color: #0ab39c;
+}
+
+.bad-status-inactive {
+    background: rgba(240, 101, 72, 0.1);
+    color: #f06548;
+}
+
+/* ── Empty State ─────────────────────────────────────────── */
+.bad-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 50px 20px;
+}
+
+.bad-empty-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 6px;
+}
+
+.bad-empty-sub {
+    font-size: 13px;
+    color: #878a99;
+}
+
+/* ── Pagination ──────────────────────────────────────────── */
+.bad-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid #f0f2f5;
+    background: #fcfcfd;
+}
+
+.bad-pagination-info {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.bad-pagination-info strong {
+    color: #343a40;
+}
+
+.bad-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bad-page-btn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 7px;
+    background: #fff;
+    font-size: 13px;
+    color: #495057;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.bad-page-btn:hover:not(:disabled):not(.active) {
+    background: #f8f9fc;
+    border-color: #405189;
+    color: #405189;
+}
+
+.bad-page-btn.active {
+    background: #405189;
+    border-color: #405189;
+    color: #fff;
+    font-weight: 600;
+}
+
+.bad-page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ── Skeleton ────────────────────────────────────────────── */
+@keyframes bad-shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+
+.bad-sk-line {
+    display: inline-block;
+    height: 14px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+    background-size: 800px 100%;
+    animation: bad-shimmer 1.5s infinite linear;
+    border-radius: 4px;
 }
 </style>

@@ -1,0 +1,3183 @@
+/* ============================================================
+   EMI LAB — Mobile Experience CSS
+   Target  : ≤ 767.98px  (Bootstrap 5 "sm" breakpoint)
+   Approach: Layout overrides + native-app patterns
+   ============================================================ */
+
+/* ══════════════════════════════════════════════════════
+   1. GLOBAL MOBILE RESET
+══════════════════════════════════════════════════════ */
+* {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* Prevent iOS zoom on input focus */
+@media (max-width: 767.98px) {
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="number"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="date"],
+    input[type="time"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
+    body {
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   2. LAYOUT OVERRIDES
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    /* ── Topbar ── */
+    #page-topbar {
+        left: 0 !important;
+        height: 56px !important;
+        padding: 0 !important;
+        box-shadow: 0 1px 12px rgba(0, 0, 0, 0.10) !important;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+
+    .layout-width {
+        padding: 0 8px !important;
+        max-width: 100% !important;
+    }
+
+    .navbar-header {
+        height: 56px !important;
+        padding: 0 4px !important;
+    }
+
+    /* Shrink topbar elements */
+    .header-item {
+        padding: 0 6px !important;
+    }
+
+    .header-profile-user {
+        width: 30px !important;
+        height: 30px !important;
+    }
+
+    .d-none.d-sm-flex {
+        display: none !important;
+    }
+
+    /* ── Sidebar ── */
+    .app-menu,
+    #layout-wrapper .app-menu {
+        transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        z-index: 1060 !important;
+        box-shadow: 6px 0 30px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    /* ── Main Content ── */
+    .main-content {
+        margin-left: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    /* ── Page Content ── */
+    .page-content {
+        padding: calc(56px + 14px) 12px calc(68px + env(safe-area-inset-bottom, 8px)) !important;
+        min-height: 100dvh;
+    }
+
+    /* ── Hide desktop footer ── */
+    .footer {
+        display: none !important;
+    }
+
+    /* ── Page title box ── */
+    .page-title-box {
+        padding: 14px 0 10px !important;
+    }
+
+    .page-title-box h4 {
+        font-size: 1.05rem !important;
+        margin-bottom: 4px !important;
+    }
+
+    .breadcrumb {
+        font-size: 11px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .breadcrumb-item + .breadcrumb-item::before {
+        font-size: 10px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   3. BOOTSTRAP COMPONENTS — MOBILE POLISH
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    /* ── Cards ── */
+    .card {
+        border-radius: 16px !important;
+        border: 1px solid rgba(0, 0, 0, 0.06) !important;
+        box-shadow: 0 2px 18px rgba(0, 0, 0, 0.07) !important;
+        margin-bottom: 12px !important;
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 12px 16px !important;
+        border-radius: 16px 16px 0 0 !important;
+    }
+
+    .card-body {
+        padding: 14px 16px !important;
+    }
+
+    .card-footer {
+        padding: 10px 16px !important;
+        border-radius: 0 0 16px 16px !important;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+        border-radius: 10px !important;
+        font-size: 14px !important;
+        letter-spacing: 0.1px;
+    }
+
+    /* Standard buttons — minimum 44 px tap target */
+    .btn:not(.btn-sm):not(.btn-xs):not(.btn-icon):not([class*="p-0"]):not([class*="p-1"]) {
+        min-height: 44px !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+
+    .btn-sm {
+        min-height: 36px !important;
+        border-radius: 8px !important;
+        font-size: 13px !important;
+    }
+
+    .btn-icon {
+        width: 38px !important;
+        height: 38px !important;
+    }
+
+    /* ── Form controls ── */
+    .form-control:not(.form-control-sm) {
+        min-height: 48px !important;
+        border-radius: 10px !important;
+        padding: 10px 14px !important;
+    }
+
+    .form-select:not(.form-select-sm) {
+        min-height: 48px !important;
+        border-radius: 10px !important;
+        padding: 10px 36px 10px 14px !important;
+    }
+
+    .form-control-sm,
+    .form-select-sm {
+        min-height: 38px !important;
+        border-radius: 8px !important;
+    }
+
+    .input-group .form-control,
+    .input-group .form-select {
+        min-height: 44px !important;
+    }
+
+    .input-group-text {
+        min-height: 44px !important;
+        padding: 8px 12px !important;
+        border-radius: 0 !important;
+    }
+
+    .input-group:first-child .input-group-text,
+    .input-group .input-group-text:first-child {
+        border-radius: 10px 0 0 10px !important;
+    }
+
+    .input-group:last-child .input-group-text,
+    .input-group .input-group-text:last-child {
+        border-radius: 0 10px 10px 0 !important;
+    }
+
+    .input-group-sm .form-control,
+    .input-group-sm .input-group-text {
+        min-height: 38px !important;
+    }
+
+    .form-label {
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        margin-bottom: 4px !important;
+    }
+
+    .form-check-input {
+        width: 18px !important;
+        height: 18px !important;
+        margin-top: 1px !important;
+    }
+
+    .form-check-label {
+        font-size: 13px !important;
+        padding-left: 4px !important;
+    }
+
+    /* ── Tables ── */
+    .table-responsive {
+        border-radius: 12px !important;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+    }
+
+    .table th {
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+        padding: 10px 12px !important;
+        letter-spacing: 0.3px;
+    }
+
+    .table td {
+        font-size: 12px !important;
+        padding: 10px 12px !important;
+        vertical-align: middle !important;
+    }
+
+    /* ── Badges ── */
+    .badge {
+        font-size: 10px !important;
+        padding: 4px 8px !important;
+        border-radius: 6px !important;
+    }
+
+    .badge.rounded-pill {
+        border-radius: 100px !important;
+    }
+
+    /* ── Alerts ── */
+    .alert {
+        border-radius: 12px !important;
+        font-size: 13px !important;
+        padding: 12px 14px !important;
+    }
+
+    /* ── Nav tabs ── */
+    .nav-tabs {
+        gap: 4px !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .nav-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .nav-tabs .nav-link {
+        padding: 8px 14px !important;
+        font-size: 13px !important;
+        white-space: nowrap !important;
+        border-radius: 8px 8px 0 0 !important;
+    }
+
+    /* ── Dropdowns ── */
+    .dropdown-menu {
+        border-radius: 16px !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+        padding: 6px !important;
+        overflow: hidden;
+    }
+
+    .dropdown-item {
+        padding: 11px 14px !important;
+        font-size: 14px !important;
+        border-radius: 10px !important;
+    }
+
+    .dropdown-item:hover,
+    .dropdown-item:focus {
+        border-radius: 10px !important;
+    }
+
+    .dropdown-header {
+        font-size: 11px !important;
+        padding: 6px 14px 4px !important;
+    }
+
+    .dropdown-divider {
+        margin: 4px 0 !important;
+    }
+
+    /* Notification dropdown */
+    .dropdown-menu-lg {
+        width: calc(100vw - 20px) !important;
+        max-width: 380px !important;
+    }
+
+    /* ── Modals — bottom-sheet style ── */
+    .modal {
+        padding: 0 !important;
+    }
+
+    /* Non-centered modals → slide up from bottom */
+    .modal-dialog:not(.modal-dialog-centered):not(.modal-fullscreen) {
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        min-height: 1px;
+        position: absolute !important;
+        bottom: 0 !important;
+        top: auto !important;
+    }
+
+    .modal-dialog:not(.modal-dialog-centered):not(.modal-fullscreen) .modal-content {
+        border-radius: 20px 20px 0 0 !important;
+        border: none !important;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* Drag handle pseudo-element */
+    .modal-dialog:not(.modal-dialog-centered):not(.modal-fullscreen) .modal-content::before {
+        content: '';
+        display: block;
+        width: 38px;
+        height: 4px;
+        border-radius: 2px;
+        background: #dee2e6;
+        margin: 10px auto 0;
+    }
+
+    /* Centered modals → scale-in */
+    .modal-dialog-centered {
+        max-width: calc(100% - 28px) !important;
+        margin: auto !important;
+    }
+
+    .modal-dialog-centered .modal-content {
+        border-radius: 20px !important;
+        border: none !important;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    .modal-header {
+        padding: 12px 20px 10px !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .modal-title {
+        font-size: 16px !important;
+    }
+
+    .modal-body {
+        padding: 16px 20px !important;
+        max-height: 72vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-footer {
+        padding: 12px 20px !important;
+        border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
+        gap: 8px !important;
+    }
+
+    .modal-footer .btn {
+        flex: 1 !important;
+    }
+
+    /* ── Bottom-sheet animation ── */
+    .modal.fade .modal-dialog:not(.modal-dialog-centered):not(.modal-fullscreen) {
+        transform: translateY(100%) !important;
+        transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .modal.show .modal-dialog:not(.modal-dialog-centered):not(.modal-fullscreen) {
+        transform: translateY(0) !important;
+    }
+
+    /* Centered modal animation */
+    .modal.fade .modal-dialog-centered .modal-content {
+        transform: scale(0.96) translateY(8px) !important;
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                    opacity 0.25s ease !important;
+        opacity: 0;
+    }
+
+    .modal.show .modal-dialog-centered .modal-content {
+        transform: scale(1) translateY(0) !important;
+        opacity: 1;
+    }
+
+    /* ── Pagination ── */
+    .pagination {
+        gap: 4px !important;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .page-link {
+        min-width: 36px !important;
+        min-height: 36px !important;
+        border-radius: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 13px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   4. TOPBAR NOTIFICATION DROPDOWN POSITIONING
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+    #notificationDropdown .dropdown-menu {
+        position: fixed !important;
+        top: 56px !important;
+        left: 8px !important;
+        right: 8px !important;
+        width: auto !important;
+        max-height: 80vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 16px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   5. VUE PAGE — DASHBOARD (az-* classes)
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    .az-page {
+        padding: 0 !important;
+    }
+
+    /* Header */
+    .az-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 14px 4px 10px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .az-header-left {
+        gap: 10px !important;
+    }
+
+    .az-header-icon {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 18px !important;
+    }
+
+    .az-header-title {
+        font-size: 16px !important;
+        margin-bottom: 2px !important;
+    }
+
+    .az-header-sub {
+        font-size: 12px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .az-header-right {
+        width: 100% !important;
+        display: flex !important;
+        gap: 8px !important;
+    }
+
+    .az-tat-badge {
+        flex: 1 !important;
+        font-size: 12px !important;
+        padding: 6px 10px !important;
+    }
+
+    .az-refresh-btn {
+        flex: 1 !important;
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+    }
+
+    /* Section label */
+    .az-section-label {
+        font-size: 11px !important;
+        margin: 10px 0 8px !important;
+        letter-spacing: 0.5px !important;
+    }
+
+    /* KPI grid — 2 cols on mobile */
+    .az-kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+
+    .az-kpi-card {
+        padding: 12px !important;
+        border-radius: 14px !important;
+        gap: 10px !important;
+    }
+
+    .az-kpi-icon {
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 18px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .az-kpi-label {
+        font-size: 11px !important;
+        line-height: 1.3 !important;
+    }
+
+    .az-kpi-value {
+        font-size: 22px !important;
+    }
+
+    .az-kpi-sub {
+        font-size: 10px !important;
+    }
+
+    /* Chart rows — full width stacked */
+    .az-row-7-3,
+    .az-row-5-5,
+    .az-row-6-4 {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    /* Cards */
+    .az-card {
+        padding: 14px !important;
+        border-radius: 16px !important;
+    }
+
+    .az-card-head {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .az-card-title {
+        font-size: 14px !important;
+    }
+
+    .az-card-sub {
+        font-size: 12px !important;
+    }
+
+    .az-day-btns {
+        width: 100% !important;
+        justify-content: flex-start !important;
+    }
+
+    .az-day-btn {
+        padding: 5px 12px !important;
+        font-size: 12px !important;
+    }
+
+    /* Tables inside dashboard cards */
+    .az-table-wrap {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px !important;
+    }
+}
+
+/* Extra small: 1 column KPI */
+@media (max-width: 400px) {
+    .az-kpi-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   6. VUE PAGE — BARANG ANALISA (ba-* classes)
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    .ba-page {
+        padding: 0 !important;
+    }
+
+    .ba-page-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 14px 4px 10px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .ba-page-header-left {
+        gap: 10px !important;
+    }
+
+    .ba-page-icon {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 20px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .ba-page-title {
+        font-size: 16px !important;
+    }
+
+    .ba-page-subtitle {
+        font-size: 12px !important;
+    }
+
+    .ba-add-btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* Grid — 2 cols on mobile, 1 on very small */
+    .ba-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+
+    .ba-card {
+        border-radius: 14px !important;
+    }
+
+    .ba-card-body {
+        padding: 12px !important;
+    }
+
+    .ba-card-inner {
+        gap: 8px !important;
+    }
+
+    .ba-card-icon-wrap {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 18px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .ba-card-code {
+        font-size: 10px !important;
+    }
+
+    .ba-card-name {
+        font-size: 13px !important;
+    }
+
+    .ba-card-footer {
+        padding: 8px 12px !important;
+        font-size: 11px !important;
+    }
+}
+
+@media (max-width: 400px) {
+    .ba-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   7. COMMON VUE PAGE PATTERNS
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    /* Page header pattern: title left, action button right → stacked */
+    .d-flex.align-items-center.justify-content-between.mb-4 {
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+    }
+
+    .d-flex.align-items-center.justify-content-between.mb-3 {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    /* Role-menu builder */
+    .left-panel-body {
+        max-height: 260px !important;
+    }
+
+    .group-box {
+        border-radius: 12px !important;
+    }
+
+    .group-header {
+        padding: 10px 12px !important;
+    }
+
+    .group-name-text {
+        font-size: 11px !important;
+    }
+
+    .sub-group-header {
+        padding: 7px 10px !important;
+    }
+
+    .tree-item {
+        padding: 9px 10px !important;
+        gap: 6px !important;
+    }
+
+    /* HomeBarangAnalisa detail */
+    .ba-detail-header {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    /* Filter/search bars */
+    .input-group.input-group-sm .form-control,
+    .input-group.input-group-sm .input-group-text {
+        min-height: 38px !important;
+    }
+
+    /* Table action buttons */
+    .table td .d-flex.gap-1,
+    .table td .d-flex.gap-2 {
+        flex-wrap: wrap !important;
+    }
+
+    /* Standar hasil analisa */
+    .sha-header,
+    [class*="-page-header"] {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    /* Full-width action buttons in page headers */
+    [class*="-page-header"] .btn,
+    [class*="-page-header"] a.btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   8. MOBILE BOTTOM NAVIGATION
+══════════════════════════════════════════════════════ */
+.mobile-bottom-nav {
+    display: none; /* hidden on desktop by default */
+}
+
+@media (max-width: 767.98px) {
+    .mobile-bottom-nav {
+        display: flex !important;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1055;
+        background: #ffffff;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.10);
+        height: calc(60px + env(safe-area-inset-bottom, 0px));
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        align-items: stretch;
+    }
+
+    /* Dark sidebar body */
+    [data-sidebar="dark"] ~ .mobile-bottom-nav,
+    .mobile-bottom-nav {
+        background: #ffffff;
+    }
+}
+
+/* Individual nav item */
+.mob-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px 5px;
+    border: none;
+    background: transparent;
+    color: #9aa1b1;
+    text-decoration: none !important;
+    gap: 3px;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: color 0.18s ease, background 0.18s ease;
+    border-radius: 0;
+    position: relative;
+    min-width: 0;
+}
+
+.mob-nav-item:hover,
+.mob-nav-item:focus {
+    color: #405189;
+    text-decoration: none !important;
+    outline: none;
+}
+
+.mob-nav-item.active {
+    color: #405189;
+}
+
+/* Active indicator bar */
+.mob-nav-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 3px;
+    background: #405189;
+    border-radius: 0 0 4px 4px;
+}
+
+/* Icon */
+.mob-nav-icon {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 21px;
+    line-height: 1;
+    transition: transform 0.18s ease;
+}
+
+.mob-nav-item.active .mob-nav-icon {
+    transform: translateY(-1px);
+}
+
+/* Label */
+.mob-nav-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* Badge */
+.mob-nav-badge {
+    position: absolute;
+    top: -5px;
+    right: -8px;
+    background: #f06548;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    border-radius: 100px;
+    min-width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    border: 2px solid #fff;
+    line-height: 1;
+}
+
+/* Avatar in profile tab */
+.mob-nav-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1.5px solid #dee2e6;
+}
+
+.mob-nav-item.active .mob-nav-avatar {
+    border-color: #405189;
+}
+
+/* Menu toggle ripple */
+.mob-nav-item:active .mob-nav-icon {
+    transform: scale(0.88);
+}
+
+
+/* ══════════════════════════════════════════════════════
+   9. MOBILE SIDEBAR OVERLAY
+══════════════════════════════════════════════════════ */
+.mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.52);
+    z-index: 1050;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    cursor: pointer;
+}
+
+.mobile-overlay.visible {
+    display: block;
+    animation: overlayFadeIn 0.3s ease forwards;
+}
+
+@keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.mobile-overlay.hiding {
+    animation: overlayFadeOut 0.25s ease forwards;
+}
+
+@keyframes overlayFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   10. MOBILE PROFILE POPUP (quick action menu)
+══════════════════════════════════════════════════════ */
+.mob-profile-popup {
+    display: none;
+    position: fixed;
+    right: 8px;
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    z-index: 1056;
+    min-width: 200px;
+    overflow: hidden;
+    transform: scale(0.9) translateY(10px);
+    transform-origin: bottom right;
+    opacity: 0;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.18s ease;
+}
+
+.mob-profile-popup.open {
+    display: block;
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+.mob-profile-popup-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    background: linear-gradient(135deg, #405189 0%, #6674c4 100%);
+    color: #fff;
+}
+
+.mob-profile-popup-name {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 1px;
+}
+
+.mob-profile-popup-role {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.mob-profile-popup-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 16px;
+    font-size: 14px;
+    color: #344767;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.mob-profile-popup-item:hover {
+    background: #f3f6f9;
+}
+
+.mob-profile-popup-item + .mob-profile-popup-item {
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.mob-profile-popup-item i {
+    font-size: 17px;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.mob-profile-popup-item.danger {
+    color: #f06548;
+}
+
+
+/* ══════════════════════════════════════════════════════
+   11. MOBILE TOPBAR — CLEAN MINIMAL
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+    /* Hide less important topbar items */
+    .topbar-user .text-start {
+        display: none !important;
+    }
+
+    /* Brand box shrink */
+    .navbar-brand-box.horizontal-logo {
+        display: none !important;
+    }
+
+    /* Show hamburger */
+    .topnav-hamburger {
+        display: flex !important;
+    }
+
+    /* Compact notification icon */
+    .btn-topbar {
+        width: 36px !important;
+        height: 36px !important;
+        padding: 0 !important;
+        border-radius: 10px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   12. SMOOTH SCROLLING & OVERSCROLL
+══════════════════════════════════════════════════════ */
+.page-content,
+.modal-body,
+.left-panel-body,
+[data-simplebar] > .simplebar-wrapper,
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+@media (max-width: 767.98px) {
+    .page-content {
+        overscroll-behavior-y: contain;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   13. RESPONSIVE ROW HELPERS
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    /* Two-col grids that should stack on mobile */
+    .row > .col-md-6:not([class*="col-6"]):not([class*="col-sm"]) {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Three-col grids */
+    .row > .col-md-4:not([class*="col-4"]):not([class*="col-sm"]) {
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
+    }
+
+    /* Single wide panel in two-panel layout */
+    .row > .col-md-5,
+    .row > .col-lg-4,
+    .row > .col-md-7,
+    .row > .col-lg-8 {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   14. MISC UTILITIES
+══════════════════════════════════════════════════════ */
+
+/* Floating action button pattern (FAB) */
+.mob-fab {
+    position: fixed;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    right: 16px;
+    z-index: 1040;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #405189;
+    color: #fff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 6px 20px rgba(64, 81, 137, 0.4);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mob-fab:active {
+    transform: scale(0.92);
+    box-shadow: 0 3px 12px rgba(64, 81, 137, 0.3);
+}
+
+@media (min-width: 768px) {
+    .mob-fab { display: none !important; }
+}
+
+/* Pull-to-refresh visual hint */
+@media (max-width: 767.98px) {
+    .mob-ptr-hint {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 6px 0;
+        font-size: 12px;
+        color: #9aa1b1;
+        margin-bottom: 4px;
+    }
+}
+
+/* Hide scrollbars but keep functionality */
+@media (max-width: 767.98px) {
+    .nav-tabs::-webkit-scrollbar,
+    .simplebar-scrollbar::before { display: none !important; }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   15. VUE PAGE — STANDAR HASIL ANALISA (sha-*)
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+    .sha-page { padding: 0 !important; }
+
+    .sha-page-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 14px 4px 10px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .sha-page-header-left {
+        gap: 10px !important;
+    }
+
+    .sha-page-icon {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 20px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .sha-page-title {
+        font-size: 15px !important;
+    }
+
+    .sha-page-subtitle {
+        font-size: 12px !important;
+    }
+
+    .sha-header-actions {
+        width: 100% !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    .sha-add-btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .sha-search-card {
+        padding: 12px 14px !important;
+        border-radius: 14px !important;
+        gap: 10px !important;
+    }
+
+    .sha-search-wrap {
+        border-radius: 10px !important;
+    }
+
+    .sha-search-hints {
+        gap: 6px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .sha-accordion-header {
+        padding: 12px 14px !important;
+        gap: 8px !important;
+    }
+
+    .sha-accordion-header-name {
+        font-size: 13px !important;
+    }
+
+    .sha-accordion-body {
+        padding: 0 !important;
+    }
+
+    .sha-row-item {
+        padding: 10px 14px !important;
+        gap: 8px !important;
+    }
+
+    .sha-row-item-actions {
+        flex-shrink: 0 !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   16. VUE PAGE — VALIDASI ANALISA (vld-*)
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+    /* remove fixed vh height — page-content padding already handles offsets */
+    .vld-root {
+        padding: 0 !important;
+        height: auto !important;
+        min-height: 50vh !important;
+        overflow: visible !important;
+    }
+
+    .vld-topbar {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+        padding: 14px 4px 12px !important;
+        border-radius: 14px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .vld-topbar-right {
+        width: 100% !important;
+        justify-content: space-between !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    .vld-topbar-title {
+        font-size: 15px !important;
+    }
+
+    .vld-topbar-sub {
+        font-size: 11px !important;
+    }
+
+    .vld-topbar-icon {
+        font-size: 20px !important;
+    }
+
+    /* Two-panel → stacked, each panel fills naturally */
+    .vld-body {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0 !important;
+        overflow: visible !important;
+    }
+
+    /* list panel: constrain list height so it scrolls, don't cap the panel */
+    .vld-left {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        border-radius: 0 !important;
+        border-right: none !important;
+    }
+
+    /* scrollable area inside the list panel */
+    .vld-list {
+        max-height: 55vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-y: contain !important;
+    }
+
+    .vld-right {
+        width: 100% !important;
+        border-radius: 0 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* iOS zoom prevention on vld inputs */
+    .vld-search-input,
+    .vld-date-input,
+    .vld-select {
+        font-size: 16px !important;
+    }
+
+    .vld-filter-bar {
+        padding: 10px 12px !important;
+        gap: 8px !important;
+    }
+
+    .vld-filter-row {
+        gap: 6px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .vld-date-input,
+    .vld-select {
+        min-height: 36px !important;
+        border-radius: 8px !important;
+    }
+
+    .vld-list-item {
+        padding: 10px 12px !important;
+        gap: 8px !important;
+    }
+
+    .vld-list-no-sampel {
+        font-size: 13px !important;
+    }
+
+    .vld-list-meta {
+        font-size: 11px !important;
+    }
+
+    .vld-detail-header {
+        padding: 12px 14px !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   17. VUE PAGE — NOTIFIKASI / DETAIL PESAN
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+    /* DetailPesanNotifikasi pattern */
+    [class*="notif-"],
+    [class*="npn-"] {
+        max-width: 100% !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   18. ANIMATED PAGE ENTRY
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+    /* Cards enter with slight upward motion */
+    .card {
+        animation: cardSlideIn 0.3s ease both;
+    }
+
+    .card:nth-child(1) { animation-delay: 0.03s; }
+    .card:nth-child(2) { animation-delay: 0.06s; }
+    .card:nth-child(3) { animation-delay: 0.09s; }
+    .card:nth-child(4) { animation-delay: 0.12s; }
+    .card:nth-child(5) { animation-delay: 0.15s; }
+
+    @keyframes cardSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   19. DARK SIDEBAR THEME COMPATIBILITY
+══════════════════════════════════════════════════════ */
+[data-sidebar="dark"] .mobile-bottom-nav {
+    background: #ffffff;
+    border-top-color: #e9ecef;
+}
+
+
+/* ══════════════════════════════════════════════════════
+   20. SAFE AREA (iPhone notch / home indicator)
+══════════════════════════════════════════════════════ */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .mobile-bottom-nav {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    @media (max-width: 767.98px) {
+        .page-content {
+            padding-bottom: calc(68px + env(safe-area-inset-bottom, 8px)) !important;
+        }
+    }
+}
+
+@supports (padding-top: env(safe-area-inset-top)) {
+    @media (max-width: 767.98px) {
+        #page-topbar {
+            padding-top: env(safe-area-inset-top) !important;
+            height: calc(56px + env(safe-area-inset-top)) !important;
+        }
+
+        .page-content {
+            padding-top: calc(56px + env(safe-area-inset-top) + 14px) !important;
+        }
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   21. LAB PAGES — HomeLab, NotRumus, MultiRumus, HalamanFoto
+   Classes: cleaning-system-container, system-header, analysis-grid, …
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    /* ── Main container ── */
+    .cleaning-system-container {
+        min-height: auto !important;
+        background-color: #f8fafc;
+    }
+
+    /* ── Gradient system header → stack vertically ── */
+    .system-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        padding: 1rem !important;
+        gap: 10px !important;
+    }
+
+    .system-title {
+        font-size: 1.15rem !important;
+        gap: 0.5rem !important;
+    }
+
+    .system-subtitle {
+        font-size: 0.82rem !important;
+        margin-top: 2px !important;
+    }
+
+    .header-actions {
+        width: 100% !important;
+    }
+
+    .btn-help {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 0.5rem 1rem !important;
+        font-size: 13px !important;
+        border-radius: 8px !important;
+    }
+
+    /* ── Content wrapper → compact padding ── */
+    .content-wrapper {
+        padding: 0 0.65rem !important;
+        margin: 0.85rem auto !important;
+    }
+
+    /* ── Panel header ── */
+    .panel-header {
+        padding: 0.85rem 1rem !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    .panel-header h2 {
+        font-size: 0.95rem !important;
+        gap: 0.4rem !important;
+        margin: 0 !important;
+    }
+
+    .panel-header .status-badge {
+        width: 100% !important;
+        flex-wrap: wrap !important;
+    }
+
+    /* ── Panel body ── */
+    .panel-body {
+        padding: 0.9rem 1rem !important;
+    }
+
+    /* ── Search form ── */
+    .search-form {
+        max-width: 100% !important;
+    }
+
+    /* Input + button wrap on mobile */
+    .input-with-button {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    .form-input {
+        width: 100% !important;
+        flex: none !important;
+        font-size: 16px !important;   /* prevent iOS auto-zoom */
+        padding: 0.7rem 1rem !important;
+        border-radius: 8px !important;
+    }
+
+    .btn-search {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 0.7rem 1rem !important;
+        font-size: 14px !important;
+        border-radius: 8px !important;
+        min-height: 44px !important;
+    }
+
+    /* Lottie intro animation override (inline width:500px) */
+    .intro-animation {
+        width: 100% !important;
+        max-width: 260px !important;
+        height: auto !important;
+        min-height: 180px !important;
+    }
+
+    /* Formulator version uses inline style="height:350px;width:500px" */
+    .cleaning-system-container [style*="width: 500px"],
+    .cleaning-system-container [style*="width:500px"] {
+        width: 100% !important;
+        max-width: 260px !important;
+    }
+
+    .cleaning-system-container [style*="height: 350px"],
+    .cleaning-system-container [style*="height:350px"] {
+        height: 200px !important;
+    }
+
+    .intro-text {
+        font-size: 14px !important;
+        padding: 0 0.5rem !important;
+    }
+
+    /* ── Detail grid → single column ── */
+    .detail-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0 !important;
+        margin-bottom: 0.75rem !important;
+    }
+
+    .detail-column {
+        width: 100% !important;
+    }
+
+    .detail-item {
+        padding: 0.55rem 0 !important;
+    }
+
+    .detail-label {
+        font-size: 12px !important;
+        color: #64748b !important;
+    }
+
+    .detail-value {
+        font-size: 12px !important;
+        text-align: right !important;
+        max-width: 58% !important;
+        word-break: break-word !important;
+    }
+
+    .detail-value.highlight {
+        font-size: 12px !important;
+    }
+
+    /* ── Notes section ── */
+    .notes-section {
+        padding: 0.75rem !important;
+        margin-top: 0.75rem !important;
+        border-radius: 8px !important;
+    }
+
+    .notes-content {
+        font-size: 13px !important;
+        line-height: 1.5 !important;
+    }
+
+    /* ── Analysis selection grid → single column ── */
+    .analysis-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    .analysis-card {
+        padding: 14px 16px !important;
+        border-radius: 14px !important;
+        align-items: flex-start !important;
+    }
+
+    .analysis-icon {
+        width: 44px !important;
+        height: 44px !important;
+        border-radius: 12px !important;
+        font-size: 1.2rem !important;
+        margin-right: 14px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .analysis-content {
+        min-width: 0 !important;
+    }
+
+    .analysis-badge {
+        margin-bottom: 6px !important;
+    }
+
+    .analysis-title {
+        font-size: 0.95rem !important;
+        margin-bottom: 6px !important;
+        line-height: 1.4 !important;
+    }
+
+    .analysis-meta {
+        font-size: 0.8rem !important;
+        margin-bottom: 8px !important;
+    }
+
+    .meta-item {
+        gap: 5px !important;
+    }
+
+    /* ── Analysis table (NotRumus / MultiRumus) ── */
+    .analysis-table-container {
+        border-radius: 8px !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-x: contain !important;
+    }
+
+    .modern-analysis-table th {
+        padding: 10px 12px !important;
+        font-size: 11px !important;
+        white-space: nowrap !important;
+    }
+
+    .modern-analysis-table td {
+        padding: 10px 12px !important;
+        font-size: 12px !important;
+    }
+
+    /* Keep parameter input scrollable */
+    .parameter-input {
+        min-width: 150px !important;
+    }
+
+    /* Modern inputs inside tables */
+    .modern-input {
+        padding: 10px 12px !important;
+        font-size: 16px !important;
+        border-radius: 6px !important;
+    }
+
+    .modern-select {
+        padding: 10px 36px 10px 12px !important;
+        font-size: 16px !important;
+        border-radius: 6px !important;
+    }
+
+    /* Top action bar inside analysis table */
+    .analysis-table-container > .mb-3.mt-2.d-flex {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    .analysis-table-container > .mb-3.mt-2.d-flex .btn {
+        flex: 1 !important;
+        justify-content: center !important;
+    }
+
+    /* ── Form actions (submit / save buttons) ── */
+    .form-actions {
+        flex-direction: column !important;
+        gap: 8px !important;
+        margin-top: 1rem !important;
+        padding-top: 1rem !important;
+    }
+
+    .action-button {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 12px 16px !important;
+        font-size: 14px !important;
+        min-height: 44px !important;
+    }
+
+    /* Legacy btn-submit / btn-save classes */
+    .btn-submit,
+    .btn-save {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 12px 16px !important;
+        font-size: 14px !important;
+        border-radius: 8px !important;
+        min-height: 44px !important;
+    }
+
+    /* ── Camera / Foto panel (HalamanFoto.vue) ── */
+    .camera-panel .panel-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    .camera-panel .panel-header > div + button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* ── Celebration / done state ── */
+    .celebration-container {
+        min-height: 260px !important;
+        padding: 1.25rem 0.85rem !important;
+        border-radius: 14px !important;
+    }
+
+    .celebration-animation {
+        height: 150px !important;
+        width: 150px !important;
+    }
+
+    .congrats-text {
+        font-size: 1.4rem !important;
+    }
+
+    .sample-info {
+        font-size: 0.95rem !important;
+    }
+
+    /* ── Sample info card ── */
+    .sample-info-card {
+        flex-direction: column !important;
+        gap: 10px !important;
+        padding: 12px !important;
+    }
+
+    /* ── Section badges / headers ── */
+    .section-badge {
+        font-size: 0.8rem !important;
+        padding: 0.35rem 0.7rem !important;
+    }
+
+    .section-title {
+        font-size: 1rem !important;
+        padding-bottom: 12px !important;
+        margin-bottom: 16px !important;
+    }
+
+    /* ── multi-table (inside form panels) ── */
+    .multi-table {
+        border-radius: 8px !important;
+    }
+
+    .multi-table th {
+        padding: 0.6rem 0.75rem !important;
+        font-size: 11px !important;
+        white-space: nowrap !important;
+    }
+
+    .multi-table td {
+        padding: 0.6rem 0.75rem !important;
+        font-size: 12px !important;
+    }
+
+    .multi-table input {
+        font-size: 16px !important;
+        padding: 0.45rem 0.6rem !important;
+        border-radius: 6px !important;
+    }
+}
+
+/* Extra-small: analysis grid stays 1 col */
+@media (max-width: 400px) {
+    .analysis-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .analysis-card {
+        padding: 12px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   22. CONFIRMED UJI ANALISA PAGES (data-uji-container)
+   confirmedv2pcs.vue, confirmedv2no-pcs-jenis-analisa.vue, etc.
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    /* ── Main container ── */
+    .data-uji-container {
+        padding: 0 !important;
+    }
+
+    .main-card {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .main-card > .card-body {
+        padding: 14px 14px 10px !important;
+    }
+
+    /* ── Section header ── */
+    .data-uji-container .section-header {
+        margin-bottom: 12px !important;
+        text-align: left !important;
+    }
+
+    .data-uji-container .header-content {
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .data-uji-container .header-icon {
+        font-size: 1.4rem !important;
+        margin-right: 10px !important;
+    }
+
+    .data-uji-container .main-title {
+        font-size: 1.1rem !important;
+        margin-bottom: 2px !important;
+    }
+
+    .data-uji-container .subtitle {
+        font-size: 12px !important;
+    }
+
+    /* ── Info penting box ── */
+    .informasi-penting {
+        margin-bottom: 12px !important;
+    }
+
+    .info-container {
+        flex-direction: row !important;
+        gap: 10px !important;
+        padding: 10px 12px !important;
+        border-radius: 10px !important;
+    }
+
+    .info-icon {
+        font-size: 1.1rem !important;
+        flex-shrink: 0 !important;
+        margin-top: 2px !important;
+    }
+
+    .info-title {
+        font-size: 13px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .info-text {
+        font-size: 12px !important;
+        line-height: 1.5 !important;
+    }
+
+    /* ── Accordion items (PCS list) ── */
+    .accordion-item-custom {
+        border-radius: 10px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .accordion-button {
+        padding: 12px 14px !important;
+        font-size: 13px !important;
+    }
+
+    .accordion-content {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    .main-info {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+    }
+
+    .icon-wrapper {
+        padding: 6px !important;
+        border-radius: 8px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .badge-container {
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+    }
+
+    .code-badge {
+        font-size: 10px !important;
+        padding: 3px 8px !important;
+    }
+
+    .analysis-name {
+        font-size: 13px !important;
+        line-height: 1.4 !important;
+    }
+
+    /* Action buttons → full width row below info */
+    .action-buttons {
+        width: 100% !important;
+        margin-left: 0 !important;
+        justify-content: flex-end !important;
+        gap: 6px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .confirm-btn {
+        font-size: 12px !important;
+        padding: 6px 14px !important;
+        min-height: 36px !important;
+        border-radius: 8px !important;
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+        padding: 2rem 1rem !important;
+    }
+
+    .empty-title {
+        font-size: 15px !important;
+    }
+
+    .empty-message {
+        font-size: 13px !important;
+    }
+
+    .empty-action {
+        min-height: 44px !important;
+        border-radius: 10px !important;
+        font-size: 14px !important;
+    }
+
+    /* ── col-lg-4 grid for single-QR analysis cards ── */
+    .data-uji-container .col-lg-4 {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   23. FORM-PANEL & CAMERA-PANEL
+   NotRumus, MultiRumus, HalamanFoto — form-panel modern-form
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    /* ── Outer containers: edge-to-edge, no extra rounding ── */
+    .form-panel,
+    .camera-panel {
+        border-radius: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* ── Prevent iOS auto-zoom on every input inside these panels ── */
+    .form-panel input,
+    .form-panel select,
+    .form-panel textarea,
+    .camera-panel input,
+    .camera-panel select,
+    .camera-panel textarea {
+        font-size: 16px !important;
+    }
+
+    /* ── form-panel: compact panel header ── */
+    .form-panel > .panel-header {
+        padding: 0.85rem 1rem !important;
+        gap: 4px !important;
+    }
+
+    .form-panel > .panel-header h2 {
+        font-size: 1rem !important;
+    }
+
+    .form-panel > .panel-header .subtitle {
+        font-size: 12px !important;
+        margin: 0 !important;
+    }
+
+    /* ── Camera: stack header (title + add-button) vertically ── */
+    .camera-panel > .panel-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        padding: 0.85rem 1rem !important;
+        gap: 10px !important;
+    }
+
+    /* "Tambah Baris Baru" button full-width on mobile */
+    .camera-panel > .panel-header > button,
+    .camera-panel > .panel-header .btn-outline-primary {
+        width: 100% !important;
+        border-radius: 8px !important;
+        min-height: 44px !important;
+        justify-content: center !important;
+    }
+
+    /* ── Camera table: compact cells ── */
+    .camera-panel .table-responsive {
+        border-radius: 12px !important;
+        overflow: hidden !important;
+    }
+
+    .camera-panel .table th {
+        font-size: 11px !important;
+        padding: 8px 8px !important;
+        white-space: nowrap !important;
+    }
+
+    .camera-panel .table td {
+        font-size: 12px !important;
+        padding: 10px 8px !important;
+        vertical-align: middle !important;
+    }
+
+    /* ── Camera table: photo thumbnail ── */
+    .camera-panel .el-image,
+    .camera-panel .el-image img {
+        width: 80px !important;
+        height: 80px !important;
+        object-fit: cover !important;
+        border-radius: 8px !important;
+    }
+
+    /* ── Camera table: placeholder icon ── */
+    .camera-panel .fa-image.fa-2x {
+        font-size: 1.4rem !important;
+    }
+
+    /* ── Camera table: action buttons (upload/delete) ── */
+    .camera-panel .table .btn-sm {
+        min-height: 36px !important;
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+    }
+
+    /* ── Modal-fullscreen: ensure body is scrollable on iOS ── */
+    .modal-fullscreen .modal-body {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* ── Alert boxes inside form-panel: compact ── */
+    .form-panel .alert {
+        padding: 10px 12px !important;
+        font-size: 13px !important;
+        line-height: 1.4 !important;
+    }
+
+    /* ── "Tambah Baris" + "Lihat Data" buttons → stacked ── */
+    .form-panel .panel-body .analysis-table-container > .d-flex.justify-content-between {
+        flex-direction: column !important;
+        gap: 8px !important;
+        padding: 0 0 0.75rem !important;
+    }
+
+    .form-panel .panel-body .analysis-table-container > .d-flex.justify-content-between .btn {
+        width: 100% !important;
+        min-height: 44px !important;
+        font-size: 14px !important;
+        justify-content: center !important;
+    }
+
+    /* ── Delete/edit icon button min tap size ── */
+    .modern-delete-btn {
+        min-width: 36px !important;
+        min-height: 36px !important;
+        width: 36px !important;
+        height: 36px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   24. PAGES — container-fluid.px-0 (mx-auto)
+   HomeStatusDataSampel, HasilAnalisaDibatalkan
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    /* ── Card: edge-to-edge, no shadow ── */
+    .container-fluid.px-0 > .card,
+    .container-fluid.mx-auto.px-0 > .card {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+
+    /* ── Card body: tighter padding ── */
+    .container-fluid.px-0 > .card > .card-body,
+    .container-fluid.mx-auto.px-0 > .card > .card-body {
+        padding: 14px !important;
+    }
+
+    /* ── Page heading ── */
+    .container-fluid.px-0 h1,
+    .container-fluid.mx-auto.px-0 h1 {
+        font-size: 1.25rem !important;
+        line-height: 1.3 !important;
+    }
+
+    /* ── Divider spacing ── */
+    .container-fluid.px-0 .divider,
+    .container-fluid.mx-auto.px-0 .divider {
+        margin: 0.5rem 0 !important;
+    }
+
+    /* ── Search box input: iOS zoom fix ── */
+    .search-box input,
+    .search-box .form-control {
+        font-size: 16px !important;
+        height: 44px !important;
+        border-radius: 8px !important;
+    }
+
+    /* ── Data table: compact for mobile ── */
+    .container-fluid.px-0 .table th,
+    .container-fluid.mx-auto.px-0 .table th {
+        font-size: 11px !important;
+        padding: 8px 10px !important;
+        white-space: nowrap !important;
+    }
+
+    .container-fluid.px-0 .table td,
+    .container-fluid.mx-auto.px-0 .table td {
+        font-size: 12px !important;
+        padding: 8px 10px !important;
+    }
+
+    /* ── Expandable detail row ── */
+    .detail-row .detail-wrapper {
+        padding: 1rem !important;
+    }
+
+    /* ── Toggle expand button ── */
+    .toggle-btn {
+        min-width: 32px !important;
+        min-height: 32px !important;
+        padding: 4px 6px !important;
+    }
+
+    /* ── Pagination controls ── */
+    .pagination-wrapper,
+    .d-flex.justify-content-between.align-items-center.mt-3 {
+        flex-direction: column !important;
+        gap: 10px !important;
+        align-items: flex-start !important;
+    }
+
+    /* ── Badge compact ── */
+    .container-fluid.px-0 .badge,
+    .container-fluid.mx-auto.px-0 .badge {
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   25. GLOBAL MOBILE POLISH — inputs, modals, misc
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    /* ── Global iOS zoom fix: any bare form-control / input ── */
+    .form-control,
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="search"],
+    input[type="email"],
+    input[type="password"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
+    /* ── Modals: slide up from bottom (mobile-sheet feel) ── */
+    .modal-dialog:not(.modal-fullscreen):not(.modal-dialog-centered) {
+        margin: auto 0 0 !important;
+    }
+
+    .modal-content {
+        border-radius: 16px 16px 0 0 !important;
+    }
+
+    .modal-dialog.modal-fullscreen .modal-content {
+        border-radius: 0 !important;
+    }
+
+    /* ── Full-width modal on small screens ── */
+    .modal-dialog:not(.modal-fullscreen) {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    /* ── Bootstrap table: ensure table-responsive wraps touch-scroll ── */
+    .table-responsive {
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-x: contain !important;
+    }
+
+    /* ── Tabs: make scrollable if overflow ── */
+    .nav-tabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+    }
+
+    .nav-tabs::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .nav-tabs .nav-link {
+        white-space: nowrap !important;
+        font-size: 13px !important;
+        padding: 8px 14px !important;
+        min-height: 40px !important;
+    }
+
+    /* ── Accordion: bigger tap areas ── */
+    .accordion-button {
+        min-height: 48px !important;
+        font-size: 13px !important;
+    }
+
+    /* ── Badge size on mobile ── */
+    .badge {
+        font-size: 11px !important;
+    }
+
+    /* ── Skeleton cells ── */
+    .skeleton-cell {
+        height: 14px !important;
+        border-radius: 4px !important;
+    }
+
+    /* ── Profile timeline (Riwayat Pengisian) ── */
+    .profile-timeline .accordion-body {
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   26. DASHBOARD ATASAN (at-*) + Dashboard extras (az-kpi-grid-4, az-row-half)
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    /* Dashboard.vue extras not in Sec 5 */
+    .az-kpi-grid-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+
+    .az-row-half {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    /* ─── at-page ─── */
+    .at-page {
+        padding: 0 !important;
+    }
+
+    .at-hero {
+        padding: 14px 4px 10px !important;
+        margin-bottom: 8px !important;
+        border-radius: 14px !important;
+        overflow: hidden !important;
+    }
+
+    .at-hero-content {
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    .at-hero-left {
+        gap: 10px !important;
+        align-items: flex-start !important;
+    }
+
+    .at-hero-icon {
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 18px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .at-hero-title {
+        font-size: 15px !important;
+        line-height: 1.3 !important;
+    }
+
+    .at-hero-sub {
+        font-size: 12px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .at-hero-right {
+        width: 100% !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    .at-hero-clock {
+        flex: 1 !important;
+    }
+
+    .at-clock-time {
+        font-size: 20px !important;
+    }
+
+    .at-clock-date {
+        font-size: 11px !important;
+    }
+
+    .at-periode-pill {
+        font-size: 11px !important;
+        padding: 4px 10px !important;
+    }
+
+    .at-refresh-btn {
+        width: 100% !important;
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+        justify-content: center !important;
+    }
+
+    .at-section-label {
+        font-size: 11px !important;
+        margin: 10px 0 8px !important;
+        letter-spacing: 0.5px !important;
+    }
+
+    .at-kpi6 {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+
+    .at-kpi-card {
+        padding: 12px !important;
+        border-radius: 14px !important;
+    }
+
+    .at-kpi-left {
+        gap: 8px !important;
+    }
+
+    .at-kpi-icon {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 16px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .at-kpi-label {
+        font-size: 11px !important;
+        line-height: 1.3 !important;
+    }
+
+    .at-kpi-value {
+        font-size: 20px !important;
+    }
+
+    .at-kpi-sub {
+        font-size: 10px !important;
+    }
+
+    .at-card {
+        padding: 14px !important;
+        border-radius: 16px !important;
+    }
+
+    .at-card-head {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .at-card-title {
+        font-size: 14px !important;
+    }
+
+    .at-card-sub {
+        font-size: 12px !important;
+    }
+
+    .at-legend-pills {
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+    }
+
+    .at-badge-ok {
+        font-size: 11px !important;
+        padding: 3px 8px !important;
+    }
+
+    .at-row-6-4,
+    .at-row-half,
+    .at-row-7-3 {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+}
+
+@media (max-width: 400px) {
+    .at-kpi6,
+    .az-kpi-grid-4 {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   27. DASHBOARD QA (dqa-*)
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    .dqa-page {
+        padding: 0 !important;
+    }
+
+    .dqa-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 14px 4px 10px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .dqa-header-left {
+        gap: 10px !important;
+        align-items: flex-start !important;
+    }
+
+    .dqa-header-icon {
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 18px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .dqa-header-title {
+        font-size: 15px !important;
+        line-height: 1.3 !important;
+    }
+
+    .dqa-header-sub {
+        font-size: 12px !important;
+    }
+
+    .dqa-header-right {
+        width: 100% !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    .dqa-date-badge {
+        font-size: 12px !important;
+        padding: 5px 10px !important;
+    }
+
+    .dqa-refresh-btn {
+        width: 100% !important;
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+        justify-content: center !important;
+    }
+
+    .dqa-kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+
+    .dqa-kpi-card {
+        padding: 12px !important;
+        border-radius: 14px !important;
+        gap: 8px !important;
+    }
+
+    .dqa-kpi-icon {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 16px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .dqa-kpi-label {
+        font-size: 11px !important;
+        line-height: 1.3 !important;
+    }
+
+    .dqa-kpi-value {
+        font-size: 20px !important;
+    }
+
+    .dqa-kpi-sub {
+        font-size: 10px !important;
+    }
+
+    .dqa-row,
+    .dqa-row-7-3,
+    .dqa-row-half {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    .dqa-chart-card,
+    .dqa-table-card {
+        padding: 14px !important;
+        border-radius: 16px !important;
+    }
+
+    .dqa-chart-head {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .dqa-chart-title {
+        font-size: 14px !important;
+    }
+
+    .dqa-chart-sub {
+        font-size: 12px !important;
+    }
+
+    .dqa-days-filter {
+        width: 100% !important;
+        justify-content: flex-start !important;
+    }
+
+    .dqa-count-badge {
+        font-size: 11px !important;
+    }
+
+    .dqa-table-wrap {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border-radius: 8px !important;
+    }
+
+    .dqa-table th {
+        font-size: 11px !important;
+        padding: 8px 10px !important;
+        white-space: nowrap !important;
+    }
+
+    .dqa-table td {
+        font-size: 12px !important;
+        padding: 8px 10px !important;
+        vertical-align: middle !important;
+    }
+}
+
+@media (max-width: 400px) {
+    .dqa-kpi-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   28. DETAIL BARANG ANALISA (bad-*)
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    .bad-page {
+        padding: 0 !important;
+    }
+
+    .bad-breadcrumb {
+        padding: 10px 4px !important;
+    }
+
+    .bad-back-link {
+        font-size: 13px !important;
+    }
+
+    .bad-page-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+        padding: 10px 4px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .bad-page-header-left {
+        gap: 10px !important;
+    }
+
+    .bad-page-icon {
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 18px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .bad-page-title {
+        font-size: 15px !important;
+    }
+
+    .bad-page-subtitle {
+        font-size: 12px !important;
+    }
+
+    .bad-total-chip {
+        font-size: 12px !important;
+        padding: 5px 10px !important;
+    }
+
+    .bad-card {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .bad-card-toolbar {
+        padding: 10px 14px !important;
+    }
+
+    .bad-search-wrap {
+        border-radius: 10px !important;
+    }
+
+    .bad-search-input {
+        font-size: 16px !important;
+    }
+
+    .bad-table-wrap {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .bad-table th {
+        font-size: 11px !important;
+        padding: 8px 10px !important;
+        white-space: nowrap !important;
+    }
+
+    .bad-table td {
+        font-size: 12px !important;
+        padding: 8px 10px !important;
+        vertical-align: middle !important;
+    }
+
+    .bad-pagination-wrap {
+        flex-direction: column !important;
+        gap: 8px !important;
+        align-items: flex-start !important;
+        padding: 10px 14px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   29. NOTIFIKASI PAGE (notif-*)
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    .notif-page {
+        padding: 0 !important;
+    }
+
+    .notif-page-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 14px 4px 10px !important;
+    }
+
+    .notif-page-header-left {
+        gap: 10px !important;
+    }
+
+    .notif-page-icon {
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 18px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .notif-page-title {
+        font-size: 16px !important;
+    }
+
+    .notif-page-subtitle {
+        font-size: 12px !important;
+    }
+
+    .notif-page-header-right {
+        width: 100% !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    .notif-page-header-right .btn {
+        width: 100% !important;
+        justify-content: center !important;
+        min-height: 40px !important;
+    }
+
+    .notif-stat-chip {
+        flex: 1 !important;
+        font-size: 12px !important;
+    }
+
+    .notif-filter-bar {
+        gap: 6px !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding-bottom: 4px !important;
+        scrollbar-width: none !important;
+    }
+
+    .notif-filter-bar::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .notif-filter-tab {
+        white-space: nowrap !important;
+        padding: 7px 14px !important;
+        font-size: 13px !important;
+        min-height: 38px !important;
+    }
+
+    .notif-list {
+        gap: 8px !important;
+    }
+
+    .notif-card {
+        border-radius: 12px !important;
+        padding: 12px !important;
+    }
+
+    .notif-card-header {
+        gap: 10px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   30. OFFCANVAS PANELS (global — all master-data pages)
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    .offcanvas-end {
+        width: 100% !important;
+        max-width: 100vw !important;
+    }
+
+    .offcanvas-start {
+        width: 85% !important;
+        max-width: 360px !important;
+    }
+
+    .offcanvas-header {
+        padding: 14px 16px !important;
+        border-bottom: 1px solid rgba(0,0,0,.08) !important;
+    }
+
+    .offcanvas-title {
+        font-size: 15px !important;
+        font-weight: 600 !important;
+    }
+
+    .offcanvas-body input,
+    .offcanvas-body select,
+    .offcanvas-body textarea {
+        font-size: 16px !important;
+    }
+
+    .offcanvas-body .form-control,
+    .offcanvas-body .form-select {
+        font-size: 16px !important;
+        min-height: 44px !important;
+    }
+
+    .offcanvas-body textarea.form-control {
+        min-height: auto !important;
+    }
+
+    .offcanvas-body .form-label {
+        font-size: 13px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .offcanvas-body .btn {
+        min-height: 44px !important;
+        font-size: 14px !important;
+    }
+
+    .offcanvas-body {
+        padding: 16px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   31. VUE-SELECT (v-select) MOBILE
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    .vs__dropdown-toggle {
+        min-height: 44px !important;
+    }
+
+    .vs__search,
+    .vs__search:focus,
+    .vs__selected {
+        font-size: 16px !important;
+    }
+
+    .vs__dropdown-menu {
+        font-size: 15px !important;
+    }
+
+    .vs__dropdown-option {
+        padding: 10px 14px !important;
+        min-height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   32. MASTER DATA PAGES — card + table (container-fluid px-0)
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    .container-fluid.px-0 > .card.shadow-sm,
+    .container-fluid.px-0 > .card.w-100,
+    .container-fluid.mx-auto.px-0 > .card.shadow-sm {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .container-fluid.px-0 > .card.shadow-sm > .card-body,
+    .container-fluid.px-0 > .card.w-100 > .card-body,
+    .container-fluid.mx-auto.px-0 > .card.shadow-sm > .card-body {
+        padding: 14px !important;
+    }
+
+    .container-fluid.px-0 .row.g-4.mb-3,
+    .container-fluid.px-0 .row.g-3.mb-3,
+    .container-fluid.mx-auto.px-0 .row.g-4.mb-3,
+    .container-fluid.mx-auto.px-0 .row.g-3.mb-3 {
+        row-gap: 8px !important;
+    }
+
+    .container-fluid.px-0 .col-sm-auto .btn,
+    .container-fluid.mx-auto.px-0 .col-sm-auto .btn {
+        width: 100% !important;
+        min-height: 44px !important;
+        justify-content: center !important;
+    }
+
+    .container-fluid.px-0 .search-box input,
+    .container-fluid.mx-auto.px-0 .search-box input {
+        font-size: 16px !important;
+        min-height: 44px !important;
+    }
+
+    .container-fluid.px-0 .table th,
+    .container-fluid.mx-auto.px-0 .table th {
+        font-size: 11px !important;
+        padding: 8px 10px !important;
+        white-space: nowrap !important;
+    }
+
+    .container-fluid.px-0 .table td,
+    .container-fluid.mx-auto.px-0 .table td {
+        font-size: 12px !important;
+        padding: 8px 10px !important;
+        vertical-align: middle !important;
+    }
+
+    .container-fluid.px-0 .table td .btn,
+    .container-fluid.mx-auto.px-0 .table td .btn {
+        min-height: 34px !important;
+        padding: 4px 10px !important;
+        font-size: 12px !important;
+    }
+
+    .form-switch .form-check-label {
+        font-size: 13px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   33. FORM PAGES — inputs, labels, submit buttons
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    .container-fluid.mx-auto.px-0 .form-label,
+    .container-fluid.px-0 .form-label {
+        font-size: 13px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .container-fluid.mx-auto.px-0 .form-control,
+    .container-fluid.mx-auto.px-0 .form-select,
+    .container-fluid.px-0 .form-control,
+    .container-fluid.px-0 .form-select {
+        font-size: 16px !important;
+        min-height: 44px !important;
+    }
+
+    .container-fluid.mx-auto.px-0 textarea.form-control,
+    .container-fluid.px-0 textarea.form-control {
+        min-height: auto !important;
+    }
+
+    .container-fluid.mx-auto.px-0 .form-check-label,
+    .container-fluid.px-0 .form-check-label {
+        font-size: 13px !important;
+    }
+
+    .container-fluid.mx-auto.px-0 .accordion-button {
+        font-size: 13px !important;
+        padding: 12px 14px !important;
+        min-height: 48px !important;
+    }
+
+    .container-fluid.mx-auto.px-0 .accordion-body {
+        padding: 12px 14px !important;
+    }
+
+    .container-fluid.mx-auto.px-0 .btn-primary,
+    .container-fluid.mx-auto.px-0 .btn-success,
+    .container-fluid.mx-auto.px-0 .btn-secondary,
+    .container-fluid.px-0 .btn-primary,
+    .container-fluid.px-0 .btn-success,
+    .container-fluid.px-0 .btn-secondary {
+        min-height: 44px !important;
+        font-size: 14px !important;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   GLOBAL FIX: action-button.primary / .secondary
+   (defined only in HomeLab.vue; missing in NotRumus, MultiRumus, etc.)
+══════════════════════════════════════════════════════ */
+.action-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.action-button.primary {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.action-button.primary:hover {
+    background-color: #2563eb;
+}
+
+.action-button.secondary {
+    background-color: white;
+    color: #3b82f6;
+    border: 1px solid #e2e8f0;
+}
+
+.action-button.secondary:hover {
+    background-color: #f8fafc;
+}
+
+
+/* ══════════════════════════════════════════════════════
+   34. QUISY PAGES (user-card, multi-pane-container, sample-registration-container)
+══════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+
+    /* ─── user-card (HomeQuisy, HomeFormulator) ─── */
+    .user-card {
+        flex-direction: column !important;
+        padding: 14px !important;
+        border-radius: 14px !important;
+        gap: 12px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .avatar-container {
+        align-self: center !important;
+    }
+
+    .user-details {
+        width: 100% !important;
+    }
+
+    .user-header {
+        flex-direction: column !important;
+        gap: 6px !important;
+    }
+
+    .user-name {
+        font-size: 16px !important;
+    }
+
+    .user-meta {
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+    }
+
+    .role-badge {
+        font-size: 12px !important;
+    }
+
+    .last-activity {
+        font-size: 12px !important;
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+    }
+
+    .user-stats {
+        gap: 10px !important;
+    }
+
+    .stat-item {
+        flex: 1 !important;
+        text-align: center !important;
+        padding: 8px !important;
+        border-radius: 10px !important;
+    }
+
+    .stat-value {
+        font-size: 22px !important;
+    }
+
+    .stat-label {
+        font-size: 11px !important;
+    }
+
+    /* ─── multi-pane-container ─── */
+    .multi-pane-container {
+        padding: 6px !important;
+        gap: 6px !important;
+        margin-bottom: 12px !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-x: contain !important;
+        scrollbar-width: none !important;
+    }
+
+    .multi-pane-container::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .pane {
+        flex: 0 0 82vw !important;
+        max-width: 82vw !important;
+        height: 420px !important;
+        border-radius: 12px !important;
+        padding: 10px !important;
+    }
+
+    .pane h3 {
+        font-size: 13px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .pane ul li {
+        font-size: 13px !important;
+        padding: 8px 10px !important;
+    }
+
+    .po-code {
+        font-size: 13px !important;
+    }
+
+    .po-name {
+        font-size: 12px !important;
+    }
+
+    .po-meta {
+        font-size: 11px !important;
+    }
+
+    /* ─── sample-registration-container (CetakUlangQrCode) ─── */
+    .sample-registration-container > .card.shadow-sm,
+    .sample-registration-container > .card.main-card {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .sample-registration-container > .card > .card-body,
+    .sample-registration-container > .card.main-card > .card-body {
+        padding: 14px !important;
+    }
+
+    .sample-registration-container .main-title {
+        font-size: 1.25rem !important;
+    }
+
+    .sample-registration-container .subtitle {
+        font-size: 12px !important;
+    }
+
+    .sample-registration-container .nav-tabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+    }
+
+    .sample-registration-container .input-group input.form-control {
+        font-size: 16px !important;
+        min-height: 44px !important;
+    }
+
+    .sample-registration-container .table th {
+        font-size: 11px !important;
+        padding: 8px 10px !important;
+        white-space: nowrap !important;
+    }
+
+    .sample-registration-container .table td {
+        font-size: 12px !important;
+        padding: 8px 10px !important;
+        vertical-align: middle !important;
+    }
+
+    .sample-registration-container .table td .btn {
+        min-height: 34px !important;
+        padding: 4px 10px !important;
+        font-size: 12px !important;
+    }
+}

@@ -10998,6 +10998,32 @@ class FormulatorTrialSampelController extends Controller
         }
     }
 
+    public function getSubPoMenungguValidasi($no_Sampel, $id_jenis_analisa)
+    {
+        try {
+            $id_jenis_analisa = Hashids::connection('custom')->decode($id_jenis_analisa)[0];
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'status' => 400, 'message' => 'Format ID tidak valid.'], 400);
+        }
+
+        try {
+            $subPoList = DB::table('N_EMI_LIMS_Uji_Sampel')
+                ->select('No_Fak_Sub_Po')
+                ->where('No_Po_Sampel', $no_Sampel)
+                ->where('Id_Jenis_Analisa', $id_jenis_analisa)
+                ->where('Status_Keputusan_Sampel', 'menunggu')
+                ->whereNull('Status')
+                ->whereNotNull('No_Fak_Sub_Po')
+                ->distinct()
+                ->get();
+
+            return response()->json(['success' => true, 'status' => 200, 'result' => $subPoList], 200);
+        } catch (\Exception $e) {
+            Log::channel("FormulatorTrialSampelController")->error($e->getMessage());
+            return response()->json(['success' => false, 'status' => 500, 'message' => 'Terjadi Kesalahan'], 500);
+        }
+    }
+
     public function getDataHasilAnalisaSelesai()
     {
        try {
