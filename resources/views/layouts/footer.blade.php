@@ -115,7 +115,7 @@
       <div class="container-fluid">
           <div class="row">
               <div class="col-sm-6">
-                  <a>{{ date('Y') }}</a> © EMI LAB Versi 2.2.0
+                  <a>{{ date('Y') }}</a> © Laboratory Information System Versi 3.0.0-Pra Rilis
               </div>
               <div class="col-sm-6">
                   <div class="text-sm-end d-none d-sm-block">

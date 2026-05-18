@@ -379,24 +379,38 @@ class RoleMenuController extends Controller
 
         DB::beginTransaction();
         try {
-            DB::table('N_EMI_LAB_Page_Access_2')
-                ->where('Id_User', $UserId)
-                ->where('Kode_Perusahaan', '001')
-                ->delete();
-
+            // Decode semua ID menu baru terlebih dahulu
+            $newMenuIds = [];
             foreach ($request->items as $item) {
                 $decoded = Hashids::connection('custom')->decode($item['Id_Menu']);
                 if (empty($decoded)) {
                     throw new \Exception('Format ID Menu tidak valid: ' . $item['Id_Menu']);
                 }
-                $Id_Menu = $decoded[0];
+                $newMenuIds[] = $decoded[0];
+            }
 
-                DB::table('N_EMI_LAB_Page_Access_2')->insert([
-                    'Kode_Perusahaan' => '001',
-                    'Id_Menu'         => $Id_Menu,
-                    'Id_User'         => $UserId,
-                    'Urutan_Menu'     => $item['Urutan_Menu'],
-                ]);
+            // Hapus HANYA menu yang tidak ada di list baru agar Id_Page_Access lama tetap terjaga
+            // sehingga referensi di N_EMI_LAB_Role_Menu_Access tidak rusak
+            DB::table('N_EMI_LAB_Page_Access_2')
+                ->where('Id_User', $UserId)
+                ->where('Kode_Perusahaan', '001')
+                ->whereNotIn('Id_Menu', $newMenuIds)
+                ->delete();
+
+            foreach ($request->items as $index => $item) {
+                $Id_Menu = $newMenuIds[$index];
+
+                // updateOrInsert: update record lama (Id_Page_Access tidak berubah) atau insert baru jika belum ada
+                DB::table('N_EMI_LAB_Page_Access_2')->updateOrInsert(
+                    [
+                        'Kode_Perusahaan' => '001',
+                        'Id_Menu'         => $Id_Menu,
+                        'Id_User'         => $UserId,
+                    ],
+                    [
+                        'Urutan_Menu' => $item['Urutan_Menu'],
+                    ]
+                );
 
                 // Simpan grouping kembali ke N_EMI_LAB_Menus
                 DB::table('N_EMI_LAB_Menus')

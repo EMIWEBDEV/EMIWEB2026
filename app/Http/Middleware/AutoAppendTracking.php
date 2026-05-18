@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 class AutoAppendTracking
 {
     protected int $uidLength = 32;
-    protected string $appVersion = '2.2.0';
+    protected string $appVersion = '3.0.0-Pra Rilis';
     protected string $defaultTimezone = 'Asia/Jakarta';
 
     protected array $excludedPaths = [

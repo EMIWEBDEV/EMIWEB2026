@@ -4,6 +4,8 @@
 /public/build
 /public/hot
 
+.CHANGEZIP
+
 # Storage symlink
 /public/storage
 

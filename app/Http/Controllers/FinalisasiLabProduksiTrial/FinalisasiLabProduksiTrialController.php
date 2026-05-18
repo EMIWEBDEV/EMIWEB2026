@@ -52,7 +52,8 @@ class FinalisasiLabProduksiTrialController extends Controller
         $search = $request->input('search');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
-        $qrType = $request->input('qr_type'); 
+        $qrType = $request->input('qr_type');
+        $totalAnalisa = $request->input('total_analisa');
 
         if (empty($allowedAnalisaIds)) {
                 return response()->json([
@@ -76,14 +77,14 @@ class FinalisasiLabProduksiTrialController extends Controller
             ->join('N_EMI_View_Barang as brg', 'po.Kode_Barang', '=', 'brg.Kode_Barang')
             ->select(
                 'uji.No_Po_Sampel',
-                'uji.Tanggal',
+                DB::raw('MAX(uji.Tanggal) as Tanggal'),
                 DB::raw('MAX(uji.Jam) as Jam'),
                 'uji.Flag_Multi_QrCode',
                 'po.No_Po',
                 'po.No_Split_Po',
                 'po.Kode_Barang',
                 'brg.Nama as Nama_Barang',
-                'po.Flag_Trial_Produksi' 
+                'po.Flag_Trial_Produksi'
             )
             ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->where('po.Flag_Trial_Produksi', 'Y')
@@ -125,21 +126,56 @@ class FinalisasiLabProduksiTrialController extends Controller
 
         $query->groupBy(
             'uji.No_Po_Sampel',
-            'uji.Tanggal',
             'uji.Flag_Multi_QrCode',
             'po.No_Po',
             'po.No_Split_Po',
             'po.Kode_Barang',
             'brg.Nama',
-            'po.Flag_Trial_Produksi' // <-- Tambahkan baris ini
-        )
-        ->orderByDesc('uji.Tanggal')
-        ->orderByDesc(DB::raw('MAX(uji.Jam)'));
+            'po.Flag_Trial_Produksi'
+        );
+
+        // Filter total analisa (exact count)
+        if (!empty($totalAnalisa)) {
+            $query->having(DB::raw('COUNT(DISTINCT uji.Id_Jenis_Analisa)'), '=', (int)$totalAnalisa);
+        }
+
+        $query->orderByDesc(DB::raw('MAX(uji.Tanggal)'))
+            ->orderByDesc(DB::raw('MAX(uji.Jam)'));
 
         $paginated = $query->paginate($perPage, ['*'], 'page', $page);
+        $items = $paginated->items();
+
+        // Enrichment: sisipkan Detail_Jenis_Analisa per sampel
+        $poSampelIds = collect($items)->pluck('No_Po_Sampel')->toArray();
+
+        if (!empty($poSampelIds)) {
+            $analisaDetails = DB::table('N_EMI_LAB_Uji_Sampel as uji')
+                ->join('N_EMI_LAB_Jenis_Analisa as ja', 'uji.Id_Jenis_Analisa', '=', 'ja.id')
+                ->whereIn('uji.No_Po_Sampel', $poSampelIds)
+                ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
+                ->whereNull('uji.Status')
+                ->where('uji.Flag_Selesai', 'Y')
+                ->whereNull('uji.Flag_Final')
+                ->where('uji.Status_Keputusan_Sampel', 'terima')
+                ->where(function($q) {
+                    $q->where('uji.Flag_Resampling', '!=', 'Y')
+                    ->orWhereNull('uji.Flag_Resampling');
+                })
+                ->select('uji.No_Po_Sampel', 'ja.id', 'ja.Kode_Analisa', 'ja.Jenis_Analisa')
+                ->distinct()
+                ->get()
+                ->groupBy('No_Po_Sampel');
+
+            $items = collect($items)->map(function ($item) use ($analisaDetails) {
+                $analisa = $analisaDetails->get($item->No_Po_Sampel, collect());
+                $item->Total_Jenis_Analisa = $analisa->count();
+                $item->Detail_Jenis_Analisa = $analisa->values()->toArray();
+                return $item;
+            })->toArray();
+        }
 
         return ResponseHelper::successWithPaginationV2(
-            $paginated->items(),
+            $items,
             $paginated->currentPage(),
             $paginated->perPage(),
             $paginated->total(),
@@ -366,12 +402,243 @@ class FinalisasiLabProduksiTrialController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::channel('FinalisasiLabProduksiTrialController')->error('Error: ' . $e->getMessage());
-            
-            // FIX: Keluarkan pesan error aslinya agar gampang melacak jika terjadi masalah
             return response()->json([
                 'success' => false,
                 'status' => 500,
                 'message' => "Terjadi Kesalahan di Baris " . $e->getLine() . " - " . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function storeBulk(Request $request)
+    {
+        $no_sampel_list = $request->input('no_sampel_list', []);
+
+        if (empty($no_sampel_list)) {
+            return response()->json([
+                'success' => false,
+                'status'  => 400,
+                'message' => 'Tidak ada data sampel yang dipilih.'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $waktuServer      = DB::select("SELECT dbo.Get_Date_Time() as DateTimeNow");
+            $dt               = $waktuServer[0]->DateTimeNow;
+            $tanggalSqlServer = date('Y-m-d', strtotime($dt));
+            $jamSqlServer     = date('H:i:s', strtotime($dt));
+
+            $kodeDikecualikan = ['HOMOGENITAS', 'MBLG-STR', 'PSZ'];
+
+            $masterAnalisa = DB::table('N_EMI_LAB_Jenis_Analisa')
+                ->pluck('Jenis_Analisa', 'id')
+                ->toArray();
+
+            $poSampels = DB::table('N_EMI_LAB_PO_Sampel')
+                ->whereIn('No_Sampel', $no_sampel_list)
+                ->where('Flag_Trial_Produksi', 'Y')
+                ->get()
+                ->keyBy('No_Sampel');
+
+            $ujiSampels = DB::table('N_EMI_LAB_Uji_Sampel as us')
+                ->join('N_EMI_LAB_PO_Sampel as ps', 'us.No_Po_Sampel', '=', 'ps.No_Sampel')
+                ->select('us.*', 'ps.Kode_Barang', 'ps.Id_Mesin')
+                ->whereIn('us.No_Po_Sampel', $no_sampel_list)
+                ->where('ps.Flag_Trial_Produksi', 'Y')
+                ->whereNull('us.Flag_Resampling')
+                ->whereNull('us.Status')
+                ->get()
+                ->groupBy('No_Po_Sampel');
+
+            $kodes  = $poSampels->pluck('Kode_Barang')->unique()->toArray();
+            $mesins = $poSampels->pluck('Id_Mesin')->unique()->toArray();
+
+            $stdMutuGrouped = DB::table('N_EMI_LAB_Barang_Analisa as ba')
+                ->join('N_EMI_LAB_Jenis_Analisa as ja', 'ba.Id_Jenis_Analisa', '=', 'ja.id')
+                ->where('ba.Flag_Aktif', 'Y')
+                ->where('ba.Kode_Role', 'LAB')
+                ->whereIn('ba.Kode_Barang', $kodes)
+                ->whereIn('ba.Id_Master_Mesin', $mesins)
+                ->whereNotIn('ja.Kode_Analisa', $kodeDikecualikan)
+                ->select('ba.Kode_Barang', 'ba.Id_Master_Mesin', 'ba.Id_Jenis_Analisa')
+                ->get()
+                ->groupBy(fn($i) => $i->Kode_Barang . '_' . $i->Id_Master_Mesin);
+
+            $ujiAnalisaGrouped = DB::table('N_EMI_LAB_Uji_Sampel as us')
+                ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
+                ->join('N_EMI_LAB_PO_Sampel as ps', 'us.No_Po_Sampel', '=', 'ps.No_Sampel')
+                ->whereIn('us.No_Po_Sampel', $no_sampel_list)
+                ->where('ps.Flag_Trial_Produksi', 'Y')
+                ->whereNull('us.Flag_Resampling')
+                ->whereNull('us.Status')
+                ->where('us.Status_Keputusan_Sampel', 'terima')
+                ->whereNotIn('ja.Kode_Analisa', $kodeDikecualikan)
+                ->select('us.No_Po_Sampel', 'us.Id_Jenis_Analisa')
+                ->get()
+                ->groupBy('No_Po_Sampel');
+
+            $belumSelesaiGrouped = DB::table('N_EMI_LAB_Uji_Sampel as us')
+                ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
+                ->join('N_EMI_LAB_PO_Sampel as ps', 'us.No_Po_Sampel', '=', 'ps.No_Sampel')
+                ->whereIn('us.No_Po_Sampel', $no_sampel_list)
+                ->where('ps.Flag_Trial_Produksi', 'Y')
+                ->where('us.Status_Keputusan_Sampel', 'terima')
+                ->whereNull('us.Flag_Selesai')
+                ->whereNull('us.Status')
+                ->whereNull('us.Flag_Resampling')
+                ->whereNotIn('ja.Kode_Analisa', $kodeDikecualikan)
+                ->select('us.No_Po_Sampel', 'ja.Jenis_Analisa')
+                ->get()
+                ->groupBy('No_Po_Sampel');
+
+            $mesinFg = DB::table('EMI_Master_Mesin')
+                ->whereIn('Id_Master_Mesin', $mesins)
+                ->pluck('Flag_FG', 'Id_Master_Mesin')
+                ->toArray();
+
+            $tidakLayakData = DB::table('N_EMI_LAB_Uji_Sampel as us')
+                ->join('N_EMI_LAB_PO_Sampel as ps', 'us.No_Po_Sampel', '=', 'ps.No_Sampel')
+                ->whereIn('us.No_Po_Sampel', $no_sampel_list)
+                ->where('ps.Flag_Trial_Produksi', 'Y')
+                ->where('us.Flag_Layak', 'T')
+                ->whereNull('us.Status')
+                ->whereNull('us.Flag_Resampling')
+                ->select('us.No_Po_Sampel', 'us.Id_Jenis_Analisa')
+                ->get()
+                ->groupBy('No_Po_Sampel');
+
+            $poSampelUpdateCases = [];
+            $berhasil            = [];
+            $gagal               = [];
+            $userId              = Auth::user()->UserId;
+
+            foreach ($no_sampel_list as $no_sampel) {
+                $infoPo = $poSampels->get($no_sampel);
+
+                if (!$infoPo) {
+                    $gagal[] = [
+                        'sampel' => $no_sampel,
+                        'reason' => 'PO tidak ditemukan atau bukan Trial Produksi.'
+                    ];
+                    continue;
+                }
+
+                $keyStd = $infoPo->Kode_Barang . '_' . $infoPo->Id_Mesin;
+
+                $stdMutu   = $stdMutuGrouped->has($keyStd)
+                    ? $stdMutuGrouped->get($keyStd)->pluck('Id_Jenis_Analisa')->toArray()
+                    : [];
+
+                $analisaUji = $ujiAnalisaGrouped->has($no_sampel)
+                    ? $ujiAnalisaGrouped->get($no_sampel)->pluck('Id_Jenis_Analisa')->toArray()
+                    : [];
+
+                $analisaKurang = array_diff($stdMutu, $analisaUji);
+                if (!empty($analisaKurang)) {
+                    $namaKurang = array_map(fn($id) => $masterAnalisa[$id] ?? 'Unknown', $analisaKurang);
+                    $gagal[] = [
+                        'sampel' => $no_sampel,
+                        'reason' => 'Analisa standar mutu belum terpenuhi: ' . implode(', ', $namaKurang)
+                    ];
+                    continue;
+                }
+
+                if ($belumSelesaiGrouped->has($no_sampel)) {
+                    $namaBelumValid = $belumSelesaiGrouped->get($no_sampel)->pluck('Jenis_Analisa')->toArray();
+                    $gagal[] = [
+                        'sampel' => $no_sampel,
+                        'reason' => 'Masih ada analisa yang belum divalidasi: ' . implode(', ', $namaBelumValid)
+                    ];
+                    continue;
+                }
+
+                $listUji            = $ujiSampels->get($no_sampel) ?? collect();
+                $flagFgValid        = false;
+                $idJenisAnalisaList = [];
+                $subPoToUpdate      = [];
+
+                foreach ($listUji as $item) {
+                    if (($mesinFg[$item->Id_Mesin] ?? null) === 'Y') {
+                        $flagFgValid          = true;
+                        $idJenisAnalisaList[] = $item->Id_Jenis_Analisa;
+                        if (is_null($item->Status)) {
+                            $subPoToUpdate[] = strtoupper($item->No_Fak_Sub_Po);
+                        }
+                    }
+                }
+
+                if (!$flagFgValid) {
+                    $gagal[] = [
+                        'sampel' => $no_sampel,
+                        'reason' => 'Mesin tidak memiliki Flag_FG valid.'
+                    ];
+                    continue;
+                }
+
+                $idJenisAnalisaList = array_unique($idJenisAnalisaList);
+                $subPoToUpdate      = array_unique($subPoToUpdate);
+
+                if (!empty($subPoToUpdate)) {
+                    DB::table('N_EMI_LAB_Uji_Sampel')
+                        ->where('No_Po_Sampel', $no_sampel)
+                        ->whereNull('Status')
+                        ->whereNull('Flag_Resampling')
+                        ->whereIn('No_Fak_Sub_Po', $subPoToUpdate)
+                        ->update(['Flag_Final' => 'Y']);
+                }
+
+                $tidakLayakDataSampel = $tidakLayakData->get($no_sampel) ?? collect();
+                $adaYangTidakLayak    = collect($tidakLayakDataSampel)
+                    ->contains(fn($tl) => in_array($tl->Id_Jenis_Analisa, $idJenisAnalisaList));
+
+                $flagOkValue = $adaYangTidakLayak ? 'T' : 'Y';
+
+                DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
+                    ->updateOrInsert(
+                        [
+                            'No_Split_Po' => $infoPo->No_Split_Po,
+                            'No_Batch'    => $infoPo->No_Batch,
+                            'No_Sampel'   => $no_sampel,
+                        ],
+                        [
+                            'No_Po'   => $infoPo->No_Po,
+                            'Tanggal' => $tanggalSqlServer,
+                            'Jam'     => $jamSqlServer,
+                            'Flag_FG' => 'Y',
+                            'Flag_Ok' => $flagOkValue,
+                            'Id_User' => $userId,
+                        ]
+                    );
+
+                $poSampelUpdateCases[] = $no_sampel;
+                $berhasil[]            = $no_sampel;
+            }
+
+            if (!empty($poSampelUpdateCases)) {
+                DB::table('N_EMI_LAB_PO_Sampel')
+                    ->whereIn('No_Sampel', $poSampelUpdateCases)
+                    ->where('Flag_Trial_Produksi', 'Y')
+                    ->update(['Flag_Selesai' => 'Y']);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'status'  => 200,
+                'message' => 'Proses Finalisasi Bulk Trial Produksi Selesai.',
+                'result'  => ['berhasil' => $berhasil, 'gagal' => $gagal]
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::channel('FinalisasiLabProduksiTrialController')->error('storeBulk Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'status'  => 500,
+                'message' => 'Terjadi kesalahan sistem di Baris ' . $e->getLine() . ': ' . $e->getMessage()
             ], 500);
         }
     }

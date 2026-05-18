@@ -1,3 +1,4 @@
+.CHANGEZIP
 /ZIPLOG
 /node_modules
 /public/build

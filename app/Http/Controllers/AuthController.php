@@ -140,7 +140,6 @@ class AuthController extends Controller
                 ->orderBy('pa.Urutan_Menu', 'ASC')
                 ->get();
 
-
             $permissions = [];
             $permissionLabels = [];
             $pageAccessIds = [];
@@ -237,6 +236,7 @@ class AuthController extends Controller
             ]);
             // dd($firstRedirectUrl, Session::get('user_permissions'));
 
+            $request->session()->save();
             return redirect($firstRedirectUrl)->with('success', 'Login berhasil!');
 
         } catch (\Exception $e) {

@@ -11,7 +11,7 @@
                             Manajemen Akses Menu
                         </h1>
                         <p class="text-muted mb-0 small">
-                            Kelola hak akses menu sidebar untuk setiap pengguna sistem EMI LAB
+                            Kelola hak akses menu sidebar untuk setiap pengguna sistem Laboratory Information System
                         </p>
                     </div>
                     <button

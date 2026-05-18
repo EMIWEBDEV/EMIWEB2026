@@ -1,166 +1,180 @@
 <template>
-    <div class="az-page">
+    <div class="dlb-page">
 
-        <!-- ── Header ─────────────────────────────────────── -->
-        <div class="az-header">
-            <div class="az-header-left">
-                <div class="az-header-icon"><i class="ri-microscope-line"></i></div>
-                <div>
-                    <h4 class="az-header-title">Dashboard Laboratorium</h4>
-                    <p class="az-header-sub">
-                        Selamat datang, <strong>{{ namaPengguna }}</strong>
-                        <span class="az-header-date">— {{ currentDate }}</span>
-                    </p>
-                </div>
-            </div>
-            <div class="az-header-right">
-                <!-- TAT Badge -->
-                <div class="az-tat-badge" v-if="tat.hours !== null">
-                    <i class="ri-timer-line"></i>
-                    <span>TAT {{ tat.hours }}j {{ tat.minutes }}m</span>
-                    <small>{{ tat.period }}</small>
-                </div>
-                <button class="az-refresh-btn" @click="refreshAll" :disabled="anyLoading">
-                    <i :class="anyLoading ? 'ri-loader-4-line az-spin' : 'ri-refresh-line'"></i>
-                    Segarkan
-                </button>
-            </div>
-        </div>
-
-        <!-- ── KPI Hari Ini ──────────────────────────────── -->
-        <div class="az-section-label">
-            <i class="ri-sun-line"></i> Data Hari Ini
-        </div>
-        <div class="az-kpi-grid">
-            <template v-if="loading.kpiToday">
-                <div v-for="n in 6" :key="n" class="az-kpi-card az-sk">
-                    <div class="az-sk-icon az-shimmer"></div>
-                    <div style="flex:1">
-                        <div class="az-sk-line w60 az-shimmer mb2"></div>
-                        <div class="az-sk-line w40 az-shimmer mb2"></div>
-                        <div class="az-sk-line w50 az-shimmer"></div>
+        <!-- ── Hero Banner ─────────────────────────────────── -->
+        <div class="dlb-hero">
+            <div class="dlb-hero-dots"></div>
+            <div class="dlb-hero-inner">
+                <div class="dlb-hero-left">
+                    <div class="dlb-hero-icon-box">
+                        <i class="ri-microscope-line"></i>
                     </div>
-                </div>
-            </template>
-            <template v-else>
-                <div v-for="(w,i) in kpiToday" :key="i" class="az-kpi-card">
-                    <div class="az-kpi-icon" :style="{ background: w.color+'18', color: w.color }">
-                        <i :class="w.icon || 'ri-bar-chart-line'"></i>
-                    </div>
-                    <div class="az-kpi-body">
-                        <div class="az-kpi-label">{{ w.title }}</div>
-                        <div class="az-kpi-value" :style="{ color: w.color }">{{ (w.value||0).toLocaleString('id-ID') }}</div>
-                        <div class="az-kpi-sub">{{ w.subtitle }}</div>
-                    </div>
-                </div>
-            </template>
-        </div>
-
-        <!-- ── Charts Row 1: Tren + Donut ───────────────── -->
-        <div class="az-row-7-3">
-            <!-- Area Trend -->
-            <div class="az-card">
-                <div class="az-card-head">
                     <div>
-                        <div class="az-card-title">Tren Uji Sampel</div>
-                        <div class="az-card-sub">Jumlah pengujian per hari</div>
+                        <div class="dlb-hero-tag">
+                            <i class="ri-flask-line"></i>
+                            LIMS &middot; Lab Analyzer
+                        </div>
+                        <h2 class="dlb-hero-title">Dashboard Laboratorium</h2>
+                        <p class="dlb-hero-sub">
+                            Selamat datang, <strong>{{ namaPengguna }}</strong>
+                            <span class="dlb-hero-date">— {{ currentDate }}</span>
+                        </p>
                     </div>
-                    <div class="az-day-btns">
+                </div>
+                <div class="dlb-hero-right">
+                    <div class="dlb-tat-pill" v-if="tat.hours !== null">
+                        <i class="ri-timer-2-line dlb-pill-icon"></i>
+                        <div>
+                            <div class="dlb-pill-value">{{ tat.hours }}j {{ tat.minutes }}m</div>
+                            <div class="dlb-pill-label">Rata-rata TAT</div>
+                        </div>
+                    </div>
+                    <div class="dlb-clock-pill">
+                        <i class="ri-time-line dlb-pill-icon"></i>
+                        <div>
+                            <div class="dlb-pill-value">{{ currentTime }}</div>
+                            <div class="dlb-pill-label">Waktu Sekarang</div>
+                        </div>
+                    </div>
+                    <button class="dlb-refresh-btn" @click="refreshAll" :disabled="anyLoading">
+                        <i :class="anyLoading ? 'ri-loader-4-line dlb-spin' : 'ri-refresh-line'"></i>
+                        Segarkan
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Overview Strip (KPI Hari Ini) ──────────────── -->
+        <div class="dlb-strip-card">
+            <div class="dlb-strip-header">
+                <i class="ri-sun-line"></i>
+                <span>Data Aktivitas Hari Ini</span>
+                <span class="dlb-strip-period">{{ currentDate }}</span>
+            </div>
+            <template v-if="loading.kpiToday">
+                <div class="dlb-strip-grid">
+                    <div v-for="n in 6" :key="n" class="dlb-strip-col dlb-strip-sk">
+                        <div class="dlb-sk-line w50 dlb-shimmer" style="height:28px;margin-bottom:8px;"></div>
+                        <div class="dlb-sk-line w70 dlb-shimmer" style="height:12px;margin-bottom:4px;"></div>
+                        <div class="dlb-sk-line w40 dlb-shimmer" style="height:10px;"></div>
+                    </div>
+                </div>
+            </template>
+            <div v-else class="dlb-strip-grid">
+                <div
+                    v-for="(item, i) in kpiToday"
+                    :key="i"
+                    class="dlb-strip-col"
+                    :style="{ '--dlb-sc': item.color || PALETTE[i % PALETTE.length] }"
+                >
+                    <div class="dlb-strip-icon-row">
+                        <i :class="item.icon || 'ri-bar-chart-line'" class="dlb-strip-icon"></i>
+                    </div>
+                    <div class="dlb-strip-value">{{ (item.value || 0).toLocaleString('id-ID') }}</div>
+                    <div class="dlb-strip-label">{{ item.title }}</div>
+                    <div class="dlb-strip-sub">{{ item.subtitle }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Charts Row 1: Tren + Donut ─────────────────── -->
+        <div class="dlb-row-7-3">
+            <div class="dlb-card">
+                <div class="dlb-card-head">
+                    <div>
+                        <div class="dlb-card-title">Tren Uji Sampel</div>
+                        <div class="dlb-card-sub">Jumlah pengujian per hari dalam periode terpilih</div>
+                    </div>
+                    <div class="dlb-day-btns">
                         <button
-                            v-for="d in [7,14,30]"
+                            v-for="d in [7, 14, 30]"
                             :key="d"
-                            :class="['az-day-btn', trendDays===d && 'active']"
+                            :class="['dlb-day-btn', trendDays === d && 'active']"
                             @click="changeTrendDays(d)"
                         >{{ d }}H</button>
                     </div>
                 </div>
-                <div class="az-card-body">
-                    <div v-if="loading.trend" class="az-chart-sk az-shimmer"></div>
-                    <apexchart v-else type="area" height="260" :options="trendOptions" :series="trendSeries" />
+                <div class="dlb-card-body">
+                    <div v-if="loading.trend" class="dlb-chart-sk dlb-shimmer"></div>
+                    <apexchart v-else type="area" height="270" :options="trendOptions" :series="trendSeries" />
                 </div>
             </div>
-            <!-- Donut Status -->
-            <div class="az-card">
-                <div class="az-card-head">
-                    <div class="az-card-title">Status Penyelesaian</div>
-                </div>
-                <div class="az-card-body az-center">
-                    <div v-if="loading.pie" class="az-donut-sk az-shimmer"></div>
-                    <apexchart v-else type="donut" height="260" :options="pieOptions" :series="pieSeries" />
-                </div>
-            </div>
-        </div>
-
-        <!-- ── Charts Row 2: Frekuensi + Scatter ────────── -->
-        <div class="az-row-half">
-            <!-- Radar frekuensi jenis analisa -->
-            <div class="az-card">
-                <div class="az-card-head">
-                    <div class="az-card-title">Frekuensi Jenis Analisa</div>
-                    <div class="az-card-sub">Distribusi pengujian berdasarkan jenis</div>
-                </div>
-                <div class="az-card-body">
-                    <div v-if="loading.radar" class="az-chart-sk az-shimmer"></div>
-                    <apexchart v-else type="radar" height="280" :options="radarOptions" :series="radarSeries" />
-                </div>
-            </div>
-            <!-- Bar: Jumlah uji per jenis (vertical) -->
-            <div class="az-card">
-                <div class="az-card-head">
-                    <div class="az-card-title">Volume Per Jenis Analisa</div>
-                    <div class="az-card-sub">Total sampel per kategori pengujian</div>
-                </div>
-                <div class="az-card-body">
-                    <div v-if="loading.barJenis" class="az-chart-sk az-shimmer"></div>
-                    <apexchart v-else type="bar" height="280" :options="barJenisOptions" :series="barJenisSeries" />
-                </div>
-            </div>
-        </div>
-
-        <!-- ── KPI Total Keseluruhan ─────────────────────── -->
-        <div class="az-section-label">
-            <i class="ri-database-2-line"></i> Total Keseluruhan
-        </div>
-        <div class="az-kpi-grid-4">
-            <template v-if="loading.kpiAll">
-                <div v-for="n in 4" :key="n" class="az-kpi-card az-sk">
-                    <div class="az-sk-icon az-shimmer"></div>
-                    <div style="flex:1">
-                        <div class="az-sk-line w60 az-shimmer mb2"></div>
-                        <div class="az-sk-line w40 az-shimmer"></div>
+            <div class="dlb-card">
+                <div class="dlb-card-head">
+                    <div>
+                        <div class="dlb-card-title">Status Penyelesaian</div>
+                        <div class="dlb-card-sub">Proporsi pengujian selesai vs. pending</div>
                     </div>
+                </div>
+                <div class="dlb-card-body dlb-center">
+                    <div v-if="loading.pie" class="dlb-donut-sk dlb-shimmer"></div>
+                    <apexchart v-else type="donut" height="270" :options="pieOptions" :series="pieSeries" />
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Charts Row 2: Volume Per Jenis (full-width hbar) ── -->
+        <div class="dlb-card">
+            <div class="dlb-card-head">
+                <div>
+                    <div class="dlb-card-title">Volume Per Jenis Analisa</div>
+                    <div class="dlb-card-sub">Total pengujian berdasarkan kategori analisa — keseluruhan data</div>
+                </div>
+            </div>
+            <div class="dlb-card-body">
+                <div v-if="loading.radar" class="dlb-chart-sk dlb-shimmer"></div>
+                <apexchart v-else type="bar" :height="hbarHeight" :options="hbarOptions" :series="hbarSeries" />
+            </div>
+        </div>
+
+        <!-- ── Total Keseluruhan ───────────────────────────── -->
+        <div class="dlb-section-label">
+            <i class="ri-database-2-line"></i>
+            <span>Total Keseluruhan</span>
+        </div>
+        <div class="dlb-alltime-grid">
+            <template v-if="loading.kpiAll">
+                <div v-for="n in 4" :key="n" class="dlb-alltime-card">
+                    <div class="dlb-sk-circle dlb-shimmer"></div>
+                    <div class="dlb-sk-line w50 dlb-shimmer" style="height:24px;margin:14px auto 6px;"></div>
+                    <div class="dlb-sk-line w70 dlb-shimmer" style="height:12px;margin:0 auto 4px;"></div>
+                    <div class="dlb-sk-line w40 dlb-shimmer" style="height:10px;margin:0 auto;"></div>
                 </div>
             </template>
             <template v-else>
-                <div v-for="(w,i) in kpiAll" :key="i" class="az-kpi-card">
-                    <div class="az-kpi-icon" :style="{ background: w.color+'18', color: w.color }">
-                        <i :class="w.icon || 'ri-bar-chart-line'"></i>
+                <div v-for="(item, i) in kpiAll" :key="i" class="dlb-alltime-card">
+                    <div class="dlb-alltime-icon" :style="{ background: item.color + '18', color: item.color }">
+                        <i :class="item.icon || 'ri-bar-chart-line'"></i>
                     </div>
-                    <div class="az-kpi-body">
-                        <div class="az-kpi-label">{{ w.title }}</div>
-                        <div class="az-kpi-value" :style="{ color: w.color }">{{ (w.value||0).toLocaleString('id-ID') }}</div>
-                        <div class="az-kpi-sub">{{ w.subtitle }}</div>
+                    <div class="dlb-alltime-value" :style="{ color: item.color }">
+                        {{ (item.value || 0).toLocaleString('id-ID') }}
                     </div>
+                    <div class="dlb-alltime-label">{{ item.title }}</div>
+                    <div class="dlb-alltime-sub">{{ item.subtitle }}</div>
                 </div>
             </template>
         </div>
 
-        <!-- ── Aktivitas Terbaru ─────────────────────────── -->
-        <div class="az-card">
-            <div class="az-card-head">
+        <!-- ── Aktivitas Pengujian Terbaru ────────────────── -->
+        <div class="dlb-card">
+            <div class="dlb-card-head">
                 <div>
-                    <div class="az-card-title">Aktivitas Pengujian Terbaru</div>
-                    <div class="az-card-sub">5 pengujian terakhir yang selesai</div>
+                    <div class="dlb-card-title">Aktivitas Pengujian Terbaru</div>
+                    <div class="dlb-card-sub">5 pengujian terakhir yang telah diselesaikan</div>
                 </div>
+                <span class="dlb-count-badge">{{ aktivitasList.length }} data</span>
             </div>
-            <div class="az-card-body az-no-pad">
-                <div v-if="loading.aktivitas" class="az-table-sk">
-                    <div v-for="n in 5" :key="n" class="az-table-sk-row az-shimmer"></div>
-                </div>
+            <div class="dlb-card-body dlb-no-pad">
+                <template v-if="loading.aktivitas">
+                    <div v-for="n in 5" :key="n" class="dlb-sk-row dlb-shimmer"></div>
+                </template>
                 <template v-else>
-                    <div v-if="aktivitasList.length === 0" class="az-empty-row">Belum ada data aktivitas</div>
-                    <div v-else class="az-table-wrap">
-                        <table class="az-table">
+                    <div v-if="!aktivitasList.length" class="dlb-empty">
+                        <i class="ri-inbox-line"></i>
+                        <p>Belum ada data aktivitas pengujian</p>
+                    </div>
+                    <div v-else class="dlb-table-wrap">
+                        <table class="dlb-table">
                             <thead>
                                 <tr>
                                     <th>No Faktur</th>
@@ -172,15 +186,11 @@
                             </thead>
                             <tbody>
                                 <tr v-for="(item, i) in aktivitasList" :key="i">
-                                    <td class="az-mono">{{ item.id || '-' }}</td>
-                                    <td class="az-mono">{{ item.no_sampel || '-' }}</td>
-                                    <td>
-                                        <span class="az-badge-jenis">{{ item.jenis_analisa || '-' }}</span>
-                                    </td>
-                                    <td>
-                                        <span class="az-badge-user">{{ item.user || '-' }}</span>
-                                    </td>
-                                    <td class="az-text-muted">{{ item.tanggal || '-' }}</td>
+                                    <td><code class="dlb-code">{{ item.id || '-' }}</code></td>
+                                    <td><span class="dlb-badge-sampel">{{ item.no_sampel || '-' }}</span></td>
+                                    <td><span class="dlb-badge-jenis">{{ item.jenis_analisa || '-' }}</span></td>
+                                    <td><span class="dlb-badge-user">{{ item.user || '-' }}</span></td>
+                                    <td class="dlb-muted">{{ item.tanggal || '-' }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -196,7 +206,7 @@
 import axios from 'axios';
 import VueApexCharts from 'vue3-apexcharts';
 
-const PALETTE = ['#405189','#0ab39c','#f7b84b','#f06548','#4b93f7','#6f42c1'];
+const PALETTE = ['#405189', '#0ab39c', '#f7b84b', '#f06548', '#4b93f7', '#6f42c1'];
 
 export default {
     components: { apexchart: VueApexCharts },
@@ -209,19 +219,20 @@ export default {
     data() {
         const now = new Date();
         return {
-            currentDate: now.toLocaleDateString('id-ID', { weekday:'long', year:'numeric', month:'long', day:'numeric' }),
+            PALETTE,
+            currentDate: now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+            currentTime: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            clockTimer: null,
 
             kpiToday: [],
             kpiAll: [],
-            tat: { hours: null, minutes: null, period: '' },
+            tat: { hours: null, minutes: null },
             aktivitasList: [],
 
-            // Chart raw data
             trend: { categories: [], series: [] },
             trendDays: 14,
-            pie:  { series: [], labels: [] },
+            pie: { series: [], labels: [] },
             radar: { series: [], labels: [] },
-            barJenis: { categories: [], data: [] },
 
             loading: {
                 kpiToday: false,
@@ -229,9 +240,7 @@ export default {
                 trend: false,
                 pie: false,
                 radar: false,
-                barJenis: false,
                 aktivitas: false,
-                tat: false,
             },
         };
     },
@@ -243,15 +252,21 @@ export default {
 
         trendOptions() {
             return {
-                chart: { type: 'area', toolbar: { show: false }, sparkline: { enabled: false } },
+                chart: { type: 'area', toolbar: { show: false }, zoom: { enabled: false } },
                 colors: ['#405189', '#0ab39c'],
-                fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05 } },
+                fill: {
+                    type: 'gradient',
+                    gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05, stops: [20, 100] },
+                },
                 stroke: { curve: 'smooth', width: 2 },
-                xaxis: { categories: this.trend.categories, labels: { style: { fontSize: '11px' } } },
+                xaxis: {
+                    categories: this.trend.categories,
+                    labels: { style: { fontSize: '11px' } },
+                },
                 yaxis: { labels: { style: { fontSize: '11px' } } },
                 tooltip: { shared: true, intersect: false },
-                legend: { position: 'top' },
-                grid: { borderColor: '#f1f1f1' },
+                legend: { position: 'top', fontSize: '12px' },
+                grid: { borderColor: '#f2f2f2', strokeDashArray: 4 },
                 dataLabels: { enabled: false },
             };
         },
@@ -264,45 +279,69 @@ export default {
                 labels: this.pie.labels,
                 colors: ['#0ab39c', '#f7b84b'],
                 legend: { position: 'bottom', fontSize: '12px' },
-                plotOptions: { pie: { donut: { size: '70%', labels: { show: true, total: { show: true, label: 'Total' } } } } },
-                dataLabels: { enabled: true, formatter: (v) => v.toFixed(1) + '%' },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '65%',
+                            labels: { show: true, total: { show: true, label: 'Total' } },
+                        },
+                    },
+                },
+                dataLabels: { enabled: true, formatter: v => v.toFixed(1) + '%' },
+                stroke: { width: 2 },
             };
         },
 
         pieSeries() { return this.pie.series; },
 
-        radarOptions() {
-            return {
-                chart: { type: 'radar', toolbar: { show: false } },
-                colors: ['#405189'],
-                labels: this.radar.labels,
-                fill: { opacity: 0.2 },
-                stroke: { width: 2 },
-                markers: { size: 4 },
-                yaxis: { show: false },
-                xaxis: { labels: { style: { fontSize: '11px' } } },
-            };
+        hbarHeight() {
+            const count = this.radar.labels.length || 6;
+            return Math.max(260, count * 38);
         },
 
-        radarSeries() {
-            return [{ name: 'Frekuensi', data: this.radar.series }];
-        },
-
-        barJenisOptions() {
+        hbarOptions() {
             return {
-                chart: { type: 'bar', toolbar: { show: false } },
+                chart: { type: 'bar', toolbar: { show: false }, zoom: { enabled: false } },
                 colors: PALETTE,
-                plotOptions: { bar: { distributed: true, borderRadius: 4, columnWidth: '55%' } },
-                xaxis: { categories: this.barJenis.categories, labels: { style: { fontSize: '10px' }, rotate: -30 } },
-                yaxis: { labels: { style: { fontSize: '11px' } } },
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        distributed: true,
+                        borderRadius: 5,
+                        barHeight: '58%',
+                        dataLabels: { position: 'right' },
+                    },
+                },
+                dataLabels: {
+                    enabled: true,
+                    offsetX: 6,
+                    style: { fontSize: '12px', fontWeight: '600', colors: ['#495057'] },
+                    formatter: v => v.toLocaleString('id-ID'),
+                },
+                xaxis: {
+                    categories: this.radar.labels,
+                    labels: { style: { fontSize: '11px' } },
+                },
+                yaxis: {
+                    labels: {
+                        style: { fontSize: '12px', fontWeight: '500', colors: ['#495057'] },
+                        maxWidth: 200,
+                    },
+                },
                 legend: { show: false },
-                dataLabels: { enabled: false },
-                grid: { borderColor: '#f1f1f1' },
+                grid: {
+                    borderColor: '#f2f2f2',
+                    xaxis: { lines: { show: true } },
+                    yaxis: { lines: { show: false } },
+                },
+                tooltip: {
+                    y: { formatter: v => v.toLocaleString('id-ID') + ' pengujian' },
+                },
             };
         },
 
-        barJenisSeries() {
-            return [{ name: 'Jumlah Uji', data: this.barJenis.data }];
+        hbarSeries() {
+            return [{ name: 'Jumlah Uji', data: this.radar.series }];
         },
     },
 
@@ -326,13 +365,11 @@ export default {
         },
 
         async fetchTat() {
-            this.loading.tat = true;
             try {
                 const res = await axios.get('/api/v1/dashboard/analyzer/kpi-tat');
                 const r = res.data?.result ?? {};
-                this.tat = { hours: r.hours ?? 0, minutes: r.minutes ?? 0, period: r.period ?? '' };
-            } catch { this.tat = { hours: 0, minutes: 0, period: '' }; }
-            finally { this.loading.tat = false; }
+                this.tat = { hours: r.hours ?? 0, minutes: r.minutes ?? 0 };
+            } catch { this.tat = { hours: 0, minutes: 0 }; }
         },
 
         async fetchTrend() {
@@ -340,10 +377,10 @@ export default {
             try {
                 const res = await axios.get('/api/v1/dashboard/grafik/jumlah-uji-perhari', { params: { days: this.trendDays } });
                 const r = res.data?.result ?? {};
-                // existing endpoint returns chartLineSeries / chartLineOptions
-                const cats = r.chartLineOptions?.xaxis?.categories ?? [];
-                const series = r.chartLineSeries ?? [];
-                this.trend = { categories: cats, series };
+                this.trend = {
+                    categories: r.chartLineOptions?.xaxis?.categories ?? [],
+                    series: r.chartLineSeries ?? [],
+                };
             } catch { this.trend = { categories: [], series: [] }; }
             finally { this.loading.trend = false; }
         },
@@ -369,13 +406,11 @@ export default {
                 const raw = r.chartBarSeries?.[0]?.data ?? [];
                 const labels = r.chartBarOptions?.labels ?? [];
                 this.radar = { series: raw, labels };
-                // reuse same data for bar
-                this.barJenis = { categories: labels, data: raw };
             } catch {
                 this.radar = { series: [], labels: [] };
-                this.barJenis = { categories: [], data: [] };
+            } finally {
+                this.loading.radar = false;
             }
-            finally { this.loading.radar = false; this.loading.barJenis = false; }
         },
 
         async fetchAktivitas() {
@@ -401,17 +436,30 @@ export default {
             this.fetchRadar();
             this.fetchAktivitas();
         },
+
+        startClock() {
+            this.clockTimer = setInterval(() => {
+                this.currentTime = new Date().toLocaleTimeString('id-ID', {
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                });
+            }, 1000);
+        },
     },
 
     mounted() {
         this.refreshAll();
+        this.startClock();
+    },
+
+    beforeUnmount() {
+        if (this.clockTimer) clearInterval(this.clockTimer);
     },
 };
 </script>
 
 <style scoped>
-/* ── Base ─────────────────────────────────────────────── */
-.az-page {
+/* ── Base ─────────────────────────────────────────────────── */
+.dlb-page {
     font-family: 'Inter', 'Segoe UI', sans-serif;
     color: #343a40;
     display: flex;
@@ -419,212 +467,497 @@ export default {
     gap: 20px;
 }
 
-/* ── Header ───────────────────────────────────────────── */
-.az-header {
+/* ── Hero ─────────────────────────────────────────────────── */
+.dlb-hero {
+    position: relative;
+    background: linear-gradient(135deg, #405189 0%, #2c3b74 55%, #19254d 100%);
+    border-radius: 16px;
+    overflow: hidden;
+    padding: 28px 32px;
+}
+
+.dlb-hero-dots {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
+}
+
+.dlb-hero-inner {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 12px;
-    padding: 20px 24px;
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 1px 6px rgba(64,81,137,.08);
-    border: 1px solid #e9ecef;
+    gap: 18px;
 }
 
-.az-header-left { display: flex; align-items: center; gap: 14px; }
-.az-header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-.az-header-icon {
-    width: 48px; height: 48px; border-radius: 13px;
-    background: rgba(64,81,137,.12); color: #405189;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px; flex-shrink: 0;
-}
-
-.az-header-title { font-size: 17px; font-weight: 700; color: #212529; margin: 0 0 3px; }
-.az-header-sub   { font-size: 12px; color: #878a99; margin: 0; }
-.az-header-date  { opacity: .75; }
-
-.az-tat-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 14px; background: rgba(64,81,137,.08);
-    border: 1px solid rgba(64,81,137,.2); border-radius: 20px;
-    font-size: 12px; font-weight: 600; color: #405189;
-}
-.az-tat-badge small { font-weight: 400; color: #878a99; font-size: 11px; }
-
-.az-refresh-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 8px 16px; background: #405189; color: #fff;
-    border: none; border-radius: 9px; font-size: 13px; font-weight: 600;
-    cursor: pointer; transition: background .2s;
-}
-.az-refresh-btn:hover:not(:disabled) { background: #35457b; }
-.az-refresh-btn:disabled { opacity: .6; cursor: not-allowed; }
-
-/* ── Section Label ────────────────────────────────────── */
-.az-section-label {
-    font-size: 12px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: .8px; color: #878a99;
-    display: flex; align-items: center; gap: 6px;
-    margin-bottom: -8px;
-}
-
-/* ── KPI Grid ─────────────────────────────────────────── */
-.az-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-}
-.az-kpi-grid-4 {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-}
-
-.az-kpi-card {
-    background: #fff;
-    border: 1px solid #e9ecef;
-    border-radius: 12px;
-    padding: 16px 18px;
+.dlb-hero-left {
     display: flex;
     align-items: center;
-    gap: 14px;
-    transition: box-shadow .2s, transform .2s;
-}
-.az-kpi-card:hover {
-    box-shadow: 0 4px 14px rgba(64,81,137,.1);
-    transform: translateY(-1px);
-}
-.az-kpi-icon {
-    width: 46px; height: 46px; border-radius: 11px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; flex-shrink: 0;
-}
-.az-kpi-body { flex: 1; min-width: 0; }
-.az-kpi-label { font-size: 12px; color: #878a99; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.az-kpi-value { font-size: 22px; font-weight: 700; line-height: 1.2; margin-bottom: 2px; }
-.az-kpi-sub   { font-size: 11px; color: #adb5bd; }
-
-/* ── Charts Layout ────────────────────────────────────── */
-.az-row-7-3 {
-    display: grid;
-    grid-template-columns: 7fr 3fr;
-    gap: 16px;
-}
-.az-row-half {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 18px;
 }
 
-/* ── Card ─────────────────────────────────────────────── */
-.az-card {
+.dlb-hero-icon-box {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    background: rgba(255,255,255,.15);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #fff;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,.2);
+}
+
+.dlb-hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,.9);
+    letter-spacing: .4px;
+    margin-bottom: 8px;
+}
+
+.dlb-hero-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 5px;
+    line-height: 1.2;
+}
+
+.dlb-hero-sub {
+    font-size: 13px;
+    color: rgba(255,255,255,.7);
+    margin: 0;
+}
+
+.dlb-hero-date {
+    opacity: .7;
+    font-size: 12px;
+}
+
+.dlb-hero-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.dlb-tat-pill,
+.dlb-clock-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 12px;
+    padding: 10px 16px;
+    backdrop-filter: blur(4px);
+}
+
+.dlb-pill-icon {
+    font-size: 20px;
+    color: rgba(255,255,255,.8);
+}
+
+.dlb-pill-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
+
+.dlb-pill-label {
+    font-size: 10px;
+    color: rgba(255,255,255,.6);
+    margin-top: 1px;
+}
+
+.dlb-refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 20px;
+    background: rgba(255,255,255,.15);
+    border: 1.5px solid rgba(255,255,255,.3);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+    backdrop-filter: blur(4px);
+}
+
+.dlb-refresh-btn:hover:not(:disabled) { background: rgba(255,255,255,.25); }
+.dlb-refresh-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ── Overview Strip ───────────────────────────────────────── */
+.dlb-strip-card {
     background: #fff;
     border: 1px solid #e9ecef;
-    border-radius: 12px;
+    border-radius: 14px;
+    box-shadow: 0 1px 5px rgba(64,81,137,.07);
     overflow: hidden;
 }
-.az-card-head {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    padding: 16px 20px 0; gap: 8px;
-}
-.az-card-title { font-size: 14px; font-weight: 700; color: #212529; }
-.az-card-sub   { font-size: 11px; color: #878a99; margin-top: 2px; }
-.az-card-body  { padding: 14px 20px 16px; }
-.az-card-body.az-no-pad { padding: 0; }
-.az-card-body.az-center { display: flex; justify-content: center; }
 
-/* ── Day Buttons ──────────────────────────────────────── */
-.az-day-btns { display: flex; gap: 4px; }
-.az-day-btn {
-    padding: 4px 10px; border: 1px solid #dee2e6; border-radius: 6px;
-    font-size: 11px; font-weight: 600; background: #fff; color: #878a99;
-    cursor: pointer; transition: .15s;
+.dlb-strip-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px;
+    border-bottom: 1px solid #f0f2f5;
+    font-size: 12px;
+    font-weight: 700;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: .7px;
 }
-.az-day-btn.active { background: #405189; color: #fff; border-color: #405189; }
 
-/* ── Table ────────────────────────────────────────────── */
-.az-table-wrap { overflow-x: auto; }
-.az-table {
-    width: 100%; border-collapse: collapse;
+.dlb-strip-period {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #adb5bd;
+}
+
+.dlb-strip-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+}
+
+.dlb-strip-col {
+    padding: 18px 16px;
+    border-right: 1px solid #f0f2f5;
+    position: relative;
+    transition: background .15s;
+}
+
+.dlb-strip-col:last-child { border-right: none; }
+
+.dlb-strip-col::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--dlb-sc, #405189);
+    border-radius: 0 0 3px 3px;
+}
+
+.dlb-strip-col:hover { background: #fafbff; }
+
+.dlb-strip-icon-row {
+    margin-bottom: 8px;
+}
+
+.dlb-strip-icon {
+    font-size: 18px;
+    color: var(--dlb-sc, #405189);
+    opacity: .85;
+}
+
+.dlb-strip-value {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--dlb-sc, #405189);
+    line-height: 1;
+    margin-bottom: 5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.dlb-strip-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #495057;
+    line-height: 1.3;
+    margin-bottom: 2px;
+}
+
+.dlb-strip-sub {
+    font-size: 10px;
+    color: #adb5bd;
+}
+
+.dlb-strip-sk { pointer-events: none; }
+
+/* ── Charts Layout ────────────────────────────────────────── */
+.dlb-row-7-3 {
+    display: grid;
+    grid-template-columns: 7fr 3fr;
+    gap: 18px;
+}
+
+.dlb-row-half {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+/* ── Card ─────────────────────────────────────────────────── */
+.dlb-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 5px rgba(64,81,137,.06);
+}
+
+.dlb-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 18px 20px 0;
+    gap: 10px;
+}
+
+.dlb-card-title { font-size: 14px; font-weight: 700; color: #212529; margin-bottom: 2px; }
+.dlb-card-sub   { font-size: 11px; color: #878a99; }
+.dlb-card-body  { padding: 14px 20px 18px; }
+.dlb-card-body.dlb-no-pad { padding: 0; }
+.dlb-card-body.dlb-center { display: flex; justify-content: center; align-items: center; }
+
+/* ── Day Buttons ──────────────────────────────────────────── */
+.dlb-day-btns { display: flex; gap: 4px; flex-shrink: 0; }
+.dlb-day-btn {
+    padding: 4px 11px;
+    border: 1px solid #dee2e6;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #fff;
+    color: #878a99;
+    cursor: pointer;
+    transition: .15s;
+}
+.dlb-day-btn.active { background: #405189; color: #fff; border-color: #405189; }
+.dlb-day-btn:hover:not(.active) { background: #f8f9fa; }
+
+/* ── Section Label ────────────────────────────────────────── */
+.dlb-section-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: #878a99;
+    margin-bottom: -4px;
+}
+
+/* ── All-time Cards ───────────────────────────────────────── */
+.dlb-alltime-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.dlb-alltime-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 14px;
+    padding: 24px 16px 20px;
+    text-align: center;
+    transition: box-shadow .2s, transform .2s;
+    box-shadow: 0 1px 5px rgba(64,81,137,.06);
+}
+.dlb-alltime-card:hover {
+    box-shadow: 0 6px 18px rgba(64,81,137,.1);
+    transform: translateY(-2px);
+}
+
+.dlb-alltime-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    margin: 0 auto 14px;
+}
+
+.dlb-alltime-value {
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 6px;
+    font-variant-numeric: tabular-nums;
+}
+
+.dlb-alltime-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 3px;
+}
+
+.dlb-alltime-sub {
+    font-size: 11px;
+    color: #adb5bd;
+}
+
+/* ── Count Badge ──────────────────────────────────────────── */
+.dlb-count-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: rgba(64,81,137,.08);
+    color: #405189;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+/* ── Table ────────────────────────────────────────────────── */
+.dlb-table-wrap { overflow-x: auto; }
+.dlb-table {
+    width: 100%;
+    border-collapse: collapse;
     font-size: 13px;
 }
-.az-table thead tr { background: #f8f9fc; border-bottom: 1px solid #e9ecef; }
-.az-table th {
-    padding: 10px 16px; text-align: left;
-    font-size: 11px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: .6px; color: #878a99; white-space: nowrap;
+.dlb-table thead tr { border-bottom: 2px solid #e9ecef; background: #f8f9fc; }
+.dlb-table th {
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: #878a99;
+    white-space: nowrap;
 }
-.az-table tbody tr { border-bottom: 1px solid #f0f2f5; transition: background .15s; }
-.az-table tbody tr:last-child { border-bottom: none; }
-.az-table tbody tr:hover { background: #f8f9fc; }
-.az-table td { padding: 11px 16px; color: #495057; vertical-align: middle; }
+.dlb-table td { padding: 11px 16px; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
+.dlb-table tbody tr:last-child td { border-bottom: none; }
+.dlb-table tbody tr:hover { background: #f8f9fc; }
 
-.az-mono { font-family: 'Courier New', monospace; font-size: 12px; }
-.az-text-muted { color: #878a99; font-size: 12px; }
+.dlb-code { font-family: 'Courier New', monospace; font-size: 12px; color: #6c757d; }
+.dlb-muted { color: #878a99; font-size: 12px; }
 
-.az-badge-jenis {
-    display: inline-block; padding: 3px 8px;
+.dlb-badge-sampel {
+    display: inline-block; padding: 3px 9px;
     background: rgba(64,81,137,.1); color: #405189;
-    border-radius: 5px; font-size: 11px; font-weight: 600;
+    border-radius: 6px; font-size: 12px; font-weight: 600; font-family: monospace;
 }
-.az-badge-user {
-    display: inline-block; padding: 3px 8px;
+.dlb-badge-jenis {
+    display: inline-block; padding: 3px 9px;
+    background: rgba(64,81,137,.08); color: #405189;
+    border-radius: 6px; font-size: 11px; font-weight: 600;
+}
+.dlb-badge-user {
+    display: inline-block; padding: 3px 9px;
     background: rgba(10,179,156,.1); color: #0ab39c;
-    border-radius: 5px; font-size: 11px; font-weight: 600;
+    border-radius: 20px; font-size: 11px; font-weight: 600;
 }
 
-.az-empty-row {
-    text-align: center; padding: 32px; color: #adb5bd; font-size: 13px;
+.dlb-empty {
+    text-align: center;
+    padding: 40px;
+    color: #adb5bd;
+}
+.dlb-empty i { font-size: 36px; display: block; margin-bottom: 8px; }
+.dlb-empty p { font-size: 13px; margin: 0; }
+
+/* ── Skeleton / Shimmer ───────────────────────────────────── */
+@keyframes dlb-shimmer {
+    0%   { background-position: -600px 0; }
+    100% { background-position:  600px 0; }
 }
 
-/* ── Skeleton ─────────────────────────────────────────── */
-@keyframes az-shimmer {
-    0%   { background-position: -400px 0; }
-    100% { background-position:  400px 0; }
-}
-.az-shimmer {
+.dlb-shimmer {
     background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
-    background-size: 800px 100%;
-    animation: az-shimmer 1.5s infinite linear;
-    border-radius: 4px;
+    background-size: 1200px 100%;
+    animation: dlb-shimmer 1.5s infinite linear;
+    border-radius: 6px;
 }
-.az-sk.az-kpi-card { pointer-events: none; }
-.az-sk-icon { width: 46px; height: 46px; border-radius: 11px; flex-shrink: 0; }
-.az-sk-line { height: 13px; }
-.az-sk-line.w60 { width: 60%; }
-.az-sk-line.w40 { width: 40%; }
-.az-sk-line.w50 { width: 50%; }
+
+.dlb-sk-line { height: 13px; border-radius: 4px; display: block; }
+.w40 { width: 40%; }
+.w50 { width: 50%; }
+.w60 { width: 60%; }
+.w70 { width: 70%; }
 .mb2 { margin-bottom: 8px; }
-.az-chart-sk { height: 260px; border-radius: 8px; }
-.az-donut-sk  { width: 200px; height: 200px; border-radius: 50%; align-self: center; }
-.az-table-sk { padding: 8px 0; }
-.az-table-sk-row { height: 46px; margin: 2px 0; border-radius: 0; }
 
-/* ── Spinner ──────────────────────────────────────────── */
-@keyframes az-spin { to { transform: rotate(360deg); } }
-.az-spin { display: inline-block; animation: az-spin .7s linear infinite; }
+.dlb-chart-sk  { height: 270px; border-radius: 8px; }
+.dlb-donut-sk  { width: 210px; height: 210px; border-radius: 50%; }
+.dlb-sk-circle { width: 56px; height: 56px; border-radius: 14px; margin: 0 auto; }
 
-/* ── Responsive ───────────────────────────────────────── */
+.dlb-sk-row {
+    height: 48px;
+    margin: 0;
+    border-bottom: 1px solid #f8f9fc;
+    border-radius: 0;
+}
+
+/* ── Spinner ──────────────────────────────────────────────── */
+@keyframes dlb-spin { to { transform: rotate(360deg); } }
+.dlb-spin { display: inline-block; animation: dlb-spin .75s linear infinite; }
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 1400px) {
+    .dlb-strip-grid { grid-template-columns: repeat(3, 1fr); }
+    .dlb-strip-col:nth-child(3) { border-right: none; }
+    .dlb-strip-col:nth-child(4) { border-top: 1px solid #f0f2f5; }
+    .dlb-strip-col:nth-child(5) { border-top: 1px solid #f0f2f5; }
+    .dlb-strip-col:nth-child(6) { border-top: 1px solid #f0f2f5; border-right: none; }
+}
+
 @media (max-width: 1100px) {
-    .az-kpi-grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .dlb-alltime-grid { grid-template-columns: repeat(2, 1fr); }
 }
-@media (max-width: 900px) {
-    .az-row-7-3  { grid-template-columns: 1fr; }
-    .az-row-half { grid-template-columns: 1fr; }
+
+@media (max-width: 992px) {
+    .dlb-row-7-3  { grid-template-columns: 1fr; }
+    .dlb-row-half { grid-template-columns: 1fr; }
+    .dlb-hero { padding: 22px 22px; }
+    .dlb-hero-title { font-size: 18px; }
 }
-@media (max-width: 700px) {
-    .az-kpi-grid  { grid-template-columns: repeat(2, 1fr); }
-    .az-kpi-grid-4 { grid-template-columns: repeat(2, 1fr); }
-    .az-header { padding: 14px 16px; }
-    .az-header-title { font-size: 15px; }
-    .az-tat-badge small { display: none; }
+
+@media (max-width: 768px) {
+    .dlb-strip-grid { grid-template-columns: repeat(2, 1fr); }
+    .dlb-strip-col { border-right: 1px solid #f0f2f5 !important; border-top: 1px solid #f0f2f5; }
+    .dlb-strip-col:nth-child(odd)  { border-right: 1px solid #f0f2f5 !important; }
+    .dlb-strip-col:nth-child(even) { border-right: none !important; }
+    .dlb-strip-col:nth-child(1),
+    .dlb-strip-col:nth-child(2)    { border-top: none; }
+    .dlb-hero-right { gap: 8px; }
+    .dlb-tat-pill, .dlb-clock-pill { padding: 8px 12px; }
+    .dlb-pill-value { font-size: 13px; }
 }
+
+@media (max-width: 576px) {
+    .dlb-strip-grid { grid-template-columns: 1fr 1fr; }
+    .dlb-alltime-grid { grid-template-columns: 1fr 1fr; }
+    .dlb-hero { padding: 18px 16px; }
+    .dlb-hero-left { gap: 12px; }
+    .dlb-hero-icon-box { width: 48px; height: 48px; font-size: 22px; }
+    .dlb-hero-title { font-size: 16px; }
+    .dlb-hero-right { width: 100%; }
+    .dlb-tat-pill, .dlb-clock-pill { flex: 1; }
+    .dlb-refresh-btn { width: 100%; justify-content: center; }
+    .dlb-clock-pill { display: none; }
+    .dlb-strip-value { font-size: 22px; }
+}
+
 @media (max-width: 420px) {
-    .az-kpi-grid  { grid-template-columns: 1fr; }
-    .az-kpi-grid-4 { grid-template-columns: 1fr; }
+    .dlb-strip-grid   { grid-template-columns: 1fr; }
+    .dlb-alltime-grid { grid-template-columns: 1fr; }
+    .dlb-strip-col { border-right: none !important; }
 }
 </style>

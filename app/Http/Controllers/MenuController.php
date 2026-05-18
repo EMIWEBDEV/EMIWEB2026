@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Menu;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use Vinkla\Hashids\Facades\Hashids;
 
 class MenuController extends Controller
@@ -158,12 +159,39 @@ class MenuController extends Controller
     /**
      * Store a newly created resource in storage.
      */
+    public function getStats()
+    {
+        try {
+            $total   = DB::table('N_EMI_LAB_Menus')->count();
+            $withUrl = DB::table('N_EMI_LAB_Menus')
+                ->whereNotNull('Url_Menu')
+                ->where('Url_Menu', '<>', '')
+                ->count();
+
+            return response()->json([
+                'success' => true,
+                'status'  => 200,
+                'data'    => [
+                    'total'      => $total,
+                    'withUrl'    => $withUrl,
+                    'withoutUrl' => $total - $withUrl,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'status'  => 500,
+                'message' => 'Terjadi Kesalahan',
+            ], 500);
+        }
+    }
+
     public function store(Request $request)
     {
         $request->validate([
             'Nama_Menu' => 'required',
             'Icon_Menu' => 'required',
-            'Url_Menu' => 'required'
+            'Url_Menu'  => 'required',
         ]);
 
         DB::beginTransaction();
@@ -171,29 +199,28 @@ class MenuController extends Controller
         try {
             $payload = [
                 'Kode_Perusahaan' => '001',
-                'Nama_Menu' => $request->Nama_Menu,
-                'Icon_Menu' => $request->Icon_Menu,
-                'Nama_Header' => $request->Nama_Header,
-                'Sub_Header' => $request->Sub_Header,
-                'Sub_Sub_Header' => $request->Sub_Sub_Header,
+                'Nama_Menu'       => $request->Nama_Menu,
+                'Icon_Menu'       => $request->Icon_Menu,
+                'Url_Menu'        => $request->Url_Menu,
+                'Nama_Header'     => $request->Nama_Header ?: null,
+                'Sub_Header'      => $request->Sub_Header ?: null,
+                'Sub_Sub_Header'  => $request->Sub_Sub_Header ?: null,
             ];
 
             DB::table('N_EMI_LAB_Menus')->insert($payload);
             DB::commit();
             return response()->json([
-                'success' => true, 
-                'status' => 201,
-                'message' => 'Data Berhasil Disimpan'
+                'success' => true,
+                'status'  => 201,
+                'message' => 'Data Berhasil Disimpan',
             ], 201);
 
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'status' => 500,
-                'message' => [
-                    'error' => $e->getMessage()
-                ]
+                'status'  => 500,
+                'message' => ['error' => $e->getMessage()],
             ], 500);
         }
     }
@@ -230,9 +257,12 @@ class MenuController extends Controller
 
         try {
             $payload = [
-                'Nama_Menu' => $request->Nama_Menu,
-                'Icon_Menu' => $request->Icon_Menu,
-                'Url_Menu' => $request->Url_Menu,
+                'Nama_Menu'      => $request->Nama_Menu,
+                'Icon_Menu'      => $request->Icon_Menu,
+                'Url_Menu'       => $request->Url_Menu,
+                'Nama_Header'    => $request->Nama_Header ?: null,
+                'Sub_Header'     => $request->Sub_Header ?: null,
+                'Sub_Sub_Header' => $request->Sub_Sub_Header ?: null,
             ];
 
             DB::table('N_EMI_LAB_Menus')->where('Id_Menu', $Id_Menu)->update($payload);

@@ -1148,6 +1148,89 @@ class DashboardController extends Controller
         ]);
     }
 
+    /**
+     * Combined endpoint: KPI bulanan + status keseluruhan + alert counts
+     * Menggabungkan getKpiAtasanBulanan + getStatusOverallAtasan dalam 1 request
+     * untuk mengurangi round-trip saat halaman pertama dimuat.
+     */
+    public function getKpiDanStatusAtasan()
+    {
+        $bulanIni = Carbon::now()->month;
+        $tahunIni = Carbon::now()->year;
+        $monthNames = ['','Januari','Februari','Maret','April','Mei','Juni',
+            'Juli','Agustus','September','Oktober','November','Desember'];
+
+        // Semua agregat sampel PO dalam satu query
+        $sampel = DB::table('N_EMI_LAB_PO_Sampel')
+            ->whereNull('Status')
+            ->selectRaw("
+                COUNT(*)                                                    as total_all,
+                COUNT(CASE WHEN MONTH(Tanggal) = ? AND YEAR(Tanggal) = ? THEN 1 END) as total_bulan,
+                COUNT(CASE WHEN Flag_Selesai = 'Y' AND MONTH(Tanggal) = ? AND YEAR(Tanggal) = ? THEN 1 END) as selesai_bulan,
+                COUNT(CASE WHEN Flag_Trial_Produksi = 'Y' AND MONTH(Tanggal) = ? AND YEAR(Tanggal) = ? THEN 1 END) as trial_bulan,
+                COUNT(CASE WHEN Flag_Selesai = 'Y' THEN 1 END)             as selesai_all,
+                COUNT(CASE WHEN Flag_Trial_Produksi = 'Y' THEN 1 END)      as trial_all,
+                COUNT(CASE WHEN Flag_Close_Po = 'Y' THEN 1 END)            as close_po_all
+            ", [$bulanIni, $tahunIni, $bulanIni, $tahunIni, $bulanIni, $tahunIni])
+            ->first();
+
+        // Agregat uji sampel bulan ini
+        $uji = DB::table('N_EMI_LAB_Uji_Sampel')
+            ->whereNull('Status')
+            ->where('Flag_Selesai', 'Y')
+            ->whereMonth('Tanggal', $bulanIni)
+            ->whereYear('Tanggal', $tahunIni)
+            ->selectRaw("COUNT(*) as total, COUNT(CASE WHEN Flag_Layak = 'Y' THEN 1 END) as layak")
+            ->first();
+
+        // Rata-rata TAT (join sekali, filter bulan ini)
+        $tatRow = DB::table('N_EMI_LAB_Uji_Sampel as uji')
+            ->join('N_EMI_LAB_PO_Sampel as po', 'uji.No_Po_Sampel', '=', 'po.No_Sampel')
+            ->where('uji.Flag_Selesai', 'Y')
+            ->whereNull('uji.Status')
+            ->whereMonth('uji.Tanggal', $bulanIni)
+            ->whereYear('uji.Tanggal', $tahunIni)
+            ->selectRaw("AVG(CAST(DATEDIFF(minute, po.Tanggal, uji.Tanggal) AS BIGINT)) as avg_tat")
+            ->first();
+
+        // Validasi final bulan ini
+        $validasi = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
+            ->whereMonth('Tanggal', $bulanIni)
+            ->whereYear('Tanggal', $tahunIni)
+            ->selectRaw("COUNT(*) as total, COUNT(CASE WHEN Flag_Ok='Y' THEN 1 END) as ok, COUNT(CASE WHEN Flag_FG='Y' THEN 1 END) as fg")
+            ->first();
+
+        $passRate = ($uji->total ?? 0) > 0 ? round(($uji->layak / $uji->total) * 100, 1) : 0;
+        $tatMin   = (int)($tatRow->avg_tat ?? 0);
+        $totalAll = (int)($sampel->total_all ?? 0);
+        $selesaiAll = (int)($sampel->selesai_all ?? 0);
+        $pendingAll = max(0, $totalAll - $selesaiAll);
+
+        return response()->json([
+            'status' => 200,
+            'result' => [
+                'periode'          => $monthNames[$bulanIni] . ' ' . $tahunIni,
+                // KPI Bulan Ini
+                'sampel_bulan_ini' => (int)($sampel->total_bulan   ?? 0),
+                'sampel_selesai'   => (int)($sampel->selesai_bulan ?? 0),
+                'sampel_trial'     => (int)($sampel->trial_bulan   ?? 0),
+                'uji_selesai'      => (int)($uji->total            ?? 0),
+                'pass_rate_pct'    => $passRate,
+                'tat_hours'        => (int)floor($tatMin / 60),
+                'tat_minutes'      => (int)($tatMin % 60),
+                'validasi_bulan'   => (int)($validasi->total ?? 0),
+                'validasi_ok'      => (int)($validasi->ok    ?? 0),
+                'validasi_fg'      => (int)($validasi->fg    ?? 0),
+                // Status Keseluruhan (all-time)
+                'total_all'        => $totalAll,
+                'selesai_all'      => $selesaiAll,
+                'pending_all'      => $pendingAll,
+                'trial_all'        => (int)($sampel->trial_all   ?? 0),
+                'close_po_all'     => (int)($sampel->close_po_all ?? 0),
+            ],
+        ]);
+    }
+
     public function getKpiAtasanBulanan()
     {
         $bulanIni = Carbon::now()->month;

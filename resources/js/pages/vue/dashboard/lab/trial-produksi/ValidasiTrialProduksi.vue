@@ -7,9 +7,12 @@
             <div class="vld-topbar-left">
                 <i class="ri-test-tube-line vld-topbar-icon"></i>
                 <div>
-                    <span class="vld-topbar-title">Validasi Trial Produksi</span>
+                    <span class="vld-topbar-title"
+                        >Validasi Trial Produksi</span
+                    >
                     <span class="vld-topbar-sub"
-                        >Konfirmasi data uji trial produksi sebelum finalisasi</span
+                        >Konfirmasi data uji trial produksi sebelum
+                        finalisasi</span
                     >
                 </div>
             </div>
@@ -101,79 +104,130 @@
 
                     <!-- Items -->
                     <div v-else>
-                        <button
+                        <div
                             v-for="(item, idx) in listData"
                             :key="idx"
-                            @click="selectItem(item)"
-                            class="vld-item"
-                            :class="{
-                                'vld-item--active': isSelected(item),
-                                'vld-item--lolos':
-                                    item.Status_Sampel === 'Lolos Uji',
-                                'vld-item--tidak':
-                                    item.Status_Sampel === 'Tidak Lolos Uji',
-                            }"
+                            class="vld-item-wrap"
                         >
-                            <div class="vld-item-accent"></div>
-                            <div class="vld-item-body">
-                                <div class="vld-item-top">
-                                    <span class="vld-item-title">{{
-                                        item.Jenis_Analisa
-                                    }}</span>
-                                    <span
-                                        class="vld-badge"
-                                        :class="
-                                            item.Status_Sampel === 'Lolos Uji'
-                                                ? 'vld-badge--success'
-                                                : 'vld-badge--danger'
-                                        "
-                                    >
-                                        {{
-                                            item.Status_Sampel === "Lolos Uji"
-                                                ? "Lolos"
-                                                : "Tidak Lolos"
-                                        }}
-                                    </span>
+                            <input
+                                type="checkbox"
+                                class="vld-item-checkbox"
+                                :checked="isSelectedBulk(item)"
+                                @change="toggleBulkSelect(item)"
+                                @click.stop
+                            />
+                            <button
+                                @click="selectItem(item)"
+                                class="vld-item"
+                                :class="{
+                                    'vld-item--active': isSelected(item),
+                                    'vld-item--checked': isSelectedBulk(item),
+                                    'vld-item--lolos':
+                                        item.Status_Sampel === 'Lolos Uji',
+                                    'vld-item--tidak':
+                                        item.Status_Sampel ===
+                                        'Tidak Lolos Uji',
+                                }"
+                            >
+                                <div class="vld-item-accent"></div>
+                                <div class="vld-item-body">
+                                    <div class="vld-item-top">
+                                        <span class="vld-item-title">{{
+                                            item.Jenis_Analisa
+                                        }}</span>
+                                        <span
+                                            class="vld-badge"
+                                            :class="
+                                                item.Status_Sampel ===
+                                                'Lolos Uji'
+                                                    ? 'vld-badge--success'
+                                                    : 'vld-badge--danger'
+                                            "
+                                        >
+                                            {{
+                                                item.Status_Sampel ===
+                                                "Lolos Uji"
+                                                    ? "Lolos"
+                                                    : "Tidak Lolos"
+                                            }}
+                                        </span>
+                                    </div>
+                                    <div class="vld-item-sub">
+                                        {{ item.po_info?.Kode_Barang || "" }}
+                                        <template v-if="item.Nama_Barang">
+                                            — {{ item.Nama_Barang }}</template
+                                        >
+                                    </div>
+                                    <div class="vld-item-meta">
+                                        <code class="vld-code">{{
+                                            item.No_Po_Sampel
+                                        }}</code>
+                                        <span
+                                            class="vld-chip"
+                                            :class="
+                                                item.Flag_Multi_QrCode === 'Y'
+                                                    ? 'vld-chip--blue'
+                                                    : 'vld-chip--gray'
+                                            "
+                                        >
+                                            <i class="ri-qr-code-line"></i>
+                                            {{
+                                                item.Flag_Multi_QrCode === "Y"
+                                                    ? "Multi"
+                                                    : "Single"
+                                            }}
+                                        </span>
+                                        <span class="vld-chip vld-chip--orange">
+                                            <i class="ri-test-tube-line"></i>
+                                            Trial
+                                        </span>
+                                        <span
+                                            class="vld-chip vld-chip--gray"
+                                            v-if="item.Tanggal"
+                                        >
+                                            <i class="ri-calendar-line"></i
+                                            >{{ formatTanggal(item.Tanggal) }}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div class="vld-item-sub">
-                                    {{ item.po_info?.Kode_Barang || "" }}
-                                    <template v-if="item.Nama_Barang">
-                                        — {{ item.Nama_Barang }}</template
-                                    >
-                                </div>
-                                <div class="vld-item-meta">
-                                    <code class="vld-code">{{
-                                        item.No_Po_Sampel
-                                    }}</code>
-                                    <span
-                                        class="vld-chip"
-                                        :class="
-                                            item.Flag_Multi_QrCode === 'Y'
-                                                ? 'vld-chip--blue'
-                                                : 'vld-chip--gray'
-                                        "
-                                    >
-                                        <i class="ri-qr-code-line"></i>
-                                        {{
-                                            item.Flag_Multi_QrCode === "Y"
-                                                ? "Multi"
-                                                : "Single"
-                                        }}
-                                    </span>
-                                    <span class="vld-chip vld-chip--orange">
-                                        <i class="ri-test-tube-line"></i>
-                                        Trial
-                                    </span>
-                                    <span
-                                        class="vld-chip vld-chip--gray"
-                                        v-if="item.Tanggal"
-                                    >
-                                        <i class="ri-calendar-line"></i
-                                        >{{ formatTanggal(item.Tanggal) }}
-                                    </span>
-                                </div>
-                            </div>
-                            <i class="ri-arrow-right-s-line vld-item-arrow"></i>
+                                <i
+                                    class="ri-arrow-right-s-line vld-item-arrow"
+                                ></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bulk action bar -->
+                <div v-if="selectedItems.length > 0" class="vld-bulk-bar">
+                    <span class="vld-bulk-count"
+                        ><i class="ri-checkbox-multiple-line me-1"></i
+                        >{{ selectedItems.length }} analisa dipilih</span
+                    >
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button
+                            class="btn btn-sm btn-light"
+                            @click="selectedItems = []"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            class="btn btn-sm fw-semibold"
+                            style="
+                                background: #0ea5e9;
+                                color: #fff;
+                                border: none;
+                            "
+                            @click="openBulkModal"
+                        >
+                            <i class="ri-refresh-line me-1"></i>Resampling
+                        </button>
+                        <button
+                            class="btn btn-sm btn-primary fw-semibold"
+                            @click="openBulkSimpanModal"
+                        >
+                            <i class="ri-check-double-line me-1"></i>Simpan
+                            Validasi
                         </button>
                     </div>
                 </div>
@@ -313,7 +367,8 @@
                                         {{ selectedItem.Status_Sampel }}
                                     </span>
                                     <span class="vld-badge vld-badge--orange">
-                                        <i class="ri-test-tube-line me-1"></i>Trial Produksi
+                                        <i class="ri-test-tube-line me-1"></i
+                                        >Trial Produksi
                                     </span>
                                 </div>
                             </div>
@@ -1075,6 +1130,349 @@
             </div>
         </div>
     </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- RESAMPLING MODAL (pilih sub sampel per analisa)               -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div
+        class="modal fade"
+        id="bulkValidasiTrialModal"
+        tabindex="-1"
+        aria-hidden="true"
+    >
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div
+                    class="modal-header bg-info bg-opacity-10 border-info border-opacity-25"
+                >
+                    <h5 class="modal-title fw-bold">
+                        <i class="ri-refresh-line me-2 text-info"></i>
+                        Resampling Analisa
+                        <span class="badge bg-info text-white ms-2">{{
+                            selectedItems.length
+                        }}</span>
+                    </h5>
+                    <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                    ></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Loading sub-PO -->
+                    <div
+                        v-if="loading.bulkSubPo"
+                        class="text-center py-4 text-muted"
+                    >
+                        <div
+                            class="spinner-border spinner-border-sm text-info me-2"
+                        ></div>
+                        Memuat opsi sub sampel...
+                    </div>
+
+                    <template v-else>
+                        <p class="text-muted small mb-3">
+                            <i class="ri-information-line me-1 text-info"></i>
+                            Untuk item <strong>Multi QR</strong>, pilih nomor
+                            sub sampel yang akan diresampling.
+                        </p>
+                        <div
+                            v-for="(item, idx) in selectedItems"
+                            :key="idx"
+                            class="border rounded-3 p-3 mb-3"
+                            :class="
+                                item.Flag_Multi_QrCode === 'Y'
+                                    ? 'border-info border-opacity-50 bg-info bg-opacity-10'
+                                    : 'border-secondary border-opacity-25'
+                            "
+                        >
+                            <div class="d-flex align-items-start gap-3">
+                                <div
+                                    class="rounded-circle bg-info bg-opacity-25 d-flex align-items-center justify-content-center flex-shrink-0"
+                                    style="width: 36px; height: 36px"
+                                >
+                                    <i class="ri-refresh-line text-info"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold">
+                                        {{ item.Jenis_Analisa }}
+                                    </div>
+                                    <div class="d-flex gap-2 flex-wrap mt-1">
+                                        <code
+                                            class="small bg-light px-2 py-1 rounded"
+                                            >{{ item.No_Po_Sampel }}</code
+                                        >
+                                        <span
+                                            class="badge"
+                                            :class="
+                                                item.Flag_Multi_QrCode === 'Y'
+                                                    ? 'bg-primary-subtle text-primary'
+                                                    : 'bg-secondary-subtle text-secondary'
+                                            "
+                                        >
+                                            <i class="ri-qr-code-line me-1"></i
+                                            >{{
+                                                item.Flag_Multi_QrCode === "Y"
+                                                    ? "Multi QR"
+                                                    : "Single QR"
+                                            }}
+                                        </span>
+                                        <span
+                                            class="badge"
+                                            :class="
+                                                item.Status_Sampel ===
+                                                'Lolos Uji'
+                                                    ? 'bg-success-subtle text-success'
+                                                    : 'bg-danger-subtle text-danger'
+                                            "
+                                        >
+                                            {{ item.Status_Sampel }}
+                                        </span>
+                                    </div>
+
+                                    <!-- Sub-PO selector for Multi QR -->
+                                    <div
+                                        v-if="item.Flag_Multi_QrCode === 'Y'"
+                                        class="mt-2"
+                                    >
+                                        <label
+                                            class="form-label small fw-semibold mb-1"
+                                        >
+                                            <i
+                                                class="ri-list-check me-1 text-info"
+                                            ></i>
+                                            Pilih No. Sub Sampel untuk
+                                            Resampling:
+                                        </label>
+                                        <select
+                                            class="form-select form-select-sm"
+                                            v-model="
+                                                bulkSubPoSelected[
+                                                    item.No_Po_Sampel +
+                                                        '|' +
+                                                        item.Id_Jenis_Analisa
+                                                ]
+                                            "
+                                        >
+                                            <option :value="undefined" disabled>
+                                                — Pilih Sub Sampel —
+                                            </option>
+                                            <option
+                                                v-for="sub in bulkSubPoMap[
+                                                    item.No_Po_Sampel +
+                                                        '|' +
+                                                        item.Id_Jenis_Analisa
+                                                ] || []"
+                                                :key="sub.No_Fak_Sub_Po"
+                                                :value="sub.No_Fak_Sub_Po"
+                                            >
+                                                {{ sub.No_Fak_Sub_Po }}
+                                            </option>
+                                        </select>
+                                        <div
+                                            v-if="
+                                                !(
+                                                    bulkSubPoMap[
+                                                        item.No_Po_Sampel +
+                                                            '|' +
+                                                            item.Id_Jenis_Analisa
+                                                    ] || []
+                                                ).length
+                                            "
+                                            class="text-danger small mt-1"
+                                        >
+                                            <i
+                                                class="ri-error-warning-line me-1"
+                                            ></i>
+                                            Tidak ada sub sampel tersedia.
+                                        </div>
+                                    </div>
+                                    <div v-else class="mt-1 text-muted small">
+                                        <i class="ri-information-line me-1"></i>
+                                        Single QR — tidak memerlukan pilihan sub
+                                        sampel
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <div class="modal-footer">
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-info text-white fw-semibold"
+                        :disabled="
+                            !canSubmitBulk ||
+                            loading.bulkSubmit ||
+                            loading.bulkSubPo
+                        "
+                        @click="submitBulk"
+                    >
+                        <span
+                            v-if="loading.bulkSubmit"
+                            class="spinner-border spinner-border-sm me-1"
+                        ></span>
+                        <i v-else class="ri-refresh-line me-1"></i>
+                        Resampling {{ selectedItems.length }} Analisa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- SIMPAN VALIDASI MODAL (konfirmasi langsung tanpa pilih sub)   -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div
+        class="modal fade"
+        id="bulkSimpanValidasiTrialModal"
+        tabindex="-1"
+        aria-hidden="true"
+    >
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+                <div
+                    class="modal-header bg-warning bg-opacity-10 border-warning border-opacity-25"
+                >
+                    <h5 class="modal-title fw-bold">
+                        <i class="ri-check-double-line me-2 text-warning"></i>
+                        Simpan Validasi
+                        <span class="badge bg-warning text-dark ms-2">{{
+                            selectedItems.length
+                        }}</span>
+                    </h5>
+                    <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                    ></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        <i class="ri-information-line me-1 text-warning"></i>
+                        Analisa berikut akan disimpan sebagai
+                        <strong>hasil validasi</strong>. Untuk item Multi QR,
+                        semua sub sampel pada analisa tersebut akan divalidasi
+                        sekaligus.
+                    </p>
+                    <div
+                        v-for="(item, idx) in selectedItems"
+                        :key="idx"
+                        class="border rounded-3 p-3 mb-2 d-flex align-items-start gap-3"
+                        :class="
+                            item.Flag_Multi_QrCode === 'Y'
+                                ? 'border-warning border-opacity-50 bg-warning bg-opacity-10'
+                                : 'border-secondary border-opacity-25'
+                        "
+                    >
+                        <div
+                            class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                            :class="
+                                item.Flag_Multi_QrCode === 'Y'
+                                    ? 'bg-warning bg-opacity-25'
+                                    : 'bg-success bg-opacity-10'
+                            "
+                            style="width: 36px; height: 36px"
+                        >
+                            <i
+                                :class="
+                                    item.Flag_Multi_QrCode === 'Y'
+                                        ? 'ri-layers-line text-warning'
+                                        : 'ri-check-line text-success'
+                                "
+                            ></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold small">
+                                {{ item.Jenis_Analisa }}
+                            </div>
+                            <div class="d-flex gap-2 flex-wrap mt-1">
+                                <code
+                                    class="small bg-light px-2 py-1 rounded"
+                                    >{{ item.No_Po_Sampel }}</code
+                                >
+                                <span
+                                    class="badge"
+                                    :class="
+                                        item.Flag_Multi_QrCode === 'Y'
+                                            ? 'bg-primary-subtle text-primary'
+                                            : 'bg-secondary-subtle text-secondary'
+                                    "
+                                >
+                                    <i class="ri-qr-code-line me-1"></i
+                                    >{{
+                                        item.Flag_Multi_QrCode === "Y"
+                                            ? "Multi QR"
+                                            : "Single QR"
+                                    }}
+                                </span>
+                                <span
+                                    class="badge"
+                                    :class="
+                                        item.Status_Sampel === 'Lolos Uji'
+                                            ? 'bg-success-subtle text-success'
+                                            : 'bg-danger-subtle text-danger'
+                                    "
+                                >
+                                    {{ item.Status_Sampel }}
+                                </span>
+                            </div>
+                            <div
+                                class="mt-1 small"
+                                :class="
+                                    item.Flag_Multi_QrCode === 'Y'
+                                        ? 'text-warning'
+                                        : 'text-success'
+                                "
+                            >
+                                <i
+                                    :class="
+                                        item.Flag_Multi_QrCode === 'Y'
+                                            ? 'ri-layers-line me-1'
+                                            : 'ri-checkbox-circle-line me-1'
+                                    "
+                                ></i>
+                                {{
+                                    item.Flag_Multi_QrCode === "Y"
+                                        ? "Semua sub sampel akan divalidasi"
+                                        : "Siap divalidasi"
+                                }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-warning fw-semibold"
+                        :disabled="loading.bulkSubmit"
+                        @click="submitBulkSimpan"
+                    >
+                        <span
+                            v-if="loading.bulkSubmit"
+                            class="spinner-border spinner-border-sm me-1"
+                        ></span>
+                        <i v-else class="ri-check-double-line me-1"></i>
+                        Simpan Validasi {{ selectedItems.length }} Analisa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script>
@@ -1100,6 +1498,8 @@ export default {
                 saving: false,
                 reanalisis: false,
                 reanalisisOptions: false,
+                bulkSubPo: false,
+                bulkSubmit: false,
             },
 
             selectedItem: null,
@@ -1108,6 +1508,12 @@ export default {
 
             subPoList: [],
             selectedSubPo: null,
+
+            selectedItems: [],
+            bulkSubPoMap: {},
+            bulkSubPoSelected: {},
+            bulkModalInstance: null,
+            bulkSimpanModalInstance: null,
 
             detailData: [],
             formulaAverages: [],
@@ -1133,6 +1539,17 @@ export default {
         stats() {
             const total = this.pagination.totalData;
             return { total };
+        },
+
+        canSubmitBulk() {
+            if (!this.selectedItems.length) return false;
+            return this.selectedItems.every((item) => {
+                if (item.Flag_Multi_QrCode === "Y") {
+                    const key = item.No_Po_Sampel + "|" + item.Id_Jenis_Analisa;
+                    return !!this.bulkSubPoSelected[key];
+                }
+                return true;
+            });
         },
 
         emptyMessage() {
@@ -1678,6 +2095,137 @@ export default {
             });
         },
 
+        isSelectedBulk(item) {
+            return this.selectedItems.some(
+                (s) =>
+                    s.No_Po_Sampel === item.No_Po_Sampel &&
+                    s.Id_Jenis_Analisa === item.Id_Jenis_Analisa
+            );
+        },
+
+        toggleBulkSelect(item) {
+            const idx = this.selectedItems.findIndex(
+                (s) =>
+                    s.No_Po_Sampel === item.No_Po_Sampel &&
+                    s.Id_Jenis_Analisa === item.Id_Jenis_Analisa
+            );
+            if (idx >= 0) this.selectedItems.splice(idx, 1);
+            else this.selectedItems.push(item);
+        },
+
+        async openBulkModal() {
+            this.bulkSubPoMap = {};
+            this.bulkSubPoSelected = {};
+            this.loading.bulkSubPo = true;
+            this.bulkModalInstance?.show();
+
+            const multiItems = this.selectedItems.filter(
+                (i) => i.Flag_Multi_QrCode === "Y"
+            );
+            await Promise.all(
+                multiItems.map(async (item) => {
+                    const key = item.No_Po_Sampel + "|" + item.Id_Jenis_Analisa;
+                    try {
+                        const res = await axios.get(
+                            `/api/v2/lab/validasi-selesai/uji-sampel/${item.No_Po_Sampel}/${item.Id_Jenis_Analisa}`
+                        );
+                        this.bulkSubPoMap[key] = res.data?.success
+                            ? res.data.result || []
+                            : [];
+                    } catch {
+                        this.bulkSubPoMap[key] = [];
+                    }
+                })
+            );
+            this.loading.bulkSubPo = false;
+        },
+
+        async submitBulk() {
+            this.loading.bulkSubmit = true;
+            try {
+                const analyses = this.selectedItems.map((item) => ({
+                    No_Po_Sampel: item.No_Po_Sampel,
+                    Id_Jenis_Analisa: item.Id_Jenis_Analisa,
+                    Flag_Multi_QrCode: item.Flag_Multi_QrCode,
+                    No_Fak_Sub_Po:
+                        item.Flag_Multi_QrCode === "Y"
+                            ? this.bulkSubPoSelected[
+                                  item.No_Po_Sampel +
+                                      "|" +
+                                      item.Id_Jenis_Analisa
+                              ]
+                            : null,
+                }));
+
+                const res = await axios.post(
+                    "/api/v2/uji-sampel/confirmed/bulk",
+                    { analyses }
+                );
+                if (res.data.success) {
+                    this.bulkModalInstance?.hide();
+                    Swal.fire({
+                        icon: "success",
+                        title: "Berhasil!",
+                        text: res.data.message,
+                        timer: 2000,
+                        showConfirmButton: false,
+                    }).then(() => {
+                        this.selectedItems = [];
+                        this.fetchList(this.pagination.page);
+                    });
+                } else throw new Error(res.data.message || "Gagal");
+            } catch (e) {
+                Swal.fire(
+                    "Gagal!",
+                    e.response?.data?.message || e.message,
+                    "error"
+                );
+            } finally {
+                this.loading.bulkSubmit = false;
+            }
+        },
+
+        openBulkSimpanModal() {
+            this.bulkSimpanModalInstance?.show();
+        },
+
+        async submitBulkSimpan() {
+            this.loading.bulkSubmit = true;
+            try {
+                const analyses = this.selectedItems.map((item) => ({
+                    No_Po_Sampel: item.No_Po_Sampel,
+                    Id_Jenis_Analisa: item.Id_Jenis_Analisa,
+                    Flag_Multi_QrCode: item.Flag_Multi_QrCode,
+                    No_Fak_Sub_Po: null,
+                }));
+                const res = await axios.post(
+                    "/api/v2/uji-sampel/confirmed/bulk",
+                    { analyses }
+                );
+                if (res.data.success) {
+                    this.bulkSimpanModalInstance?.hide();
+                    Swal.fire({
+                        icon: "success",
+                        title: "Berhasil!",
+                        text: res.data.message,
+                        timer: 2000,
+                        showConfirmButton: false,
+                    }).then(() => {
+                        this.selectedItems = [];
+                        this.fetchList(this.pagination.page);
+                    });
+                } else throw new Error(res.data.message || "Gagal");
+            } catch (e) {
+                Swal.fire(
+                    "Gagal!",
+                    e.response?.data?.message || e.message,
+                    "error"
+                );
+            } finally {
+                this.loading.bulkSubmit = false;
+            }
+        },
+
         handleResize() {
             this.isMobile = window.innerWidth < 992;
         },
@@ -1698,6 +2246,10 @@ export default {
     mounted() {
         this.fetchList();
         window.addEventListener("resize", this.handleResize);
+        const el = document.getElementById("bulkValidasiTrialModal");
+        if (el) this.bulkModalInstance = new bootstrap.Modal(el);
+        const el2 = document.getElementById("bulkSimpanValidasiTrialModal");
+        if (el2) this.bulkSimpanModalInstance = new bootstrap.Modal(el2);
     },
     beforeUnmount() {
         this.revokeBlobUrls();
@@ -1878,9 +2430,16 @@ export default {
     overflow-y: auto;
     overflow-x: hidden;
 }
-.vld-list::-webkit-scrollbar { width: 4px; }
-.vld-list::-webkit-scrollbar-track { background: transparent; }
-.vld-list::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 4px; }
+.vld-list::-webkit-scrollbar {
+    width: 4px;
+}
+.vld-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.vld-list::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 4px;
+}
 
 .vld-skeleton {
     height: 72px;
@@ -1890,8 +2449,12 @@ export default {
     animation: vld-shimmer 1.4s infinite;
 }
 @keyframes vld-shimmer {
-    0% { background-position: 100% 50%; }
-    100% { background-position: 0 50%; }
+    0% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0 50%;
+    }
 }
 
 .vld-empty-list {
@@ -1905,8 +2468,13 @@ export default {
     font-size: 12px;
     text-align: center;
 }
-.vld-empty-list i { font-size: 36px; color: #ced4da; }
-.vld-empty-list p { margin: 0; }
+.vld-empty-list i {
+    font-size: 36px;
+    color: #ced4da;
+}
+.vld-empty-list p {
+    margin: 0;
+}
 
 .vld-item {
     display: flex;
@@ -1921,8 +2489,12 @@ export default {
     text-align: left;
     position: relative;
 }
-.vld-item:hover { background: #f8f9fa; }
-.vld-item--active { background: #fef9ec !important; }
+.vld-item:hover {
+    background: #f8f9fa;
+}
+.vld-item--active {
+    background: #fef9ec !important;
+}
 
 .vld-item-accent {
     width: 3px;
@@ -1931,9 +2503,16 @@ export default {
     background: transparent;
     transition: background 0.15s;
 }
-.vld-item--lolos .vld-item-accent { background: #0ab39c; }
-.vld-item--tidak .vld-item-accent { background: #f06548; }
-.vld-item--active .vld-item-accent { width: 4px; background: #d97706; }
+.vld-item--lolos .vld-item-accent {
+    background: #0ab39c;
+}
+.vld-item--tidak .vld-item-accent {
+    background: #f06548;
+}
+.vld-item--active .vld-item-accent {
+    width: 4px;
+    background: #d97706;
+}
 
 .vld-item-body {
     flex: 1;
@@ -1984,7 +2563,9 @@ export default {
     color: #ced4da;
     font-size: 16px;
 }
-.vld-item--active .vld-item-arrow { color: #d97706; }
+.vld-item--active .vld-item-arrow {
+    color: #d97706;
+}
 
 .vld-list-footer {
     display: flex;
@@ -1995,8 +2576,15 @@ export default {
     background: #f8f9fa;
     flex-shrink: 0;
 }
-.vld-page-info { font-size: 11px; color: #878a99; }
-.vld-page-btns { display: flex; align-items: center; gap: 4px; }
+.vld-page-info {
+    font-size: 11px;
+    color: #878a99;
+}
+.vld-page-btns {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
 .vld-page-btn {
     width: 26px;
     height: 26px;
@@ -2011,9 +2599,21 @@ export default {
     color: #495057;
     transition: all 0.15s;
 }
-.vld-page-btn:hover:not(:disabled) { background: #d97706; color: #fff; border-color: #d97706; }
-.vld-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.vld-page-current { font-size: 11px; color: #495057; min-width: 36px; text-align: center; }
+.vld-page-btn:hover:not(:disabled) {
+    background: #d97706;
+    color: #fff;
+    border-color: #d97706;
+}
+.vld-page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.vld-page-current {
+    font-size: 11px;
+    color: #495057;
+    min-width: 36px;
+    text-align: center;
+}
 
 .vld-right {
     flex: 1;
@@ -2038,7 +2638,10 @@ export default {
     justify-content: center;
     padding: 40px 20px;
 }
-.vld-detail-empty-inner { text-align: center; max-width: 320px; }
+.vld-detail-empty-inner {
+    text-align: center;
+    max-width: 320px;
+}
 .vld-empty-icon-wrap {
     width: 72px;
     height: 72px;
@@ -2049,9 +2652,21 @@ export default {
     justify-content: center;
     margin: 0 auto 16px;
 }
-.vld-empty-icon-wrap i { font-size: 32px; color: #d97706; }
-.vld-detail-empty-inner h6 { font-weight: 600; color: #1a1d23; margin-bottom: 8px; }
-.vld-detail-empty-inner p { font-size: 12px; color: #878a99; line-height: 1.6; margin: 0; }
+.vld-empty-icon-wrap i {
+    font-size: 32px;
+    color: #d97706;
+}
+.vld-detail-empty-inner h6 {
+    font-weight: 600;
+    color: #1a1d23;
+    margin-bottom: 8px;
+}
+.vld-detail-empty-inner p {
+    font-size: 12px;
+    color: #878a99;
+    line-height: 1.6;
+    margin: 0;
+}
 
 .vld-detail-header {
     display: flex;
@@ -2065,7 +2680,13 @@ export default {
     flex-wrap: wrap;
 }
 
-.vld-dh-main { display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0; }
+.vld-dh-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
 .vld-dh-icon {
     width: 38px;
     height: 38px;
@@ -2076,11 +2697,31 @@ export default {
     font-size: 18px;
     flex-shrink: 0;
 }
-.vld-dh-icon--success { background: #d1f8ef; color: #0ab39c; }
-.vld-dh-icon--danger { background: #fde8e4; color: #f06548; }
-.vld-dh-title { font-size: 14px; font-weight: 700; color: #1a1d23; line-height: 1.2; margin-bottom: 2px; }
-.vld-dh-sub { font-size: 11px; color: #878a99; margin-bottom: 6px; }
-.vld-dh-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.vld-dh-icon--success {
+    background: #d1f8ef;
+    color: #0ab39c;
+}
+.vld-dh-icon--danger {
+    background: #fde8e4;
+    color: #f06548;
+}
+.vld-dh-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1d23;
+    line-height: 1.2;
+    margin-bottom: 2px;
+}
+.vld-dh-sub {
+    font-size: 11px;
+    color: #878a99;
+    margin-bottom: 6px;
+}
+.vld-dh-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
 
 .vld-dh-meta {
     display: flex;
@@ -2097,7 +2738,9 @@ export default {
     justify-content: flex-end;
     gap: 4px;
 }
-.vld-dh-meta-row i { font-size: 11px; }
+.vld-dh-meta-row i {
+    font-size: 11px;
+}
 
 .vld-subpo-bar {
     display: flex;
@@ -2109,10 +2752,29 @@ export default {
     flex-shrink: 0;
     flex-wrap: wrap;
 }
-.vld-subpo-label { font-size: 11px; font-weight: 600; color: #495057; white-space: nowrap; flex-shrink: 0; }
-.vld-subpo-tabs { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
-.vld-subpo-loading { display: flex; align-items: center; }
-.vld-subpo-count { font-size: 10px; color: #878a99; white-space: nowrap; flex-shrink: 0; }
+.vld-subpo-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #495057;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.vld-subpo-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    flex: 1;
+}
+.vld-subpo-loading {
+    display: flex;
+    align-items: center;
+}
+.vld-subpo-count {
+    font-size: 10px;
+    color: #878a99;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
 .vld-subpo-tab {
     padding: 4px 10px;
     border-radius: 20px;
@@ -2126,17 +2788,33 @@ export default {
     align-items: center;
     gap: 4px;
 }
-.vld-subpo-tab:hover { border-color: #d97706; color: #d97706; background: #fef9ec; }
-.vld-subpo-tab--active { background: #d97706; border-color: #d97706; color: #fff; font-weight: 600; }
+.vld-subpo-tab:hover {
+    border-color: #d97706;
+    color: #d97706;
+    background: #fef9ec;
+}
+.vld-subpo-tab--active {
+    background: #d97706;
+    border-color: #d97706;
+    color: #fff;
+    font-weight: 600;
+}
 
 .vld-detail-body {
     flex: 1;
     overflow-y: auto;
     padding: 14px 16px;
 }
-.vld-detail-body::-webkit-scrollbar { width: 5px; }
-.vld-detail-body::-webkit-scrollbar-track { background: transparent; }
-.vld-detail-body::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 4px; }
+.vld-detail-body::-webkit-scrollbar {
+    width: 5px;
+}
+.vld-detail-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.vld-detail-body::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 4px;
+}
 
 .vld-loading-state {
     display: flex;
@@ -2166,9 +2844,15 @@ export default {
     border-bottom: 1px solid #e9ebec;
     user-select: none;
 }
-.vld-section-body { padding: 12px 14px; }
+.vld-section-body {
+    padding: 12px 14px;
+}
 
-.vld-mini-stats { display: flex; gap: 8px; flex-wrap: wrap; }
+.vld-mini-stats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 .vld-ms-item {
     flex: 1;
     min-width: 80px;
@@ -2180,14 +2864,37 @@ export default {
     flex-direction: column;
     align-items: center;
 }
-.vld-ms-item--success { border-left: 3px solid #0ab39c; }
-.vld-ms-item--danger { border-left: 3px solid #f06548; }
-.vld-ms-item--info { border-left: 3px solid #d97706; }
-.vld-ms-val { font-size: 20px; font-weight: 700; color: #1a1d23; line-height: 1.1; }
-.vld-ms-lbl { font-size: 10px; color: #878a99; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
-.vld-ms-item--success .vld-ms-val { color: #0ab39c; }
-.vld-ms-item--danger .vld-ms-val { color: #f06548; }
-.vld-ms-item--info .vld-ms-val { color: #d97706; }
+.vld-ms-item--success {
+    border-left: 3px solid #0ab39c;
+}
+.vld-ms-item--danger {
+    border-left: 3px solid #f06548;
+}
+.vld-ms-item--info {
+    border-left: 3px solid #d97706;
+}
+.vld-ms-val {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1d23;
+    line-height: 1.1;
+}
+.vld-ms-lbl {
+    font-size: 10px;
+    color: #878a99;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 2px;
+}
+.vld-ms-item--success .vld-ms-val {
+    color: #0ab39c;
+}
+.vld-ms-item--danger .vld-ms-val {
+    color: #f06548;
+}
+.vld-ms-item--info .vld-ms-val {
+    color: #d97706;
+}
 
 .vld-alert-warn {
     display: flex;
@@ -2212,8 +2919,13 @@ export default {
     border-bottom: 2px solid #e9ebec;
     padding: 7px 10px;
 }
-.vld-table tbody td { font-size: 12px; padding: 7px 10px; }
-.vld-row--avg { background: #fffbeb !important; }
+.vld-table tbody td {
+    font-size: 12px;
+    padding: 7px 10px;
+}
+.vld-row--avg {
+    background: #fffbeb !important;
+}
 
 .vld-code {
     font-family: "Courier New", monospace;
@@ -2232,11 +2944,26 @@ export default {
     padding: 2px 8px;
     border-radius: 20px;
 }
-.vld-badge--success { background: #d1f8ef; color: #0ab39c; }
-.vld-badge--danger { background: #fde8e4; color: #f06548; }
-.vld-badge--blue { background: #eef0f9; color: #405189; }
-.vld-badge--gray { background: #f0f2f5; color: #6c757d; }
-.vld-badge--orange { background: #fef3c7; color: #d97706; }
+.vld-badge--success {
+    background: #d1f8ef;
+    color: #0ab39c;
+}
+.vld-badge--danger {
+    background: #fde8e4;
+    color: #f06548;
+}
+.vld-badge--blue {
+    background: #eef0f9;
+    color: #405189;
+}
+.vld-badge--gray {
+    background: #f0f2f5;
+    color: #6c757d;
+}
+.vld-badge--orange {
+    background: #fef3c7;
+    color: #d97706;
+}
 
 .vld-chip {
     display: inline-flex;
@@ -2247,9 +2974,18 @@ export default {
     border-radius: 10px;
     font-weight: 500;
 }
-.vld-chip--blue { background: #eef0f9; color: #405189; }
-.vld-chip--gray { background: #f0f2f5; color: #6c757d; }
-.vld-chip--orange { background: #fef3c7; color: #d97706; }
+.vld-chip--blue {
+    background: #eef0f9;
+    color: #405189;
+}
+.vld-chip--gray {
+    background: #f0f2f5;
+    color: #6c757d;
+}
+.vld-chip--orange {
+    background: #fef3c7;
+    color: #d97706;
+}
 
 .vld-action-bar {
     display: flex;
@@ -2270,18 +3006,34 @@ export default {
     min-width: 0;
 }
 
-.vld-hidden-mobile { display: none !important; }
+.vld-hidden-mobile {
+    display: none !important;
+}
 
 @media (min-width: 992px) {
-    .vld-hidden-mobile { display: flex !important; }
+    .vld-hidden-mobile {
+        display: flex !important;
+    }
 }
 
 @media (max-width: 991px) {
-    .vld-root { height: calc(100vh - 60px); }
-    .vld-left { width: 100%; max-width: 100%; border-right: none; }
-    .vld-right { width: 100%; }
-    .vld-body { flex-direction: column; }
-    .vld-dh-meta { display: none; }
+    .vld-root {
+        height: calc(100vh - 60px);
+    }
+    .vld-left {
+        width: 100%;
+        max-width: 100%;
+        border-right: none;
+    }
+    .vld-right {
+        width: 100%;
+    }
+    .vld-body {
+        flex-direction: column;
+    }
+    .vld-dh-meta {
+        display: none;
+    }
 }
 
 .vld-reanalisis-info-box {
@@ -2308,9 +3060,62 @@ export default {
 }
 
 @media (max-width: 480px) {
-    .vld-topbar { flex-direction: column; align-items: flex-start; }
-    .vld-topbar-right { flex-wrap: wrap; }
-    .vld-mini-stats { flex-direction: row; }
-    .vld-ms-item { min-width: calc(50% - 4px); }
+    .vld-topbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .vld-topbar-right {
+        flex-wrap: wrap;
+    }
+    .vld-mini-stats {
+        flex-direction: row;
+    }
+    .vld-ms-item {
+        min-width: calc(50% - 4px);
+    }
+}
+
+/* ── Bulk select ─────────────────────────────────────────────────────── */
+.vld-item-wrap {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+.vld-item-checkbox {
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: #d97706;
+}
+.vld-item-wrap .vld-item {
+    padding-left: 28px;
+    width: 100%;
+}
+.vld-item--checked {
+    background: #fef3c7 !important;
+    border-left: 3px solid #d97706 !important;
+}
+.vld-bulk-bar {
+    position: sticky;
+    bottom: 0;
+    background: #ffffff; /* Menyatu dengan background list data */
+    color: #495057; /* Warna teks abu-abu gelap agar terbaca jelas */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    gap: 10px;
+    z-index: 10;
+    border-top: 1px solid #e2e8f0; /* Garis pembatas abu-abu sangat halus */
+    box-shadow: 0px -4px 10px rgba(0, 0, 0, 0.03); /* Shadow super tipis agar terlihat seperti bar melayang */
+}
+.vld-bulk-count {
+    font-size: 13px;
+    font-weight: 600;
 }
 </style>

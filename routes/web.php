@@ -74,7 +74,7 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get('/api/v1/master-akun/search', [AuthController::class, 'searchDataPengguna']);
     Route::post('/proses_register', [AuthController::class, 'proses_register']);
     Route::put('/proses-update/akun', [AuthController::class, 'proses_update_akun']);
-    Route::get('/dashboard', [DashboardController::class, 'dashboard_page'])->name('dashboard')->middleware('autotrack', 'permission:Dashboard,VIEW');
+    Route::get('/dashboard', [DashboardController::class, 'dashboard_page'])->name('dashboard')->middleware('autotrack', 'permission:Monitor_Aktivitas_Lab,VIEW');
     Route::post('/api/v1/master-akun/status-akun/{UserId}', [AuthController::class, 'updateStatusAkun']);
     Route::get('/api/v1/dashboard/current-hari-ini', [DashboardController::class, 'getDataHariIniWidget']);
     Route::get('/api/v1/dashboard/analyzer/kpi-tat', [DashboardController::class, 'getKpiTurnAroundTime']);
@@ -86,8 +86,8 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get('/api/v1/dashboard/grafik/pie-status-uji-sampel', [DashboardController::class, 'getPieStatusPenyelesaianUji']);
     Route::get('/api/v1/dashboard/grafik/scatter-sebaran-hasil', [DashboardController::class, 'getScatterSebaranHasilAnalisa']);
 
-    // QA Dashboard (no permission middleware)
-    Route::get('/dashboard-qa', [DashboardController::class, 'getDashboardQaPage'])->name('dashboard-qa')->middleware('autotrack');
+    // QA Dashboard
+    Route::get('/dashboard-qa', [DashboardController::class, 'getDashboardQaPage'])->name('dashboard-qa')->middleware('autotrack', 'permission:Pengawasan_Mutu_QA,VIEW');
     Route::get('/api/v1/dashboard-qa/kpi-hari-ini', [DashboardController::class, 'getKpiQaHariIni']);
     Route::get('/api/v1/dashboard-qa/grafik/tren-sampel', [DashboardController::class, 'getTrenSampelQa']);
     Route::get('/api/v1/dashboard-qa/grafik/status-ringkasan', [DashboardController::class, 'getStatusRingkasanQa']);
@@ -104,14 +104,13 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get('/api/v1/dashboard/atasan/summary', [DashboardController::class, 'getSummaryAtasan']);
     Route::get('/api/v1/dashboard/atasan/pass-rate-jenis-analisa', [DashboardController::class, 'getPassRatePerJenisAnalisa']);
 
-    // Dashboard Atasan – dedicated page
-    Route::get('/dashboard-atasan', [DashboardController::class, 'getDashboardAtasanPage'])->name('dashboard-atasan')->middleware('autotrack', 'permission:Dashboard,VIEW');
-    Route::get('/api/v1/dashboard-atasan/kpi-bulanan', [DashboardController::class, 'getKpiAtasanBulanan']);
-    Route::get('/api/v1/dashboard-atasan/tren-bulanan', [DashboardController::class, 'getTrenBulananAtasan']);
-    Route::get('/api/v1/dashboard-atasan/beban-mesin', [DashboardController::class, 'getBebanMesinAtasan']);
-    Route::get('/api/v1/dashboard-atasan/status-overall', [DashboardController::class, 'getStatusOverallAtasan']);
-    Route::get('/api/v1/dashboard-atasan/pass-rate-jenis', [DashboardController::class, 'getPassRatePerJenisAnalisa']);
-    Route::get('/api/v1/dashboard-atasan/top-analis', [DashboardController::class, 'getTopAnalisAtasan']);
+    // Dashboard Monitoring Lab – Executive Panel
+    Route::get('/lims/rekap-kinerja-ops', [DashboardController::class, 'getDashboardAtasanPage'])->name('lims.rekap-kinerja-ops')->middleware('autotrack', 'permission:Rekap_Kinerja_Lab,VIEW');
+    Route::get('/api/v1/lims/kpi-rekap', [DashboardController::class, 'getKpiDanStatusAtasan']);
+    Route::get('/api/v1/lims/tren-aktivitas', [DashboardController::class, 'getTrenBulananAtasan']);
+    Route::get('/api/v1/lims/beban-mesin', [DashboardController::class, 'getBebanMesinAtasan']);
+    Route::get('/api/v1/lims/pass-rate-jenis', [DashboardController::class, 'getPassRatePerJenisAnalisa']);
+    Route::get('/api/v1/lims/top-analis', [DashboardController::class, 'getTopAnalisAtasan']);
 
     Route::get('/po/{computer_keys}', [QuisyController::class, 'getPoListWithCompletionStatus'])->name('api.podata');
     Route::get('/api/v2/po/{computer_keys}', [QuisyController::class, 'getPoListWithCompletionStatusV2']);
@@ -289,6 +288,7 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::post('/uji-sampel/store-not-rumus-nomultiple-qr/sementara/hapus-data/{no_sementara}', [UjiSampelController::class, 'deleteDataForDraftNoRumusNotMultiQrCode']);
     Route::post('/uji-sampel/confirmed', [UjiSampelController::class, 'storeConfirmedUjiSampel']);
     Route::post('/api/v2/uji-sampel/confirmed', [UjiSampelController::class, 'storeConfirmedUjiSampelV2']);
+    Route::post('/api/v2/uji-sampel/confirmed/bulk', [UjiSampelController::class, 'storeBulkConfirmedUjiSampel']);
     Route::put('/uji-sampel/finalisasi-hasil/analisa/{no_sampel}', [UjiSampelController::class, 'finalisasiNoPoSampel']);
     Route::post('/api/v1/download-rekap/analisa', [UjiSampelController::class, 'downloadRekapSampel']);
 
@@ -330,6 +330,7 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::put("/api/v1/divisi-mesin/by-update/{id}", [MasterMesinController::class, 'update']);
     
     Route::get("/master/menu", [MenuController::class, 'index'])->middleware( 'autotrack', );
+    Route::get("/api/v1/master-menu/stats", [MenuController::class, 'getStats']);
     Route::get("/api/v1/master-menu/current", [MenuController::class, 'getDataMenu']);
     Route::get("/api/v1/master-menu", [MenuController::class, 'getDataMenuJson']);
     Route::get("/api/v1/master-menu/search", [MenuController::class, 'searchDataMenu']);
@@ -411,3 +412,4 @@ require base_path('routes/FormulatorRekapitulasiTrial/FormulatorRekapitulasiTria
 require base_path('routes/FormulatorStatusData/FormulatorStatusDataWeb.php');
 require base_path('routes/developer/fransDevEvo.php');
 require base_path('routes/developer/ridhoDevEvo.php');
+require base_path('routes/FormulatorDashboard/FormulatorDashboardWeb.php');

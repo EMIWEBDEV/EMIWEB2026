@@ -97,75 +97,116 @@
                     </div>
 
                     <div v-else>
-                        <button
+                        <div
                             v-for="(item, idx) in listData"
                             :key="idx"
-                            @click="selectItem(item)"
-                            class="vld-item"
-                            :class="{
-                                'vld-item--active': isSelected(item),
-                                'vld-item--lolos':
-                                    item.Status_Sampel === 'Lolos Uji',
-                                'vld-item--tidak':
-                                    item.Status_Sampel === 'Tidak Lolos Uji',
-                            }"
+                            class="vld-item-wrap"
                         >
-                            <div class="vld-item-accent"></div>
-                            <div class="vld-item-body">
-                                <div class="vld-item-top">
-                                    <span class="vld-item-title">{{
-                                        item.Jenis_Analisa
-                                    }}</span>
-                                    <span
-                                        class="vld-badge"
-                                        :class="
-                                            item.Status_Sampel === 'Lolos Uji'
-                                                ? 'vld-badge--success'
-                                                : 'vld-badge--danger'
-                                        "
-                                    >
-                                        {{
-                                            item.Status_Sampel === "Lolos Uji"
-                                                ? "Lolos Uji"
-                                                : "Tidak Lolos"
-                                        }}
-                                    </span>
+                            <input
+                                type="checkbox"
+                                class="vld-item-checkbox"
+                                :checked="isSelectedBulk(item)"
+                                @change="toggleBulkSelect(item)"
+                                @click.stop
+                            />
+                            <button
+                                @click="selectItem(item)"
+                                class="vld-item"
+                                :class="{
+                                    'vld-item--active': isSelected(item),
+                                    'vld-item--checked': isSelectedBulk(item),
+                                    'vld-item--lolos':
+                                        item.Status_Sampel === 'Lolos Uji',
+                                    'vld-item--tidak':
+                                        item.Status_Sampel === 'Tidak Lolos Uji',
+                                }"
+                            >
+                                <div class="vld-item-accent"></div>
+                                <div class="vld-item-body">
+                                    <div class="vld-item-top">
+                                        <span class="vld-item-title">{{
+                                            item.Jenis_Analisa
+                                        }}</span>
+                                        <span
+                                            class="vld-badge"
+                                            :class="
+                                                item.Status_Sampel === 'Lolos Uji'
+                                                    ? 'vld-badge--success'
+                                                    : 'vld-badge--danger'
+                                            "
+                                        >
+                                            {{
+                                                item.Status_Sampel === "Lolos Uji"
+                                                    ? "Lolos Uji"
+                                                    : "Tidak Lolos"
+                                            }}
+                                        </span>
+                                    </div>
+                                    <div class="vld-item-sub">
+                                        {{ item.po_info?.Kode_Barang || "" }}
+                                        <template v-if="item.Nama_Barang"
+                                            >— {{ item.Nama_Barang }}</template
+                                        >
+                                    </div>
+                                    <div class="vld-item-meta">
+                                        <code class="vld-code">{{
+                                            item.No_Po_Sampel
+                                        }}</code>
+                                        <span
+                                            class="vld-chip"
+                                            :class="
+                                                item.Flag_Multi_QrCode === 'Y'
+                                                    ? 'vld-chip--blue'
+                                                    : 'vld-chip--gray'
+                                            "
+                                        >
+                                            <i class="ri-qr-code-line"></i>
+                                            {{
+                                                item.Flag_Multi_QrCode === "Y"
+                                                    ? "Multi"
+                                                    : "Single"
+                                            }}
+                                        </span>
+                                        <span
+                                            class="vld-chip vld-chip--gray"
+                                            v-if="item.Tanggal"
+                                        >
+                                            <i class="ri-calendar-line"></i
+                                            >{{ formatTanggal(item.Tanggal) }}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div class="vld-item-sub">
-                                    {{ item.po_info?.Kode_Barang || "" }}
-                                    <template v-if="item.Nama_Barang"
-                                        >— {{ item.Nama_Barang }}</template
-                                    >
-                                </div>
-                                <div class="vld-item-meta">
-                                    <code class="vld-code">{{
-                                        item.No_Po_Sampel
-                                    }}</code>
-                                    <span
-                                        class="vld-chip"
-                                        :class="
-                                            item.Flag_Multi_QrCode === 'Y'
-                                                ? 'vld-chip--blue'
-                                                : 'vld-chip--gray'
-                                        "
-                                    >
-                                        <i class="ri-qr-code-line"></i>
-                                        {{
-                                            item.Flag_Multi_QrCode === "Y"
-                                                ? "Multi"
-                                                : "Single"
-                                        }}
-                                    </span>
-                                    <span
-                                        class="vld-chip vld-chip--gray"
-                                        v-if="item.Tanggal"
-                                    >
-                                        <i class="ri-calendar-line"></i
-                                        >{{ formatTanggal(item.Tanggal) }}
-                                    </span>
-                                </div>
-                            </div>
-                            <i class="ri-arrow-right-s-line vld-item-arrow"></i>
+                                <i class="ri-arrow-right-s-line vld-item-arrow"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bulk action bar -->
+                <div v-if="selectedItems.length > 0" class="vld-bulk-bar">
+                    <span class="vld-bulk-count"
+                        ><i class="ri-checkbox-multiple-line me-1"></i
+                        >{{ selectedItems.length }} analisa dipilih</span
+                    >
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button
+                            class="btn btn-sm btn-outline-light"
+                            @click="selectedItems = []"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            class="btn btn-sm fw-semibold"
+                            style="background:#0ea5e9;color:#fff;border:none;"
+                            @click="openBulkModal"
+                        >
+                            <i class="ri-refresh-line me-1"></i>Resampling
+                        </button>
+                        <button
+                            class="btn btn-sm btn-primary fw-semibold"
+                            @click="openBulkSimpanModal"
+                        >
+                            <i class="ri-check-double-line me-1"></i>Simpan Validasi
                         </button>
                     </div>
                 </div>
@@ -1068,6 +1109,144 @@
             </div>
         </div>
     </div>
+
+    <!-- BULK VALIDASI FORMULATOR MODAL -->
+    <!-- RESAMPLING MODAL -->
+    <div class="modal fade" id="bulkValidasiFormulatorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-info bg-opacity-10 border-info border-opacity-25">
+                    <h5 class="modal-title fw-bold">
+                        <i class="ri-refresh-line me-2 text-info"></i>
+                        Resampling Analisa
+                        <span class="badge bg-info text-white ms-2">{{ selectedItems.length }}</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div v-if="loading.bulkSubPo" class="text-center py-4 text-muted">
+                        <div class="spinner-border spinner-border-sm text-info me-2"></div>
+                        Memuat opsi sub sampel...
+                    </div>
+                    <template v-else>
+                        <p class="text-muted small mb-3">
+                            <i class="ri-information-line me-1 text-info"></i>
+                            Untuk item <strong>Multi QR</strong>, pilih nomor sub sampel yang akan diresampling.
+                        </p>
+                        <div
+                            v-for="(item, idx) in selectedItems"
+                            :key="idx"
+                            class="border rounded-3 p-3 mb-3"
+                            :class="item.Flag_Multi_QrCode === 'Y' ? 'border-info border-opacity-50 bg-info bg-opacity-10' : 'border-secondary border-opacity-25'"
+                        >
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="rounded-circle bg-info bg-opacity-25 d-flex align-items-center justify-content-center flex-shrink-0" style="width:36px;height:36px">
+                                    <i class="ri-refresh-line text-info"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold">{{ item.Jenis_Analisa }}</div>
+                                    <div class="d-flex gap-2 flex-wrap mt-1">
+                                        <code class="small bg-light px-2 py-1 rounded">{{ item.No_Po_Sampel }}</code>
+                                        <span class="badge" :class="item.Flag_Multi_QrCode === 'Y' ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-secondary'">
+                                            <i class="ri-qr-code-line me-1"></i>{{ item.Flag_Multi_QrCode === "Y" ? "Multi QR" : "Single QR" }}
+                                        </span>
+                                        <span class="badge" :class="item.Status_Sampel === 'Lolos Uji' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'">
+                                            {{ item.Status_Sampel }}
+                                        </span>
+                                    </div>
+                                    <div v-if="item.Flag_Multi_QrCode === 'Y'" class="mt-2">
+                                        <label class="form-label small fw-semibold mb-1">
+                                            <i class="ri-list-check me-1 text-info"></i>Pilih No. Sub Sampel untuk Resampling:
+                                        </label>
+                                        <select class="form-select form-select-sm" v-model="bulkSubPoSelected[item.No_Po_Sampel + '|' + item.Id_Jenis_Analisa]">
+                                            <option :value="undefined" disabled>— Pilih Sub Sampel —</option>
+                                            <option v-for="sub in bulkSubPoMap[item.No_Po_Sampel + '|' + item.Id_Jenis_Analisa] || []" :key="sub.No_Fak_Sub_Po" :value="sub.No_Fak_Sub_Po">
+                                                {{ sub.No_Fak_Sub_Po }}
+                                            </option>
+                                        </select>
+                                        <div v-if="!(bulkSubPoMap[item.No_Po_Sampel + '|' + item.Id_Jenis_Analisa] || []).length" class="text-danger small mt-1">
+                                            <i class="ri-error-warning-line me-1"></i>Tidak ada sub sampel tersedia.
+                                        </div>
+                                    </div>
+                                    <div v-else class="mt-1 text-muted small">
+                                        <i class="ri-information-line me-1"></i>Single QR — tidak memerlukan pilihan sub sampel
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-info text-white fw-semibold" :disabled="!canSubmitBulk || loading.bulkSubmit || loading.bulkSubPo" @click="submitBulk">
+                        <span v-if="loading.bulkSubmit" class="spinner-border spinner-border-sm me-1"></span>
+                        <i v-else class="ri-refresh-line me-1"></i>
+                        Resampling {{ selectedItems.length }} Analisa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SIMPAN VALIDASI MODAL -->
+    <div class="modal fade" id="bulkSimpanValidasiFormulatorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary bg-opacity-10 border-primary border-opacity-25">
+                    <h5 class="modal-title fw-bold">
+                        <i class="ri-check-double-line me-2 text-primary"></i>
+                        Simpan Validasi
+                        <span class="badge bg-primary ms-2">{{ selectedItems.length }}</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        <i class="ri-information-line me-1 text-primary"></i>
+                        Analisa berikut akan disimpan sebagai <strong>hasil validasi</strong>. Untuk item Multi QR, semua sub sampel pada analisa tersebut akan divalidasi sekaligus.
+                    </p>
+                    <div
+                        v-for="(item, idx) in selectedItems"
+                        :key="idx"
+                        class="border rounded-3 p-3 mb-2 d-flex align-items-start gap-3"
+                        :class="item.Flag_Multi_QrCode === 'Y' ? 'border-primary border-opacity-50 bg-primary bg-opacity-10' : 'border-secondary border-opacity-25'"
+                    >
+                        <div
+                            class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                            :class="item.Flag_Multi_QrCode === 'Y' ? 'bg-primary bg-opacity-25' : 'bg-success bg-opacity-10'"
+                            style="width:36px;height:36px"
+                        >
+                            <i :class="item.Flag_Multi_QrCode === 'Y' ? 'ri-layers-line text-primary' : 'ri-check-line text-success'"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold small">{{ item.Jenis_Analisa }}</div>
+                            <div class="d-flex gap-2 flex-wrap mt-1">
+                                <code class="small bg-light px-2 py-1 rounded">{{ item.No_Po_Sampel }}</code>
+                                <span class="badge" :class="item.Flag_Multi_QrCode === 'Y' ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-secondary'">
+                                    <i class="ri-qr-code-line me-1"></i>{{ item.Flag_Multi_QrCode === 'Y' ? 'Multi QR' : 'Single QR' }}
+                                </span>
+                                <span class="badge" :class="item.Status_Sampel === 'Lolos Uji' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'">
+                                    {{ item.Status_Sampel }}
+                                </span>
+                            </div>
+                            <div class="mt-1 small" :class="item.Flag_Multi_QrCode === 'Y' ? 'text-primary' : 'text-success'">
+                                <i :class="item.Flag_Multi_QrCode === 'Y' ? 'ri-layers-line me-1' : 'ri-checkbox-circle-line me-1'"></i>
+                                {{ item.Flag_Multi_QrCode === 'Y' ? 'Semua sub sampel akan divalidasi' : 'Siap divalidasi' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary fw-semibold" :disabled="loading.bulkSubmit" @click="submitBulkSimpan">
+                        <span v-if="loading.bulkSubmit" class="spinner-border spinner-border-sm me-1"></span>
+                        <i v-else class="ri-check-double-line me-1"></i>
+                        Simpan Validasi {{ selectedItems.length }} Analisa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script>
@@ -1093,6 +1272,8 @@ export default {
                 saving: false,
                 reanalisis: false,
                 reanalisisOptions: false,
+                bulkSubPo: false,
+                bulkSubmit: false,
             },
 
             selectedItem: null,
@@ -1101,6 +1282,12 @@ export default {
 
             subPoList: [],
             selectedSubPo: null,
+
+            selectedItems: [],
+            bulkSubPoMap: {},
+            bulkSubPoSelected: {},
+            bulkModalInstance: null,
+            bulkSimpanModalInstance: null,
 
             detailData: [],
             formulaAverages: [],
@@ -1125,6 +1312,17 @@ export default {
     computed: {
         stats() {
             return { total: this.pagination.totalData };
+        },
+
+        canSubmitBulk() {
+            if (!this.selectedItems.length) return false;
+            return this.selectedItems.every((item) => {
+                if (item.Flag_Multi_QrCode === "Y") {
+                    const key = item.No_Po_Sampel + "|" + item.Id_Jenis_Analisa;
+                    return !!this.bulkSubPoSelected[key];
+                }
+                return true;
+            });
         },
 
         emptyMessage() {
@@ -1693,6 +1891,131 @@ export default {
             });
         },
 
+        isSelectedBulk(item) {
+            return this.selectedItems.some(
+                (s) =>
+                    s.No_Po_Sampel === item.No_Po_Sampel &&
+                    s.Id_Jenis_Analisa === item.Id_Jenis_Analisa
+            );
+        },
+
+        toggleBulkSelect(item) {
+            const idx = this.selectedItems.findIndex(
+                (s) =>
+                    s.No_Po_Sampel === item.No_Po_Sampel &&
+                    s.Id_Jenis_Analisa === item.Id_Jenis_Analisa
+            );
+            if (idx >= 0) this.selectedItems.splice(idx, 1);
+            else this.selectedItems.push(item);
+        },
+
+        async openBulkModal() {
+            this.bulkSubPoMap = {};
+            this.bulkSubPoSelected = {};
+            this.loading.bulkSubPo = true;
+            this.bulkModalInstance?.show();
+
+            const multiItems = this.selectedItems.filter(
+                (i) => i.Flag_Multi_QrCode === "Y"
+            );
+            await Promise.all(
+                multiItems.map(async (item) => {
+                    const key = item.No_Po_Sampel + "|" + item.Id_Jenis_Analisa;
+                    try {
+                        const res = await axios.get(
+                            `/api/v1/formulator/validasi-hasil/uji-trial/sub/menunggu/${item.No_Po_Sampel}/${item.Id_Jenis_Analisa}`
+                        );
+                        this.bulkSubPoMap[key] = res.data?.success
+                            ? res.data.result || []
+                            : [];
+                    } catch {
+                        this.bulkSubPoMap[key] = [];
+                    }
+                })
+            );
+            this.loading.bulkSubPo = false;
+        },
+
+        async submitBulk() {
+            this.loading.bulkSubmit = true;
+            try {
+                const analyses = this.selectedItems.map((item) => ({
+                    No_Po_Sampel: item.No_Po_Sampel,
+                    Id_Jenis_Analisa: item.Id_Jenis_Analisa,
+                    Flag_Multi_QrCode: item.Flag_Multi_QrCode,
+                    No_Fak_Sub_Po:
+                        item.Flag_Multi_QrCode === "Y"
+                            ? this.bulkSubPoSelected[
+                                  item.No_Po_Sampel + "|" + item.Id_Jenis_Analisa
+                              ]
+                            : null,
+                }));
+
+                const res = await axios.post(
+                    "/api/v1/formulator/validasi-hasil/uji-trial/bulk/approve",
+                    { analyses }
+                );
+                if (res.data.success) {
+                    this.bulkModalInstance?.hide();
+                    Swal.fire({
+                        icon: "success",
+                        title: "Berhasil!",
+                        text: res.data.message,
+                        timer: 2000,
+                        showConfirmButton: false,
+                    }).then(() => {
+                        this.selectedItems = [];
+                        this.fetchList(this.pagination.page);
+                    });
+                } else throw new Error(res.data.message || "Gagal");
+            } catch (e) {
+                Swal.fire(
+                    "Gagal!",
+                    e.response?.data?.message || e.message,
+                    "error"
+                );
+            } finally {
+                this.loading.bulkSubmit = false;
+            }
+        },
+
+        openBulkSimpanModal() {
+            this.bulkSimpanModalInstance?.show();
+        },
+
+        async submitBulkSimpan() {
+            this.loading.bulkSubmit = true;
+            try {
+                const analyses = this.selectedItems.map((item) => ({
+                    No_Po_Sampel: item.No_Po_Sampel,
+                    Id_Jenis_Analisa: item.Id_Jenis_Analisa,
+                    Flag_Multi_QrCode: item.Flag_Multi_QrCode,
+                    No_Fak_Sub_Po: null,
+                }));
+                const res = await axios.post(
+                    "/api/v1/formulator/validasi-hasil/uji-trial/bulk/approve",
+                    { analyses }
+                );
+                if (res.data.success) {
+                    this.bulkSimpanModalInstance?.hide();
+                    Swal.fire({
+                        icon: "success",
+                        title: "Berhasil!",
+                        text: res.data.message,
+                        timer: 2000,
+                        showConfirmButton: false,
+                    }).then(() => {
+                        this.selectedItems = [];
+                        this.fetchList(this.pagination.page);
+                    });
+                } else throw new Error(res.data.message || "Gagal");
+            } catch (e) {
+                Swal.fire("Gagal!", e.response?.data?.message || e.message, "error");
+            } finally {
+                this.loading.bulkSubmit = false;
+            }
+        },
+
         handleResize() {
             this.isMobile = window.innerWidth < 992;
         },
@@ -1713,6 +2036,10 @@ export default {
     mounted() {
         this.fetchList();
         window.addEventListener("resize", this.handleResize);
+        const el = document.getElementById("bulkValidasiFormulatorModal");
+        if (el) this.bulkModalInstance = new bootstrap.Modal(el);
+        const el2 = document.getElementById("bulkSimpanValidasiFormulatorModal");
+        if (el2) this.bulkSimpanModalInstance = new bootstrap.Modal(el2);
     },
     beforeUnmount() {
         this.revokeBlobUrls();
@@ -2522,5 +2849,48 @@ export default {
     justify-content: center;
     font-size: 18px;
     flex-shrink: 0;
+}
+
+/* ── Bulk select ──────────────────────────────────────────────────────── */
+.vld-item-wrap {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+.vld-item-checkbox {
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: #405189;
+}
+.vld-item-wrap .vld-item {
+    padding-left: 28px;
+    width: 100%;
+}
+.vld-item--checked {
+    background: #eef0f9 !important;
+    border-left: 3px solid #405189 !important;
+}
+.vld-bulk-bar {
+    position: sticky;
+    bottom: 0;
+    background: #1a1d23;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    gap: 10px;
+    z-index: 10;
+    border-top: 2px solid #405189;
+}
+.vld-bulk-count {
+    font-size: 13px;
+    font-weight: 600;
 }
 </style>

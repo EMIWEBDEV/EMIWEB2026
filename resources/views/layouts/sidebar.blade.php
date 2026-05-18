@@ -58,29 +58,76 @@
                     ->orderBy('pa.Urutan_Menu', 'asc')
                     ->get();
 
-                $dashboardMenu = $allMenus->where('Nama_Menu', 'Dashboard')->first();
-                $headerMenus = $allMenus->whereNotNull('Nama_Header')->groupBy('Nama_Header');
-                $bottomMenus = $allMenus->whereNull('Nama_Header')->where('Nama_Menu', '!=', 'Dashboard');
+                // Dashboard group: semua menu bertanda Nama_Header = 'Dashboard'
+                $dashboardMenus = $allMenus->where('Nama_Header', 'Dashboard')->values();
+
+                // Menu lainnya (non-dashboard)
+                $headerMenus = $allMenus
+                    ->whereNotNull('Nama_Header')
+                    ->where('Nama_Header', '!=', 'Dashboard')
+                    ->groupBy('Nama_Header');
+
+                $bottomMenus = $allMenus->whereNull('Nama_Header');
             @endphp
 
             <ul class="navbar-nav" id="navbar-nav">
-                
+
                 <li class="menu-title"><span data-key="t-menu">Menu</span></li>
-                
-                @if ($dashboardMenu)
+
+                {{-- ── Dashboard: 1 item = direct link, >1 = collapse ── --}}
+                @if ($dashboardMenus->count() === 1)
                     @php
-                        $urlDash = ltrim($dashboardMenu->Url_Menu, '/');
-                        $isActiveDash = request()->is($urlDash . '*') || request()->is($dashboardMenu->Url_Menu . '*') ? 'active' : '';
+                        $singleDash = $dashboardMenus->first();
+                        $urlSingle  = ltrim($singleDash->Url_Menu, '/');
+                        $isSingleActive = (request()->is($urlSingle . '*') || request()->is($singleDash->Url_Menu . '*')) ? 'active' : '';
                     @endphp
                     <li class="nav-item">
-                        <a href="{{ url($dashboardMenu->Url_Menu) }}" class="nav-link menu-link {{ $isActiveDash }}">
-                            <i class="{{ $dashboardMenu->Icon_Menu }}"></i>
-                            <span data-key="t-dashboard">{{ $dashboardMenu->Nama_Menu }}</span>
+                        <a href="{{ url($singleDash->Url_Menu) }}" class="nav-link menu-link {{ $isSingleActive }}">
+                            <i class="fas fa-home"></i>
+                            <span data-key="t-dashboard">Dashboard</span>
                         </a>
+                    </li>
+                @elseif ($dashboardMenus->count() > 1)
+                    @php
+                        $isDashGroupActive = $dashboardMenus->contains(function ($m) {
+                            $u = ltrim($m->Url_Menu, '/');
+                            return request()->is($u . '*') || request()->is($m->Url_Menu . '*');
+                        });
+                    @endphp
+                    <li class="nav-item">
+                        <a class="nav-link menu-link {{ $isDashGroupActive ? 'active' : '' }}"
+                           href="#sidebarDashboardGroup"
+                           data-bs-toggle="collapse"
+                           role="button"
+                           aria-expanded="{{ $isDashGroupActive ? 'true' : 'false' }}"
+                           aria-controls="sidebarDashboardGroup">
+                            <i class="fas fa-home"></i>
+                            <span data-key="t-dashboard">Dashboard</span>
+                        </a>
+                        <div class="collapse menu-dropdown {{ $isDashGroupActive ? 'show' : '' }}" id="sidebarDashboardGroup">
+                            <ul class="nav nav-sm flex-column">
+                                @foreach ($dashboardMenus as $dashItem)
+                                    @php
+                                        $urlDashItem = ltrim($dashItem->Url_Menu, '/');
+                                        $isDashItemActive = (request()->is($urlDashItem . '*') || request()->is($dashItem->Url_Menu . '*')) ? 'active' : '';
+                                    @endphp
+                                    <li class="nav-item">
+                                        <a href="{{ url($dashItem->Url_Menu) }}"
+                                           class="nav-link {{ $isDashItemActive }}"
+                                           data-key="t-{{ \Str::slug($dashItem->Nama_Menu) }}">
+                                            <i class="{{ $dashItem->Icon_Menu }}"></i>
+                                            {{ $dashItem->Nama_Menu }}
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
                     </li>
                 @endif
 
+                @if ($headerMenus->count() > 0)
                 <li class="menu-title"><span data-key="t-laboratorium">Laboratorium</span></li>
+                @endif
 
                 @foreach ($headerMenus as $headerName => $menusInHeader)
                     @php
