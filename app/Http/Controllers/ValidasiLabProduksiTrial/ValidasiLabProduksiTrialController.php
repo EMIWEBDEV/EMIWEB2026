@@ -33,6 +33,7 @@ class ValidasiLabProduksiTrialController extends Controller
         $filterTanggalMulai = $request->input('tanggal_mulai');
         $filterTanggalSelesai = $request->input('tanggal_selesai');
         $filterQrCode = $request->input('qrcode');
+        $filterStatus = $request->input('status');
 
         if (empty($allowedAnalisaIds)) {
                 return response()->json([
@@ -98,6 +99,34 @@ class ValidasiLabProduksiTrialController extends Controller
                         ->orWhereNull('N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode');
                 });
             }
+        }
+
+        if ($filterStatus === 'lolos') {
+            $baseQuery->whereNotExists(function ($subQ) {
+                $subQ->select(DB::raw(1))
+                     ->from('N_EMI_LAB_Uji_Sampel as chk')
+                     ->whereColumn('chk.No_Po_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel')
+                     ->whereColumn('chk.Id_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa')
+                     ->whereNull('chk.Status')
+                     ->whereNull('chk.Flag_Selesai')
+                     ->where(function ($q2) {
+                         $q2->whereNull('chk.Flag_Layak')->orWhere('chk.Flag_Layak', '!=', 'Y');
+                     })
+                     ->whereRaw('chk.Tahapan_Ke = (SELECT MAX(mx.Tahapan_Ke) FROM N_EMI_LAB_Uji_Sampel mx WHERE mx.No_Po_Sampel = chk.No_Po_Sampel AND mx.Id_Jenis_Analisa = chk.Id_Jenis_Analisa AND mx.Status IS NULL AND mx.Flag_Selesai IS NULL)');
+            });
+        } elseif ($filterStatus === 'tidak_lolos') {
+            $baseQuery->whereExists(function ($subQ) {
+                $subQ->select(DB::raw(1))
+                     ->from('N_EMI_LAB_Uji_Sampel as chk')
+                     ->whereColumn('chk.No_Po_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel')
+                     ->whereColumn('chk.Id_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa')
+                     ->whereNull('chk.Status')
+                     ->whereNull('chk.Flag_Selesai')
+                     ->where(function ($q2) {
+                         $q2->whereNull('chk.Flag_Layak')->orWhere('chk.Flag_Layak', '!=', 'Y');
+                     })
+                     ->whereRaw('chk.Tahapan_Ke = (SELECT MAX(mx.Tahapan_Ke) FROM N_EMI_LAB_Uji_Sampel mx WHERE mx.No_Po_Sampel = chk.No_Po_Sampel AND mx.Id_Jenis_Analisa = chk.Id_Jenis_Analisa AND mx.Status IS NULL AND mx.Flag_Selesai IS NULL)');
+            });
         }
 
         // Urutkan menggunakan alias `Tanggal` yang didapat dari agregasi MAX()

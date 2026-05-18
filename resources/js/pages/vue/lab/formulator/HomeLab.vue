@@ -1,561 +1,763 @@
 <template>
-    <div class="cleaning-system-container">
-        <!-- Header Section -->
-        <div class="system-header">
-            <div class="header-content">
-                <h1 class="system-title">
-                    <i class="fas fa-vials"></i> Trial Sampel
-                </h1>
-                <p class="system-subtitle">
-                    Laboratory Information Management System
-                </p>
+    <div class="lhm-wrap">
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- TITLE BAR                                                  -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div class="lhm-title-bar bg-primary">
+            <div class="lhm-title-left">
+                <div class="lhm-title-icon">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        style="width: 20px; height: 20px"
+                    >
+                        <path
+                            d="M9.5 2a.5.5 0 0 0 0 1H11v1.07A7.001 7.001 0 0 0 12 18a7 7 0 0 0 1-13.93V3h1.5a.5.5 0 0 0 0-1h-5ZM12 5a5 5 0 1 1 0 10A5 5 0 0 1 12 5Zm-1 2v3.586l-1.707 1.707.707.707 2-2A.5.5 0 0 0 12 10.5V7h-1Z"
+                        />
+                    </svg>
+                </div>
+                <div>
+                    <div class="lhm-title-main">Trial Sampel</div>
+                    <div class="lhm-title-sub">
+                        LIMS · PT. Evo Manufacturing Indonesia
+                    </div>
+                </div>
             </div>
-            <div class="header-actions">
-                <button class="btn-help">
-                    <i class="fas fa-question-circle"></i> Bantuan
+            <div class="lhm-title-right">
+                <div class="lhm-day-tabs">
+                    <button
+                        v-for="d in dayOptions"
+                        :key="d.val"
+                        :class="['lhm-day-tab', days === d.val ? 'active' : '']"
+                        @click="setDays(d.val)"
+                    >
+                        {{ d.label }}
+                    </button>
+                </div>
+                <button
+                    class="lhm-refresh-btn"
+                    @click="fetchSampleList"
+                    :disabled="loadingList"
+                >
+                    <i
+                        :class="
+                            loadingList
+                                ? 'ri-loader-4-line lhm-spin'
+                                : 'ri-refresh-line'
+                        "
+                    ></i>
                 </button>
             </div>
         </div>
 
-        <div class="content-wrapper">
-            <div class="search-panel">
-                <div class="panel-header">
-                    <h2><i class="fas fa-search"></i> Cari Data Sampel</h2>
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- MAIN PANELS                                                -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div class="lhm-panels">
+            <!-- ── LEFT: Sample list ─────────────────────────────── -->
+            <div class="lhm-list-col">
+                <!-- Search bar (debounced server-side) -->
+                <div class="lhm-search-bar">
+                    <i class="ri-search-line"></i>
+                    <input
+                        v-model="searchQuery"
+                        @input="onSearchInput"
+                        placeholder="Cari No. Sampel / Barang / PO..."
+                        class="lhm-search-input"
+                    />
+                    <span
+                        v-if="searchQuery"
+                        class="lhm-search-clear"
+                        @click="clearSearch"
+                        >×</span
+                    >
                 </div>
-                <div class="panel-body">
-                    <div class="search-form">
-                        <div class="form-group">
-                            <label for="sampleNumber" class="form-label"
-                                >Nomor Sampel</label
-                            >
-                            <div class="input-with-button">
-                                <input
-                                    type="search"
-                                    id="sampleNumber"
-                                    v-model="sampleNumber"
-                                    class="form-input"
-                                    placeholder="FSXXXX-XXXX"
-                                    autocomplete="off"
-                                    autofocus
-                                />
-                                <button
-                                    @click="fetchDetails"
-                                    class="btn-search"
+
+                <!-- Filter tabs -->
+                <div class="lhm-filter-tabs">
+                    <button
+                        :class="[
+                            'lhm-filter-tab',
+                            filter === 'semua' ? 'active' : '',
+                        ]"
+                        @click="setFilter('semua')"
+                    >
+                        Semua
+                        <span class="lhm-filter-badge">{{
+                            summary.semua
+                        }}</span>
+                    </button>
+                    <button
+                        :class="[
+                            'lhm-filter-tab',
+                            filter === 'belum_selesai' ? 'active' : '',
+                        ]"
+                        @click="setFilter('belum_selesai')"
+                    >
+                        Belum Selesai
+                        <span
+                            class="lhm-filter-badge lhm-filter-badge--pending"
+                            >{{ summary.belum_selesai }}</span
+                        >
+                    </button>
+                    <button
+                        :class="[
+                            'lhm-filter-tab',
+                            filter === 'selesai' ? 'active' : '',
+                        ]"
+                        @click="setFilter('selesai')"
+                    >
+                        Finalisasi
+                        <span class="lhm-filter-badge lhm-filter-badge--done">{{
+                            summary.selesai
+                        }}</span>
+                    </button>
+                </div>
+
+                <!-- Skeleton loading -->
+                <template v-if="loadingList">
+                    <div v-for="n in 4" :key="n" class="lhm-card lhm-skeleton">
+                        <div class="lhm-sk-line" style="width: 55%"></div>
+                        <div
+                            class="lhm-sk-line"
+                            style="width: 80%; height: 10px; margin-top: 6px"
+                        ></div>
+                        <div class="d-flex gap-2 mt-2">
+                            <div class="lhm-sk-chip"></div>
+                            <div class="lhm-sk-chip"></div>
+                            <div class="lhm-sk-chip"></div>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Empty state -->
+                <div v-else-if="!sampleList.length" class="lhm-list-empty">
+                    <i class="ri-inbox-line"></i>
+                    <p>
+                        {{
+                            pagination.total === 0
+                                ? "Tidak ada sampel pada periode ini"
+                                : "Tidak ada hasil yang sesuai"
+                        }}
+                    </p>
+                </div>
+
+                <!-- Sample cards -->
+                <template v-else>
+                    <div
+                        v-for="sample in sampleList"
+                        :key="sample.no_sampel"
+                        class="lhm-card"
+                        :class="{
+                            'lhm-card--closed': sample.is_selesai,
+                            'lhm-card--selected':
+                                selectedSample &&
+                                selectedSample.no_sampel === sample.no_sampel,
+                        }"
+                    >
+                        <!-- Card header -->
+                        <div class="lhm-card-head">
+                            <div class="lhm-card-head-left">
+                                <span class="lhm-sampel-no">{{
+                                    sample.no_sampel
+                                }}</span>
+                                <span
+                                    v-if="sample.is_selesai"
+                                    class="lhm-badge lhm-badge--closed"
                                 >
-                                    <i class="fas fa-search"></i> Cari
-                                </button>
+                                    <i class="ri-checkbox-circle-line me-1"></i
+                                    >Finalisasi
+                                </span>
+                            </div>
+                            <div class="lhm-card-head-right">
+                                <span class="lhm-card-date">{{
+                                    formatTanggal(sample.tanggal)
+                                }}</span>
                                 <button
-                                    v-if="nomorSampel.sampleDetails"
-                                    @click="resetDataSearch"
-                                    class="btn-search bg-danger"
+                                    class="lhm-qr-view-btn"
+                                    @click.stop="openQrModal(sample)"
+                                    title="Lihat QR Code"
                                 >
-                                    <i class="fas fa-sync-alt"></i> Reset
+                                    <i class="ri-qr-code-line"></i>
                                 </button>
                             </div>
                         </div>
+
+                        <!-- Card meta -->
+                        <div class="lhm-card-meta">
+                            <span
+                                ><i class="ri-barcode-box-line"></i>
+                                {{ sample.no_po }}</span
+                            >
+                            <span
+                                ><i class="ri-settings-3-line"></i>
+                                {{ sample.nama_mesin || "-" }}</span
+                            >
+                            <span
+                                ><i class="ri-user-line"></i>
+                                {{ sample.registrar }}</span
+                            >
+                            <span
+                                v-if="
+                                    sample.is_multi_print === 'Y' &&
+                                    sample.multi_qr_list &&
+                                    sample.multi_qr_list.length
+                                "
+                            >
+                                <i class="ri-qr-code-line"></i>
+                                {{ sample.multi_qr_list.length }} Sub QR
+                            </span>
+                        </div>
+                        <div class="lhm-card-barang">
+                            {{ sample.nama_barang }}
+                        </div>
+
+                        <!-- Analisa chips -->
+                        <div
+                            v-if="sample.analisa && sample.analisa.length"
+                            class="lhm-chips"
+                        >
+                            <button
+                                v-for="analisa in sample.analisa"
+                                :key="analisa.id"
+                                class="lhm-chip"
+                                :class="chipClass(analisa, sample)"
+                                :disabled="sample.is_selesai"
+                                :title="analisa.Kode_Analisa"
+                                @click="
+                                    !sample.is_selesai &&
+                                        selectAnalisa(sample, analisa)
+                                "
+                            >
+                                <i
+                                    v-if="analisa.is_done"
+                                    class="ri-check-line"
+                                ></i>
+                                <i
+                                    v-else-if="
+                                        analisa.is_started && !analisa.is_done
+                                    "
+                                    class="ri-loader-4-line lhm-spin"
+                                ></i>
+                                <i
+                                    v-else-if="analisa.has_resampling"
+                                    class="ri-refresh-line"
+                                ></i>
+                                {{ analisa.Jenis_Analisa }}
+                            </button>
+                        </div>
+                        <div v-else class="lhm-no-analisa">
+                            <i class="ri-information-line me-1"></i>Tidak ada
+                            analisa terkonfigurasi untuk akun ini
+                        </div>
                     </div>
+                </template>
+
+                <!-- Pagination -->
+                <div
+                    v-if="!loadingList && pagination.total_pages > 1"
+                    class="lhm-pagination"
+                >
+                    <button
+                        class="lhm-page-btn"
+                        :disabled="pagination.current_page <= 1"
+                        @click="goToPage(pagination.current_page - 1)"
+                    >
+                        <i class="ri-arrow-left-s-line"></i> Sebelumnya
+                    </button>
+                    <span class="lhm-page-info">
+                        <strong>{{ pagination.current_page }}</strong> /
+                        {{ pagination.total_pages }}
+                    </span>
+                    <button
+                        class="lhm-page-btn"
+                        :disabled="
+                            pagination.current_page >= pagination.total_pages
+                        "
+                        @click="goToPage(pagination.current_page + 1)"
+                    >
+                        Berikutnya <i class="ri-arrow-right-s-line"></i>
+                    </button>
                 </div>
                 <div
-                    v-if="showIntro"
-                    class="container d-flex justify-content-center align-items-center"
+                    v-if="!loadingList && pagination.total > 0"
+                    class="lhm-pagination-info"
                 >
-                    <div class="d-flex flex-column text-center">
-                        <DotLottieVue
-                            style="height: 350px; width: 500px"
-                            autoplay
-                            loop
-                            src="/animation/labAnimation.lottie"
-                        />
-                        <p class="mt-4 fw-semibold fs-5">
-                            Segera Analisis, Masukan Nomor Sampel / Nomor
-                            Transaksi Anda
-                        </p>
-                    </div>
+                    Menampilkan {{ pagination.from }}–{{ pagination.to }} dari
+                    {{ pagination.total }} sampel
                 </div>
             </div>
+            <!-- /lhm-list-col -->
 
-            <div v-if="nomorSampel.sampleDetails" class="details-panel">
-                <div class="panel-header with-tabs">
-                    <h2><i class="fas fa-clipboard-list"></i> Detail Sampel</h2>
-                    <div class="status-badge">
-                        <span class="badge active">
-                            {{ nomorSampel.sampleDetails.nama_barang ?? "-" }}
-                        </span>
-                        <span class="badge priority">{{
-                            nomorSampel.sampleDetails.kode_barang ?? "-"
-                        }}</span>
-                    </div>
+            <!-- ── RIGHT: Form panel ──────────────────────────────── -->
+            <div id="lhm-form-panel" class="lhm-form-col">
+                <!-- Empty state -->
+                <div
+                    v-if="!selectedSample && !loading.detailTemplate"
+                    class="lhm-form-empty"
+                >
+                    <DotLottieVue
+                        style="height: 220px; width: 280px"
+                        autoplay
+                        loop
+                        src="/animation/labAnimation.lottie"
+                    />
+                    <p class="lhm-form-empty-text">
+                        Pilih analisa dari daftar sampel di sebelah kiri untuk
+                        memulai
+                    </p>
                 </div>
 
-                <div class="panel-body">
-                    <div class="detail-grid">
-                        <div class="detail-column">
-                            <div class="detail-item">
-                                <span class="detail-label">No. PO</span>
-                                <span class="detail-value">{{
-                                    nomorSampel.sampleDetails.no_po
-                                }}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">No. Sampel</span>
-                                <span class="detail-value">{{
-                                    nomorSampel.sampleDetails.no_sampel
-                                }}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Mesin</span>
-                                <span class="detail-value highlight">{{
-                                    nomorSampel.sampleDetails.nama_mesin
-                                }}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Seri Mesin</span>
-                                <span class="detail-value">{{
-                                    nomorSampel.sampleDetails.seri_mesin
-                                }}</span>
-                            </div>
-                            <div
-                                class="detail-item"
+                <!-- Active sample banner -->
+                <div v-if="selectedSample" class="lhm-active-banner">
+                    <div class="lhm-banner-left">
+                        <div class="lhm-banner-sampel">
+                            {{ selectedSample.no_sampel }}
+                        </div>
+                        <div class="lhm-banner-meta">
+                            <span>{{ selectedSample.nama_barang }}</span>
+                            <span class="lhm-sep">·</span>
+                            <span>{{ selectedSample.nama_mesin }}</span>
+                            <span class="lhm-sep">·</span>
+                            <span>No. PO: {{ selectedSample.no_po }}</span>
+                            <span
                                 v-if="
-                                    nomorSampel.sampleDetails.Berat_Sampel !== 0
+                                    selectedSample.no_batch &&
+                                    selectedSample.no_batch !== '-'
                                 "
+                                class="lhm-sep"
+                                >·</span
                             >
-                                <span class="detail-label"
-                                    >Berat Sampel (Kg)</span
-                                >
-                                <span class="detail-value"
-                                    >{{
-                                        nomorSampel.sampleDetails.Berat_Sampel
-                                    }}
-                                    Kg</span
-                                >
-                            </div>
-                            <div
-                                class="detail-item"
+                            <span
                                 v-if="
-                                    nomorSampel.sampleDetails.Jumlah_Pcs !== 0
+                                    selectedSample.no_batch &&
+                                    selectedSample.no_batch !== '-'
                                 "
+                                >Batch: {{ selectedSample.no_batch }}</span
                             >
-                                <span class="detail-label">Jumlah Pcs</span>
-                                <span class="detail-value"
-                                    >{{
-                                        nomorSampel.sampleDetails.Jumlah_Pcs
-                                    }}
-                                    Pcs</span
-                                >
-                            </div>
-                        </div>
-                        <div class="detail-column">
-                            <div class="detail-item">
-                                <span class="detail-label">No. Split PO</span>
-                                <span class="detail-value">{{
-                                    nomorSampel.sampleDetails.no_split_po
-                                }}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Tanggal</span>
-                                <span class="detail-value"
-                                    >{{
-                                        formatTanggal(
-                                            nomorSampel.sampleDetails.tanggal
-                                        )
-                                    }}
-                                    {{ nomorSampel.sampleDetails.jam }}</span
-                                >
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">No. Batch</span>
-                                <span class="detail-value">{{
-                                    nomorSampel.sampleDetails.no_batch
-                                }}</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label"
-                                    >Jumlah Cetak QR</span
-                                >
-                                <span class="detail-value">{{
-                                    nomorSampel.sampleDetails.jumlah_print
-                                }}</span>
-                            </div>
+                            <span class="lhm-sep">·</span>
+                            <span>Oleh: {{ selectedSample.registrar }}</span>
                         </div>
                     </div>
-                    <div class="notes-section">
-                        <div class="notes-header">
-                            <span class="notes-label"
-                                ><i class="fas fa-sticky-note"></i> Catatan
-                                Khusus</span
-                            >
-                        </div>
-                        <div class="notes-content">
-                            {{
-                                nomorSampel.sampleDetails.keterangan ||
-                                "Tidak ada catatan"
-                            }}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="panel-header">
-                    <h2>
-                        <i class="fas fa-file-alt"></i> Pilih Template Analisis
-                    </h2>
-                </div>
-                <div class="panel-body">
-                    <div
-                        class="analysis-grid"
-                        v-if="nomorSampel.sampleDetails.analisa.length"
+                    <button
+                        class="lhm-banner-close"
+                        @click="clearSelection"
+                        title="Tutup"
                     >
+                        <i class="ri-close-line"></i>
+                    </button>
+                </div>
+
+                <!-- Loading template -->
+                <div v-if="loading.detailTemplate" class="lhm-form-loading">
+                    <div
+                        class="spinner-border text-primary"
+                        role="status"
+                    ></div>
+                    <span>Memuat template analisa...</span>
+                </div>
+
+                <!-- Form area -->
+                <div
+                    v-if="
+                        selectedSample &&
+                        selectedTemplating &&
+                        !loading.detailTemplate
+                    "
+                >
+                    <!-- ── Multi-print: sub-sample selection list ── -->
+                    <div
+                        v-if="
+                            nomorSampel.sampleDetails &&
+                            nomorSampel.sampleDetails.is_multi_print === 'Y'
+                        "
+                    >
+                        <!-- Step 1: Pilih sub sampel dari list -->
                         <div
-                            v-for="(item, index) in nomorSampel.sampleDetails
-                                .analisa"
-                            :key="index"
-                            class="analysis-card"
-                            :class="{ 'completed-card': item.is_done }"
-                            @click="
-                                !item.is_done &&
-                                    handleClickLab(item.id, item.Kode_Analisa)
-                            "
+                            v-if="!nomorSampel.multiSampel"
+                            class="lhm-qr-panel"
                         >
-                            <div class="analysis-icon">
-                                <i class="fas fa-flask"></i>
-                                <div
-                                    v-if="item.is_done"
-                                    class="completed-badge"
-                                >
-                                    <i class="fas fa-check-circle"></i>
+                            <div class="lhm-qr-panel-head">
+                                <i class="ri-qr-code-line lhm-qr-icon"></i>
+                                <div>
+                                    <div class="lhm-qr-title">
+                                        Pilih Nomor Sub Sampel (Multi QR)
+                                    </div>
+                                    <div class="lhm-qr-sub">
+                                        {{
+                                            selectedSample &&
+                                            selectedSample.multi_qr_list
+                                                ? selectedSample.multi_qr_list
+                                                      .length
+                                                : 0
+                                        }}
+                                        sub sampel tersedia
+                                    </div>
                                 </div>
                             </div>
-
-                            <div class="analysis-content">
-                                <div class="analysis-badge">
+                            <div class="lhm-qr-list">
+                                <button
+                                    v-for="qr in selectedSample &&
+                                    selectedSample.multi_qr_list
+                                        ? selectedSample.multi_qr_list
+                                        : []"
+                                    :key="qr.no_po_multi"
+                                    class="lhm-qr-row"
+                                    :class="{
+                                        'lhm-qr-row--done':
+                                            qr.flag_selesai === 'Y',
+                                        'lhm-qr-row--resampling':
+                                            qr.is_resampling_origin,
+                                    }"
+                                    :disabled="
+                                        qr.flag_selesai === 'Y' ||
+                                        qr.is_resampling_origin ||
+                                        loading.multiSampel === qr.no_po_multi
+                                    "
+                                    @click="selectSubSampel(qr.no_po_multi)"
+                                >
+                                    <span class="lhm-qr-row-label">
+                                        <i
+                                            class="ri-qr-code-line"
+                                            style="
+                                                font-size: 14px;
+                                                flex-shrink: 0;
+                                            "
+                                        ></i>
+                                        {{ qr.no_po_multi }}
+                                    </span>
                                     <span
-                                        class="badge"
-                                        :class="
-                                            item.is_done
-                                                ? 'bg-success-soft'
-                                                : 'bg-primary-soft'
+                                        v-if="qr.flag_selesai === 'Y'"
+                                        class="lhm-qr-badge lhm-qr-badge--done"
+                                    >
+                                        <i class="ri-check-double-line"></i>
+                                        Selesai
+                                    </span>
+                                    <span
+                                        v-else-if="qr.is_resampling_origin"
+                                        class="lhm-qr-badge lhm-qr-badge--resamp"
+                                    >
+                                        <i class="ri-refresh-line"></i>
+                                        Resampling
+                                    </span>
+                                    <span
+                                        v-else-if="
+                                            loading.multiSampel ===
+                                            qr.no_po_multi
                                         "
                                     >
-                                        {{ item.Kode_Analisa }}
+                                        <span
+                                            class="spinner-border spinner-border-sm text-primary"
+                                        ></span>
                                     </span>
-                                </div>
-
-                                <h4 class="analysis-title">
-                                    {{ item.Jenis_Analisa }}
-                                    <span
-                                        v-if="item.is_done"
-                                        class="completed-text"
-                                        >Selesai</span
-                                    >
-                                </h4>
-
+                                    <i
+                                        v-else
+                                        class="ri-arrow-right-s-line lhm-qr-arrow"
+                                    ></i>
+                                </button>
                                 <div
-                                    class="analysis-meta"
-                                    v-if="item.Nama_Mesin !== null"
+                                    v-if="
+                                        !selectedSample ||
+                                        !selectedSample.multi_qr_list ||
+                                        !selectedSample.multi_qr_list.length
+                                    "
+                                    class="lhm-qr-empty"
                                 >
-                                    <span class="meta-item">
-                                        <i class="fas fa-microscope"></i>
-                                        {{ item.Nama_Mesin }}
-                                    </span>
+                                    <i class="ri-information-line me-1"></i
+                                    >Tidak ada sub sampel terdaftar
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div
-                        v-if="!nomorSampel.sampleDetails.analisa.length"
-                        class="d-flex justify-content-center"
-                    >
-                        <div class="flex-column align-content-center">
-                            <DotLottieVue
-                                style="height: 100px; width: 100px"
-                                autoplay
-                                loop
-                                src="/animation/empty2.json"
-                            />
-                            <p class="text-center">Data Tidak Ditemukan !</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div
-                v-if="loading.detailTemplate"
-                class="text-center loading-state"
-            >
-                <div class="d-flex justify-content-center py-4 loading-spinner">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Memuat...</span>
-                    </div>
-                </div>
-            </div>
 
-            <div v-else>
-                <div v-if="nomorSampel.sampleDetails">
-                    <div
-                        v-if="nomorSampel.sampleDetails.is_multi_print === 'Y'"
-                    >
-                        <div v-if="selectedTemplating">
-                            <div class="search-panel">
-                                <div class="panel-header">
-                                    <h2>
-                                        <i class="fas fa-search"></i> Cari Data
-                                    </h2>
-                                </div>
-                                <div class="panel-body">
-                                    <div class="search-form">
-                                        <div class="form-group">
-                                            <label
-                                                for="sampleNumber-multi"
-                                                class="form-label"
-                                                >Nomor Multi Sampel</label
-                                            >
-                                            <div class="input-with-button">
-                                                <input
-                                                    type="search"
-                                                    id="sampleNumber-multi"
-                                                    v-model="samplePoMulti"
-                                                    class="form-input"
-                                                    placeholder="FSXXXX-XXXX"
-                                                    autocomplete="off"
-                                                    autofocus
-                                                />
-                                                <button
-                                                    :disabled="
-                                                        loading.multiSampel
-                                                    "
-                                                    @click="fetchNoMultiQrcode"
-                                                    class="btn-search"
-                                                >
-                                                    <i
-                                                        class="fas fa-search"
-                                                    ></i>
-                                                    Cari
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div
-                                    v-if="showIntro"
-                                    class="container d-flex justify-content-center align-items-center"
-                                >
-                                    <div class="d-flex flex-column text-center">
-                                        <DotLottieVue
-                                            style="height: 350px; width: 500px"
-                                            autoplay
-                                            loop
-                                            src="/animation/labAnimation.lottie"
-                                        />
-                                        <p class="mt-4 fw-semibold fs-5">
-                                            Segera Analisis, Masukan Nomor
-                                            Sampel / Nomor Transaksi Anda
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div v-if="nomorSampel.multiSampel">
-                                <div v-if="nomorSampel.multiSampel.is_done">
-                                    <div class="form-panel modern-form">
-                                        <div class="panel-header">
-                                            <h2>
-                                                <i
-                                                    class="fas fa-flask me-2"
-                                                ></i>
-                                                Sample Analysis
-                                            </h2>
-                                            <p class="subtitle">
-                                                Masukkan hasil analisis rinci
-                                                untuk sampel
-                                            </p>
-                                        </div>
-                                        <div
-                                            v-if="
-                                                loading.currentDataSubmitAnalisa
-                                            "
-                                            class="text-center loading-state"
-                                        >
-                                            <div
-                                                class="d-flex justify-content-center py-4 loading-spinner"
-                                            >
-                                                <div
-                                                    class="spinner-border text-primary"
-                                                    role="status"
-                                                >
-                                                    <span
-                                                        class="visually-hidden"
-                                                        >Memuat...</span
-                                                    >
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="panel-body" v-else>
-                                            <div class="celebration-container">
-                                                <div class="confetti-left">
-                                                    <DotLottieVue
-                                                        class="uiWah"
-                                                        autoplay
-                                                        loop
-                                                        src="/animation/confentie.json"
-                                                    />
-                                                </div>
-
-                                                <!-- Confetti kanan -->
-                                                <div class="confetti-right">
-                                                    <DotLottieVue
-                                                        class="uiWah"
-                                                        autoplay
-                                                        loop
-                                                        src="/animation/confentie.json"
-                                                    />
-                                                </div>
-
-                                                <div class="animation-wrapper">
-                                                    <DotLottieVue
-                                                        class="celebration-animation"
-                                                        autoplay
-                                                        loop
-                                                        src="/animation/done.json"
-                                                    />
-                                                </div>
-
-                                                <div
-                                                    class="celebration-message"
-                                                >
-                                                    <h2 class="congrats-text">
-                                                        Selesai
-                                                    </h2>
-                                                    <p class="sample-info">
-                                                        Nomor uji sampel
-                                                        <span
-                                                            class="sample-number"
-                                                            >{{
-                                                                samplePoMulti
-                                                            }}</span
-                                                        >
-                                                        telah berhasil
-                                                        diselesaikan
-                                                    </p>
-                                                </div>
-
-                                                <!-- Confetti CSS pure -->
-                                                <div class="confetti"></div>
-                                                <div class="confetti"></div>
-                                                <div class="confetti"></div>
-                                                <div class="confetti"></div>
-                                                <div class="confetti"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div v-else>
-                                    <div
-                                        v-if="
-                                            selectedTemplating.formula !== null
-                                        "
-                                    >
-                                        <MultiRumus
-                                            :selectedTemplating="
-                                                selectedTemplating
-                                            "
-                                            :is_multi_print="
-                                                nomorSampel.sampleDetails
-                                                    ?.is_multi_print ?? null
-                                            "
-                                            :no_ticket="
-                                                nomorSampel.multiSampel
-                                                    ?.no_ticket ?? null
-                                            "
-                                            :Id_Jenis_Analisa="
-                                                reactiveIdJenisAnalisa
-                                            "
-                                            :No_Po_Sampel="
-                                                nomorSampel.sampleDetails
-                                                    .no_sampel ?? null
-                                            "
-                                            :Id_Mesin="
-                                                nomorSampel.sampleDetails
-                                                    .Id_Mesin ?? null
-                                            "
-                                            :kodeAnalisa="kodeAnalisa"
-                                            :sampleNumber="sampleNumber"
-                                            :Flag_Foto="Flag_Foto"
-                                        />
-                                    </div>
-                                    <div v-else>
-                                        <NotRumus
-                                            :selectedTemplating="
-                                                selectedTemplating
-                                            "
-                                            :is_multi_print="
-                                                nomorSampel.sampleDetails
-                                                    ?.is_multi_print ?? null
-                                            "
-                                            :Id_Jenis_Analisa="
-                                                reactiveIdJenisAnalisa
-                                            "
-                                            :No_Po_Sampel="
-                                                nomorSampel.sampleDetails
-                                                    .no_sampel
-                                            "
-                                            :No_Fak_Sub_Po="samplePoMulti"
-                                            :Id_Mesin="
-                                                nomorSampel.sampleDetails
-                                                    .Id_Mesin ?? null
-                                            "
-                                            :kodeAnalisa="kodeAnalisa"
-                                            :Flag_Foto="Flag_Foto"
-                                            :sampleNumber="sampleNumber"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div v-else>
-                        <div v-if="selectedTemplating">
-                            <div v-if="selectedTemplating.formula !== null">
-                                <MultiRumus
-                                    :selectedTemplating="selectedTemplating"
-                                    :Id_Jenis_Analisa="reactiveIdJenisAnalisa"
-                                    :No_Po_Sampel="
-                                        nomorSampel.sampleDetails.no_sampel
-                                    "
-                                    :is_multi_print="
-                                        nomorSampel.multiSampel
-                                            ?.is_multi_print ?? null
-                                    "
-                                    :Id_Mesin="
-                                        nomorSampel.sampleDetails.Id_Mesin ??
-                                        null
-                                    "
-                                    :kodeAnalisa="kodeAnalisa"
-                                    :Flag_Foto="Flag_Foto"
-                                    :sampleNumber="sampleNumber"
+                        <!-- Step 2: Form setelah sub sampel dipilih -->
+                        <div v-if="nomorSampel.multiSampel">
+                            <button
+                                class="lhm-qr-back"
+                                @click="nomorSampel.multiSampel = null"
+                            >
+                                <i class="ri-arrow-left-s-line me-1"></i>Pilih
+                                Sub Sampel Lain
+                            </button>
+                            <div
+                                v-if="nomorSampel.multiSampel.is_done"
+                                class="lhm-done-state"
+                            >
+                                <DotLottieVue
+                                    style="height: 140px; width: 180px"
+                                    autoplay
+                                    loop
+                                    src="/animation/done.json"
                                 />
+                                <p class="fw-semibold text-success">
+                                    Sub sampel
+                                    <strong>{{ samplePoMulti }}</strong> sudah
+                                    selesai dianalisa
+                                </p>
                             </div>
                             <div v-else>
-                                <NotRumus
+                                <MultiRumus
+                                    v-if="selectedTemplating.formula !== null"
                                     :selectedTemplating="selectedTemplating"
+                                    :is_multi_print="
+                                        nomorSampel.sampleDetails
+                                            ?.is_multi_print ?? null
+                                    "
+                                    :no_ticket="
+                                        nomorSampel.multiSampel?.no_ticket ??
+                                        null
+                                    "
                                     :Id_Jenis_Analisa="reactiveIdJenisAnalisa"
                                     :No_Po_Sampel="
-                                        nomorSampel.sampleDetails.no_sampel
-                                    "
-                                    :kodeAnalisa="kodeAnalisa"
-                                    :is_multi_print="
-                                        nomorSampel.multiSampel
-                                            ?.is_multi_print ?? null
+                                        nomorSampel.sampleDetails.no_sampel ??
+                                        null
                                     "
                                     :Id_Mesin="
                                         nomorSampel.sampleDetails.Id_Mesin ??
                                         null
                                     "
+                                    :kodeAnalisa="kodeAnalisa"
+                                    :sampleNumber="sampleNumber"
+                                    :Flag_Foto="Flag_Foto"
+                                />
+                                <NotRumus
+                                    v-else
+                                    :selectedTemplating="selectedTemplating"
+                                    :is_multi_print="
+                                        nomorSampel.sampleDetails
+                                            ?.is_multi_print ?? null
+                                    "
+                                    :Id_Jenis_Analisa="reactiveIdJenisAnalisa"
+                                    :No_Po_Sampel="
+                                        nomorSampel.sampleDetails.no_sampel
+                                    "
+                                    :No_Fak_Sub_Po="samplePoMulti"
+                                    :Id_Mesin="
+                                        nomorSampel.sampleDetails.Id_Mesin ??
+                                        null
+                                    "
+                                    :kodeAnalisa="kodeAnalisa"
                                     :Flag_Foto="Flag_Foto"
                                     :sampleNumber="sampleNumber"
                                 />
                             </div>
                         </div>
                     </div>
+
+                    <!-- ── Single (non-multi-print) ── -->
+                    <div v-else>
+                        <MultiRumus
+                            v-if="selectedTemplating.formula !== null"
+                            :selectedTemplating="selectedTemplating"
+                            :Id_Jenis_Analisa="reactiveIdJenisAnalisa"
+                            :No_Po_Sampel="nomorSampel.sampleDetails.no_sampel"
+                            :is_multi_print="
+                                nomorSampel.sampleDetails?.is_multi_print ??
+                                null
+                            "
+                            :Id_Mesin="
+                                nomorSampel.sampleDetails.Id_Mesin ?? null
+                            "
+                            :kodeAnalisa="kodeAnalisa"
+                            :Flag_Foto="Flag_Foto"
+                            :sampleNumber="sampleNumber"
+                        />
+                        <NotRumus
+                            v-else
+                            :selectedTemplating="selectedTemplating"
+                            :Id_Jenis_Analisa="reactiveIdJenisAnalisa"
+                            :No_Po_Sampel="nomorSampel.sampleDetails.no_sampel"
+                            :kodeAnalisa="kodeAnalisa"
+                            :is_multi_print="
+                                nomorSampel.sampleDetails?.is_multi_print ??
+                                null
+                            "
+                            :Id_Mesin="
+                                nomorSampel.sampleDetails.Id_Mesin ?? null
+                            "
+                            :Flag_Foto="Flag_Foto"
+                            :sampleNumber="sampleNumber"
+                        />
+                    </div>
                 </div>
+                <!-- /form area -->
+            </div>
+            <!-- /lhm-form-col -->
+        </div>
+        <!-- /lhm-panels -->
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- QR CODE MODAL                                              -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div
+            v-if="qrModal.visible"
+            class="lhm-modal-overlay"
+            @click.self="closeQrModal"
+        >
+            <div class="lhm-modal-box">
+                <!-- Modal header -->
+                <div class="lhm-modal-header bg-primary">
+                    <div class="lhm-modal-title">
+                        <i class="ri-qr-code-line me-2"></i>
+                        QR Code ·
+                        {{ qrModal.sample && qrModal.sample.no_sampel }}
+                    </div>
+                    <button class="lhm-modal-close" @click="closeQrModal">
+                        <i class="ri-close-line"></i>
+                    </button>
+                </div>
+
+                <!-- Modal body -->
+                <div class="lhm-modal-body" v-if="qrModal.sample">
+                    <!-- Sample info strip -->
+                    <div class="lhm-modal-info">
+                        <span
+                            ><i class="ri-box-3-line me-1"></i
+                            >{{ qrModal.sample.nama_barang }}</span
+                        >
+                        <span
+                            ><i class="ri-barcode-box-line me-1"></i
+                            >{{ qrModal.sample.no_po }}</span
+                        >
+                        <span
+                            ><i class="ri-settings-3-line me-1"></i
+                            >{{ qrModal.sample.nama_mesin }}</span
+                        >
+                        <span
+                            v-if="
+                                qrModal.sample.no_batch &&
+                                qrModal.sample.no_batch !== '-'
+                            "
+                        >
+                            <i class="ri-stack-line me-1"></i>Batch
+                            {{ qrModal.sample.no_batch }}
+                        </span>
+                    </div>
+
+                    <!-- Single QR (non-multi) -->
+                    <div
+                        v-if="qrModal.sample.is_multi_print !== 'Y'"
+                        class="lhm-modal-single-qr"
+                    >
+                        <div class="lhm-ticket">
+                            <div class="lhm-ticket-header">
+                                <div class="lhm-ticket-icon">
+                                    <i class="ri-flask-line"></i>
+                                </div>
+                                <div class="lhm-ticket-name">
+                                    {{ qrModal.sample.nama_barang }}
+                                </div>
+                            </div>
+                            <div class="lhm-ticket-body">
+                                <div class="lhm-ticket-info">
+                                    <div class="lhm-ticket-row">
+                                        <i class="ri-barcode-line"></i
+                                        ><span>{{
+                                            qrModal.sample.no_sampel
+                                        }}</span>
+                                    </div>
+                                    <div class="lhm-ticket-row">
+                                        <i class="ri-file-list-3-line"></i
+                                        ><span>{{
+                                            qrModal.sample.no_split_po || "-"
+                                        }}</span>
+                                    </div>
+                                    <div class="lhm-ticket-row">
+                                        <i class="ri-calendar-line"></i
+                                        ><span>{{
+                                            formatTanggal(
+                                                qrModal.sample.tanggal
+                                            )
+                                        }}</span>
+                                    </div>
+                                    <div class="lhm-ticket-row">
+                                        <i class="ri-settings-3-line"></i
+                                        ><span>{{
+                                            qrModal.sample.nama_mesin || "-"
+                                        }}</span>
+                                    </div>
+                                </div>
+                                <div class="lhm-ticket-qr">
+                                    <qrcode-vue
+                                        :value="qrModal.sample.no_sampel"
+                                        :size="120"
+                                        level="H"
+                                        foreground="#1e293b"
+                                        background="transparent"
+                                    />
+                                    <div class="lhm-qr-label">SCAN ME</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Multi QR grid -->
+                    <div v-else class="lhm-modal-multi-qr">
+                        <div class="lhm-modal-multi-title">
+                            <i class="ri-qr-code-line me-1"></i>Sub QR Code
+                            <span class="badge bg-primary ms-1">{{
+                                qrModal.sample.multi_qr_list
+                                    ? qrModal.sample.multi_qr_list.length
+                                    : 0
+                            }}</span>
+                        </div>
+                        <div class="lhm-multi-qr-grid">
+                            <div
+                                v-for="qr in qrModal.sample.multi_qr_list"
+                                :key="qr.no_po_multi"
+                                class="lhm-ticket lhm-ticket--sm"
+                                :class="{
+                                    'lhm-ticket--done': qr.flag_selesai === 'Y',
+                                }"
+                            >
+                                <div class="lhm-ticket-header">
+                                    <div
+                                        class="lhm-ticket-icon lhm-ticket-icon--sm"
+                                    >
+                                        <i class="ri-qr-code-line"></i>
+                                    </div>
+                                    <div class="lhm-ticket-name">
+                                        {{ qrModal.sample.nama_barang }}
+                                    </div>
+                                </div>
+                                <div class="lhm-ticket-body">
+                                    <div class="lhm-ticket-info">
+                                        <div class="lhm-ticket-row">
+                                            <i class="ri-barcode-line"></i
+                                            ><span>{{ qr.no_po_multi }}</span>
+                                        </div>
+                                        <div class="lhm-ticket-row">
+                                            <i class="ri-calendar-line"></i
+                                            ><span>{{
+                                                formatTanggal(
+                                                    qrModal.sample.tanggal
+                                                )
+                                            }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="lhm-ticket-qr">
+                                        <qrcode-vue
+                                            :value="qr.no_po_multi"
+                                            :size="90"
+                                            level="H"
+                                            foreground="#1e293b"
+                                            background="transparent"
+                                        />
+                                        <div class="lhm-qr-label">SCAN ME</div>
+                                        <span
+                                            v-if="qr.flag_selesai === 'Y'"
+                                            class="lhm-qr-done-badge"
+                                        >
+                                            <i class="ri-check-double-line"></i>
+                                            Selesai
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /modal-body -->
             </div>
         </div>
     </div>
@@ -565,9 +767,10 @@
 import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
 import axios from "axios";
 import Swal from "sweetalert2";
-import throttle from "lodash/throttle";
 import { reactive } from "vue";
 import { defineAsyncComponent } from "vue";
+import QrcodeVue from "qrcode.vue";
+
 const MultiRumus = defineAsyncComponent(() =>
     import("./perhitungan-backup/MultiRumusFormulator.vue")
 );
@@ -576,22 +779,52 @@ const NotRumus = defineAsyncComponent(() =>
 );
 
 export default {
-    components: {
-        DotLottieVue,
-        MultiRumus,
-        NotRumus,
-    },
+    name: "HomeLabFormulatorTrial",
+    components: { DotLottieVue, MultiRumus, NotRumus, QrcodeVue },
+
     data() {
         return {
-            detailSampelMessage: "",
-            multiSampelMessage: "",
-            parameterSampelMessage: "",
+            /* list state */
+            sampleList: [],
+            loadingList: false,
+            days: 7,
+            searchQuery: "",
+            filter: "semua",
+            searchTimer: null,
+            dayOptions: [
+                { val: 1, label: "Hari Ini" },
+                { val: 7, label: "7 Hari" },
+                { val: 14, label: "14 Hari" },
+                { val: 30, label: "30 Hari" },
+            ],
+
+            /* pagination */
+            pagination: {
+                current_page: 1,
+                per_page: 20,
+                total: 0,
+                total_pages: 1,
+                from: 0,
+                to: 0,
+            },
+
+            /* filter tab badge counts */
+            summary: {
+                semua: 0,
+                selesai: 0,
+                belum_selesai: 0,
+            },
+
+            /* selection */
+            selectedSample: null,
+            selectedActiveAnalisaId: null,
+
+            /* form state */
             selectedTemplating: null,
             inputValues: reactive({}),
             sampleNumber: null,
             samplePoMulti: null,
             Flag_Foto: "T",
-            showIntro: true,
             reactiveIdJenisAnalisa: null,
             kodeAnalisa: null,
             nomorSampel: {
@@ -599,192 +832,174 @@ export default {
                 multiSampel: null,
             },
             loading: {
-                detailSample: false,
                 detailTemplate: false,
-                multiSampel: false,
+                multiSampel: null,
+            },
+
+            /* QR modal */
+            qrModal: {
+                visible: false,
+                sample: null,
             },
         };
     },
+
     methods: {
-        handleClickLab: throttle(async function (idJenisAnalisa, Kode_Analisa) {
-            const selectedItem = this.nomorSampel.sampleDetails.analisa.find(
-                (item) => item.id === idJenisAnalisa
-            );
-
-            if (selectedItem?.is_done) {
-                this.activeCardId = null; // Reset active card jika sudah selesai
-                return;
+        /* ── List fetch ─────────────────────────────────────────── */
+        async fetchSampleList() {
+            this.loadingList = true;
+            try {
+                const { data } = await axios.get(
+                    "/api/v1/formulator/uji-sampel/daftar",
+                    {
+                        params: {
+                            days: this.days,
+                            page: this.pagination.current_page,
+                            filter: this.filter,
+                            search: this.searchQuery,
+                        },
+                    }
+                );
+                this.sampleList = data.result || [];
+                this.pagination = data.pagination || this.pagination;
+                this.summary = data.summary || this.summary;
+            } catch {
+                Swal.fire(
+                    "Gagal",
+                    "Tidak dapat memuat daftar sampel.",
+                    "error"
+                );
+            } finally {
+                this.loadingList = false;
             }
+        },
 
-            document.querySelectorAll(".analysis-card").forEach((card) => {
-                card.classList.remove("active");
-            });
-            event.currentTarget.classList.add("active");
+        setDays(d) {
+            this.days = d;
+            this.pagination.current_page = 1;
+            this.fetchSampleList();
+        },
+
+        setFilter(f) {
+            this.filter = f;
+            this.pagination.current_page = 1;
+            this.fetchSampleList();
+        },
+
+        goToPage(p) {
+            this.pagination.current_page = p;
+            this.fetchSampleList();
+        },
+
+        onSearchInput() {
+            clearTimeout(this.searchTimer);
+            this.searchTimer = setTimeout(() => {
+                this.pagination.current_page = 1;
+                this.fetchSampleList();
+            }, 400);
+        },
+
+        clearSearch() {
+            this.searchQuery = "";
+            this.pagination.current_page = 1;
+            this.fetchSampleList();
+        },
+
+        /* ── Select analisa ─────────────────────────────────────── */
+        async selectAnalisa(sample, analisa) {
+            this.sampleNumber = sample.no_sampel;
+            this.selectedSample = sample;
+            this.selectedActiveAnalisaId = analisa.id;
+            this.reactiveIdJenisAnalisa = analisa.id;
+            this.kodeAnalisa = analisa.Kode_Analisa;
+            this.samplePoMulti = null;
+            this.selectedTemplating = null;
+            this.nomorSampel.multiSampel = null;
+            this.nomorSampel.sampleDetails = {
+                id: null,
+                nama_barang: sample.nama_barang,
+                no_sampel: sample.no_sampel,
+                Berat_Sampel: 0,
+                Jumlah_Pcs: 0,
+                no_po: sample.no_po,
+                tanggal: sample.tanggal,
+                jam: sample.jam,
+                no_split_po: sample.no_split_po,
+                no_batch: sample.no_batch,
+                nama_mesin: sample.nama_mesin,
+                seri_mesin: "",
+                keterangan: "",
+                kode_barang: sample.kode_barang,
+                Id_Mesin: sample.Id_Mesin,
+                kode_perusahaan: "",
+                is_multi_print: sample.is_multi_print,
+                jumlah_print: sample.jumlah_print,
+                is_resampling: false,
+                analisa: sample.analisa.map((a) => ({
+                    id: a.id,
+                    Kode_Analisa: a.Kode_Analisa,
+                    Jenis_Analisa: a.Jenis_Analisa,
+                    Nama_Mesin: null,
+                    is_done: a.is_done,
+                })),
+            };
 
             this.loading.detailTemplate = true;
-            this.reactiveIdJenisAnalisa = idJenisAnalisa;
-            this.kodeAnalisa = Kode_Analisa;
-            this.nomorSampel.multiSampel = null;
-            const idMesin = this.nomorSampel.sampleDetails?.Id_Mesin;
-            if (!idMesin) throw new Error("ID Mesin tidak ditemukan");
-
             try {
                 const response = await axios.get(
-                    `/api/v1/formulator/uji-trial/${idJenisAnalisa}/parameter-perhitungan-old`
+                    `/api/v1/formulator/uji-trial/${analisa.id}/parameter-perhitungan-old`
                 );
-
                 if (response.status === 200 && response.data?.result) {
                     this.selectedTemplating = response.data.result;
-                    this.Flag_Foto = response.data.result?.sesi_foto;
-                    // Inisialisasi inputValues dengan id_qc sebagai key
-                    this.selectedTemplating.parameter.forEach((param) => {
-                        this.inputValues[param.id_qc] = null;
+                    this.Flag_Foto = response.data.result?.sesi_foto ?? "T";
+                    (this.selectedTemplating.parameter || []).forEach((p) => {
+                        this.inputValues[p.id_qc] = null;
                     });
                 } else {
                     this.selectedTemplating = null;
                 }
-            } catch (error) {
+            } catch (err) {
                 this.selectedTemplating = null;
-
-                let errorMessage = "Data Tidak Ditemukan";
-                if (error?.message) {
-                    errorMessage += `: ${error.message}`;
-                } else if (error?.response?.data?.error) {
-                    errorMessage += `: ${error.response.data.error}`;
-                }
-
-                Swal.fire("Peringatan", errorMessage, "warning");
+                Swal.fire(
+                    "Peringatan",
+                    err?.response?.data?.message ||
+                        err?.message ||
+                        "Template analisa tidak ditemukan.",
+                    "warning"
+                );
             } finally {
                 this.loading.detailTemplate = false;
             }
-        }, 500),
 
-        async fetchDetails() {
-            this.detailSampelMessage = "";
-            this.selectedTemplating = null;
-            this.nomorSampel.multiSampel = null;
-            document.querySelectorAll(".analysis-card").forEach((card) => {
-                card.classList.remove("active");
+            this.$nextTick(() => {
+                const el = document.getElementById("lhm-form-panel");
+                if (el && window.innerWidth < 1024) {
+                    el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
             });
-            this.loading.detailSample = true;
-
-            try {
-                const no_sampel = this.sampleNumber;
-
-                if (!no_sampel) {
-                    Swal.fire(
-                        "Peringatan",
-                        "Masukkan nomor sampel terlebih dahulu.",
-                        "warning"
-                    );
-                    return;
-                }
-
-                sessionStorage.setItem("sampleFormulator", no_sampel);
-
-                const response = await axios.get(
-                    `/api/v1/formulator/detail-data-sampel/${no_sampel}`
-                );
-
-                // Pengecekan status 404 di sini sudah dihapus
-
-                if (response.data.finished === true) {
-                    await Swal.fire({
-                        icon: "success",
-                        title: "🎉 Selesai! 🎉",
-                        text: response.data.message,
-                        confirmButtonText: "Tutup",
-                    });
-                    this.nomorSampel.sampleDetails = null;
-                    this.showIntro = true;
-                    return;
-                }
-
-                if (response.data.locked === true) {
-                    await Swal.fire({
-                        icon: "warning",
-                        title: "⏰ Waktu Habis!",
-                        html: `<b>Nomor Sampel:</b> ${no_sampel}<br><br>${response.data.message}`,
-                        confirmButtonText: "Mengerti",
-                        confirmButtonColor: "#d33",
-                        customClass: {
-                            popup: "animated fadeInDown faster",
-                        },
-                    });
-                    this.nomorSampel.sampleDetails = null;
-                    this.showIntro = true;
-                    return;
-                }
-
-                if (
-                    response.data.status_kondisi ===
-                    "BUTUH_SELESAIKAN_SEBELUMNYA"
-                ) {
-                    await Swal.fire({
-                        icon: "warning",
-                        title: "⛔ Syarat Belum Terpenuhi",
-                        html: `<b>Nomor Sampel:</b> ${no_sampel}<br><br>${response.data.message}`,
-                        confirmButtonText: "Mengerti",
-                        confirmButtonColor: "#d33",
-                        customClass: {
-                            popup: "animated fadeInDown faster",
-                        },
-                    });
-                    this.nomorSampel.sampleDetails = null;
-                    this.showIntro = true;
-                    return;
-                }
-
-                // Kalau data ditemukan dan belum selesai
-                this.nomorSampel.sampleDetails = response.data.result;
-                this.showIntro = false;
-            } catch (error) {
-                console.log(error);
-                this.nomorSampel.sampleDetails = null;
-                this.showIntro = true;
-
-                // ✅ PENANGANAN 404 DIPINDAHKAN KE SINI
-                if (error.response && error.response.status === 404) {
-                    this.detailSampelMessage = "Data Tidak Ditemukan";
-                    await Swal.fire({
-                        icon: "warning",
-                        title: "Data Tidak Ditemukan",
-                        text:
-                            error.response.data.message ||
-                            "Nomor sampel tidak tersedia. Periksa kembali nomor Anda.",
-                        confirmButtonText: "Tutup",
-                    });
-                } else {
-                    // Tangani error server (500) atau error jaringan di sini
-                    this.detailSampelMessage =
-                        "Terjadi Kesalahan Dalam Mengambil Data";
-                    await Swal.fire({
-                        icon: "error",
-                        title: "Terjadi Kesalahan",
-                        text: "Gagal mengambil data sampel. Silakan coba lagi nanti.",
-                        confirmButtonText: "Tutup",
-                    });
-                }
-            } finally {
-                this.loading.detailSample = false;
-            }
         },
-        async fetchNoMultiQrcode() {
-            this.multiSampelMessage = "";
+
+        clearSelection() {
+            this.selectedSample = null;
+            this.selectedActiveAnalisaId = null;
+            this.selectedTemplating = null;
+            this.nomorSampel.sampleDetails = null;
             this.nomorSampel.multiSampel = null;
-            this.loading.multiSampel = true;
+            this.samplePoMulti = null;
+        },
+
+        /* ── Multi-QR sub-sample ────────────────────────────────── */
+        async selectSubSampel(noPoMulti) {
+            this.samplePoMulti = noPoMulti;
+            await this.fetchNoMultiQrcode();
+        },
+
+        async fetchNoMultiQrcode() {
+            this.nomorSampel.multiSampel = null;
+            const no_sampel = this.samplePoMulti;
+            if (!no_sampel) return;
+            this.loading.multiSampel = no_sampel;
             try {
-                const no_sampel = this.samplePoMulti;
-
-                if (!no_sampel) {
-                    Swal.fire(
-                        "Peringatan",
-                        "Masukkan nomor sampel terlebih dahulu.",
-                        "warning"
-                    );
-                    return;
-                }
-
                 const response = await axios.get(
                     `/api/v1/formulator/${this.sampleNumber}/${no_sampel}/multi-print/${this.reactiveIdJenisAnalisa}`
                 );
@@ -795,1963 +1010,1084 @@ export default {
                     await Swal.fire({
                         icon: "warning",
                         title: "Data Tidak Ditemukan",
-                        text: "Nomor sampel tidak tersedia. Periksa kembali nomor Anda.",
+                        text: "Nomor sub sampel tidak tersedia.",
                         confirmButtonText: "Tutup",
                     });
-                    this.nomorSampel.multiSampel = null;
+                    return;
                 }
                 this.nomorSampel.multiSampel = response.data.result;
             } catch (error) {
-                console.log(error);
                 this.nomorSampel.multiSampel = null;
-                this.multiSampelMessage =
-                    "Terjadi Kesalahan Dalam Mengambil Data";
                 await Swal.fire({
                     icon: "error",
                     title: "Terjadi Kesalahan",
                     text:
-                        error.response.data.message ||
+                        error?.response?.data?.message ||
                         error.message ||
-                        "Gagal mengambil data sampel. Silakan coba lagi nanti.",
+                        "Gagal mengambil data sub sampel.",
                     confirmButtonText: "Tutup",
                 });
             } finally {
-                this.loading.multiSampel = false;
+                this.loading.multiSampel = null;
             }
         },
 
-        formatTanggal(tanggalString) {
-            const date = new Date(tanggalString);
-            const options = { day: "2-digit", month: "short", year: "numeric" };
-            return date.toLocaleDateString("en-GB", options);
+        /* ── Chip styling ───────────────────────────────────────── */
+        chipClass(analisa, sample) {
+            if (sample.is_selesai) return "lhm-chip--disabled";
+            if (analisa.is_done) return "lhm-chip--done";
+            if (analisa.has_resampling) return "lhm-chip--resampling";
+            if (analisa.is_started) return "lhm-chip--progress";
+            if (
+                this.selectedActiveAnalisaId === analisa.id &&
+                this.selectedSample?.no_sampel === sample.no_sampel
+            )
+                return "lhm-chip--active";
+            return "lhm-chip--pending";
         },
 
-        resetDataSearch() {
-            sessionStorage.removeItem("sampleFormulator");
-            this.sampleNumber = null;
-            this.selectedTemplating = null;
-            this.nomorSampel.sampleDetails = null;
-            this.showIntro = true;
+        formatTanggal(val) {
+            if (!val) return "-";
+            const d = new Date(val);
+            return d.toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            });
+        },
+
+        /* ── QR modal ───────────────────────────────────────────── */
+        openQrModal(sample) {
+            this.qrModal.sample = sample;
+            this.qrModal.visible = true;
+            document.body.style.overflow = "hidden";
+        },
+
+        closeQrModal() {
+            this.qrModal.visible = false;
+            this.qrModal.sample = null;
+            document.body.style.overflow = "";
         },
     },
+
     mounted() {
-        const savedSampleNumber = sessionStorage.getItem("sampleFormulator");
-        if (savedSampleNumber) {
-            this.sampleNumber = savedSampleNumber;
-            this.fetchDetails();
-        }
+        this.fetchSampleList();
+        window.addEventListener(
+            "keydown",
+            (this._onKeydown = (e) => {
+                if (e.key === "Escape" && this.qrModal.visible)
+                    this.closeQrModal();
+            })
+        );
+    },
 
-        const url = new URL(window.location.href);
-
-        if (!url.searchParams.has("ts")) {
-            const now = Date.now();
-            const timezone =
-                Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-            const lang = navigator.language || "en";
-            const screenSize = `${window.screen.width}x${window.screen.height}`;
-            const viewportSize = `${window.innerWidth}x${window.innerHeight}`;
-            const platform = /Mobi/i.test(navigator.userAgent)
-                ? "mobile"
-                : "desktop";
-            const referrer = document.referrer || "direct";
-            const ua = navigator.userAgent;
-            const connection = navigator.connection?.effectiveType || "unknown";
-            const online = navigator.onLine;
-            const touch =
-                "ontouchstart" in window || navigator.maxTouchPoints > 0;
-            const cookieEnabled = navigator.cookieEnabled;
-            const pixelRatio = window.devicePixelRatio || 1;
-            const colorDepth = screen.colorDepth || 24;
-
-            const randomId = Math.random().toString(36).substring(2, 14);
-
-            url.searchParams.set("ts", now);
-            url.searchParams.set("tz", timezone);
-            url.searchParams.set("lang", lang);
-            url.searchParams.set("screen", screenSize);
-            url.searchParams.set("viewport", viewportSize);
-            url.searchParams.set("platform", platform);
-            url.searchParams.set("ref", referrer);
-            url.searchParams.set("rid", randomId);
-            url.searchParams.set("ua", ua);
-            url.searchParams.set("connection", connection);
-            url.searchParams.set("online", online);
-            url.searchParams.set("touch", touch);
-            url.searchParams.set("cookie_enabled", cookieEnabled);
-            url.searchParams.set("pixel_ratio", pixelRatio);
-            url.searchParams.set("color_depth", colorDepth);
-            url.searchParams.set("app_name", "MyLabVueApp");
-
-            window.location.href = url.toString();
-        }
+    beforeUnmount() {
+        clearTimeout(this.searchTimer);
+        window.removeEventListener("keydown", this._onKeydown);
+        document.body.style.overflow = "";
     },
 };
 </script>
 
-<style>
-:root {
-    --warna-primer: #4361ee;
-    --warna-sekunder: #3f37c9;
-    --warna-sukses: #4cc9f0;
-    --warna-info: #4895ef;
-    --warna-peringatan: #f72585;
-    --warna-bahaya: #b5179e;
-    --warna-latar: #f8f9fa;
-    --warna-gelap: #212529;
-    --warna-teks-primer: #2b2d42;
-    --warna-teks-sekunder: #8d99ae;
-    --radius-border: 12px;
-    --bayangan: 0 10px 30px rgba(0, 0, 0, 0.08);
-    --transisi: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.header-kalkulator {
-    text-align: center;
-    margin-bottom: 1rem;
-    padding-bottom: 1.5rem;
-}
-
-.judul-kalkulator {
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: #3f5189;
-    margin-bottom: 0.5rem;
+<style scoped>
+/* ════════════════════════════════════════════════════════════ */
+/* WRAP                                                          */
+/* ════════════════════════════════════════════════════════════ */
+.lhm-wrap {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-}
-
-.deskripsi-kalkulator {
-    font-size: 1.1rem;
-    color: #35477b;
-    max-width: 700px;
-    margin: 0 auto;
-}
-
-.isi-dokumentasi {
-    margin-bottom: 1rem;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-/* Base Styles */
-.calculation-container {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    font-family: "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    color: #333;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 1rem;
-}
-
-/* Section Headers */
-.section-header {
-    margin-bottom: 1.5rem;
-}
-
-.section-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.section-badge i {
-    margin-right: 0.5rem;
-}
-
-.formula-badge {
-    background-color: rgba(13, 110, 253, 0.1);
-    color: #0d6efd;
-    border-left: 4px solid #0d6efd;
-}
-
-.result-badge {
-    background-color: rgba(25, 135, 84, 0.1);
-    color: #198754;
-    border-left: 4px solid #198754;
-}
-
-.section-description {
-    font-size: 0.9rem;
-    color: #6c757d;
-    margin-left: 0.25rem;
-}
-
-/* Parameter Table */
-.parameter-table-container {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    flex-direction: column;
+    height: 100vh;
+    background: #f4f6fb;
     overflow: hidden;
 }
 
-.responsive-table-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.parameter-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 600px;
-}
-
-.parameter-table th {
-    background-color: #f8f9fa;
-    padding: 0.75rem 1rem;
-    text-align: left;
-    font-weight: 600;
-    color: #495057;
-    border-bottom: 2px solid #e9ecef;
-}
-
-.parameter-table td {
-    padding: 1rem;
-    vertical-align: middle;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.parameter-index {
-    font-weight: 500;
-    color: #6c757d;
-    width: 50px;
-}
-
-.parameter-name {
-    font-weight: 500;
-    min-width: 200px;
-}
-
-.parameter-unit {
-    color: #6c757d;
-    font-size: 0.85em;
-    margin-left: 0.25rem;
-}
-
-.parameter-input-cell {
-    min-width: 200px;
-}
-
-.input-group {
+/* ════════════════════════════════════════════════════════════ */
+/* TITLE BAR                                                     */
+/* ════════════════════════════════════════════════════════════ */
+.lhm-title-bar {
     display: flex;
-    align-items: stretch;
-}
-
-.parameter-input {
-    flex: 1;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #ced4da;
-    border-radius: 4px 0 0 4px;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.parameter-input:focus {
-    border-color: #86b7fe;
-    outline: 0;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-.unit-display {
-    background-color: #e9ecef;
-    border: 1px solid #ced4da;
-    border-left: 0;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0 4px 4px 0;
-    color: #495057;
-}
-
-/* Results Section */
-.results-container {
-    display: grid;
-    gap: 1rem;
-}
-
-.result-card {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    padding: 1.25rem;
-    border-left: 4px solid #198754;
-}
-
-.result-header {
-    display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    flex-shrink: 0;
 }
-
-.result-title {
-    font-weight: 600;
-    color: #212529;
+.lhm-title-left {
     display: flex;
     align-items: center;
+    gap: 0.85rem;
+}
+.lhm-title-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
-.result-title i {
-    color: #198754;
-    margin-right: 0.5rem;
-    font-size: 1.1rem;
+.lhm-title-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.75);
+    flex-shrink: 0;
 }
-
-.result-value {
-    font-size: 1.25rem;
+.lhm-title-main {
+    font-size: 1rem;
     font-weight: 700;
-    color: #198754;
-    background-color: rgba(25, 135, 84, 0.1);
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    min-width: 80px;
-    text-align: center;
+    color: #fff;
+    line-height: 1.2;
+}
+.lhm-title-sub {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
 }
 
-.result-notes {
-    background-color: #f8f9fa;
-    border-radius: 6px;
-    padding: 0.75rem;
-    margin-bottom: 1rem;
+.lhm-day-tabs {
+    display: flex;
+    gap: 3px;
+}
+.lhm-day-tab {
+    padding: 0.3rem 0.65rem;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.lhm-day-tab.active,
+.lhm-day-tab:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.5);
 }
 
-.notes-header {
+.lhm-refresh-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
     display: flex;
     align-items: center;
-    font-size: 0.85rem;
-    color: #6c757d;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.lhm-refresh-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.3);
+}
+.lhm-refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ════════════════════════════════════════════════════════════ */
+/* PANELS                                                        */
+/* ════════════════════════════════════════════════════════════ */
+.lhm-panels {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ── Left list ── */
+.lhm-list-col {
+    width: 400px;
+    min-width: 300px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+    overflow-y: auto;
+}
+
+/* ── Search bar ── */
+.lhm-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    background: #f8f9fc;
+    flex-shrink: 0;
+    color: #9ca3af;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+.lhm-search-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    outline: none;
+    color: #374151;
+}
+.lhm-search-clear {
+    cursor: pointer;
+    font-size: 16px;
+    color: #9ca3af;
+    line-height: 1;
+    padding: 0 2px;
+}
+.lhm-search-clear:hover {
+    color: #374151;
+}
+
+/* ── Filter tabs ── */
+.lhm-filter-tabs {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+    flex-shrink: 0;
+    position: sticky;
+    top: 44px;
+    z-index: 2;
+}
+.lhm-filter-tab {
+    flex: 1;
+    padding: 0.55rem 0.4rem;
+    font-size: 12px;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+}
+.lhm-filter-tab:hover {
+    color: #374151;
+    background: #f8f9fc;
+}
+.lhm-filter-tab.active {
+    color: var(--vz-primary);
+    border-bottom-color: var(--vz-primary);
+}
+
+.lhm-filter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    font-size: 10px;
+    font-weight: 700;
+    background: #e5e7eb;
+    color: #6b7280;
+}
+.lhm-filter-badge--pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+.lhm-filter-badge--done {
+    background: #dcfce7;
+    color: #166534;
+}
+
+/* ── Sample card ── */
+.lhm-card {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #f0f2f5;
+    transition: background 0.15s;
+    cursor: default;
+}
+.lhm-card:hover {
+    background: #f8f9fc;
+}
+.lhm-card--selected {
+    background: rgba(var(--vz-primary-rgb), 0.07) !important;
+    border-left: 3px solid var(--vz-primary);
+}
+.lhm-card--closed {
+    opacity: 0.65;
+    background: #f9fafb;
+}
+.lhm-card--closed .lhm-sampel-no {
+    color: #9ca3af;
+}
+
+.lhm-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+    flex-wrap: wrap;
+}
+.lhm-card-head-left {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+.lhm-sampel-no {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    font-family: monospace;
+}
+.lhm-card-date {
+    font-size: 11px;
+    color: #9ca3af;
+    white-space: nowrap;
+}
+
+.lhm-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 20px;
+    line-height: 1;
+}
+.lhm-badge--closed {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.lhm-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.75rem;
+    font-size: 11px;
+    color: #6b7280;
     margin-bottom: 0.25rem;
 }
-
-.notes-header i {
-    margin-right: 0.5rem;
+.lhm-card-meta i {
+    font-size: 11px;
+    margin-right: 2px;
 }
-
-.notes-content {
-    font-size: 0.9rem;
-    color: #495057;
-    line-height: 1.5;
-}
-
-.result-footer {
-    display: flex;
-    justify-content: flex-end;
-}
-
-.calculation-method {
-    font-size: 0.8rem;
-    color: #6c757d;
-}
-
-.method-label {
+.lhm-card-barang {
+    font-size: 12px;
+    color: #374151;
     font-weight: 500;
-    margin-right: 0.25rem;
-}
-
-/* Highlight Effect */
-.parameter-row.highlighted {
-    background-color: rgba(13, 110, 253, 0.05);
-    transition: background-color 0.3s ease;
-}
-
-/* Responsive Layout */
-@media (min-width: 992px) {
-    .calculation-container {
-        grid-template-columns: 1fr 1fr;
-    }
-}
-
-@media (min-width: 1200px) {
-    .calculation-container {
-        grid-template-columns: 2fr 1fr;
-    }
-}
-
-/* Animation */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.result-card {
-    animation: fadeIn 0.3s ease-out forwards;
-}
-
-/* Print Styles */
-@media print {
-    .calculation-container {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .parameter-table-container,
-    .result-card {
-        box-shadow: none;
-        border: 1px solid #ddd;
-    }
-}
-
-/* animasi skeleton */
-@keyframes pulseSkeleton {
-    0% {
-        background-color: #e0e0e0;
-    }
-    50% {
-        background-color: #f0f0f0;
-    }
-    100% {
-        background-color: #e0e0e0;
-    }
-}
-
-.skeleton {
-    animation: pulseSkeleton 1.5s infinite;
-    border-radius: 8px;
-}
-.skeleton-image {
-    width: 100%;
-    height: 200px;
-    margin-bottom: 16px;
-}
-
-.analysis-container {
-    background: rgba(255, 255, 255, 0.98);
-    border-radius: 20px;
-    padding: 28px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.analysis-container:hover {
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
-}
-
-.section-title {
-    font-weight: 800;
-    font-size: 1.25rem;
-    position: relative;
-    padding-bottom: 16px;
-    margin-bottom: 24px;
-    color: #495057; /* Updated to use #495057 */
-    letter-spacing: -0.5px;
-}
-
-.section-title::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 80px;
-    height: 5px;
-    background: #495057;
-    border-radius: 5px;
-    box-shadow: 0 2px 8px rgba(19, 24, 50, 0.3);
-}
-
-.text-gradient {
-    background: #495057;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-
-/* Base Styles */
-.cleaning-system-container {
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f8fafc;
-    min-height: 100vh;
-    color: #334155;
-}
-
-.system-header {
-    background: linear-gradient(135deg, #456290 0%, #25335e 100%);
-    color: white;
-    padding: 1.5rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.header-content {
-    flex: 1;
-}
-
-.system-title {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin: 0;
-    color: white;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.system-subtitle {
-    font-size: 1rem;
-    opacity: 0.9;
-    margin: 0.25rem 0 0;
-    font-weight: 400;
-}
-
-.header-actions {
-    display: flex;
-    gap: 1rem;
-}
-
-.btn-help {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-help:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.content-wrapper {
-    max-width: 100%;
-    margin: 2rem auto;
-    padding: 0 2rem;
-}
-
-/* Panel Styles */
-.search-panel,
-.details-panel,
-.template-panel,
-.form-panel {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    margin-bottom: 1.5rem;
-    overflow: hidden;
-}
-
-.panel-header {
-    padding: 1.25rem 1.5rem;
-    background-color: #f1f5f9;
-    border-bottom: 1px solid #e2e8f0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.panel-header.with-tabs {
-    border-bottom: none;
-}
-
-.panel-header h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.panel-body {
-    padding: 1.5rem;
-}
-
-/* Search Form */
-.search-form {
-    max-width: 600px;
-}
-
-.form-label {
-    display: block;
     margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #475569;
-}
-
-.input-with-button {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.form-input {
-    flex: 1;
-    padding: 0.75rem 1rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 1rem;
-    transition: all 0.2s ease;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
-}
-
-.btn-search {
-    background-color: #3b82f6;
-    color: white;
-    border: none;
-    padding: 0 1.5rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-search:hover {
-    background-color: #2563eb;
-}
-
-/* Detail Grid */
-.detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.detail-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.detail-label {
-    font-weight: 500;
-    color: #64748b;
-}
-
-.detail-value {
-    font-weight: 500;
-    color: #1e293b;
-}
-
-.detail-value.highlight {
-    color: #3b82f6;
-    font-weight: 600;
-}
-
-.status-badge {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.badge.active {
-    background-color: #d1fae5;
-    color: #065f46;
-}
-
-.badge.priority {
-    background-color: #3eb1df;
-    color: #ffffff;
-}
-
-/* Notes Section */
-.notes-section {
-    background-color: #f8fafc;
-    border-radius: 8px;
-    padding: 1rem;
-    margin-top: 1.5rem;
-    border-left: 4px solid #60a5fa;
-}
-
-.notes-header {
-    margin-bottom: 0.5rem;
-}
-
-.notes-label {
-    font-weight: 600;
-    color: #475569;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.notes-content {
-    color: #475569;
-    line-height: 1.5;
-}
-
-/* Form Panels */
-.form-panel .panel-header {
-    background-color: #f8fafc;
-}
-
-.btn-add {
-    background-color: #10b981;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-add:hover {
-    background-color: #059669;
-}
-
-.btn-add-param {
-    background-color: #f59e0b;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-    margin-right: 0.5rem;
-}
-
-.btn-add-param:hover {
-    background-color: #d97706;
-}
-
-/* Multi Table */
-.multi-table {
-    overflow-x: auto;
-}
-
-.multi-table table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-}
-
-.multi-table th {
-    background-color: #f1f5f9;
-    color: #475569;
-    font-weight: 600;
-    padding: 0.75rem 1rem;
-    text-align: left;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.multi-table td {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: middle;
-}
-
-.multi-table input {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-}
-
-.multi-table input:focus {
-    outline: none;
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
-}
-
-.multi-table td.actions {
-    text-align: center;
-}
-/* Form Actions */
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid #f1f5f9;
-}
-
-.btn-submit {
-    background-color: #3b82f6;
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-submit:hover {
-    background-color: #2563eb;
-}
-
-.btn-save {
-    background-color: #8b5cf6;
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-save:hover {
-    background-color: #7c3aed;
-}
-
-.modern-form {
-    font-family: "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    white-space: nowrap;
     overflow: hidden;
-
-    margin: 0 auto;
+    text-overflow: ellipsis;
 }
 
-.sample-info-card {
-    background: #f8f9ff;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 24px;
+/* ── Analisa chips ── */
+.lhm-chips {
     display: flex;
-    gap: 32px;
-    border: 1px solid #e0e7ff;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    max-height: 112px;
+    overflow-y: auto;
+    padding-right: 2px;
 }
-
-.info-item {
-    display: flex;
-    align-items: center;
-}
-
-.info-label {
-    font-weight: 500;
-    color: #4b5563;
-    margin-right: 8px;
-}
-
-.info-value {
-    font-weight: 600;
-    color: #1e293b;
-}
-
-/* Modern Table Styles */
-.analysis-table-container {
-    overflow-x: auto;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-}
-
-.modern-analysis-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-}
-
-.modern-analysis-table th {
-    background-color: #f8fafc;
-    color: #64748b;
-    font-weight: 600;
-    padding: 16px 20px;
-    text-align: left;
-    border-bottom: 1px solid #e2e8f0;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.modern-analysis-table td {
-    padding: 16px 20px;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: middle;
-    color: #334155;
-}
-
-.modern-analysis-table tr:last-child td {
-    border-bottom: none;
-}
-
-.parameter-name {
-    font-weight: 500;
-    min-width: 160px;
-}
-
-.parameter-hint {
-    display: block;
-    font-size: 0.75rem;
-    color: #64748b;
-    margin-top: 4px;
-    font-weight: 400;
-}
-
-.parameter-method {
-    color: #475569;
-    font-size: 0.9rem;
-}
-
-.parameter-unit {
-    color: #475569;
-    font-weight: 500;
-    text-align: center;
-}
-
-.parameter-input {
-    min-width: 280px;
-}
-
-/* Dual Range Slider Styles */
-.dual-range-container {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.range-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: #64748b;
-}
-
-.range-slider-wrapper {
-    position: relative;
-    height: 24px;
-    margin: 8px 0;
-}
-
-.range-track {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: #e2e8f0;
-    border-radius: 4px;
-    transform: translateY(-50%);
-    pointer-events: none;
-}
-
-.range-progress {
-    position: absolute;
-    height: 100%;
-    background: #3b82f6;
-    border-radius: 4px;
-    pointer-events: none;
-}
-
-.modern-range {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    opacity: 0;
-    cursor: pointer;
-    z-index: 2;
-}
-button.btn-search:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-    border-color: #ccc;
-}
-
-.modern-range::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #3b82f6;
-    cursor: pointer;
-    position: relative;
-    z-index: 3;
-}
-
-.range-values {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 4px;
-}
-
-.value-badge {
-    font-size: 0.8rem;
-    padding: 4px 8px;
-    border-radius: 12px;
-    background: #f1f5f9;
-    color: #334155;
-    font-weight: 500;
-}
-
-.min-value::before {
-    content: "Min: ";
-    opacity: 0.7;
-}
-
-.max-value::before {
-    content: "Max: ";
-    opacity: 0.7;
-}
-
-/* Modern Select Styles */
-.modern-select-container {
-    position: relative;
-}
-
-.modern-select {
-    appearance: none;
-    width: 100%;
-    padding: 12px 16px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    background-color: white;
-    font-size: 0.9rem;
-    color: #334155;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    padding-right: 40px;
-}
-
-.modern-select:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-}
-
-.select-arrow {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
-    color: #64748b;
-    font-size: 0.8rem;
-}
-
-/* Modern Input Styles */
-.modern-input-container {
-    position: relative;
-}
-
-.modern-input {
-    width: 100%;
-    padding: 12px 16px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    color: #334155;
-    transition: all 0.2s ease;
-    padding-right: 40px;
-}
-
-.modern-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-}
-
-.input-unit {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #64748b;
-    font-size: 0.85rem;
-    pointer-events: none;
-}
-
-/* Form Actions */
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 16px;
-    margin-top: 32px;
-    padding-top: 24px;
-    border-top: 1px solid #f1f5f9;
-}
-
-.action-button {
+.lhm-chip {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
-    border-radius: 8px;
+    gap: 0.25rem;
+    font-size: 11px;
     font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    padding: 0.28rem 0.65rem;
+    border-radius: 20px;
     border: none;
-    font-size: 0.9rem;
-}
-
-.action-button i {
-    font-size: 0.9rem;
-}
-
-.primary {
-    background-color: #3b82f6;
-    color: white;
-}
-
-.primary:hover {
-    background-color: #2563eb;
-}
-
-.secondary {
-    background-color: white;
-    color: #3b82f6;
-    border: 1px solid #e2e8f0;
-}
-
-.secondary:hover {
-    background-color: #f8fafc;
-}
-
-/* handle slider */
-/* Enhanced Range Slider Styles */
-.range-slider-wrapper {
-    position: relative;
-    height: 32px;
-    margin: 16px 0;
-    padding: 0 8px;
-}
-
-.range-track {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 6px;
-    background: #e2e8f0;
-    border-radius: 3px;
-    transform: translateY(-50%);
-    overflow: hidden;
-    display: flex;
-}
-
-.range-segment {
-    height: 100%;
-}
-
-.red-segment {
-    background: #ef4444;
-}
-
-.green-segment {
-    background: #10b981;
-}
-
-.modern-range {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    opacity: 0;
     cursor: pointer;
-    z-index: 3;
-}
-
-.range-handle {
-    position: absolute;
-    top: 50%;
-    width: 20px;
-    height: 20px;
-    background: white;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    z-index: 4;
-    cursor: grab;
-    border: 2px solid #3b82f6;
-    transition: all 0.2s ease;
-}
-
-.range-handle:hover {
-    transform: translate(-50%, -50%) scale(1.1);
-}
-
-.range-handle:active {
-    cursor: grabbing;
-    transform: translate(-50%, -50%) scale(1.1);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.min-handle {
-    z-index: 5;
-}
-
-.handle-tooltip {
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #3b82f6;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    transition: all 0.15s;
     white-space: nowrap;
-    margin-bottom: 8px;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
-
-.range-handle:hover .handle-tooltip {
-    opacity: 1;
-}
-
-.range-active {
-    position: absolute;
-    top: 50%;
-    height: 6px;
-    transform: translateY(-50%);
-    z-index: 2;
-    border-radius: 3px;
-}
-</style>
-
-<style>
-.loading-spinner {
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-/* Completed Card Styles */
-.completed-card {
-    position: relative;
-    opacity: 0.9;
-    border-color: rgba(40, 167, 69, 0.3) !important;
-}
-
-.completed-card:hover {
-    transform: none !important;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08) !important;
-    border-color: rgba(40, 167, 69, 0.3) !important;
-    cursor: not-allowed !important;
-}
-
-.completed-card::before {
-    display: none !important;
-}
-
-.completed-card .analysis-icon {
-    background: linear-gradient(135deg, #28a745, #218838) !important;
-    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.2) !important;
-}
-
-.completed-card:hover .analysis-icon {
-    transform: none !important;
-    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.2) !important;
-}
-
-.completed-badge {
-    position: absolute;
-    top: 0px;
-    right: 0px;
-    background: white;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #28a745;
-    font-size: 1rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    z-index: 2;
-}
-
-.completed-text {
-    font-size: 0.8rem;
-    background: rgba(40, 167, 69, 0.15);
-    color: #28a745;
-    padding: 4px 8px;
-    border-radius: 50px;
-    margin-left: 8px;
-    font-weight: 600;
-}
-
-.bg-success-soft {
-    background-color: rgba(40, 167, 69, 0.15) !important;
-    color: #28a745 !important;
-}
-
-/* Analysis Grid */
-.analysis-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 24px;
-}
-
-/* Analysis Card */
-.analysis-card {
-    background: white;
-    border-radius: 16px;
-    padding: 24px;
-    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(240, 240, 240, 0.8);
-    display: flex;
-    align-items: flex-start;
-    position: relative;
+    max-width: 180px;
     overflow: hidden;
+    text-overflow: ellipsis;
+}
+.lhm-chip--pending {
+    background: rgba(var(--vz-primary-rgb), 0.1);
+    color: var(--vz-primary);
+}
+.lhm-chip--pending:hover {
+    background: rgba(var(--vz-primary-rgb), 0.18);
+}
+.lhm-chip--active {
+    background: var(--vz-primary);
+    color: #fff;
+}
+.lhm-chip--progress {
+    background: #fef3c7;
+    color: #92400e;
     cursor: pointer;
 }
-
-.analysis-card::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.4),
-        transparent
-    );
-    transition: 0.5s;
+.lhm-chip--progress:hover {
+    background: #fde68a;
+}
+.lhm-chip--done {
+    background: #dcfce7;
+    color: #166534;
+    cursor: default;
+}
+.lhm-chip--disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+.lhm-chip--resampling {
+    background: #fff3cd;
+    color: #664d03;
+    border: 1px solid #ffc107;
+    cursor: pointer;
+}
+.lhm-chip--resampling:hover {
+    background: #ffe69c;
 }
 
-.analysis-card:hover::before {
-    left: 100%;
+.lhm-no-analisa {
+    font-size: 11px;
+    color: #9ca3af;
+    font-style: italic;
 }
 
-.analysis-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 16px 32px rgba(67, 97, 238, 0.2);
-    border-color: rgba(67, 97, 238, 0.3);
-}
-
-.analysis-card:hover .analysis-icon {
-    transform: rotate(10deg) scale(1.1);
-    box-shadow: 0 8px 24px rgba(67, 97, 238, 0.3);
-}
-
-.analysis-icon {
-    background: linear-gradient(135deg, #4361ee, #3a0ca3);
-    color: white;
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 20px;
-    flex-shrink: 0;
-    font-size: 1.5rem;
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    box-shadow: 0 6px 16px rgba(67, 97, 238, 0.2);
-}
-
-.analysis-content {
+/* ── List empty ── */
+.lhm-list-empty {
     flex: 1;
-}
-
-.analysis-badge {
-    margin-bottom: 12px;
-}
-
-.badge.bg-primary-soft {
-    background-color: rgba(67, 97, 238, 0.15);
-    color: #495057; /* Updated to use #495057 */
-    font-weight: 700;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    letter-spacing: 0.5px;
-    transition: all 0.3s ease;
-}
-
-.analysis-card:hover .badge.bg-primary-soft {
-    background-color: rgba(67, 97, 238, 0.25);
-}
-
-.analysis-title {
-    font-size: 1.2rem;
-    font-weight: 700;
-    margin-bottom: 12px;
-    color: #495057; /* Updated to use #495057 */
-    transition: all 0.3s ease;
-}
-
-.analysis-meta {
-    font-size: 0.9rem;
-    color: #495057; /* Updated to use #495057 */
-    margin-bottom: 16px;
-}
-
-.meta-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.3s ease;
-}
-
-.meta-item i {
-    font-size: 1rem;
-    color: #4361ee; /* Only the icon keeps the accent color */
-}
-
-.analysis-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 16px;
-    animation: fadeIn 0.3s ease;
-}
-
-.btn-outline-primary {
-    border: 2px solid #4361ee;
-    color: #495057; /* Updated to use #495057 */
-    transition: all 0.3s ease;
-    border-radius: 8px;
-    padding: 6px 16px;
-    font-weight: 600;
-    font-size: 0.85rem;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(4px);
-}
-
-.btn-outline-primary:hover {
-    background-color: #4361ee;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Extended Active Card Styles with 10 color variations */
-.analysis-card.active {
-    transform: translateY(-4px);
-    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
-    border-color: transparent;
-    position: relative;
-    z-index: 1;
-}
-
-/* Color variations for 10 different cards */
-.analysis-card.active:nth-child(10n + 1) {
-    border-left: 4px solid #4361ee;
-    background: linear-gradient(to right, rgba(67, 97, 238, 0.05), white);
-}
-
-.analysis-card.active:nth-child(10n + 2) {
-    border-left: 4px solid #3a0ca3;
-    background: linear-gradient(to right, rgba(58, 12, 163, 0.05), white);
-}
-
-.analysis-card.active:nth-child(10n + 3) {
-    border-left: 4px solid #7209b7;
-    background: linear-gradient(to right, rgba(114, 9, 183, 0.05), white);
-}
-
-.analysis-card.active:nth-child(10n + 4) {
-    border-left: 4px solid #f72585;
-    background: linear-gradient(to right, rgba(247, 37, 133, 0.05), white);
-}
-
-.analysis-card.active:nth-child(10n + 5) {
-    border-left: 4px solid #4cc9f0;
-    background: linear-gradient(to right, rgba(76, 201, 240, 0.05), white);
-}
-
-.analysis-card.active:nth-child(10n + 6) {
-    border-left: 4px solid #4895ef;
-    background: linear-gradient(to right, rgba(72, 149, 239, 0.05), white);
-}
-
-.analysis-card.active:nth-child(10n + 7) {
-    border-left: 4px solid #560bad;
-    background: linear-gradient(to right, rgba(86, 11, 173, 0.05), white);
-}
-
-.analysis-card.active:nth-child(10n + 8) {
-    border-left: 4px solid #b5179e;
-    background: linear-gradient(to right, rgba(181, 23, 158, 0.05), white);
-}
-
-.analysis-card.active:nth-child(10n + 9) {
-    border-left: 4px solid #f15bb5;
-    background: linear-gradient(to right, rgba(241, 91, 181, 0.05), white);
-}
-
-.analysis-card.active:nth-child(10n + 10) {
-    border-left: 4px solid #2ec4b6;
-    background: linear-gradient(to right, rgba(46, 196, 182, 0.05), white);
-}
-
-/* Active icon styles for 10 variations */
-.analysis-card.active .analysis-icon {
-    transform: scale(1.1);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-}
-
-.analysis-card.active:nth-child(10n + 1) .analysis-icon {
-    background: linear-gradient(135deg, #4361ee, #3a0ca3);
-}
-
-.analysis-card.active:nth-child(10n + 2) .analysis-icon {
-    background: linear-gradient(135deg, #3a0ca3, #7209b7);
-}
-
-.analysis-card.active:nth-child(10n + 3) .analysis-icon {
-    background: linear-gradient(135deg, #7209b7, #f72585);
-}
-
-.analysis-card.active:nth-child(10n + 4) .analysis-icon {
-    background: linear-gradient(135deg, #f72585, #4361ee);
-}
-
-.analysis-card.active:nth-child(10n + 5) .analysis-icon {
-    background: linear-gradient(135deg, #4cc9f0, #4895ef);
-}
-
-.analysis-card.active:nth-child(10n + 6) .analysis-icon {
-    background: linear-gradient(135deg, #4895ef, #560bad);
-}
-
-.analysis-card.active:nth-child(10n + 7) .analysis-icon {
-    background: linear-gradient(135deg, #560bad, #b5179e);
-}
-
-.analysis-card.active:nth-child(10n + 8) .analysis-icon {
-    background: linear-gradient(135deg, #b5179e, #f15bb5);
-}
-
-.analysis-card.active:nth-child(10n + 9) .analysis-icon {
-    background: linear-gradient(135deg, #f15bb5, #2ec4b6);
-}
-
-.analysis-card.active:nth-child(10n + 10) .analysis-icon {
-    background: linear-gradient(135deg, #2ec4b6, #4361ee);
-}
-
-/* Active badge styles for 10 variations */
-.analysis-card.active .badge.bg-primary-soft {
-    color: white;
-    font-weight: 800;
-}
-
-.analysis-card.active:nth-child(10n + 1) .badge.bg-primary-soft {
-    background-color: #4361ee;
-}
-
-.analysis-card.active:nth-child(10n + 2) .badge.bg-primary-soft {
-    background-color: #3a0ca3;
-}
-
-.analysis-card.active:nth-child(10n + 3) .badge.bg-primary-soft {
-    background-color: #7209b7;
-}
-
-.analysis-card.active:nth-child(10n + 4) .badge.bg-primary-soft {
-    background-color: #f72585;
-}
-
-.analysis-card.active:nth-child(10n + 5) .badge.bg-primary-soft {
-    background-color: #4cc9f0;
-}
-
-.analysis-card.active:nth-child(10n + 6) .badge.bg-primary-soft {
-    background-color: #4895ef;
-}
-
-.analysis-card.active:nth-child(10n + 7) .badge.bg-primary-soft {
-    background-color: #560bad;
-}
-
-.analysis-card.active:nth-child(10n + 8) .badge.bg-primary-soft {
-    background-color: #b5179e;
-}
-
-.analysis-card.active:nth-child(10n + 9) .badge.bg-primary-soft {
-    background-color: #f15bb5;
-}
-
-.analysis-card.active:nth-child(10n + 10) .badge.bg-primary-soft {
-    background-color: #2ec4b6;
-}
-
-/* Active title styles */
-.analysis-card.active .analysis-title {
-    color: #212529;
-    font-weight: 800;
-    position: relative;
-}
-
-/* Add small indicator to active title */
-.analysis-card.active .analysis-title::after {
-    content: "";
-    position: absolute;
-    bottom: -4px;
-    left: 0;
-    width: 40px;
-    height: 3px;
-    border-radius: 3px;
-}
-
-.analysis-card.active:nth-child(10n + 1) .analysis-title::after {
-    background-color: #4361ee;
-}
-
-.analysis-card.active:nth-child(10n + 2) .analysis-title::after {
-    background-color: #3a0ca3;
-}
-
-.analysis-card.active:nth-child(10n + 3) .analysis-title::after {
-    background-color: #7209b7;
-}
-
-.analysis-card.active:nth-child(10n + 4) .analysis-title::after {
-    background-color: #f72585;
-}
-
-.analysis-card.active:nth-child(10n + 5) .analysis-title::after {
-    background-color: #4cc9f0;
-}
-
-.analysis-card.active:nth-child(10n + 6) .analysis-title::after {
-    background-color: #4895ef;
-}
-
-.analysis-card.active:nth-child(10n + 7) .analysis-title::after {
-    background-color: #560bad;
-}
-
-.analysis-card.active:nth-child(10n + 8) .analysis-title::after {
-    background-color: #b5179e;
-}
-
-.analysis-card.active:nth-child(10n + 9) .analysis-title::after {
-    background-color: #f15bb5;
-}
-
-.analysis-card.active:nth-child(10n + 10) .analysis-title::after {
-    background-color: #2ec4b6;
-}
-
-/* Different pulse animations for each color */
-.analysis-card.active:nth-child(10n + 1) {
-    animation: pulse-blue 1.5s ease infinite;
-}
-
-.analysis-card.active:nth-child(10n + 2) {
-    animation: pulse-purple 1.5s ease infinite;
-}
-
-.analysis-card.active:nth-child(10n + 3) {
-    animation: pulse-violet 1.5s ease infinite;
-}
-
-.analysis-card.active:nth-child(10n + 4) {
-    animation: pulse-pink 1.5s ease infinite;
-}
-
-.analysis-card.active:nth-child(10n + 5) {
-    animation: pulse-cyan 1.5s ease infinite;
-}
-
-@keyframes pulse-blue {
-    0% {
-        box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(67, 97, 238, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(67, 97, 238, 0);
-    }
-}
-
-@keyframes pulse-purple {
-    0% {
-        box-shadow: 0 0 0 0 rgba(58, 12, 163, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(58, 12, 163, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(58, 12, 163, 0);
-    }
-}
-
-@keyframes pulse-violet {
-    0% {
-        box-shadow: 0 0 0 0 rgba(114, 9, 183, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(114, 9, 183, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(114, 9, 183, 0);
-    }
-}
-
-@keyframes pulse-pink {
-    0% {
-        box-shadow: 0 0 0 0 rgba(247, 37, 133, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(247, 37, 133, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(247, 37, 133, 0);
-    }
-}
-
-@keyframes pulse-cyan {
-    0% {
-        box-shadow: 0 0 0 0 rgba(76, 201, 240, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(76, 201, 240, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(76, 201, 240, 0);
-    }
-}
-</style>
-
-<style scoped>
-.celebration-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 400px;
-    background: linear-gradient(135deg, #f5f7fa 0%, #e4f0fb 100%);
-    border-radius: 16px;
-    padding: 2rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    position: relative;
+    padding: 3rem 1rem;
+    color: #9ca3af;
+    text-align: center;
+}
+.lhm-list-empty i {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+}
+.lhm-list-empty p {
+    font-size: 13px;
+    margin: 0;
+}
+
+/* skeleton */
+.lhm-skeleton {
+    cursor: default;
+    pointer-events: none;
+    animation: lhm-shimmer 1.4s infinite;
+    background: linear-gradient(90deg, #f0f2f5 25%, #e8eaf0 50%, #f0f2f5 75%);
+    background-size: 200% 100%;
+}
+@keyframes lhm-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+.lhm-sk-line {
+    height: 14px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.07);
+}
+.lhm-sk-chip {
+    height: 24px;
+    width: 60px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.07);
+}
+
+/* ── Pagination ── */
+.lhm-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 1rem;
+    border-top: 1px solid #f0f0f0;
+    background: #fff;
+    flex-shrink: 0;
+    gap: 0.5rem;
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+}
+.lhm-page-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #f8f9fc;
+    font-size: 12px;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.lhm-page-btn:hover:not(:disabled) {
+    background: rgba(var(--vz-primary-rgb), 0.07);
+    border-color: var(--vz-primary);
+    color: var(--vz-primary);
+}
+.lhm-page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.lhm-page-info {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+}
+.lhm-pagination-info {
+    font-size: 11px;
+    color: #9ca3af;
+    text-align: center;
+    padding: 0.25rem 1rem 0.6rem;
+    flex-shrink: 0;
+}
+
+/* ── Right form panel ── */
+.lhm-form-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background: #f4f6fb;
+    min-width: 0;
+}
+
+.lhm-form-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3rem 2rem;
+}
+.lhm-form-empty-text {
+    font-size: 14px;
+    color: #6b7280;
+    margin-top: 0.5rem;
+    max-width: 300px;
+}
+
+.lhm-active-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.75rem 1.25rem;
+    background: #fff;
+    border-bottom: 2px solid var(--vz-primary);
+    flex-shrink: 0;
+}
+.lhm-banner-left {
+    flex: 1;
+    min-width: 0;
+}
+.lhm-banner-sampel {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+    font-family: monospace;
+}
+.lhm-banner-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.5rem;
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 0.15rem;
+}
+.lhm-sep {
+    color: #d1d5db;
+}
+.lhm-banner-close {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    background: #f3f4f6;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.lhm-banner-close:hover {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.lhm-form-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 3rem;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+/* ── QR sub-sample panel ── */
+.lhm-qr-panel {
+    margin: 1rem;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
     overflow: hidden;
 }
-
-.confetti-left,
-.confetti-right {
-    position: absolute;
-    top: 0;
-    width: 40%; /* atur lebar confetti kiri dan kanan, sesuaikan */
-    height: 100%;
-    pointer-events: none; /* supaya klik ke konten utama tetap jalan */
-    z-index: 10; /* supaya confetti di atas background */
+.lhm-qr-panel-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    background: #f8f9fc;
 }
-
-.confetti-left {
-    left: 0;
+.lhm-qr-icon {
+    font-size: 22px;
+    color: var(--vz-primary);
+    flex-shrink: 0;
 }
-
-.confetti-right {
-    right: 0;
+.lhm-qr-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
 }
-
-.animation-wrapper {
-    position: relative;
-    z-index: 2;
+.lhm-qr-sub {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 2px;
 }
-
-.celebration-animation {
-    height: 250px;
-    width: 250px;
-    -webkit-filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.2));
-    filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.2));
+.lhm-qr-list {
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
 }
-
-.celebration-message {
-    text-align: center;
-    margin-top: 1.5rem;
-    position: relative;
-    z-index: 2;
-}
-
-.congrats-text {
-    font-size: 2rem;
-    color: #2c3e50;
-    margin-bottom: 0.5rem;
-    font-weight: 700;
-    background: linear-gradient(to right, #3498db, #2ecc71);
-    /* Vendor prefixes for background-clip */
-    -webkit-background-clip: text;
-    -moz-background-clip: text;
-    background-clip: text;
-    /* Vendor prefixes for text-fill-color */
-    -webkit-text-fill-color: transparent;
-    -moz-text-fill-color: transparent;
-}
-
-.sample-info {
-    font-size: 1.2rem;
-    color: #555;
-    margin-bottom: 0;
-}
-
-.sample-number {
-    font-weight: bold;
-    color: #2980b9;
-}
-
-/* Confetti CSS Pure */
-.confetti {
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    background-color: #f00;
-    opacity: 0;
-    -webkit-animation: confetti 5s ease-in-out infinite;
-    animation: confetti 5s ease-in-out infinite;
-}
-
-.confetti:nth-child(1) {
-    background-color: #f00;
-    left: 10%;
-    -webkit-animation-delay: 0;
-    animation-delay: 0;
-}
-.confetti:nth-child(2) {
-    background-color: #0f0;
-    left: 20%;
-    -webkit-animation-delay: 0.5s;
-    animation-delay: 0.5s;
-}
-.confetti:nth-child(3) {
-    background-color: #00f;
-    left: 30%;
-    -webkit-animation-delay: 1.2s;
-    animation-delay: 1.2s;
-}
-.confetti:nth-child(4) {
-    background-color: #ff0;
-    left: 40%;
-    -webkit-animation-delay: 0.8s;
-    animation-delay: 0.8s;
-}
-.confetti:nth-child(5) {
-    background-color: #f0f;
-    left: 50%;
-    -webkit-animation-delay: 1.5s;
-    animation-delay: 1.5s;
-}
-
-.uiWah {
+.lhm-qr-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     width: 100%;
-    height: 100%;
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 13px;
+    font-family: monospace;
+    font-weight: 600;
+    color: #1e293b;
+    text-align: left;
+}
+.lhm-qr-row:not(:disabled):hover {
+    background: rgba(var(--vz-primary-rgb), 0.06);
+    border-color: var(--vz-primary);
+}
+.lhm-qr-row:disabled {
+    cursor: not-allowed;
+}
+.lhm-qr-row--done {
+    background: #f0fdf4;
+    color: #166534;
+    border-color: #bbf7d0;
+    opacity: 0.85;
+}
+.lhm-qr-row--resampling {
+    background: #fffbeb;
+    color: #92400e;
+    border-color: #fde68a;
+    opacity: 0.9;
+}
+.lhm-qr-row-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.lhm-qr-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 20px;
+    font-family: sans-serif;
+    white-space: nowrap;
+}
+.lhm-qr-badge--done {
+    background: #dcfce7;
+    color: #166534;
+}
+.lhm-qr-badge--resamp {
+    background: #fef3c7;
+    color: #92400e;
+}
+.lhm-qr-arrow {
+    font-size: 18px;
+    color: #9ca3af;
+}
+.lhm-qr-empty {
+    font-size: 12px;
+    color: #9ca3af;
+    padding: 0.75rem;
+    text-align: center;
+    font-style: italic;
+}
+.lhm-qr-back {
+    display: inline-flex;
+    align-items: center;
+    margin: 1rem 1rem 0.5rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #f8f9fc;
+    font-size: 12px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.lhm-qr-back:hover {
+    background: #e5e7eb;
+    color: #374151;
 }
 
-@-webkit-keyframes confetti {
-    0% {
-        opacity: 0;
-        -webkit-transform: translateY(0) rotate(0deg);
-        transform: translateY(0) rotate(0deg);
-    }
-    10% {
-        opacity: 1;
-    }
-    100% {
-        opacity: 0;
-        -webkit-transform: translateY(500px) rotate(720deg);
-        transform: translateY(500px) rotate(720deg);
+.lhm-done-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    text-align: center;
+}
+
+/* spin */
+.lhm-spin {
+    animation: lhm-spin-anim 0.7s linear infinite;
+    display: inline-block;
+}
+@keyframes lhm-spin-anim {
+    to {
+        transform: rotate(360deg);
     }
 }
 
-@keyframes confetti {
-    0% {
-        opacity: 0;
-        -webkit-transform: translateY(0) rotate(0deg);
-        transform: translateY(0) rotate(0deg);
+/* ════════════════════════════════════════════════════════════ */
+/* RESPONSIVE                                                    */
+/* ════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+    .lhm-wrap {
+        height: auto;
+        overflow: visible;
     }
-    10% {
-        opacity: 1;
+    .lhm-panels {
+        flex-direction: column;
+        overflow: visible;
     }
-    100% {
-        opacity: 0;
-        -webkit-transform: translateY(500px) rotate(720deg);
-        transform: translateY(500px) rotate(720deg);
+    .lhm-list-col {
+        width: 100%;
+        min-width: 0;
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+        max-height: 480px;
+        overflow-y: auto;
     }
-}
-
-/* Animasi float */
-@-webkit-keyframes float {
-    0% {
-        -webkit-transform: translateY(0px);
-        transform: translateY(0px);
-    }
-    50% {
-        -webkit-transform: translateY(-10px);
-        transform: translateY(-10px);
-    }
-    100% {
-        -webkit-transform: translateY(0px);
-        transform: translateY(0px);
-    }
-}
-@keyframes float {
-    0% {
-        -webkit-transform: translateY(0px);
-        transform: translateY(0px);
-    }
-    50% {
-        -webkit-transform: translateY(-10px);
-        transform: translateY(-10px);
-    }
-    100% {
-        -webkit-transform: translateY(0px);
-        transform: translateY(0px);
+    .lhm-form-col {
+        overflow-y: visible;
     }
 }
 
-.celebration-animation {
-    -webkit-animation: float 3s ease-in-out infinite;
-    animation: float 3s ease-in-out infinite;
+@media (max-width: 767px) {
+    .lhm-title-bar {
+        padding: 0.65rem 0.85rem;
+    }
+    .lhm-title-main {
+        font-size: 0.9rem;
+    }
+    .lhm-title-sub {
+        display: none;
+    }
+    .lhm-day-tabs {
+        gap: 2px;
+    }
+    .lhm-day-tab {
+        padding: 0.25rem 0.45rem;
+        font-size: 11px;
+    }
+    .lhm-card {
+        padding: 0.7rem 0.85rem;
+    }
+    .lhm-list-col {
+        max-height: 420px;
+    }
+    .lhm-filter-tab {
+        font-size: 11px;
+        padding: 0.45rem 0.25rem;
+    }
+    .lhm-pagination {
+        padding: 0.5rem 0.75rem;
+    }
+    .lhm-page-btn {
+        padding: 0.3rem 0.5rem;
+        font-size: 11px;
+    }
+    .lhm-active-banner {
+        padding: 0.6rem 0.85rem;
+    }
+    .lhm-banner-sampel {
+        font-size: 13px;
+    }
+    .lhm-modal-box {
+        width: 96vw;
+        max-height: 92vh;
+    }
+    .lhm-multi-qr-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ════════════════════════════════════════════════════════════ */
+/* CARD HEAD RIGHT + QR VIEW BUTTON                             */
+/* ════════════════════════════════════════════════════════════ */
+.lhm-card-head-right {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+.lhm-qr-view-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    border: 1px solid #e5e7eb;
+    background: #f8f9fc;
+    color: #6b7280;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.lhm-qr-view-btn:hover {
+    background: rgba(var(--vz-primary-rgb), 0.1);
+    color: var(--vz-primary);
+    border-color: var(--vz-primary);
+}
+
+/* ════════════════════════════════════════════════════════════ */
+/* QR MODAL                                                      */
+/* ════════════════════════════════════════════════════════════ */
+.lhm-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    backdrop-filter: blur(3px);
+}
+.lhm-modal-box {
+    background: #fff;
+    border-radius: 16px;
+    width: 600px;
+    max-width: 96vw;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+.lhm-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1.25rem;
+    flex-shrink: 0;
+}
+.lhm-modal-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+}
+.lhm-modal-close {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.lhm-modal-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.lhm-modal-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 1rem;
+}
+.lhm-modal-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.75rem;
+    font-size: 12px;
+    color: #6b7280;
+    padding: 0.5rem 0.75rem;
+    background: #f8f9fc;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+.lhm-modal-info i {
+    color: var(--vz-primary);
+}
+
+/* Ticket card */
+.lhm-modal-single-qr {
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem 0;
+}
+.lhm-ticket {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+.lhm-ticket--sm {
+    max-width: 100%;
+}
+.lhm-ticket--done {
+    opacity: 0.7;
+    background: #f8fffe;
+}
+
+.lhm-ticket-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.7rem 1rem;
+    background: linear-gradient(
+        135deg,
+        rgba(var(--vz-primary-rgb), 0.08) 0%,
+        rgba(var(--vz-primary-rgb), 0.04) 100%
+    );
+    border-bottom: 1px solid #f0f0f0;
+}
+.lhm-ticket-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--vz-primary);
+    color: #fff;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.lhm-ticket-icon--sm {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+    border-radius: 8px;
+}
+.lhm-ticket-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.lhm-ticket-body {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+}
+.lhm-ticket-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+.lhm-ticket-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 12px;
+    color: #4b5563;
+}
+.lhm-ticket-row i {
+    font-size: 13px;
+    color: #9ca3af;
+    flex-shrink: 0;
+}
+.lhm-ticket-qr {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+.lhm-qr-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: #9ca3af;
+    letter-spacing: 0.08em;
+}
+.lhm-qr-done-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 0.15rem 0.4rem;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+}
+
+/* Multi QR grid */
+.lhm-modal-multi-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+}
+.lhm-multi-qr-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 0.75rem;
 }
 </style>

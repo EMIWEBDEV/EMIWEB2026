@@ -88,6 +88,8 @@ class FinalisasiLabProduksiTrialController extends Controller
             )
             ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->where('po.Flag_Trial_Produksi', 'Y')
+            ->whereNull('po.Flag_Selesai')
+            ->whereNull('po.Status')
             ->whereNull('uji.Status')
             ->where('uji.Flag_Selesai', 'Y')
             ->whereNull('uji.Flag_Final')
@@ -152,10 +154,8 @@ class FinalisasiLabProduksiTrialController extends Controller
             $analisaDetails = DB::table('N_EMI_LAB_Uji_Sampel as uji')
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'uji.Id_Jenis_Analisa', '=', 'ja.id')
                 ->whereIn('uji.No_Po_Sampel', $poSampelIds)
-                ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
                 ->whereNull('uji.Status')
                 ->where('uji.Flag_Selesai', 'Y')
-                ->whereNull('uji.Flag_Final')
                 ->where('uji.Status_Keputusan_Sampel', 'terima')
                 ->where(function($q) {
                     $q->where('uji.Flag_Resampling', '!=', 'Y')
@@ -401,7 +401,7 @@ class FinalisasiLabProduksiTrialController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('FinalisasiLabProduksiTrialController')->error('Error: ' . $e->getMessage());
+            Log::channel('FinalisasiLabProduksiTrialController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -634,7 +634,7 @@ class FinalisasiLabProduksiTrialController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('FinalisasiLabProduksiTrialController')->error('storeBulk Error: ' . $e->getMessage());
+            Log::channel('FinalisasiLabProduksiTrialController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,

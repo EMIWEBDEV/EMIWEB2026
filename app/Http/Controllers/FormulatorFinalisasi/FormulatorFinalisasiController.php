@@ -133,7 +133,7 @@ class FormulatorFinalisasiController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('FormulatorFinalisasiController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorFinalisasiController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -323,7 +323,7 @@ class FormulatorFinalisasiController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('FormulatorFinalisasiController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorFinalisasiController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,

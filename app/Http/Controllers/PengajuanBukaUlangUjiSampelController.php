@@ -53,7 +53,7 @@ class PengajuanBukaUlangUjiSampelController extends Controller
                 'total_data' => $total
             ]);
         } catch (\Exception $e) {
-            Log::channel('PengajuanBukaUlangUjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('PengajuanBukaUlangUjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -102,7 +102,7 @@ class PengajuanBukaUlangUjiSampelController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('PengajuanBukaUlangUjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('PengajuanBukaUlangUjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -151,7 +151,7 @@ class PengajuanBukaUlangUjiSampelController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('PengajuanBukaUlangUjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('PengajuanBukaUlangUjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -209,7 +209,7 @@ class PengajuanBukaUlangUjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('PengajuanBukaUlangUjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('PengajuanBukaUlangUjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -268,7 +268,7 @@ class PengajuanBukaUlangUjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('PengajuanBukaUlangUjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('PengajuanBukaUlangUjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,

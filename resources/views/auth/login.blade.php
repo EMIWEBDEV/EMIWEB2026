@@ -163,7 +163,7 @@
                                                 <i class="ri-login-circle-line me-1"></i> Masuk
                                             </button>
                                         </div>
-                                        <small class="d-flex justify-content-center mt-3 text-muted fs-12">Versi 3.0.0-Pra Rilis</small>
+                                        <small class="d-flex justify-content-center mt-3 text-muted fs-12">Versi 3.0.0</small>
                                     </form>
                                 </div>
                             </div>

@@ -171,7 +171,7 @@ class ProgressAnalisaSampelController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-                Log::channel('ProgressAnalisaSampelController')->error('Error: ' . $e->getMessage());
+                Log::channel('ProgressAnalisaSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                 return response()->json([
                     'success' => true,
                     'status' => 500,

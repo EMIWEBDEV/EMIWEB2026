@@ -1,294 +1,404 @@
 <!DOCTYPE html>
 <html lang="id">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Sampai Jumpa Kembali</title>
-        <link
-            href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-            rel="stylesheet"
-        />
-        <link
-            rel="stylesheet"
-            href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
-        />
-        <style>
-            :root {
-                --primary: #6c5ce7;
-                --secondary: #a29bfe;
-                --accent: #fd79a8;
-                --dark: #2d3436;
-                --light: #f5f6fa;
-                --success: #00b894;
-            }
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Keluar — LIMS | PT. Evo Manufacturing Indonesia</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-            body {
-                margin: 0;
-                font-family: "Poppins", sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: var(--light);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                flex-direction: column;
-                text-align: center;
-                overflow: hidden;
-            }
+        :root {
+            --p:       #405189;
+            --p-dk:    #2c3b74;
+            --p-rgb:   64,81,137;
+            --teal:    #0ab39c;
+            --t-rgb:   10,179,156;
+            --white:   #ffffff;
+            --muted:   rgba(255,255,255,.55);
+            --border:  rgba(255,255,255,.08);
+            --card-bg: rgba(16,24,58,.80);
+        }
 
-            .particles {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                z-index: 0;
-            }
+        html,body {
+            min-height:100%;
+            font-family:'Nunito',sans-serif;
+            color:var(--white);
+            background:#080e22;
+            overflow-y:auto;
+        }
 
-            .particle {
-                position: absolute;
-                background: rgba(255, 255, 255, 0.5);
-                border-radius: 50%;
-                pointer-events: none;
-            }
+        /* ── BACKGROUND ── */
+        .bg-scene {
+            position:fixed;inset:0;z-index:0;
+            background:
+                radial-gradient(ellipse 80% 70% at 10% 20%, rgba(var(--p-rgb),.22) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 90% 80%, rgba(var(--p-rgb),.14) 0%, transparent 55%),
+                linear-gradient(145deg, #060b1c 0%, #0b1228 45%, #101740 100%);
+        }
+        .bg-grid {
+            position:fixed;inset:0;z-index:0;
+            background-image:
+                linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+            background-size:44px 44px;
+        }
+        .bg-orb {
+            position:fixed;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;
+        }
+        .orb-1{width:520px;height:520px;top:-130px;left:-90px;background:rgba(var(--p-rgb),.16);}
+        .orb-2{width:400px;height:400px;bottom:-70px;right:-70px;background:rgba(var(--p-rgb),.11);}
+        .orb-3{width:280px;height:280px;top:42%;left:56%;background:rgba(var(--p-rgb),.07);}
 
-            .logout-container {
-                position: relative;
-                z-index: 1;
-                background: rgba(255, 255, 255, 0.15);
-                backdrop-filter: blur(10px);
-                -webkit-backdrop-filter: blur(10px);
-                border-radius: 24px;
-                padding: 50px;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-                max-width: 450px;
-                width: 90%;
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                transform-style: preserve-3d;
-                perspective: 1000px;
-                overflow: hidden;
-            }
+        /* ── PARTICLES ── */
+        #particles{position:fixed;inset:0;z-index:1;pointer-events:none;}
 
-            .logout-container::before {
-                content: "";
-                position: absolute;
-                top: -50%;
-                left: -50%;
-                width: 200%;
-                height: 200%;
-                background: linear-gradient(
-                    to bottom right,
-                    rgba(255, 255, 255, 0.1) 0%,
-                    rgba(255, 255, 255, 0) 60%
-                );
-                transform: rotate(30deg);
-                z-index: -1;
-            }
+        /* ── TOPBAR ── */
+        .topbar {
+            position:fixed;top:0;left:0;right:0;z-index:30;
+            display:flex;align-items:center;justify-content:center;
+            padding:13px 24px;
+            background:rgba(6,11,28,.72);
+            backdrop-filter:blur(18px);
+            -webkit-backdrop-filter:blur(18px);
+            border-bottom:1px solid rgba(var(--p-rgb),.22);
+            animation:slideDown .5s .1s both;
+        }
+        @keyframes slideDown{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+        .tb-inner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;}
+        .tb-chip{
+            background:linear-gradient(135deg,var(--p),var(--p-dk));
+            color:#fff;font-size:11px;font-weight:800;
+            padding:5px 14px;border-radius:50px;letter-spacing:.8px;
+            text-transform:uppercase;
+        }
+        .tb-sep{color:rgba(255,255,255,.2);font-size:14px;}
+        .tb-full{font-family:'Inter',sans-serif;font-size:12px;color:rgba(255,255,255,.4);}
 
-            h1 {
-                font-size: 2.2rem;
-                margin-bottom: 15px;
-                font-weight: 600;
-                background: linear-gradient(to right, #fff, #a29bfe);
-                -webkit-background-clip: text;
-                background-clip: text;
-                color: transparent;
-                text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            }
+        /* ── LAYOUT ── */
+        .page {
+            position:relative;z-index:10;
+            display:flex;align-items:center;justify-content:center;
+            min-height:100vh;padding:96px 20px 48px;
+        }
 
-            p {
-                font-size: 1rem;
-                opacity: 0.9;
-                margin-bottom: 30px;
-                line-height: 1.6;
-            }
+        /* ── CARD ── */
+        .card {
+            width:100%;max-width:520px;
+            background:var(--card-bg);
+            border:1px solid rgba(var(--p-rgb),.22);
+            border-radius:22px;
+            padding:48px 44px 40px;
+            backdrop-filter:blur(28px);
+            -webkit-backdrop-filter:blur(28px);
+            box-shadow:0 40px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.04) inset;
+            animation:cardIn .65s cubic-bezier(.22,1,.36,1) both;
+        }
+        @keyframes cardIn{from{opacity:0;transform:translateY(32px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 
-            .spinner-container {
-                position: relative;
-                width: 80px;
-                height: 80px;
-                margin: 30px auto;
-            }
+        /* ── BRAND HEADER ── */
+        .brand-header {
+            display:flex;align-items:center;gap:14px;
+            margin-bottom:32px;padding-bottom:24px;
+            border-bottom:1px solid var(--border);
+            animation:fadeUp .5s .1s both;
+        }
+        .brand-logo {
+            width:50px;height:50px;border-radius:13px;
+            background:linear-gradient(135deg,var(--p),var(--p-dk));
+            display:flex;align-items:center;justify-content:center;
+            font-weight:900;font-size:15px;letter-spacing:-1px;color:#fff;
+            box-shadow:0 8px 24px rgba(var(--p-rgb),.45);
+            flex-shrink:0;
+        }
+        .brand-text{flex:1;min-width:0;}
+        .brand-name{
+            font-size:11.5px;font-weight:700;letter-spacing:.4px;
+            color:rgba(255,255,255,.9);line-height:1.5;
+        }
+        .brand-name em{font-style:normal;color:rgba(var(--t-rgb),1);}
+        .brand-company{
+            font-size:10.5px;font-weight:500;color:var(--muted);
+            margin-top:3px;letter-spacing:.3px;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+        }
+        .brand-badge{
+            display:inline-flex;align-items:center;gap:5px;
+            background:rgba(var(--t-rgb),.1);
+            border:1px solid rgba(var(--t-rgb),.28);
+            color:var(--teal);
+            font-size:10px;font-weight:800;
+            padding:4px 10px;border-radius:20px;letter-spacing:.5px;
+            flex-shrink:0;
+        }
+        .badge-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:pulse 1.4s ease-in-out infinite;}
+        @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
 
-            .spinner {
-                position: absolute;
-                width: 100%;
-                height: 100%;
-                border-radius: 50%;
-                border: 3px solid transparent;
-                border-top-color: var(--accent);
-                animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55)
-                    infinite;
-            }
+        /* ── ICON RING ── */
+        .shield-wrap{text-align:center;margin-bottom:28px;animation:fadeUp .5s .2s both;}
+        .shield-ring {
+            display:inline-flex;align-items:center;justify-content:center;
+            width:90px;height:90px;border-radius:50%;
+            background:rgba(var(--p-rgb),.1);
+            border:1.5px solid rgba(var(--p-rgb),.28);
+            position:relative;
+        }
+        .shield-ring::before {
+            content:'';position:absolute;inset:-5px;border-radius:50%;
+            border:1.5px solid transparent;
+            border-top-color:rgba(var(--p-rgb),.95);
+            border-right-color:rgba(var(--t-rgb),.8);
+            animation:spinRing 2.4s linear infinite;
+        }
+        .shield-ring::after {
+            content:'';position:absolute;inset:-12px;border-radius:50%;
+            border:1px solid transparent;
+            border-bottom-color:rgba(var(--p-rgb),.35);
+            animation:spinRing 3.6s linear reverse infinite;
+        }
+        @keyframes spinRing{to{transform:rotate(360deg)}}
+        .shield-icon{font-size:36px;}
 
-            .spinner:nth-child(2) {
-                border-top-color: var(--secondary);
-                animation-delay: 0.3s;
-            }
+        /* ── HEADING ── */
+        .heading-wrap{text-align:center;margin-bottom:28px;animation:fadeUp .5s .25s both;}
+        .heading{
+            font-size:24px;font-weight:800;letter-spacing:-.3px;margin-bottom:10px;
+            background:linear-gradient(135deg,#fff 30%,rgba(var(--p-rgb),.85) 100%);
+            -webkit-background-clip:text;background-clip:text;color:transparent;
+        }
+        .sub{font-family:'Inter',sans-serif;font-size:13.5px;line-height:1.65;color:var(--muted);}
 
-            .spinner:nth-child(3) {
-                border-top-color: var(--primary);
-                animation-delay: 0.6s;
-            }
+        /* ── SECURITY STEPS ── */
+        .security-steps{display:flex;flex-direction:column;gap:10px;margin-bottom:28px;animation:fadeUp .5s .3s both;}
+        .step{
+            display:flex;align-items:center;gap:12px;
+            padding:11px 14px;
+            background:rgba(255,255,255,.04);
+            border:1px solid rgba(255,255,255,.07);
+            border-radius:10px;font-size:13px;color:var(--muted);
+            transition:border-color .3s,background .3s;
+        }
+        .step.done{border-color:rgba(var(--t-rgb),.3);background:rgba(var(--t-rgb),.06);color:rgba(255,255,255,.8);}
+        .step.done .step-icon{color:var(--teal);}
+        .step.active{border-color:rgba(var(--p-rgb),.4);background:rgba(var(--p-rgb),.09);color:var(--white);}
+        .step.active .step-icon{color:rgba(var(--p-rgb),1);}
+        .step-icon{font-size:17px;width:20px;text-align:center;flex-shrink:0;}
+        .step-text{flex:1;font-weight:500;}
+        .step-status{font-size:11px;font-weight:700;letter-spacing:.5px;}
+        .step.done .step-status{color:var(--teal);}
+        .step.active .step-status{color:rgba(var(--p-rgb),.95);}
 
-            .progress-bar {
-                height: 6px;
-                background: rgba(255, 255, 255, 0.2);
-                border-radius: 3px;
-                margin-top: 40px;
-                overflow: hidden;
-            }
+        /* ── PROGRESS BAR ── */
+        .progress-wrap{margin-bottom:24px;animation:fadeUp .5s .35s both;}
+        .progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+        .progress-label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.5px;}
+        .progress-pct{font-size:12px;font-weight:700;color:rgba(var(--p-rgb),.9);}
+        .progress-track{height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;}
+        .progress-fill{
+            height:100%;width:0;border-radius:4px;
+            background:linear-gradient(90deg,var(--p),var(--teal));
+            box-shadow:0 0 12px rgba(var(--p-rgb),.5);
+            transition:width 4.8s cubic-bezier(.4,0,.2,1);
+        }
 
-            .progress {
-                height: 100%;
-                width: 0;
-                background: linear-gradient(
-                    to right,
-                    var(--primary),
-                    var(--accent)
-                );
-                border-radius: 3px;
-                transition: width 5s ease-out;
-            }
+        /* ── TIMER ── */
+        .timer-chip{
+            display:flex;align-items:center;justify-content:center;gap:8px;
+            padding:10px 18px;
+            background:rgba(var(--p-rgb),.08);
+            border:1px solid rgba(var(--p-rgb),.2);
+            border-radius:40px;font-size:12.5px;font-weight:600;
+            color:rgba(255,255,255,.7);
+            animation:fadeUp .5s .4s both;
+        }
 
-            .goodbye-message {
-                margin-top: 30px;
-                font-size: 0.9rem;
-                opacity: 0.8;
-                font-style: italic;
-            }
+        /* ── FOOTER ── */
+        .card-footer{
+            margin-top:28px;padding-top:20px;
+            border-top:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between;
+            animation:fadeUp .5s .45s both;
+        }
+        .footer-copy{font-size:11px;color:rgba(255,255,255,.3);}
+        .footer-version{
+            font-size:11px;font-weight:700;
+            background:rgba(var(--p-rgb),.12);
+            border:1px solid rgba(var(--p-rgb),.22);
+            color:rgba(var(--p-rgb),.9);
+            padding:3px 10px;border-radius:20px;
+        }
 
-            @keyframes spin {
-                0% {
-                    transform: rotate(0deg);
-                }
-                100% {
-                    transform: rotate(360deg);
-                }
-            }
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
-            @keyframes float {
-                0%,
-                100% {
-                    transform: translateY(0);
-                }
-                50% {
-                    transform: translateY(-15px);
-                }
-            }
+        /* ── RESPONSIVE ── */
+        @media(max-width:540px){
+            .card{padding:32px 22px 28px;}
+            .heading{font-size:20px;}
+            .tb-full{display:none;}
+            .brand-company{font-size:9.5px;}
+        }
+    </style>
+</head>
+<body>
 
-            .animate-float {
-                animation: float 3s ease-in-out infinite;
-            }
+<div class="bg-scene"></div>
+<div class="bg-grid"></div>
+<div class="bg-orb orb-1"></div>
+<div class="bg-orb orb-2"></div>
+<div class="bg-orb orb-3"></div>
+<div id="particles"></div>
 
-            /* Responsive adjustments */
-            @media (max-width: 480px) {
-                .logout-container {
-                    padding: 30px;
-                }
+<div class="topbar">
+    <div class="tb-inner">
+        <span class="tb-chip">LIMS</span>
+        <span class="tb-sep">|</span>
+        <span class="tb-full">Laboratory Information Management System &nbsp;·&nbsp; PT. Evo Manufacturing Indonesia</span>
+    </div>
+</div>
 
-                h1 {
-                    font-size: 1.8rem;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="particles" id="particles"></div>
+<div class="page">
+    <div class="card">
 
-        <div
-            class="logout-container animate__animated animate__fadeIn animate__slower"
-        >
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="64"
-                height="64"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="feather feather-log-out"
-                style="margin-bottom: 20px; color: var(--accent)"
-            >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-
-            <h1 class="animate__animated animate__fadeInDown">Sampai Jumpa!</h1>
-            <p class="animate__animated animate__fadeIn animate__delay-1s">
-                Anda telah berhasil keluar. Membersihkan data sesi dan
-                mengamankan informasi Anda...
-            </p>
-
-            <div
-                class="spinner-container animate__animated animate__zoomIn animate__delay-1s"
-            >
-                <div class="spinner"></div>
-                <div class="spinner"></div>
-                <div class="spinner"></div>
+        <div class="brand-header">
+            <div class="brand-logo">L</div>
+            <div class="brand-text">
+                <div class="brand-name">
+                    <em>L</em>aboratory <em>I</em>nformation <em>M</em>anagement <em>S</em>ystem
+                </div>
+                <div class="brand-company">PT. Evo Manufacturing Indonesia</div>
             </div>
-
-            <div class="progress-bar">
-                <div class="progress" id="progress"></div>
-            </div>
-
-            <div
-                class="goodbye-message animate__animated animate__fadeIn animate__delay-2s"
-            >
-                "Terima kasih telah menggunakan layanan kami"
+            <div class="brand-badge">
+                <div class="badge-dot"></div>
+                SECURE
             </div>
         </div>
 
-        <script>
-            // Create floating particles
-            function createParticles() {
-                const particlesContainer = document.getElementById("particles");
-                const particleCount = 30;
+        <div class="shield-wrap">
+            <div class="shield-ring">
+                <div class="shield-icon" id="mainIcon">🔐</div>
+            </div>
+        </div>
 
-                for (let i = 0; i < particleCount; i++) {
-                    const particle = document.createElement("div");
-                    particle.classList.add("particle");
+        <div class="heading-wrap">
+            <h1 class="heading">Sesi Berakhir dengan Aman</h1>
+            <p class="sub">
+                Sistem sedang membersihkan data sesi dan mengamankan<br>
+                seluruh informasi laboratorium Anda.
+            </p>
+        </div>
 
-                    // Random properties
-                    const size = Math.random() * 5 + 2;
-                    const posX = Math.random() * 100;
-                    const posY = Math.random() * 100;
-                    const delay = Math.random() * 5;
-                    const duration = Math.random() * 10 + 10;
-                    const opacity = Math.random() * 0.5 + 0.1;
+        <div class="security-steps">
+            <div class="step active" id="s1">
+                <span class="step-icon">🔑</span>
+                <span class="step-text">Menghapus token autentikasi</span>
+                <span class="step-status">PROSES...</span>
+            </div>
+            <div class="step" id="s2">
+                <span class="step-icon">🗄️</span>
+                <span class="step-text">Membersihkan cache sesi lab</span>
+                <span class="step-status">MENUNGGU</span>
+            </div>
+            <div class="step" id="s3">
+                <span class="step-icon">🔒</span>
+                <span class="step-text">Mengenkripsi log aktivitas</span>
+                <span class="step-status">MENUNGGU</span>
+            </div>
+            <div class="step" id="s4">
+                <span class="step-icon">🛡️</span>
+                <span class="step-text">Memverifikasi keamanan data</span>
+                <span class="step-status">MENUNGGU</span>
+            </div>
+        </div>
 
-                    particle.style.width = `${size}px`;
-                    particle.style.height = `${size}px`;
-                    particle.style.left = `${posX}%`;
-                    particle.style.top = `${posY}%`;
-                    particle.style.opacity = opacity;
-                    particle.style.animation = `float ${duration}s ease-in-out ${delay}s infinite`;
+        <div class="progress-wrap">
+            <div class="progress-header">
+                <span class="progress-label">SECURING DATA</span>
+                <span class="progress-pct" id="pct">0%</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="fill"></div>
+            </div>
+        </div>
 
-                    particlesContainer.appendChild(particle);
-                }
-            }
+        <div class="timer-chip">
+            <span>⏱</span>
+            <span>Mengalihkan ke halaman login dalam <strong id="countdown">5</strong> detik</span>
+        </div>
 
-            // Animate progress bar
-            function animateProgress() {
-                const progressBar = document.getElementById("progress");
-                progressBar.style.width = "100%";
-            }
+        <div class="card-footer">
+            <span class="footer-copy">© <script>document.write(new Date().getFullYear())</script> PT. Evo Manufacturing Indonesia</span>
+            <span class="footer-version">LIMS v3.0</span>
+        </div>
 
-            // Redirect after delay
-            function redirect() {
-                localStorage.removeItem("SSID_EmI_Lab_EVO_RS");
-                window.location.href = "/";
-            }
+    </div>
+</div>
 
-            // Initialize
-            document.addEventListener("DOMContentLoaded", () => {
-                createParticles();
-                animateProgress();
-                setTimeout(redirect, 5000);
-            });
-        </script>
-    </body>
+<script>
+(function(){
+    var c=document.getElementById('particles');
+    for(var i=0;i<36;i++){
+        var d=document.createElement('div');
+        var s=Math.random()*4+2;
+        d.style.cssText=[
+            'position:fixed','border-radius:50%','pointer-events:none','z-index:1',
+            'width:'+s+'px','height:'+s+'px',
+            'left:'+(Math.random()*100)+'%',
+            'top:'+(Math.random()*100)+'%',
+            'background:rgba(64,81,137,'+(Math.random()*.28+.06)+')',
+            'animation:floatDot '+(Math.random()*8+8).toFixed(1)+'s ease-in-out '+(Math.random()*6).toFixed(1)+'s infinite'
+        ].join(';');
+        c.appendChild(d);
+    }
+    var st=document.createElement('style');
+    st.textContent='@keyframes floatDot{0%,100%{transform:translateY(0) scale(1);opacity:.3}50%{transform:translateY(-22px) scale(1.2);opacity:.6}}';
+    document.head.appendChild(st);
+}());
+
+const steps=[{id:'s1',label:'SELESAI ✓'},{id:'s2',label:'SELESAI ✓'},{id:'s3',label:'SELESAI ✓'},{id:'s4',label:'SELESAI ✓'}];
+const delays=[0,1100,2100,3000];
+const pctMilestones=[0,25,55,80,100];
+
+function setDone(el,label){el.classList.remove('active');el.classList.add('done');el.querySelector('.step-status').textContent=label;}
+function setActive(el){el.classList.add('active');el.querySelector('.step-status').textContent='PROSES...';}
+
+delays.forEach(function(d,i){
+    setTimeout(function(){
+        if(i>0) setDone(document.getElementById(steps[i-1].id),steps[i-1].label);
+        if(i<steps.length-1) setActive(document.getElementById(steps[i+1].id));
+        document.getElementById('fill').style.width=pctMilestones[i+1]+'%';
+        animatePct(pctMilestones[i+1]);
+    },d);
+});
+
+setTimeout(function(){
+    setDone(document.getElementById(steps[steps.length-1].id),steps[steps.length-1].label);
+    document.getElementById('fill').style.width='100%';
+    animatePct(100);
+    document.getElementById('mainIcon').textContent='✅';
+},3800);
+
+var currentPct=0;
+function animatePct(target){
+    var el=document.getElementById('pct');
+    var step=target>currentPct?1:-1;
+    var iv=setInterval(function(){
+        currentPct+=step;
+        el.textContent=currentPct+'%';
+        if(currentPct===target) clearInterval(iv);
+    },18);
+}
+
+var secs=5;
+var cdEl=document.getElementById('countdown');
+var cdIv=setInterval(function(){
+    secs--;
+    cdEl.textContent=secs;
+    if(secs<=0){
+        clearInterval(cdIv);
+        localStorage.removeItem('SSID_EmI_Lab_EVO_RS');
+        window.location.href='/';
+    }
+},1000);
+</script>
+</body>
 </html>

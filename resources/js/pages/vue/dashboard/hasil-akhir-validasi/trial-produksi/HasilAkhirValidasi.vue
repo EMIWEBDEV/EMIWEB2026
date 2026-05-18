@@ -110,6 +110,16 @@
                                 </button>
                             </div>
                         </div>
+                        <div class="col-12 mt-3 d-flex justify-content-end">
+                            <button
+                                class="btn btn-success rounded-pill fw-semibold px-4 shadow-sm d-flex align-items-center gap-2"
+                                data-bs-toggle="modal"
+                                data-bs-target="#exportAnalisaKurangTrialModal"
+                            >
+                                <i class="fas fa-file-excel"></i>
+                                Export Analisa Kurang
+                            </button>
+                        </div>
                     </div>
                     <hr />
                     <ListSkeleton :page="5" v-if="loading.loadingListData" />
@@ -117,8 +127,12 @@
                     <div v-else>
                         <div v-if="listData.length" class="row g-3">
                             <!-- Pilih Semua + Tombol Bulk -->
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div class="form-check custom-checkbox fs-5 d-flex align-items-center">
+                            <div
+                                class="d-flex justify-content-between align-items-center mb-3"
+                            >
+                                <div
+                                    class="form-check custom-checkbox fs-5 d-flex align-items-center"
+                                >
                                     <input
                                         class="form-check-input shadow-sm mt-0"
                                         type="checkbox"
@@ -126,10 +140,15 @@
                                         @change="toggleSelectAllPage"
                                         id="selectAllPageTrial"
                                     />
-                                    <label class="form-check-label fw-bold text-dark ms-2 d-flex align-items-center gap-2" for="selectAllPageTrial">
+                                    <label
+                                        class="form-check-label fw-bold text-dark ms-2 d-flex align-items-center gap-2"
+                                        for="selectAllPageTrial"
+                                    >
                                         Pilih Semua di Halaman Ini
-                                        <span v-if="selectedItems.length > 0"
-                                            class="badge bg-primary bg-opacity-10 text-primary rounded-pill fs-6 px-3 py-2">
+                                        <span
+                                            v-if="selectedItems.length > 0"
+                                            class="badge bg-primary bg-opacity-10 text-primary rounded-pill fs-6 px-3 py-2"
+                                        >
                                             {{ selectedItems.length }} Terpilih
                                         </span>
                                     </label>
@@ -156,13 +175,26 @@
                                     <div class="card-body p-0">
                                         <div class="d-flex align-items-stretch">
                                             <!-- Checkbox Area -->
-                                            <div class="bg-light border-end d-flex align-items-center justify-content-center p-3" style="width:60px">
-                                                <div class="form-check custom-checkbox mb-0">
+                                            <div
+                                                class="bg-light border-end d-flex align-items-center justify-content-center p-3"
+                                                style="width: 60px"
+                                            >
+                                                <div
+                                                    class="form-check custom-checkbox mb-0"
+                                                >
                                                     <input
                                                         class="form-check-input fs-4 cursor-pointer shadow-sm"
                                                         type="checkbox"
-                                                        :checked="isSelected(item.No_Po_Sampel)"
-                                                        @change="toggleSelection(item)"
+                                                        :checked="
+                                                            isSelected(
+                                                                item.No_Po_Sampel
+                                                            )
+                                                        "
+                                                        @change="
+                                                            toggleSelection(
+                                                                item
+                                                            )
+                                                        "
                                                     />
                                                 </div>
                                             </div>
@@ -235,7 +267,10 @@
                                                         >
                                                             <div
                                                                 class="icon-box bg-light rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                                                                style="width:48px;height:48px"
+                                                                style="
+                                                                    width: 48px;
+                                                                    height: 48px;
+                                                                "
                                                             >
                                                                 <i
                                                                     class="fas fa-box-open text-dark fa-lg"
@@ -282,27 +317,54 @@
 
                                                         <!-- Detail Jenis Analisa -->
                                                         <div
-                                                            v-if="item.Detail_Jenis_Analisa && item.Detail_Jenis_Analisa.length"
+                                                            v-if="
+                                                                item.Detail_Jenis_Analisa &&
+                                                                item
+                                                                    .Detail_Jenis_Analisa
+                                                                    .length
+                                                            "
                                                             class="mt-2 p-3 bg-light bg-opacity-50 rounded-4 border border-light"
                                                         >
-                                                            <div class="d-flex align-items-center mb-2 gap-2">
-                                                                <i class="fas fa-microscope text-primary"></i>
-                                                                <span class="fw-bold text-dark small">
-                                                                    Total Analisa:
-                                                                    <span class="text-primary">{{ item.Total_Jenis_Analisa }}</span>
+                                                            <div
+                                                                class="d-flex align-items-center mb-2 gap-2"
+                                                            >
+                                                                <i
+                                                                    class="fas fa-microscope text-primary"
+                                                                ></i>
+                                                                <span
+                                                                    class="fw-bold text-dark small"
+                                                                >
+                                                                    Total
+                                                                    Analisa:
+                                                                    <span
+                                                                        class="text-primary"
+                                                                        >{{
+                                                                            item.Total_Jenis_Analisa
+                                                                        }}</span
+                                                                    >
                                                                 </span>
                                                             </div>
-                                                            <div class="d-flex flex-wrap gap-2">
+                                                            <div
+                                                                class="d-flex flex-wrap gap-2"
+                                                            >
                                                                 <span
-                                                                    v-for="(analisa, idx) in item.Detail_Jenis_Analisa"
+                                                                    v-for="(
+                                                                        analisa,
+                                                                        idx
+                                                                    ) in item.Detail_Jenis_Analisa"
                                                                     :key="idx"
                                                                     class="badge bg-white text-dark border border-secondary border-opacity-25 rounded-pill px-3 py-2 shadow-sm fw-medium d-flex align-items-center gap-2"
                                                                 >
                                                                     <span
                                                                         class="bg-primary rounded-circle"
-                                                                        style="width:6px;height:6px"
+                                                                        style="
+                                                                            width: 6px;
+                                                                            height: 6px;
+                                                                        "
                                                                     ></span>
-                                                                    {{ analisa.Jenis_Analisa }}
+                                                                    {{
+                                                                        analisa.Jenis_Analisa
+                                                                    }}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -364,7 +426,12 @@
                                 Data Tidak Ditemukan
                             </h5>
                             <button
-                                v-if="search || dateRange || filterQr || filterTotalAnalisa"
+                                v-if="
+                                    search ||
+                                    dateRange ||
+                                    filterQr ||
+                                    filterTotalAnalisa
+                                "
                                 @click="resetFilter"
                                 class="btn btn-primary rounded-pill px-4 mt-2"
                             >
@@ -443,32 +510,82 @@
                     </div>
 
                     <!-- ══ MODAL BULK FINALISASI TRIAL ══ -->
-                    <div class="modal fade" id="bulkModalTrial" tabindex="-1" aria-labelledby="bulkModalTrialLabel" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+                    <div
+                        class="modal fade"
+                        id="bulkModalTrial"
+                        tabindex="-1"
+                        aria-labelledby="bulkModalTrialLabel"
+                        aria-hidden="true"
+                    >
+                        <div
+                            class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable"
+                        >
                             <div class="modal-content border-0 shadow">
-                                <div class="modal-header bg-primary text-white border-0">
-                                    <h5 class="modal-title fw-bold text-white" id="bulkModalTrialLabel">
+                                <div
+                                    class="modal-header bg-primary text-white border-0"
+                                >
+                                    <h5
+                                        class="modal-title fw-bold text-white"
+                                        id="bulkModalTrialLabel"
+                                    >
                                         <i class="fas fa-flask me-2"></i>
-                                        Konfirmasi Finalisasi Massal — Trial Produksi
+                                        Konfirmasi Finalisasi Massal — Trial
+                                        Produksi
                                     </h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    <button
+                                        type="button"
+                                        class="btn-close btn-close-white"
+                                        data-bs-dismiss="modal"
+                                        aria-label="Close"
+                                    ></button>
                                 </div>
                                 <div class="modal-body bg-light">
                                     <!-- Hasil setelah submit -->
                                     <div v-if="resultLogBulk" class="mb-4">
-                                        <div class="alert alert-success border-0 shadow-sm"
-                                            v-if="resultLogBulk.berhasil && resultLogBulk.berhasil.length">
-                                            <h6 class="fw-bold"><i class="fas fa-check-circle me-2"></i>Berhasil Difinalisasi:</h6>
+                                        <div
+                                            class="alert alert-success border-0 shadow-sm"
+                                            v-if="
+                                                resultLogBulk.berhasil &&
+                                                resultLogBulk.berhasil.length
+                                            "
+                                        >
+                                            <h6 class="fw-bold">
+                                                <i
+                                                    class="fas fa-check-circle me-2"
+                                                ></i
+                                                >Berhasil Difinalisasi:
+                                            </h6>
                                             <ul class="mb-0 small">
-                                                <li v-for="bs in resultLogBulk.berhasil" :key="bs">{{ bs }}</li>
+                                                <li
+                                                    v-for="bs in resultLogBulk.berhasil"
+                                                    :key="bs"
+                                                >
+                                                    {{ bs }}
+                                                </li>
                                             </ul>
                                         </div>
-                                        <div class="alert alert-danger border-0 shadow-sm mt-3"
-                                            v-if="resultLogBulk.gagal && resultLogBulk.gagal.length">
-                                            <h6 class="fw-bold"><i class="fas fa-exclamation-triangle me-2"></i>Gagal Difinalisasi:</h6>
+                                        <div
+                                            class="alert alert-danger border-0 shadow-sm mt-3"
+                                            v-if="
+                                                resultLogBulk.gagal &&
+                                                resultLogBulk.gagal.length
+                                            "
+                                        >
+                                            <h6 class="fw-bold">
+                                                <i
+                                                    class="fas fa-exclamation-triangle me-2"
+                                                ></i
+                                                >Gagal Difinalisasi:
+                                            </h6>
                                             <ul class="mb-0 small">
-                                                <li v-for="gl in resultLogBulk.gagal" :key="gl.sampel">
-                                                    <strong>{{ gl.sampel }}</strong>: {{ gl.reason }}
+                                                <li
+                                                    v-for="gl in resultLogBulk.gagal"
+                                                    :key="gl.sampel"
+                                                >
+                                                    <strong>{{
+                                                        gl.sampel
+                                                    }}</strong
+                                                    >: {{ gl.reason }}
                                                 </li>
                                             </ul>
                                         </div>
@@ -477,94 +594,229 @@
                                     <!-- Daftar sampel yang akan difinalisasi -->
                                     <div v-else>
                                         <p class="text-muted small mb-2">
-                                            Anda akan memfinalisasi <strong>{{ selectedItems.length }}</strong>
-                                            sampel trial produksi berikut. Silakan periksa kembali sebelum menyimpan.
+                                            Anda akan memfinalisasi
+                                            <strong>{{
+                                                selectedItems.length
+                                            }}</strong>
+                                            sampel trial produksi berikut.
+                                            Silakan periksa kembali sebelum
+                                            menyimpan.
                                         </p>
 
                                         <!-- Ringkasan total analisa -->
-                                        <div class="alert alert-primary border-0 shadow-sm mb-3 py-2 d-flex align-items-center gap-2">
-                                            <i class="fas fa-microscope fs-5"></i>
+                                        <div
+                                            class="alert alert-primary border-0 shadow-sm mb-3 py-2 d-flex align-items-center gap-2"
+                                        >
+                                            <i
+                                                class="fas fa-microscope fs-5"
+                                            ></i>
                                             <span>
-                                                Total <strong>{{ totalAnalisaModal }}</strong> jenis analisa
-                                                dari <strong>{{ selectedItems.length }}</strong> sampel akan difinalisasi.
+                                                Total
+                                                <strong>{{
+                                                    totalAnalisaModal
+                                                }}</strong>
+                                                jenis analisa dari
+                                                <strong>{{
+                                                    selectedItems.length
+                                                }}</strong>
+                                                sampel akan difinalisasi.
                                             </span>
                                         </div>
 
-                                        <div class="accordion" id="accordionBulkTrial">
+                                        <div
+                                            class="accordion"
+                                            id="accordionBulkTrial"
+                                        >
                                             <div
                                                 class="accordion-item border-0 mb-3 rounded-4 shadow-sm overflow-hidden"
-                                                v-for="(item, index) in selectedItems"
+                                                v-for="(
+                                                    item, index
+                                                ) in selectedItems"
                                                 :key="item.No_Po_Sampel"
                                             >
-                                                <h2 class="accordion-header" :id="'trialHeading' + index">
+                                                <h2
+                                                    class="accordion-header"
+                                                    :id="'trialHeading' + index"
+                                                >
                                                     <button
                                                         class="accordion-button bg-white text-dark collapsed py-3 fw-bold border-0"
                                                         type="button"
                                                         data-bs-toggle="collapse"
-                                                        :data-bs-target="'#trialCollapse' + index"
+                                                        :data-bs-target="
+                                                            '#trialCollapse' +
+                                                            index
+                                                        "
                                                         aria-expanded="false"
-                                                        :aria-controls="'trialCollapse' + index"
+                                                        :aria-controls="
+                                                            'trialCollapse' +
+                                                            index
+                                                        "
                                                     >
-                                                        <div class="d-flex w-100 justify-content-between align-items-center me-3">
+                                                        <div
+                                                            class="d-flex w-100 justify-content-between align-items-center me-3"
+                                                        >
                                                             <span>
-                                                                <i class="fas fa-barcode text-primary me-2"></i>
-                                                                {{ item.No_Po_Sampel }}
+                                                                <i
+                                                                    class="fas fa-barcode text-primary me-2"
+                                                                ></i>
+                                                                {{
+                                                                    item.No_Po_Sampel
+                                                                }}
                                                             </span>
-                                                            <div class="d-flex gap-2 align-items-center">
-                                                                <span v-if="item.Detail_Jenis_Analisa && item.Detail_Jenis_Analisa.length"
-                                                                    class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill">
-                                                                    <i class="fas fa-microscope me-1"></i>
-                                                                    {{ item.Total_Jenis_Analisa }} Analisa
+                                                            <div
+                                                                class="d-flex gap-2 align-items-center"
+                                                            >
+                                                                <span
+                                                                    v-if="
+                                                                        item.Detail_Jenis_Analisa &&
+                                                                        item
+                                                                            .Detail_Jenis_Analisa
+                                                                            .length
+                                                                    "
+                                                                    class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill"
+                                                                >
+                                                                    <i
+                                                                        class="fas fa-microscope me-1"
+                                                                    ></i>
+                                                                    {{
+                                                                        item.Total_Jenis_Analisa
+                                                                    }}
+                                                                    Analisa
                                                                 </span>
-                                                                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill">
-                                                                    <i class="fas fa-flask me-1"></i>Trial Produksi
+                                                                <span
+                                                                    class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill"
+                                                                >
+                                                                    <i
+                                                                        class="fas fa-flask me-1"
+                                                                    ></i
+                                                                    >Trial
+                                                                    Produksi
                                                                 </span>
                                                             </div>
                                                         </div>
                                                     </button>
                                                 </h2>
                                                 <div
-                                                    :id="'trialCollapse' + index"
+                                                    :id="
+                                                        'trialCollapse' + index
+                                                    "
                                                     class="accordion-collapse collapse bg-light"
-                                                    :aria-labelledby="'trialHeading' + index"
+                                                    :aria-labelledby="
+                                                        'trialHeading' + index
+                                                    "
                                                     data-bs-parent="#accordionBulkTrial"
                                                 >
-                                                    <div class="accordion-body border-top p-3">
-                                                        <div class="d-flex justify-content-between mb-3 align-items-start">
-                                                            <div class="d-flex flex-column gap-1">
-                                                                <span class="fw-semibold text-dark">{{ item.Nama_Barang }}</span>
-                                                                <span class="text-muted small">PO: {{ item.No_Po }} | Split PO: {{ item.No_Split_Po }}</span>
-                                                                <span class="text-muted small">Kode Barang: {{ item.Kode_Barang }}</span>
+                                                    <div
+                                                        class="accordion-body border-top p-3"
+                                                    >
+                                                        <div
+                                                            class="d-flex justify-content-between mb-3 align-items-start"
+                                                        >
+                                                            <div
+                                                                class="d-flex flex-column gap-1"
+                                                            >
+                                                                <span
+                                                                    class="fw-semibold text-dark"
+                                                                    >{{
+                                                                        item.Nama_Barang
+                                                                    }}</span
+                                                                >
+                                                                <span
+                                                                    class="text-muted small"
+                                                                    >PO:
+                                                                    {{
+                                                                        item.No_Po
+                                                                    }}
+                                                                    | Split PO:
+                                                                    {{
+                                                                        item.No_Split_Po
+                                                                    }}</span
+                                                                >
+                                                                <span
+                                                                    class="text-muted small"
+                                                                    >Kode
+                                                                    Barang:
+                                                                    {{
+                                                                        item.Kode_Barang
+                                                                    }}</span
+                                                                >
                                                             </div>
                                                             <button
                                                                 class="btn btn-sm btn-outline-danger rounded-pill"
-                                                                @click="removeSelection(item.No_Po_Sampel)"
+                                                                @click="
+                                                                    removeSelection(
+                                                                        item.No_Po_Sampel
+                                                                    )
+                                                                "
                                                             >
-                                                                <i class="fas fa-trash-alt me-1"></i>Batal Pilih
+                                                                <i
+                                                                    class="fas fa-trash-alt me-1"
+                                                                ></i
+                                                                >Batal Pilih
                                                             </button>
                                                         </div>
 
                                                         <!-- Daftar Nama Analisa -->
                                                         <div class="mt-2">
-                                                            <template v-if="item.Detail_Jenis_Analisa && item.Detail_Jenis_Analisa.length > 0">
-                                                                <p class="text-muted small fw-semibold mb-2">
-                                                                    <i class="fas fa-list-check me-1 text-primary"></i>
-                                                                    Analisa yang akan difinalisasi ({{ item.Total_Jenis_Analisa }}):
+                                                            <template
+                                                                v-if="
+                                                                    item.Detail_Jenis_Analisa &&
+                                                                    item
+                                                                        .Detail_Jenis_Analisa
+                                                                        .length >
+                                                                        0
+                                                                "
+                                                            >
+                                                                <p
+                                                                    class="text-muted small fw-semibold mb-2"
+                                                                >
+                                                                    <i
+                                                                        class="fas fa-list-check me-1 text-primary"
+                                                                    ></i>
+                                                                    Analisa yang
+                                                                    akan
+                                                                    difinalisasi
+                                                                    ({{
+                                                                        item.Total_Jenis_Analisa
+                                                                    }}):
                                                                 </p>
-                                                                <div class="d-flex flex-wrap gap-2">
+                                                                <div
+                                                                    class="d-flex flex-wrap gap-2"
+                                                                >
                                                                     <span
-                                                                        v-for="(analisa, ai) in item.Detail_Jenis_Analisa"
-                                                                        :key="ai"
+                                                                        v-for="(
+                                                                            analisa,
+                                                                            ai
+                                                                        ) in item.Detail_Jenis_Analisa"
+                                                                        :key="
+                                                                            ai
+                                                                        "
                                                                         class="badge bg-white text-dark border border-secondary border-opacity-25 rounded-pill px-3 py-2 shadow-sm fw-medium d-flex align-items-center gap-2"
                                                                     >
-                                                                        <span class="bg-primary rounded-circle" style="width:6px;height:6px"></span>
-                                                                        {{ analisa.Jenis_Analisa }}
+                                                                        <span
+                                                                            class="bg-primary rounded-circle"
+                                                                            style="
+                                                                                width: 6px;
+                                                                                height: 6px;
+                                                                            "
+                                                                        ></span>
+                                                                        {{
+                                                                            analisa.Jenis_Analisa
+                                                                        }}
                                                                     </span>
                                                                 </div>
                                                             </template>
-                                                            <div v-else class="text-muted small">
-                                                                <i class="fas fa-exclamation-circle me-1 text-warning"></i>
-                                                                Tidak ada analisa yang terdeteksi untuk sampel ini.
+                                                            <div
+                                                                v-else
+                                                                class="text-muted small"
+                                                            >
+                                                                <i
+                                                                    class="fas fa-exclamation-circle me-1 text-warning"
+                                                                ></i>
+                                                                Tidak ada
+                                                                analisa yang
+                                                                terdeteksi untuk
+                                                                sampel ini.
                                                             </div>
                                                         </div>
                                                     </div>
@@ -574,15 +826,27 @@
                                     </div>
                                 </div>
                                 <div class="modal-footer border-0 bg-white">
-                                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Tutup</button>
                                     <button
                                         type="button"
-                                        v-if="!resultLogBulk && selectedItems.length > 0"
+                                        class="btn btn-light rounded-pill px-4"
+                                        data-bs-dismiss="modal"
+                                    >
+                                        Tutup
+                                    </button>
+                                    <button
+                                        type="button"
+                                        v-if="
+                                            !resultLogBulk &&
+                                            selectedItems.length > 0
+                                        "
                                         class="btn btn-primary rounded-pill px-4 shadow-sm d-flex align-items-center gap-2"
                                         @click="submitBulkFinalisasi"
                                         :disabled="loading.submittingBulk"
                                     >
-                                        <span v-if="loading.submittingBulk" class="spinner-border spinner-border-sm"></span>
+                                        <span
+                                            v-if="loading.submittingBulk"
+                                            class="spinner-border spinner-border-sm"
+                                        ></span>
                                         <i v-else class="fas fa-save"></i>
                                         Simpan Finalisasi
                                     </button>
@@ -590,6 +854,205 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- MODAL: Export Laporan Analisa Kurang — Finalisasi Trial Produksi  -->
+    <!-- ================================================================ -->
+    <div
+        class="modal fade"
+        id="exportAnalisaKurangTrialModal"
+        tabindex="-1"
+        aria-labelledby="exportAnalisaKurangTrialModalLabel"
+        aria-hidden="true"
+    >
+        <div class="modal-dialog modal-dialog-centered modal-md">
+            <div
+                class="modal-content border-0 shadow-lg rounded-4 overflow-hidden"
+            >
+                <!-- Header -->
+                <div
+                    class="modal-header border-0 pb-3 pt-4 px-4"
+                    style="
+                        background: linear-gradient(
+                            135deg,
+                            #0a5275 0%,
+                            #0d7dbf 100%
+                        );
+                    "
+                >
+                    <div class="d-flex align-items-center gap-3 flex-grow-1">
+                        <div
+                            class="rounded-3 p-2"
+                            style="background: rgba(255, 255, 255, 0.15)"
+                        >
+                            <i class="fas fa-file-excel text-white fs-4"></i>
+                        </div>
+                        <div>
+                            <h5
+                                class="modal-title text-white fw-bold mb-0"
+                                id="exportAnalisaKurangTrialModalLabel"
+                            >
+                                Export Analisa Kurang
+                            </h5>
+                            <small class="text-white" style="opacity: 0.75">
+                                Laporan untuk Analyzer / Analis Lab — Trial
+                                Produksi
+                            </small>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        class="btn-close btn-close-white ms-2"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                    ></button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body px-4 pt-4 pb-3">
+                    <!-- Tujuan laporan -->
+                    <div
+                        class="rounded-3 p-3 mb-4 d-flex gap-3"
+                        style="
+                            background: #e6f4ff;
+                            border-left: 4px solid #0a5275;
+                        "
+                    >
+                        <i
+                            class="fas fa-circle-info fs-5 flex-shrink-0 mt-1"
+                            style="color: #0a5275"
+                        ></i>
+                        <div>
+                            <p
+                                class="fw-semibold mb-1 small"
+                                style="color: #0a5275"
+                            >
+                                Tujuan Laporan Ini
+                            </p>
+                            <p class="text-secondary mb-0 small">
+                                Laporan ini digunakan untuk
+                                <strong
+                                    >memberitahu Analyzer / Analis Lab</strong
+                                >
+                                bahwa masih terdapat analisa yang
+                                <strong
+                                    >belum dikerjakan atau belum lengkap</strong
+                                >
+                                pada sampel <strong>Trial Produksi</strong>,
+                                sehingga dapat segera ditindaklanjuti sebelum
+                                proses finalisasi dilakukan.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Pilih Periode -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-dark mb-2">
+                            <i
+                                class="fas fa-calendar-range me-2"
+                                style="color: #0a5275"
+                            ></i>
+                            Periode Laporan
+                        </label>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="flex-grow-1">
+                                <label class="form-label text-muted small mb-1"
+                                    >Dari Tanggal</label
+                                >
+                                <input
+                                    type="date"
+                                    class="form-control rounded-3 shadow-sm border-0 bg-light"
+                                    v-model="exportModal.startDate"
+                                />
+                            </div>
+                            <span class="text-muted fw-bold mt-3">—</span>
+                            <div class="flex-grow-1">
+                                <label class="form-label text-muted small mb-1"
+                                    >Sampai Tanggal</label
+                                >
+                                <input
+                                    type="date"
+                                    class="form-control rounded-3 shadow-sm border-0 bg-light"
+                                    v-model="exportModal.endDate"
+                                />
+                            </div>
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-circle-info me-1"></i>
+                            Filter berdasarkan tanggal registrasi sampel. Jika
+                            tidak ada analisa kurang, laporan tetap dapat
+                            diunduh dengan informasi kosong.
+                        </small>
+                    </div>
+
+                    <!-- Catatan -->
+                    <div
+                        class="rounded-3 p-3"
+                        style="background: #fffdf0; border: 1px solid #ffe083"
+                    >
+                        <p
+                            class="fw-semibold mb-2 small"
+                            style="color: #856404"
+                        >
+                            <i class="fas fa-triangle-exclamation me-1"></i>
+                            Catatan
+                        </p>
+                        <ul class="mb-0 small text-secondary ps-3">
+                            <li>
+                                Laporan mencakup sampel
+                                <strong>Trial Produksi</strong> yang belum
+                                difinalisasi dalam periode ini.
+                            </li>
+                            <li>
+                                Analisa yang dihitung berdasarkan Dari Daftar
+                                Menu <strong>Barang Uji Laboratorium </strong>
+                                yang sudah di daftarkan dengan (Kode Role: LAB,
+                                Status Aktif).
+                            </li>
+                            <li>
+                                Format file output:
+                                <strong>Microsoft Excel (.xlsx)</strong>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div
+                    class="modal-footer border-0 px-4 pb-4 pt-2 d-flex justify-content-between"
+                >
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary rounded-pill px-4"
+                        data-bs-dismiss="modal"
+                    >
+                        <i class="fas fa-times me-2"></i>Batal
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-success rounded-pill px-4 fw-semibold shadow-sm d-flex align-items-center gap-2"
+                        @click="exportLaporan"
+                        :disabled="
+                            !exportModal.startDate ||
+                            !exportModal.endDate ||
+                            exportModal.loading
+                        "
+                    >
+                        <span
+                            v-if="exportModal.loading"
+                            class="spinner-border spinner-border-sm"
+                        ></span>
+                        <i v-else class="fas fa-download"></i>
+                        {{
+                            exportModal.loading
+                                ? "Mengunduh..."
+                                : "Download Excel"
+                        }}
+                    </button>
                 </div>
             </div>
         </div>
@@ -632,17 +1095,27 @@ export default {
             },
             selectedItems: [],
             resultLogBulk: null,
+            exportModal: {
+                startDate: "",
+                endDate: "",
+                loading: false,
+            },
         };
     },
     computed: {
         isAllPageSelected() {
             if (this.listData.length === 0) return false;
-            return this.listData.every((item) => this.isSelected(item.No_Po_Sampel));
+            return this.listData.every((item) =>
+                this.isSelected(item.No_Po_Sampel)
+            );
         },
         totalAnalisaModal() {
             return this.selectedItems.reduce(
                 (acc, item) =>
-                    acc + (Array.isArray(item.Detail_Jenis_Analisa) ? item.Detail_Jenis_Analisa.length : 0),
+                    acc +
+                    (Array.isArray(item.Detail_Jenis_Analisa)
+                        ? item.Detail_Jenis_Analisa.length
+                        : 0),
                 0
             );
         },
@@ -741,7 +1214,9 @@ export default {
             return this.selectedItems.some((i) => i.No_Po_Sampel === noSampel);
         },
         toggleSelection(item) {
-            const index = this.selectedItems.findIndex((i) => i.No_Po_Sampel === item.No_Po_Sampel);
+            const index = this.selectedItems.findIndex(
+                (i) => i.No_Po_Sampel === item.No_Po_Sampel
+            );
             if (index > -1) {
                 this.selectedItems.splice(index, 1);
             } else {
@@ -751,7 +1226,9 @@ export default {
         toggleSelectAllPage() {
             if (this.isAllPageSelected) {
                 this.listData.forEach((item) => {
-                    const index = this.selectedItems.findIndex((i) => i.No_Po_Sampel === item.No_Po_Sampel);
+                    const index = this.selectedItems.findIndex(
+                        (i) => i.No_Po_Sampel === item.No_Po_Sampel
+                    );
                     if (index > -1) this.selectedItems.splice(index, 1);
                 });
             } else {
@@ -763,8 +1240,52 @@ export default {
             }
         },
         removeSelection(noSampel) {
-            const index = this.selectedItems.findIndex((i) => i.No_Po_Sampel === noSampel);
+            const index = this.selectedItems.findIndex(
+                (i) => i.No_Po_Sampel === noSampel
+            );
             if (index > -1) this.selectedItems.splice(index, 1);
+        },
+        exportLaporan() {
+            if (!this.exportModal.startDate || !this.exportModal.endDate) {
+                ElMessage.warning(
+                    "Silakan pilih periode tanggal terlebih dahulu."
+                );
+                return;
+            }
+            this.exportModal.loading = true;
+            const params = new URLSearchParams({
+                start_date: this.exportModal.startDate,
+                end_date: this.exportModal.endDate,
+                type: "trial",
+            });
+            fetch(
+                `/api/v1/lab/export/daftar-analisa-kurang?${params.toString()}`,
+                { headers: { "X-Requested-With": "XMLHttpRequest" } }
+            )
+                .then((res) => {
+                    if (!res.ok) throw new Error("Server error " + res.status);
+                    return res.blob();
+                })
+                .then((blob) => {
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    const ts = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 15);
+                    link.download = `Laporan_Analisa_Kurang_Trial_Produksi_${this.exportModal.startDate}_sd_${this.exportModal.endDate}_${ts}.xlsx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.URL.revokeObjectURL(url);
+                    ElMessage.success("Laporan berhasil diunduh.");
+                })
+                .catch(() => {
+                    ElMessage.error(
+                        "Gagal mengunduh laporan. Silakan coba lagi."
+                    );
+                })
+                .finally(() => {
+                    this.exportModal.loading = false;
+                });
         },
         async submitBulkFinalisasi() {
             if (this.selectedItems.length === 0) {
@@ -776,7 +1297,9 @@ export default {
             this.resultLogBulk = null;
 
             try {
-                const no_sampel_list = this.selectedItems.map((item) => item.No_Po_Sampel);
+                const no_sampel_list = this.selectedItems.map(
+                    (item) => item.No_Po_Sampel
+                );
                 const response = await axios.post(
                     "/api/v1/finalisai/trial-produksi/hasil-analisa-close/finalisasi/bulk",
                     { no_sampel_list }
@@ -785,27 +1308,48 @@ export default {
                 if (response.data && response.data.success) {
                     this.resultLogBulk = response.data.result;
                     const sukses = response.data.result.berhasil || [];
-                    const gagal  = response.data.result.gagal || [];
+                    const gagal = response.data.result.gagal || [];
 
                     this.selectedItems = this.selectedItems.filter(
                         (item) => !sukses.includes(item.No_Po_Sampel)
                     );
 
                     if (sukses.length > 0 && gagal.length === 0) {
-                        ElMessage({ type: "success", message: "Semua sampel berhasil difinalisasi." });
+                        ElMessage({
+                            type: "success",
+                            message: "Semua sampel berhasil difinalisasi.",
+                        });
                     } else if (sukses.length > 0 && gagal.length > 0) {
-                        ElMessage({ type: "warning", message: "Sebagian sampel berhasil, namun ada yang gagal." });
+                        ElMessage({
+                            type: "warning",
+                            message:
+                                "Sebagian sampel berhasil, namun ada yang gagal.",
+                        });
                     } else {
-                        ElMessage({ type: "error", message: "Gagal memfinalisasi semua sampel yang dipilih." });
+                        ElMessage({
+                            type: "error",
+                            message:
+                                "Gagal memfinalisasi semua sampel yang dipilih.",
+                        });
                     }
 
                     this.fetchData();
                 } else {
-                    ElMessage({ type: "error", message: response.data?.message || "Gagal melakukan Bulk Finalisasi." });
+                    ElMessage({
+                        type: "error",
+                        message:
+                            response.data?.message ||
+                            "Gagal melakukan Bulk Finalisasi.",
+                    });
                 }
             } catch (error) {
                 console.error(error);
-                ElMessage({ type: "error", message: error.response?.data?.message || "Gagal melakukan Bulk Finalisasi." });
+                ElMessage({
+                    type: "error",
+                    message:
+                        error.response?.data?.message ||
+                        "Gagal melakukan Bulk Finalisasi.",
+                });
             } finally {
                 this.loading.submittingBulk = false;
             }

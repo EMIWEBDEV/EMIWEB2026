@@ -141,7 +141,7 @@ class StandarRentangController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('StandarRentangController')->error('Error: ' . $e->getMessage());
+            Log::channel('StandarRentangController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -488,7 +488,7 @@ class StandarRentangController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('StandarRentangController')->error('Error: ' . $e->getMessage());
+            Log::channel('StandarRentangController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,

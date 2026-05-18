@@ -83,7 +83,7 @@ class JenisAnalisaController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::channel("JenisAnalisaController")->error($e->getMessage());
+            Log::channel('JenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error('Terjadi kesalahan pada server', 500);
         }
     }
@@ -336,7 +336,7 @@ class JenisAnalisaController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('JenisAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('JenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -449,7 +449,7 @@ class JenisAnalisaController extends Controller
             
         } catch(\Exception $e){
             DB::rollBack();
-            Log::channel('JenisAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('JenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -518,7 +518,7 @@ class JenisAnalisaController extends Controller
                 'total_data' => $total
             ], 200);
        }catch(\Exception $e){
-            Log::channel('JenisAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('JenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -567,7 +567,7 @@ class JenisAnalisaController extends Controller
                 'result' => $getData,
             ], 200);
        }catch(\Exception $e){
-            Log::channel('JenisAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('JenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,

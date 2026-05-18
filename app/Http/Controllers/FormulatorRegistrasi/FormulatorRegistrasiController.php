@@ -141,7 +141,7 @@ class FormulatorRegistrasiController extends Controller
 
             return ResponseHelper::success($processedPoList, "Data Ditemukan", 200);
         }catch(\Exception $e){
-            Log::channel('FormulatorRegistrasi')->error('Error'. $e->getMessage());
+            Log::channel('FormulatorRegistrasiController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error('Terjadi Kesalahan', 500);
         }
     }
@@ -223,7 +223,7 @@ class FormulatorRegistrasiController extends Controller
             }
             return ResponseHelper::success($result, "Data Ditemukan", 200);
         }catch(\Exception $e){
-            Log::channel('FormulatorRegistrasi')->error('ERROR '. $e->getMessage());
+            Log::channel('FormulatorRegistrasiController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error("Terjadi Kesalahan", 500);
         }
     }
@@ -285,7 +285,7 @@ class FormulatorRegistrasiController extends Controller
             }
             return ResponseHelper::success($data, 'Data berhasil diambil.', 200);
         } catch (\Throwable $e) {
-            Log::channel('FormulatorRegistrasi')->error($e->getMessage(), [
+            Log::channel('FormulatorRegistrasiController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'params' => [
@@ -346,7 +346,7 @@ class FormulatorRegistrasiController extends Controller
             return ResponseHelper::success($encodedData, 'Data Berhasil Diambil', 200);
 
         } catch (\Throwable $e) {
-            Log::channel('FormulatorRegistrasi')->error($e->getMessage(), [
+            Log::channel('FormulatorRegistrasiController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'params' => [
@@ -518,7 +518,7 @@ class FormulatorRegistrasiController extends Controller
                 DB::commit();
 
             } catch (\Exception $e) {
-                Log::channel('FormulatorRegistrasiController')->error($e->getMessage());
+                Log::channel('FormulatorRegistrasiController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                 $payloadActivityProduksiSampel = [
                                     'No_Po' => $request->No_Po,
                                     'No_Split_Po' => $request->No_Split_Po,
@@ -611,7 +611,7 @@ class FormulatorRegistrasiController extends Controller
                     
                 DB::table('N_EMI_LIMS_Activity_Produksi_Sampel')->insert($payloadActivityProduksiSampel);
             } catch (\Exception $e) {
-                Log::channel('FormulatorRegistrasiController')->error($e->getMessage());
+                Log::channel('FormulatorRegistrasiController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
 
                 $payloadActivityProduksiSampel = [
                                     'No_Po' => $request->No_Po,
@@ -781,7 +781,7 @@ class FormulatorRegistrasiController extends Controller
                 
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    Log::channel('FormulatorRegistrasiController')->error($e->getMessage());
+                    Log::channel('FormulatorRegistrasiController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                     return ResponseHelper::error("Terjadi Kesalahan", 500);
                 }
 
@@ -893,7 +893,7 @@ class FormulatorRegistrasiController extends Controller
                         
                     DB::table('N_EMI_LIMS_Activity_Produksi_Sampel')->insert($payloadActivityProduksiSampel);
                 } catch (\Exception $e) {
-                    Log::channel('FormulatorRegistrasiController')->error($e->getMessage());
+                    Log::channel('FormulatorRegistrasiController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                     $payloadActivityProduksiSampel = [
                                         'No_Po' => $request->No_Po,
                                         'No_Split_Po' => $request->No_Split_Po,
@@ -1038,7 +1038,7 @@ class FormulatorRegistrasiController extends Controller
                     DB::commit();
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    Log::channel('FormulatorRegistrasiController')->error($e->getMessage());
+                    Log::channel('FormulatorRegistrasiController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                     return ResponseHelper::error("Terjadi Kesalahan", 500);
                 }
 
@@ -1150,7 +1150,7 @@ class FormulatorRegistrasiController extends Controller
                     
                     DB::table('N_EMI_LIMS_Activity_Produksi_Sampel')->insert($payloadActivityProduksiSampel);
                 } catch (\Exception $e) {
-                    Log::channel('FormulatorRegistrasiController')->error($e->getMessage());
+                    Log::channel('FormulatorRegistrasiController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                     $payloadActivityProduksiSampel = [
                                         'No_Po' => $request->No_Po,
                                         'No_Split_Po' => $request->No_Split_Po,

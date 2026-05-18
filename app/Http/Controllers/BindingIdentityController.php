@@ -189,7 +189,7 @@ class BindingIdentityController extends Controller
             return redirect()->route('bidingidentity.index')->with('success', "Data Berhasil Disimpan");
         }catch(\Exception $e) {
             DB::rollBack();
-            Log::channel('BindingIdentityController')->error('Error: ' . $e->getMessage());
+            Log::channel('BindingIdentityController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -258,7 +258,7 @@ class BindingIdentityController extends Controller
             return redirect()->route('bidingidentity.index')->with('success', "Data Berhasil Disimpan");
         }catch(\Exception $e) {
             DB::rollBack();
-            Log::channel('BindingIdentityController')->error('Error: ' . $e->getMessage());
+            Log::channel('BindingIdentityController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -350,7 +350,7 @@ class BindingIdentityController extends Controller
                 'total_data' => $total
             ], 200);
         } catch (\Exception $e) {
-            Log::channel('BindingIdentityController')->error('Error: ' . $e->getMessage());
+            Log::channel('BindingIdentityController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -412,7 +412,7 @@ class BindingIdentityController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('BindingIdentityController')->error('Error: ' . $e->getMessage());
+            Log::channel('BindingIdentityController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,

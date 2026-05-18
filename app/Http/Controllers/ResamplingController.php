@@ -113,7 +113,7 @@ class ResamplingController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('ResamplingController')->error('Error: ' . $e->getMessage());
+            Log::channel('ResamplingController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,

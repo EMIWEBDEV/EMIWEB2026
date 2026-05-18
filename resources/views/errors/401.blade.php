@@ -1,300 +1,178 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>401 – Sesi Berakhir | Laboratory Information System</title>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>401 – Sesi Berakhir | LIMS · PT. Evo Manufacturing Indonesia</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet"/>
     <style>
-        :root {
-            --accent: #f59e0b;
-            --accent-dark: #b45309;
-            --accent-rgb: 245, 158, 11;
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+        :root{
+            --p:#405189;--p-dk:#2c3b74;--p-rgb:64,81,137;
+            --teal:#0ab39c;--t-rgb:10,179,156;
         }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html,body{min-height:100%;font-family:'Nunito',sans-serif;color:#e2e8f0;background:#080e22;overflow-y:auto;}
 
-        html, body {
-            height: 100%;
-            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        body {
-            min-height: 100vh;
-            background: #0d1117;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #e2e8f0;
-            overflow: hidden;
-            position: relative;
-            padding: 80px 20px 64px;
-        }
-
-        .bg-mesh {
-            position: fixed;
-            inset: 0;
+        .bg-scene{
+            position:fixed;inset:0;z-index:0;
             background:
-                radial-gradient(ellipse 70% 50% at 15% 55%, rgba(var(--accent-rgb), 0.13) 0%, transparent 65%),
-                radial-gradient(ellipse 50% 40% at 85% 25%, rgba(var(--accent-rgb), 0.08) 0%, transparent 60%),
-                linear-gradient(180deg, #0d1117 0%, #111827 50%, #0d1117 100%);
-            animation: meshBreath 14s ease-in-out infinite alternate;
-            pointer-events: none;
-            z-index: 0;
+                radial-gradient(ellipse 80% 60% at 10% 20%, rgba(var(--p-rgb),.2) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 90% 80%, rgba(var(--p-rgb),.13) 0%, transparent 55%),
+                linear-gradient(145deg, #060b1c 0%, #0b1228 45%, #101740 100%);
         }
-        @keyframes meshBreath {
-            0% { transform: scale(1); }
-            100% { transform: scale(1.06); }
+        .bg-grid{
+            position:fixed;inset:0;z-index:0;
+            background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+            background-size:44px 44px;
         }
+        .orb{position:fixed;border-radius:50%;filter:blur(70px);pointer-events:none;z-index:0;}
+        .orb-1{width:500px;height:500px;top:-15%;left:-12%;background:rgba(var(--p-rgb),.18);}
+        .orb-2{width:360px;height:360px;bottom:-12%;right:-8%;background:rgba(var(--p-rgb),.12);}
+        .orb-3{width:200px;height:200px;top:45%;left:65%;background:rgba(var(--p-rgb),.07);}
+        #particles{position:fixed;inset:0;z-index:1;pointer-events:none;}
 
-        .orb {
-            position: fixed;
-            border-radius: 50%;
-            filter: blur(70px);
-            pointer-events: none;
-            z-index: 0;
-            animation: orbDrift ease-in-out infinite alternate;
+        .topbar{
+            position:fixed;top:0;left:0;right:0;z-index:30;
+            display:flex;align-items:center;justify-content:center;
+            padding:13px 24px;
+            background:rgba(6,11,28,.72);
+            backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+            border-bottom:1px solid rgba(var(--p-rgb),.22);
+            animation:slideDown .5s .1s both;
         }
-        .orb-1 { width: 420px; height: 420px; top: -15%; left: -12%; background: rgba(var(--accent-rgb), 0.18); animation-duration: 16s; }
-        .orb-2 { width: 300px; height: 300px; bottom: -12%; right: -8%; background: rgba(var(--accent-rgb), 0.12); animation-duration: 12s; animation-delay: -4s; }
-        .orb-3 { width: 160px; height: 160px; top: 40%; left: 65%; background: rgba(var(--accent-rgb), 0.08); animation-duration: 9s; animation-delay: -7s; }
-        @keyframes orbDrift {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(35px, -45px); }
-        }
+        @keyframes slideDown{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+        .tb-inner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;}
+        .tb-chip{background:linear-gradient(135deg,var(--p),var(--p-dk));color:#fff;font-size:11px;font-weight:800;padding:5px 14px;border-radius:50px;letter-spacing:.8px;text-transform:uppercase;}
+        .tb-sep{color:rgba(255,255,255,.2);font-size:14px;}
+        .tb-full{font-family:'Inter',sans-serif;font-size:12px;color:rgba(255,255,255,.4);}
 
-        .logo-bar {
-            position: fixed;
-            top: 22px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            z-index: 20;
-            white-space: nowrap;
-            animation: fadeDown 0.6s ease 0.9s both;
-        }
-        .logo-chip {
-            background: linear-gradient(135deg, #405189, rgba(var(--accent-rgb), 0.9));
-            color: white;
-            font-size: 0.72rem;
-            font-weight: 700;
-            padding: 5px 14px;
-            border-radius: 50px;
-            letter-spacing: 0.09em;
-            text-transform: uppercase;
-        }
-        .logo-name { font-size: 0.78rem; color: #374151; }
-        @keyframes fadeDown {
-            0% { opacity: 0; transform: translateX(-50%) translateY(-12px); }
-            100% { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
+        .page{position:relative;z-index:10;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:96px 20px 64px;}
 
-        .error-card {
-            position: relative;
-            z-index: 10;
-            text-align: center;
-            background: rgba(255, 255, 255, 0.035);
-            backdrop-filter: blur(28px) saturate(180%);
-            -webkit-backdrop-filter: blur(28px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 28px;
-            padding: 48px 44px 44px;
-            max-width: 490px;
-            width: 100%;
-            box-shadow:
-                0 0 0 1px rgba(255,255,255,0.04) inset,
-                0 1px 0 rgba(255,255,255,0.08) inset,
-                0 40px 80px rgba(0,0,0,0.5);
-            animation: cardReveal 1s cubic-bezier(0.34, 1.36, 0.64, 1) both;
+        .card{
+            width:100%;max-width:500px;text-align:center;
+            background:rgba(16,24,58,.80);
+            border:1px solid rgba(var(--p-rgb),.22);
+            border-radius:22px;padding:48px 44px 44px;
+            backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+            box-shadow:0 40px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.04) inset;
+            animation:cardIn .65s cubic-bezier(.22,1,.36,1) both;
         }
-        @keyframes cardReveal {
-            0% { opacity: 0; transform: translateY(60px) scale(0.9); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
+        @keyframes cardIn{from{opacity:0;transform:translateY(36px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 
-        .icon-circle {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 76px; height: 76px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.9), rgba(var(--accent-rgb), 0.6));
-            margin-bottom: 20px;
-            animation: iconFloat 4s ease-in-out infinite;
-            box-shadow:
-                0 16px 40px rgba(var(--accent-rgb), 0.35),
-                0 0 0 10px rgba(var(--accent-rgb), 0.07),
-                0 0 0 22px rgba(var(--accent-rgb), 0.03);
+        .icon-ring{
+            display:inline-flex;align-items:center;justify-content:center;
+            width:84px;height:84px;border-radius:50%;
+            background:rgba(var(--p-rgb),.1);border:1.5px solid rgba(var(--p-rgb),.28);
+            margin-bottom:22px;position:relative;
         }
-        .icon-circle svg { width: 34px; height: 34px; fill: white; }
-        @keyframes iconFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-13px); }
-        }
+        .icon-ring::before{content:'';position:absolute;inset:-5px;border-radius:50%;border:1.5px solid transparent;border-top-color:rgba(var(--p-rgb),.95);border-right-color:rgba(var(--t-rgb),.8);animation:spin 2.4s linear infinite;}
+        .icon-ring::after{content:'';position:absolute;inset:-12px;border-radius:50%;border:1px solid transparent;border-bottom-color:rgba(var(--p-rgb),.3);animation:spin 3.6s linear reverse infinite;}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .icon-inner{font-size:36px;}
 
-        .error-num {
-            font-size: 6.5rem;
-            font-weight: 900;
-            line-height: 1;
-            letter-spacing: -0.04em;
-            margin-bottom: 4px;
-            background: linear-gradient(135deg, rgba(var(--accent-rgb), 1) 0%, rgba(var(--accent-rgb), 0.6) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: numReveal 0.8s cubic-bezier(0.34, 1.5, 0.64, 1) 0.2s both;
-            display: block;
+        .err-num{
+            display:block;font-size:80px;font-weight:900;line-height:1;letter-spacing:-4px;
+            background:linear-gradient(135deg,rgba(var(--p-rgb),1) 0%,rgba(var(--p-rgb),.5) 100%);
+            -webkit-background-clip:text;background-clip:text;color:transparent;
+            margin-bottom:4px;animation:numPop .7s cubic-bezier(.34,1.5,.64,1) .1s both;
         }
-        @keyframes numReveal {
-            0% { opacity: 0; transform: scale(0.5); }
-            100% { opacity: 1; transform: scale(1); }
-        }
+        @keyframes numPop{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
 
-        .divider {
-            width: 40px; height: 3px;
-            background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.8), rgba(var(--accent-rgb), 0.2));
-            border-radius: 2px;
-            margin: 14px auto 18px;
-            animation: divExpand 0.5s ease 0.6s both;
-        }
-        @keyframes divExpand {
-            0% { width: 0; opacity: 0; }
-            100% { width: 40px; opacity: 1; }
-        }
+        .divider{width:40px;height:3px;border-radius:2px;margin:14px auto 18px;background:linear-gradient(90deg,rgba(var(--p-rgb),.8),rgba(var(--p-rgb),.15));animation:expandW .5s .3s both;}
+        @keyframes expandW{from{width:0;opacity:0}to{width:40px;opacity:1}}
 
-        .error-title {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #f0f4f8;
-            margin-bottom: 10px;
-            letter-spacing: -0.02em;
-            animation: fadeUp 0.5s ease 0.5s both;
-        }
+        .title{font-size:22px;font-weight:800;color:#f0f4f8;letter-spacing:-.3px;margin-bottom:10px;animation:fadeUp .5s .2s both;}
+        .desc{font-family:'Inter',sans-serif;font-size:13.5px;line-height:1.75;color:rgba(255,255,255,.5);margin-bottom:28px;animation:fadeUp .5s .25s both;}
 
-        .error-msg {
-            font-size: 0.9rem;
-            color: #6b7280;
-            line-height: 1.75;
-            margin-bottom: 32px;
-            animation: fadeUp 0.5s ease 0.6s both;
-        }
-        @keyframes fadeUp {
-            0% { opacity: 0; transform: translateY(10px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
+        .strip{display:flex;align-items:center;gap:10px;padding:11px 14px;background:rgba(var(--p-rgb),.06);border:1px solid rgba(var(--p-rgb),.16);border-radius:10px;margin-bottom:10px;font-size:12.5px;color:rgba(255,255,255,.6);animation:fadeUp .5s .3s both;}
+        .strip-icon{font-size:15px;flex-shrink:0;}
+        .strip-val{font-weight:700;color:rgba(var(--p-rgb),.9);margin-left:auto;font-size:11px;letter-spacing:.4px;}
 
-        .btn-wrap {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-            animation: fadeUp 0.5s ease 0.7s both;
+        .btn-wrap{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:28px;animation:fadeUp .5s .35s both;}
+        .btn-main{
+            display:inline-flex;align-items:center;gap:8px;
+            background:linear-gradient(135deg,var(--p),var(--p-dk));
+            color:#fff;text-decoration:none;padding:13px 28px;border-radius:50px;
+            font-family:'Nunito',sans-serif;font-weight:700;font-size:14px;
+            border:none;cursor:pointer;
+            transition:all .3s cubic-bezier(.34,1.56,.64,1);
+            box-shadow:0 8px 24px rgba(var(--p-rgb),.35);
         }
+        .btn-main:hover{transform:translateY(-4px) scale(1.03);box-shadow:0 16px 40px rgba(var(--p-rgb),.5);color:#fff;text-decoration:none;}
+        .btn-main svg{width:16px;height:16px;fill:white;flex-shrink:0;}
 
-        .btn-main {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            background: rgba(var(--accent-rgb), 0.85);
-            color: white;
-            text-decoration: none;
-            padding: 12px 26px;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 0.88rem;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 8px 20px rgba(var(--accent-rgb), 0.35);
-        }
-        .btn-main:hover {
-            background: rgba(var(--accent-rgb), 1);
-            transform: translateY(-4px) scale(1.03);
-            box-shadow: 0 16px 36px rgba(var(--accent-rgb), 0.5);
-            color: white;
-            text-decoration: none;
-        }
+        .card-foot{margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;animation:fadeUp .5s .4s both;}
+        .cf-copy{font-size:11px;color:rgba(255,255,255,.28);}
+        .cf-badge{font-size:11px;font-weight:700;background:rgba(var(--p-rgb),.1);border:1px solid rgba(var(--p-rgb),.22);color:rgba(var(--p-rgb),.9);padding:3px 10px;border-radius:20px;}
 
-        .page-footer {
-            position: fixed;
-            bottom: 20px;
-            left: 0; right: 0;
-            text-align: center;
-            font-size: 0.73rem;
-            color: #1e293b;
-            letter-spacing: 0.04em;
-            z-index: 20;
-            animation: fadeUp 0.5s ease 1.2s both;
-        }
+        .page-foot{text-align:center;padding:20px;font-family:'Inter',sans-serif;font-size:11px;color:rgba(255,255,255,.15);letter-spacing:.4px;position:relative;z-index:10;}
 
-        @keyframes sparkle {
-            0%, 100% { opacity: 0; transform: translateY(0) scale(0.5); }
-            50% { opacity: 1; transform: translateY(-28px) scale(1); }
-        }
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes sparkle{0%,100%{opacity:0;transform:translateY(0) scale(.5)}50%{opacity:1;transform:translateY(-28px) scale(1)}}
 
-        @media (max-width: 480px) {
-            .error-card { padding: 36px 24px 32px; }
-            .error-num { font-size: 5rem; }
-            .logo-name { display: none; }
+        @media(max-width:480px){
+            .card{padding:36px 22px 32px;}.err-num{font-size:64px;}.tb-full{display:none;}
         }
     </style>
 </head>
 <body>
-    <div class="bg-mesh"></div>
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
+<div class="bg-scene"></div>
+<div class="bg-grid"></div>
+<div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div>
+<div id="particles"></div>
 
-    <div class="logo-bar">
-        <span class="logo-chip">Laboratory Information System</span>
-        <span class="logo-name">Laboratory Information Management System</span>
+<div class="topbar">
+    <div class="tb-inner">
+        <span class="tb-chip">LIMS</span>
+        <span class="tb-sep">|</span>
+        <span class="tb-full">Laboratory Information Management System &nbsp;·&nbsp; PT. Evo Manufacturing Indonesia</span>
     </div>
+</div>
 
-    <div class="error-card">
-        <div class="icon-circle">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-            </svg>
-        </div>
-        <span class="error-num">401</span>
+<div class="page">
+    <div class="card">
+        <div class="icon-ring"><span class="icon-inner">⏱</span></div>
+        <span class="err-num">401</span>
         <div class="divider"></div>
-        <h1 class="error-title">Sesi Berakhir</h1>
-        <p class="error-msg">
-            Anda belum login atau sesi Anda telah berakhir.<br>
-            Silakan masuk kembali untuk melanjutkan.
-        </p>
+        <h1 class="title">Sesi Berakhir</h1>
+        <p class="desc">Anda belum login atau sesi Anda telah berakhir.<br>Harap masuk kembali untuk melanjutkan aktivitas laboratorium.</p>
+
+        <div class="strip"><span class="strip-icon">🔑</span><span>Token Autentikasi</span><span class="strip-val">EXPIRED</span></div>
+        <div class="strip"><span class="strip-icon">🛡️</span><span>Status Sesi</span><span class="strip-val">TIDAK AKTIF</span></div>
+        <div class="strip"><span class="strip-icon">📋</span><span>Sistem</span><span class="strip-val">LIMS · EMI</span></div>
+
         <div class="btn-wrap">
             <a href="/login" class="btn-main">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg>
                 Masuk Kembali
             </a>
         </div>
-    </div>
 
-    <div class="page-footer">
-        PT Evo Manufacturing Indonesia &nbsp;·&nbsp; Laboratory Information Systemoratory Information Management System
+        <div class="card-foot">
+            <span class="cf-copy">© <script>document.write(new Date().getFullYear())</script> PT. Evo Manufacturing Indonesia</span>
+            <span class="cf-badge">LIMS v3.0</span>
+        </div>
     </div>
+</div>
 
-    <script>
-        (function () {
-            var rgb = '245, 158, 11';
-            for (var i = 0; i < 28; i++) {
-                var p = document.createElement('div');
-                var sz = Math.random() * 3.5 + 1;
-                p.style.cssText = [
-                    'position:fixed', 'pointer-events:none', 'z-index:1', 'border-radius:50%',
-                    'width:' + sz + 'px', 'height:' + sz + 'px',
-                    'background:rgba(' + rgb + ',' + (Math.random() * 0.45 + 0.05) + ')',
-                    'top:' + (Math.random() * 100) + 'vh',
-                    'left:' + (Math.random() * 100) + 'vw',
-                    'animation:sparkle ' + (Math.random() * 5 + 4) + 's ease-in-out infinite',
-                    'animation-delay:-' + (Math.random() * 9) + 's'
-                ].join(';');
-                document.body.appendChild(p);
-            }
-        }());
-    </script>
+<div class="page-foot">Laboratory Information Management System &nbsp;·&nbsp; PT. Evo Manufacturing Indonesia</div>
+
+<script>
+(function(){
+    var c=document.getElementById('particles');
+    for(var i=0;i<32;i++){
+        var p=document.createElement('div');var sz=Math.random()*3.5+1.5;
+        p.style.cssText=['position:fixed','pointer-events:none','z-index:1','border-radius:50%',
+            'width:'+sz+'px','height:'+sz+'px',
+            'background:rgba(64,81,137,'+(Math.random()*.3+.05)+')',
+            'top:'+(Math.random()*100)+'vh','left:'+(Math.random()*100)+'vw',
+            'animation:sparkle '+(Math.random()*5+4)+'s ease-in-out infinite',
+            'animation-delay:-'+(Math.random()*9)+'s'].join(';');
+        c.appendChild(p);
+    }
+}());
+</script>
 </body>
 </html>

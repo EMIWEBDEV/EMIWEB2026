@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use App\Exports\RekapSampelExport;
 use App\Exports\ParticleSizeExport;
+use App\Exports\DaftarAnalisaKurangExport;
 use App\Helpers\ResponseHelper;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Validator; 
@@ -80,7 +81,7 @@ class UjiSampelController extends Controller
             return number_format((float)$finalResult, $decimalPlaces, '.', '');
 
         } catch (\Throwable $e) {
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return number_format(0, $decimalPlaces, '.', '');
         }
     }
@@ -148,7 +149,7 @@ class UjiSampelController extends Controller
             return number_format((float)$finalResult, $decimalPlaces, '.', '');
 
         } catch (\Throwable $e) {
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return number_format(0, $decimalPlaces, '.', '');
         }
     }
@@ -165,6 +166,34 @@ class UjiSampelController extends Controller
     public function viewConfirmedAnalisis()
     {
         return inertia('vue/dashboard/lab/ConfirmedUjiAnalisav2');
+    }
+
+    public function exportDaftarAnalisaKurang(Request $request)
+    {
+        $startDate = $request->input('start_date');
+        $endDate   = $request->input('end_date');
+        $type      = $request->input('type'); // 'produksi' | 'trial' | null = keduanya
+
+        if (!$startDate || !$endDate) {
+            return response()->json([
+                'success' => false,
+                'status'  => 422,
+                'message' => 'Parameter start_date dan end_date wajib diisi.'
+            ], 422);
+        }
+
+        $typeLabel = match ($type) {
+            'trial'    => 'Trial_Produksi',
+            'produksi' => 'Produksi',
+            default    => 'Semua',
+        };
+
+        $fileName = 'Laporan_Analisa_Kurang_' . $typeLabel . '_' . $startDate . '_sd_' . $endDate . '.xlsx';
+
+        return Excel::download(
+            new DaftarAnalisaKurangExport($startDate, $endDate, $type),
+            $fileName
+        );
     }
     public function viewInformasiMultiQr($no_sub_sampel, $id_jenis_analisa)
     {
@@ -432,7 +461,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -750,7 +779,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -1092,7 +1121,7 @@ class UjiSampelController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -1911,7 +1940,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -2337,7 +2366,7 @@ class UjiSampelController extends Controller
             }
             
             // Log error asli (lengkap dengan query-nya) HANYA di file log server untuk tim IT
-            Log::channel('UjiSampelController')->error('DB Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
 
             // 2. Filter pesan untuk pengguna
             $errorCode = $e->errorInfo[1] ?? 0;
@@ -2377,7 +2406,7 @@ class UjiSampelController extends Controller
                 }
             }
             
-            Log::channel('UjiSampelController')->error('General Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
 
             // Cek apakah pesan exception murni dari PHP/Logic (aman) atau memuat kata kunci database
             $rawMessage = $e->getMessage();
@@ -2861,7 +2890,7 @@ class UjiSampelController extends Controller
                     }
                 }
             }
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -3218,7 +3247,7 @@ class UjiSampelController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -3593,7 +3622,7 @@ class UjiSampelController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -3987,7 +4016,7 @@ class UjiSampelController extends Controller
                     }
                 }
             }
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -4426,7 +4455,7 @@ class UjiSampelController extends Controller
                     }
                 }
             }
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -4774,7 +4803,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -5121,7 +5150,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -5467,7 +5496,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -5809,7 +5838,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -5997,7 +6026,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6203,7 +6232,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6357,7 +6386,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6545,7 +6574,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6673,7 +6702,7 @@ class UjiSampelController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6797,7 +6826,7 @@ class UjiSampelController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6943,7 +6972,7 @@ class UjiSampelController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6993,7 +7022,7 @@ class UjiSampelController extends Controller
 
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+                    Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                     return response()->json([
                         'success' => false,
                         'status' => 500,
@@ -7018,7 +7047,7 @@ class UjiSampelController extends Controller
 
                 }catch(\Exception $e){
                     DB::rollBack();
-                    Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+                    Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                     return response()->json([
                         'success' => false,
                         'status' => 500,
@@ -7284,7 +7313,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -7675,7 +7704,7 @@ class UjiSampelController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('UjiSampelController')->error('Error getDetailSampelUjiV2: ' . $e->getMessage(), [
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'no_sampel' => $no_sampel,
                 'line' => $e->getLine(),
                 'file' => $e->getFile(),
@@ -7977,7 +8006,7 @@ class UjiSampelController extends Controller
                 ]
             ], 200);
         } catch (\Exception $e) {
-            Log::channel('ujiSampelController')->error('Error getParameterAndPerhitunganOld: ' . $e->getMessage(), [
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'id_analisa' => $id_analisa,
                 'line' => $e->getLine(),
                 'file' => $e->getFile()
@@ -8371,7 +8400,7 @@ class UjiSampelController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('ujiSampelController')->error('Error getPoSampelMultiQrDetailV3: ' . $e->getMessage(), [
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'no_sampel' => $no_sampel,
                 'no_PO_Multiqr' => $no_PO_Multiqr,
                 'line' => $e->getLine(),
@@ -9116,7 +9145,7 @@ class UjiSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -9810,6 +9839,7 @@ class UjiSampelController extends Controller
         $filterTanggalMulai = $request->input('tanggal_mulai');
         $filterTanggalSelesai = $request->input('tanggal_selesai');
         $filterQrCode = $request->input('qrcode');
+        $filterStatus = $request->input('status');
 
         $baseQuery = DB::table('N_EMI_LAB_Uji_Sampel')
             ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
@@ -9820,13 +9850,13 @@ class UjiSampelController extends Controller
                 'N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode',
                 'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa',
                 'N_EMI_LAB_Jenis_Analisa.Kode_Analisa',
-                DB::raw('MAX(N_EMI_LAB_Uji_Sampel.Tanggal) as Tanggal') 
+                DB::raw('MAX(N_EMI_LAB_Uji_Sampel.Tanggal) as Tanggal')
             )
             ->whereIn('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
             ->whereNull('N_EMI_LAB_Uji_Sampel.Flag_Selesai')
             ->where('N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 'menunggu')
-            ->whereNull('N_EMI_LAB_PO_Sampel.Flag_Trial_Produksi') 
+            ->whereNull('N_EMI_LAB_PO_Sampel.Flag_Trial_Produksi')
             ->groupBy(
                 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
                 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa',
@@ -9857,6 +9887,34 @@ class UjiSampelController extends Controller
                         ->orWhereNull('N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode');
                 });
             }
+        }
+
+        if ($filterStatus === 'lolos') {
+            $baseQuery->whereNotExists(function ($subQ) {
+                $subQ->select(DB::raw(1))
+                     ->from('N_EMI_LAB_Uji_Sampel as chk')
+                     ->whereColumn('chk.No_Po_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel')
+                     ->whereColumn('chk.Id_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa')
+                     ->whereNull('chk.Status')
+                     ->whereNull('chk.Flag_Selesai')
+                     ->where(function ($q2) {
+                         $q2->whereNull('chk.Flag_Layak')->orWhere('chk.Flag_Layak', '!=', 'Y');
+                     })
+                     ->whereRaw('chk.Tahapan_Ke = (SELECT MAX(mx.Tahapan_Ke) FROM N_EMI_LAB_Uji_Sampel mx WHERE mx.No_Po_Sampel = chk.No_Po_Sampel AND mx.Id_Jenis_Analisa = chk.Id_Jenis_Analisa AND mx.Status IS NULL AND mx.Flag_Selesai IS NULL)');
+            });
+        } elseif ($filterStatus === 'tidak_lolos') {
+            $baseQuery->whereExists(function ($subQ) {
+                $subQ->select(DB::raw(1))
+                     ->from('N_EMI_LAB_Uji_Sampel as chk')
+                     ->whereColumn('chk.No_Po_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel')
+                     ->whereColumn('chk.Id_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa')
+                     ->whereNull('chk.Status')
+                     ->whereNull('chk.Flag_Selesai')
+                     ->where(function ($q2) {
+                         $q2->whereNull('chk.Flag_Layak')->orWhere('chk.Flag_Layak', '!=', 'Y');
+                     })
+                     ->whereRaw('chk.Tahapan_Ke = (SELECT MAX(mx.Tahapan_Ke) FROM N_EMI_LAB_Uji_Sampel mx WHERE mx.No_Po_Sampel = chk.No_Po_Sampel AND mx.Id_Jenis_Analisa = chk.Id_Jenis_Analisa AND mx.Status IS NULL AND mx.Flag_Selesai IS NULL)');
+            });
         }
 
         // Urutkan menggunakan alias `Tanggal` yang didapat dari agregasi MAX()
@@ -10063,6 +10121,10 @@ class UjiSampelController extends Controller
             )
             ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->whereNull('po.Flag_Trial_Produksi')
+            // Tambahan kondisi untuk tabel N_EMI_LAB_PO_Sampel (alias: po)
+            ->whereNull('po.Flag_Selesai')
+            ->whereNull('po.Status')
+            // Kondisi tabel uji tetap dipertahankan sesuai aslinya
             ->whereNull('uji.Status')
             ->where('uji.Flag_Selesai', 'Y')
             ->whereNull('uji.Flag_Final')
@@ -10128,10 +10190,8 @@ class UjiSampelController extends Controller
             $analisaDetails = DB::table('N_EMI_LAB_Uji_Sampel as uji')
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'uji.Id_Jenis_Analisa', '=', 'ja.id')
                 ->whereIn('uji.No_Po_Sampel', $poSampelIds)
-                ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
                 ->whereNull('uji.Status')
                 ->where('uji.Flag_Selesai', 'Y')
-                ->whereNull('uji.Flag_Final')
                 ->where('uji.Status_Keputusan_Sampel', 'terima')
                 ->where(function($q) {
                     $q->where('uji.Flag_Resampling', '!=', 'Y')
@@ -10680,7 +10740,7 @@ class UjiSampelController extends Controller
                 'result' => $getDataSubPo
             ], 200);
         }catch(\Exception $e){
-            Log::channel("UjiSampelController")->error($e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -11845,7 +11905,7 @@ class UjiSampelController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('uji_sampel')->error('Error pada function ' . __FUNCTION__, [
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -13334,7 +13394,7 @@ class UjiSampelController extends Controller
             return response()->download($zipPath)->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => false,
                     'status' => 500,
@@ -13646,7 +13706,7 @@ class UjiSampelController extends Controller
 
                 return Excel::download(new ParticleSizeExport($reports), $fileName);
         }catch(\Exception $e){
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,
@@ -14070,8 +14130,8 @@ class UjiSampelController extends Controller
             return response()->download($zipFilePath)->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => "Error: " . $e->getMessage()], 500);
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
+            return response()->json(['success' => false, 'status' => 500, 'message' => 'Terjadi kesalahan pada server.'], 500);
         }
     }
 
@@ -14296,7 +14356,7 @@ class UjiSampelController extends Controller
                 'Laporan_Hasil_Analisa_' . now()->format('Ymd_His') . '.xlsx'
             );
         }catch(\Exception $e){
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,
@@ -14447,7 +14507,7 @@ class UjiSampelController extends Controller
 
         } catch(\Exception $e){
             DB::rollBack();
-            Log::channel("UjiSampelController")->error("ERROR FUNCTION resampelingAnalisaSingle: ". $e->getMessage());
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -14658,6 +14718,302 @@ class UjiSampelController extends Controller
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function getDaftarLabPaginasi(Request $request)
+    {
+        try {
+            $userId  = Auth::user()->UserId;
+            $days    = max(1, min(90, (int) $request->input('days', 7)));
+            $page    = max(1, (int) $request->input('page', 1));
+            $perPage = 20;
+            $filter  = $request->input('filter', 'semua'); // semua|selesai|belum_selesai
+            $search  = trim($request->input('search', ''));
+
+            $dateFrom = now()->subDays($days - 1)->startOfDay()->toDateString();
+            $dateTo   = now()->endOfDay()->toDateString();
+
+            // Summary counts (single query — for filter tab badges)
+            $summaryRow = DB::table('N_EMI_LAB_PO_Sampel')
+                ->whereNull('Status')
+                ->whereBetween(DB::raw('CAST(Tanggal AS DATE)'), [$dateFrom, $dateTo])
+                ->when(!empty($search), function ($q) use ($search) {
+                    $q->where(function ($inner) use ($search) {
+                        $inner->where('No_Sampel', 'like', '%' . $search . '%')
+                              ->orWhere('No_Po', 'like', '%' . $search . '%')
+                              ->orWhere('Kode_Barang', 'like', '%' . $search . '%');
+                    });
+                })
+                ->selectRaw("COUNT(*) as total_count, SUM(CASE WHEN Flag_Selesai = 'Y' THEN 1 ELSE 0 END) as selesai_count")
+                ->first();
+
+            $countAll     = (int) ($summaryRow->total_count ?? 0);
+            $countSelesai = (int) ($summaryRow->selesai_count ?? 0);
+            $summary = [
+                'semua'         => $countAll,
+                'selesai'       => $countSelesai,
+                'belum_selesai' => $countAll - $countSelesai,
+            ];
+
+            if ($filter === 'selesai') {
+                $total = $countSelesai;
+            } elseif ($filter === 'belum_selesai') {
+                $total = $countAll - $countSelesai;
+            } else {
+                $total = $countAll;
+            }
+
+            $lastPage = max(1, (int) ceil($total / $perPage));
+            $page     = min($page, $lastPage);
+            $offset   = ($page - 1) * $perPage;
+
+            $samples = DB::table('N_EMI_LAB_PO_Sampel as po')
+                ->leftJoin('EMI_Master_Mesin as m', 'po.Id_Mesin', '=', 'm.Id_Master_Mesin')
+                ->whereNull('po.Status')
+                ->whereBetween(DB::raw('CAST(po.Tanggal AS DATE)'), [$dateFrom, $dateTo])
+                ->when($filter === 'selesai', fn($q) => $q->where('po.Flag_Selesai', 'Y'))
+                ->when($filter === 'belum_selesai', fn($q) => $q->where(function ($inner) {
+                    $inner->whereNull('po.Flag_Selesai')->orWhere('po.Flag_Selesai', '!=', 'Y');
+                }))
+                ->when(!empty($search), function ($q) use ($search) {
+                    $q->where(function ($inner) use ($search) {
+                        $inner->where('po.No_Sampel', 'like', '%' . $search . '%')
+                              ->orWhere('po.No_Po', 'like', '%' . $search . '%')
+                              ->orWhere('po.Kode_Barang', 'like', '%' . $search . '%');
+                    });
+                })
+                ->select(
+                    'po.id', 'po.No_Sampel', 'po.No_Po', 'po.No_Split_Po', 'po.No_Batch',
+                    'po.Kode_Barang', 'po.Id_Mesin', 'po.Tanggal', 'po.Jam',
+                    'po.Flag_Selesai', 'po.Id_User',
+                    'm.Nama_Mesin', 'm.Flag_Multi_Qrcode', 'm.Jumlah_Print_QRCode'
+                )
+                ->orderByDesc('po.Tanggal')
+                ->orderByDesc('po.id')
+                ->skip($offset)
+                ->take($perPage)
+                ->get();
+
+            if ($samples->isEmpty()) {
+                return response()->json([
+                    'success'    => true,
+                    'status'     => 200,
+                    'message'    => 'Tidak ada sampel pada periode ini.',
+                    'result'     => [],
+                    'summary'    => $summary,
+                    'pagination' => [
+                        'total' => 0, 'per_page' => $perPage,
+                        'current_page' => 1, 'total_pages' => 1,
+                        'from' => 0, 'to' => 0,
+                    ],
+                ]);
+            }
+
+            $noSampelList   = $samples->pluck('No_Sampel')->toArray();
+            $kodeBarangList = $samples->pluck('Kode_Barang')->unique()->filter()->toArray();
+            $idMesinList    = $samples->pluck('Id_Mesin')->unique()->filter()->toArray();
+
+            // Barang names
+            $barangNameMap = collect([]);
+            if (!empty($kodeBarangList)) {
+                foreach (array_chunk($kodeBarangList, 1000) as $chunk) {
+                    $barangNameMap = $barangNameMap->concat(
+                        DB::table('N_EMI_View_Barang')
+                            ->whereIn('Kode_Barang', $chunk)
+                            ->select('Kode_Barang', DB::raw('MAX(Nama) as Nama'))
+                            ->groupBy('Kode_Barang')
+                            ->get()
+                    );
+                }
+            }
+            $barangNameMap = $barangNameMap->pluck('Nama', 'Kode_Barang');
+
+            // Required analisa per barang-mesin-user (Kode_Role = LAB)
+            $allAnalisaRaw = collect([]);
+            if (!empty($kodeBarangList) && !empty($idMesinList)) {
+                foreach (array_chunk($kodeBarangList, 1000) as $kodeChunk) {
+                    $allAnalisaRaw = $allAnalisaRaw->concat(
+                        DB::table('N_EMI_LAB_Barang_Analisa as ba')
+                            ->join('N_EMI_LAB_Jenis_Analisa as ja', 'ba.Id_Jenis_Analisa', '=', 'ja.id')
+                            ->whereIn('ba.Kode_Barang', $kodeChunk)
+                            ->whereIn('ba.Id_Master_Mesin', $idMesinList)
+                            ->where('ba.Id_User', $userId)
+                            ->where('ba.Flag_Aktif', 'Y')
+                            ->where('ba.Kode_Role', 'LAB')
+                            ->where('ja.Kode_Role', 'LAB')
+                            ->select('ba.Kode_Barang', 'ba.Id_Master_Mesin', 'ja.id as analisa_id', 'ja.Kode_Analisa', 'ja.Jenis_Analisa')
+                            ->get()
+                    );
+                }
+            }
+            $analisaByKey = $allAnalisaRaw->groupBy(fn($i) => $i->Kode_Barang . '|' . $i->Id_Master_Mesin);
+
+            // Uji sampel status
+            $allUjiRaw = collect([]);
+            foreach (array_chunk($noSampelList, 2000) as $chunk) {
+                $allUjiRaw = $allUjiRaw->concat(
+                    DB::table('N_EMI_LAB_Uji_Sampel')
+                        ->whereIn('No_Po_Sampel', $chunk)
+                        ->select('No_Po_Sampel', 'Id_Jenis_Analisa', 'Flag_Selesai', 'Flag_Multi_QrCode', 'No_Fak_Sub_Po')
+                        ->get()
+                );
+            }
+            $ujiByNoSampel = $allUjiRaw->groupBy('No_Po_Sampel');
+
+            // Multi-QR sub-sample list (natural order by numeric suffix)
+            $multiQrData = DB::table('N_EMI_LAB_PO_Sampel_Multi_QrCode')
+                ->whereIn('No_Po_Sampel', $noSampelList)
+                ->select('No_Po_Sampel', 'No_Po_Multi')
+                ->orderByRaw('LEN(No_Po_Multi) ASC, No_Po_Multi ASC')
+                ->get()
+                ->groupBy('No_Po_Sampel');
+
+            // Active resampling
+            $allResamplingRaw = collect([]);
+            foreach (array_chunk($noSampelList, 2000) as $chunk) {
+                $allResamplingRaw = $allResamplingRaw->concat(
+                    DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')
+                        ->whereIn('No_Po_Sampel', $chunk)
+                        ->whereNull('Flag_Selesai_Resampling')
+                        ->select('No_Po_Sampel', 'Id_Jenis_Analisa', 'No_Sampel_Resampling_Origin')
+                        ->get()
+                );
+            }
+            $resamplingByNoSampel = $allResamplingRaw->groupBy('No_Po_Sampel');
+
+            // Expired detection: deadline = Tanggal+Jam + 3 days end-of-day (Sunday → +1 day)
+            $now = Carbon::now();
+            $sampleDeadlines = $samples->mapWithKeys(function ($po) {
+                $waktu    = Carbon::parse($po->Tanggal . ' ' . $po->Jam);
+                $hariKe4  = $waktu->copy()->addDays(3);
+                $deadline = ($hariKe4->dayOfWeek === Carbon::SUNDAY)
+                    ? $hariKe4->copy()->addDay()->endOfDay()
+                    : $hariKe4->copy()->endOfDay();
+                return [$po->No_Sampel => $deadline];
+            });
+
+            $candidateExpired = $sampleDeadlines
+                ->filter(fn($dl) => $now->greaterThan($dl))
+                ->keys()->toArray();
+
+            $bukaUlangMap = collect([]);
+            if (!empty($candidateExpired)) {
+                $bukaUlangMap = DB::table('N_EMI_LAB_Pengajuan_Buka_Ulang_Uji_Sampel')
+                    ->whereIn('No_Sampel', $candidateExpired)
+                    ->select('No_Sampel', 'Waktu_Mulai', 'Waktu_Akhir')
+                    ->get()
+                    ->groupBy('No_Sampel');
+            }
+
+            $expiredSet = collect($candidateExpired)->filter(function ($noSampel) use ($bukaUlangMap, $now) {
+                $pengajuans = $bukaUlangMap->get($noSampel, collect());
+                if ($pengajuans->isEmpty()) return true;
+                foreach ($pengajuans as $p) {
+                    if ($now->between(Carbon::parse($p->Waktu_Mulai), Carbon::parse($p->Waktu_Akhir))) {
+                        return false;
+                    }
+                }
+                return true;
+            })->flip();
+
+            $result = $samples->map(function ($po) use ($analisaByKey, $ujiByNoSampel, $multiQrData, $resamplingByNoSampel, $barangNameMap, $sampleDeadlines, $expiredSet) {
+                $key          = $po->Kode_Barang . '|' . $po->Id_Mesin;
+                $analisaList  = $analisaByKey->get($key, collect());
+                $ujiList      = $ujiByNoSampel->get($po->No_Sampel, collect());
+                $ujiByAnalisa = $ujiList->groupBy('Id_Jenis_Analisa');
+                $multiQrList  = $multiQrData->get($po->No_Sampel, collect());
+                $multiQrCount = $multiQrList->count();
+
+                $resamplingForSample  = $resamplingByNoSampel->get($po->No_Sampel, collect());
+                $resamplingAnalisaIds = $resamplingForSample->pluck('Id_Jenis_Analisa')->unique()->toArray();
+                $resamplingOrigins    = $resamplingForSample->pluck('No_Sampel_Resampling_Origin')->unique()->toArray();
+
+                // Sub-samples done: has at least one selesai uji entry
+                $doneSubSamples = $ujiList
+                    ->where('Flag_Selesai', 'Y')
+                    ->pluck('No_Fak_Sub_Po')
+                    ->filter()
+                    ->unique()
+                    ->flip();
+
+                $analisaWithStatus = $analisaList->map(function ($analisa) use ($ujiByAnalisa, $multiQrCount, $resamplingAnalisaIds) {
+                    $entries   = $ujiByAnalisa->get($analisa->analisa_id, collect());
+                    $isStarted = $entries->isNotEmpty();
+                    $isDone    = false;
+
+                    if ($isStarted) {
+                        $isMultiQR = $entries->contains(fn($e) => $e->Flag_Multi_QrCode === 'Y');
+                        if ($isMultiQR) {
+                            $done   = $entries->where('Flag_Selesai', 'Y')->unique('No_Fak_Sub_Po')->count();
+                            $isDone = $multiQrCount > 0 && $done >= $multiQrCount;
+                        } else {
+                            $isDone = $entries->every(fn($e) => $e->Flag_Selesai === 'Y');
+                        }
+                    }
+
+                    return [
+                        'id'             => Hashids::connection('custom')->encode($analisa->analisa_id),
+                        'Kode_Analisa'   => $analisa->Kode_Analisa,
+                        'Jenis_Analisa'  => $analisa->Jenis_Analisa,
+                        'is_started'     => $isStarted,
+                        'is_done'        => $isDone,
+                        'has_resampling' => in_array($analisa->analisa_id, $resamplingAnalisaIds),
+                    ];
+                });
+
+                return [
+                    'no_sampel'      => $po->No_Sampel,
+                    'no_po'          => $po->No_Po,
+                    'no_split_po'    => $po->No_Split_Po,
+                    'no_batch'       => $po->No_Batch ?? '-',
+                    'kode_barang'    => $po->Kode_Barang,
+                    'nama_barang'    => $barangNameMap->get($po->Kode_Barang, $po->Kode_Barang),
+                    'nama_mesin'     => $po->Nama_Mesin,
+                    'Id_Mesin'       => $po->Id_Mesin,
+                    'is_multi_print' => $po->Flag_Multi_Qrcode,
+                    'jumlah_print'   => $po->Jumlah_Print_QRCode,
+                    'tanggal'        => $po->Tanggal,
+                    'jam'            => $po->Jam,
+                    'is_selesai'     => $po->Flag_Selesai === 'Y',
+                    'is_expired'     => $expiredSet->has($po->No_Sampel),
+                    'expired_at'     => $sampleDeadlines->has($po->No_Sampel)
+                                            ? $sampleDeadlines->get($po->No_Sampel)->toDateTimeString()
+                                            : null,
+                    'registrar'      => $po->Id_User,
+                    'multi_qr_list'  => $multiQrList->map(fn($qr) => [
+                        'no_po_multi'          => $qr->No_Po_Multi,
+                        'flag_selesai'         => $doneSubSamples->has($qr->No_Po_Multi) ? 'Y' : null,
+                        'is_resampling_origin' => in_array($qr->No_Po_Multi, $resamplingOrigins),
+                    ])->values(),
+                    'analisa'        => $analisaWithStatus->values(),
+                ];
+            });
+
+            $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+                $result->values()->all(), $total, $perPage, $page
+            );
+            $pg = $paginator->toArray();
+
+            return response()->json([
+                'success'    => true,
+                'status'     => 200,
+                'message'    => 'Data berhasil diambil.',
+                'result'     => $pg['data'],
+                'summary'    => $summary,
+                'pagination' => [
+                    'total'        => $pg['total'],
+                    'per_page'     => $pg['per_page'],
+                    'current_page' => $pg['current_page'],
+                    'total_pages'  => $pg['last_page'],
+                    'from'         => $pg['from'],
+                    'to'           => $pg['to'],
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::channel('UjiSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
+            return response()->json(['success' => false, 'status' => 500, 'message' => 'Terjadi kesalahan pada server.'], 500);
         }
     }
 }
