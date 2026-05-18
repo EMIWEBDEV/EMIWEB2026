@@ -107,6 +107,16 @@
                                 </el-select>
                             </div>
                         </div>
+                        <div class="col-12 mt-3 d-flex justify-content-end">
+                            <button
+                                class="btn btn-success rounded-pill fw-semibold px-4 shadow-sm d-flex align-items-center gap-2"
+                                data-bs-toggle="modal"
+                                data-bs-target="#exportAnalisaKurangModal"
+                            >
+                                <i class="fas fa-file-excel"></i>
+                                Export Analisa Kurang
+                            </button>
+                        </div>
                     </div>
                     <hr />
                     <ListSkeleton :page="5" v-if="loading.loadingListData" />
@@ -750,6 +760,199 @@
             </div>
         </div>
     </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL: Export Laporan Analisa Kurang — Finalisasi Produksi     -->
+    <!-- ============================================================= -->
+    <div
+        class="modal fade"
+        id="exportAnalisaKurangModal"
+        tabindex="-1"
+        aria-labelledby="exportAnalisaKurangModalLabel"
+        aria-hidden="true"
+    >
+        <div class="modal-dialog modal-dialog-centered modal-md">
+            <div
+                class="modal-content border-0 shadow-lg rounded-4 overflow-hidden"
+            >
+                <!-- Header -->
+                <div
+                    class="modal-header border-0 pb-3 pt-4 px-4"
+                    style="
+                        background: linear-gradient(
+                            135deg,
+                            #1f3864 0%,
+                            #2155a3 100%
+                        );
+                    "
+                >
+                    <div class="d-flex align-items-center gap-3 flex-grow-1">
+                        <div
+                            class="rounded-3 p-2"
+                            style="background: rgba(255, 255, 255, 0.15)"
+                        >
+                            <i class="fas fa-file-excel text-white fs-4"></i>
+                        </div>
+                        <div>
+                            <h5
+                                class="modal-title text-white fw-bold mb-0"
+                                id="exportAnalisaKurangModalLabel"
+                            >
+                                Export Analisa Kurang
+                            </h5>
+                            <small class="text-white" style="opacity: 0.75">
+                                Laporan untuk Analyzer / Analis Lab — Produksi
+                            </small>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        class="btn-close btn-close-white ms-2"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                    ></button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body px-4 pt-4 pb-3">
+                    <!-- Tujuan laporan -->
+                    <div
+                        class="rounded-3 p-3 mb-4 d-flex gap-3"
+                        style="
+                            background: #ebf4ff;
+                            border-left: 4px solid #1f3864;
+                        "
+                    >
+                        <i
+                            class="fas fa-circle-info text-primary fs-5 flex-shrink-0 mt-1"
+                        ></i>
+                        <div>
+                            <p class="fw-semibold text-primary mb-1 small">
+                                Tujuan Laporan Ini
+                            </p>
+                            <p class="text-secondary mb-0 small">
+                                Laporan ini digunakan untuk
+                                <strong
+                                    >memberitahu Analyzer / Analis Lab</strong
+                                >
+                                bahwa masih terdapat analisa yang
+                                <strong
+                                    >belum dikerjakan atau belum lengkap</strong
+                                >
+                                sesuai standar mutu produk, sehingga dapat
+                                segera ditindaklanjuti sebelum proses finalisasi
+                                dilakukan.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Pilih Periode -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-dark mb-2">
+                            <i
+                                class="fas fa-calendar-range text-primary me-2"
+                            ></i>
+                            Periode Laporan
+                        </label>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="flex-grow-1">
+                                <label class="form-label text-muted small mb-1"
+                                    >Dari Tanggal</label
+                                >
+                                <input
+                                    type="date"
+                                    class="form-control rounded-3 shadow-sm border-0 bg-light"
+                                    v-model="exportModal.startDate"
+                                />
+                            </div>
+                            <span class="text-muted fw-bold mt-3">—</span>
+                            <div class="flex-grow-1">
+                                <label class="form-label text-muted small mb-1"
+                                    >Sampai Tanggal</label
+                                >
+                                <input
+                                    type="date"
+                                    class="form-control rounded-3 shadow-sm border-0 bg-light"
+                                    v-model="exportModal.endDate"
+                                />
+                            </div>
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-circle-info me-1"></i>
+                            Filter berdasarkan tanggal registrasi sampel. Jika
+                            tidak ada analisa kurang, laporan tetap dapat
+                            diunduh dengan informasi kosong.
+                        </small>
+                    </div>
+
+                    <!-- Catatan -->
+                    <div
+                        class="rounded-3 p-3"
+                        style="background: #fffdf0; border: 1px solid #ffe083"
+                    >
+                        <p
+                            class="fw-semibold mb-2 small"
+                            style="color: #856404"
+                        >
+                            <i class="fas fa-triangle-exclamation me-1"></i>
+                            Catatan
+                        </p>
+                        <ul class="mb-0 small text-secondary ps-3">
+                            <li>
+                                Laporan mencakup sampel
+                                <strong>Produksi</strong> yang belum
+                                difinalisasi dalam periode ini.
+                            </li>
+                            <li>
+                                Analisa yang dihitung berdasarkan Dari Daftar
+                                Menu <strong>Barang Uji Laboratorium </strong>
+                                yang sudah di daftarkan dengan (Kode Role: LAB,
+                                Status Aktif).
+                            </li>
+                            <li>
+                                Format file output:
+                                <strong>Microsoft Excel (.xlsx)</strong>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div
+                    class="modal-footer border-0 px-4 pb-4 pt-2 d-flex justify-content-between"
+                >
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary rounded-pill px-4"
+                        data-bs-dismiss="modal"
+                    >
+                        <i class="fas fa-times me-2"></i>Batal
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-success rounded-pill px-4 fw-semibold shadow-sm d-flex align-items-center gap-2"
+                        @click="exportLaporan"
+                        :disabled="
+                            !exportModal.startDate ||
+                            !exportModal.endDate ||
+                            exportModal.loading
+                        "
+                    >
+                        <span
+                            v-if="exportModal.loading"
+                            class="spinner-border spinner-border-sm"
+                        ></span>
+                        <i v-else class="fas fa-download"></i>
+                        {{
+                            exportModal.loading
+                                ? "Mengunduh..."
+                                : "Download Excel"
+                        }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script>
@@ -788,6 +991,11 @@ export default {
             },
             selectedItems: [],
             resultLogBulk: null,
+            exportModal: {
+                startDate: "",
+                endDate: "",
+                loading: false,
+            },
         };
     },
     computed: {
@@ -924,6 +1132,48 @@ export default {
                 (i) => i.No_Po_Sampel === noSampel
             );
             if (index > -1) this.selectedItems.splice(index, 1);
+        },
+        exportLaporan() {
+            if (!this.exportModal.startDate || !this.exportModal.endDate) {
+                ElMessage.warning(
+                    "Silakan pilih periode tanggal terlebih dahulu."
+                );
+                return;
+            }
+            this.exportModal.loading = true;
+            const params = new URLSearchParams({
+                start_date: this.exportModal.startDate,
+                end_date: this.exportModal.endDate,
+                type: "produksi",
+            });
+            fetch(
+                `/api/v1/lab/export/daftar-analisa-kurang?${params.toString()}`,
+                { headers: { "X-Requested-With": "XMLHttpRequest" } }
+            )
+                .then((res) => {
+                    if (!res.ok) throw new Error("Server error " + res.status);
+                    return res.blob();
+                })
+                .then((blob) => {
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    const ts = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 15);
+                    link.download = `Laporan_Analisa_Kurang_Produksi_${this.exportModal.startDate}_sd_${this.exportModal.endDate}_${ts}.xlsx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.URL.revokeObjectURL(url);
+                    ElMessage.success("Laporan berhasil diunduh.");
+                })
+                .catch(() => {
+                    ElMessage.error(
+                        "Gagal mengunduh laporan. Silakan coba lagi."
+                    );
+                })
+                .finally(() => {
+                    this.exportModal.loading = false;
+                });
         },
         async submitBulkFinalisasi() {
             if (this.selectedItems.length === 0) {

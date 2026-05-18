@@ -69,6 +69,11 @@
                             <option value="multi">Multi QR</option>
                             <option value="single">Single QR</option>
                         </select>
+                        <select class="vld-select" v-model="filters.status">
+                            <option value="">Semua Status</option>
+                            <option value="lolos">Lolos Uji</option>
+                            <option value="tidak_lolos">Tidak Lolos Uji</option>
+                        </select>
                     </div>
                 </div>
 
@@ -97,6 +102,22 @@
                     </div>
 
                     <div v-else>
+                        <!-- Check All Bar -->
+                        <div class="vld-checkall-bar" v-if="listData.length > 0">
+                            <label class="vld-checkall-label">
+                                <input
+                                    type="checkbox"
+                                    class="vld-checkall-cb"
+                                    :checked="allCurrentPageChecked"
+                                    :indeterminate.prop="someCurrentPageChecked && !allCurrentPageChecked"
+                                    @change="toggleCheckAll"
+                                />
+                                <span>Pilih Semua</span>
+                            </label>
+                            <span v-if="selectedItems.length > 0" class="vld-checkall-count">
+                                {{ selectedItems.length }} item dipilih
+                            </span>
+                        </div>
                         <div
                             v-for="(item, idx) in listData"
                             :key="idx"
@@ -1263,7 +1284,7 @@ export default {
         return {
             listData: [],
             searchQuery: "",
-            filters: { tanggal: { mulai: "", selesai: "" }, qrcode: "" },
+            filters: { tanggal: { mulai: "", selesai: "" }, qrcode: "", status: "" },
             pagination: { page: 1, limit: 12, totalPage: 0, totalData: 0 },
             loading: {
                 list: false,
@@ -1314,6 +1335,14 @@ export default {
             return { total: this.pagination.totalData };
         },
 
+        allCurrentPageChecked() {
+            if (!this.listData.length) return false;
+            return this.listData.every((item) => this.isSelectedBulk(item));
+        },
+        someCurrentPageChecked() {
+            if (!this.listData.length) return false;
+            return this.listData.some((item) => this.isSelectedBulk(item));
+        },
         canSubmitBulk() {
             if (!this.selectedItems.length) return false;
             return this.selectedItems.every((item) => {
@@ -1328,7 +1357,8 @@ export default {
         emptyMessage() {
             return this.searchQuery ||
                 this.filters.tanggal.mulai ||
-                this.filters.qrcode
+                this.filters.qrcode ||
+                this.filters.status
                 ? "Tidak ada data sesuai filter."
                 : "Belum ada data menunggu validasi.";
         },
@@ -1465,6 +1495,7 @@ export default {
                     limit: this.pagination.limit,
                     q: this.searchQuery,
                     qrcode: this.filters.qrcode || null,
+                    status: this.filters.status || null,
                 };
                 if (
                     this.filters.tanggal.mulai &&
@@ -1501,8 +1532,23 @@ export default {
 
         resetFiltersAndFetch() {
             this.searchQuery = "";
-            this.filters = { tanggal: { mulai: "", selesai: "" }, qrcode: "" };
+            this.filters = { tanggal: { mulai: "", selesai: "" }, qrcode: "", status: "" };
             this.fetchList(1);
+        },
+
+        toggleCheckAll() {
+            if (this.allCurrentPageChecked) {
+                this.listData.forEach((item) => {
+                    const idx = this.selectedItems.findIndex(
+                        (s) => s.No_Po_Sampel === item.No_Po_Sampel && s.Id_Jenis_Analisa === item.Id_Jenis_Analisa
+                    );
+                    if (idx >= 0) this.selectedItems.splice(idx, 1);
+                });
+            } else {
+                this.listData.forEach((item) => {
+                    if (!this.isSelectedBulk(item)) this.selectedItems.push(item);
+                });
+            }
         },
 
         async selectItem(item) {
@@ -2892,5 +2938,41 @@ export default {
 .vld-bulk-count {
     font-size: 13px;
     font-weight: 600;
+}
+.vld-checkall-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    gap: 8px;
+}
+.vld-checkall-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    margin: 0;
+    user-select: none;
+}
+.vld-checkall-cb {
+    width: 17px;
+    height: 17px;
+    cursor: pointer;
+    accent-color: #d97706;
+    flex-shrink: 0;
+}
+.vld-checkall-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: #3b82f6;
+    background: #eff6ff;
+    border-radius: 20px;
+    padding: 2px 8px;
+    white-space: nowrap;
 }
 </style>

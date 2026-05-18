@@ -183,6 +183,7 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get('/api/v1/resampling/current', [ResamplingController::class, 'getDataResamplingCurrent']);
     Route::get('/api/v2/lab/confirmed-selesai/uji-sampel', [UjiSampelController::class, 'getDataConfirmedSelesaiV2']);
     Route::get('/api/v1/lab/validasi-hasil/akhir', [UjiSampelController::class, 'getDataValidasiHasilAkhirDanCloseSampel']);
+    Route::get('/api/v1/lab/export/daftar-analisa-kurang', [UjiSampelController::class, 'exportDaftarAnalisaKurang']);
     Route::get('/api/v1/lab/hasil-akhir/close/current-final', [UjiSampelController::class, 'getDataValidasiAkhirCloseKeputusan']);
     Route::get('/api/v2/lab/validasi-selesai/uji-sampel/{no_sub_sampel}/{id_jenis_analisa}', [UjiSampelController::class, 'validasiDataMultiQrCodeV2']);
     Route::post('/api/v1/lab/hasil-uji/berkas/foto/token/bulk', [UjiSampelController::class, 'generateFotoToken']);

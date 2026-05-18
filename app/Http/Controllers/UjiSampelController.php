@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use App\Exports\RekapSampelExport;
 use App\Exports\ParticleSizeExport;
+use App\Exports\DaftarAnalisaKurangExport;
 use App\Helpers\ResponseHelper;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Validator; 
@@ -165,6 +166,34 @@ class UjiSampelController extends Controller
     public function viewConfirmedAnalisis()
     {
         return inertia('vue/dashboard/lab/ConfirmedUjiAnalisav2');
+    }
+
+    public function exportDaftarAnalisaKurang(Request $request)
+    {
+        $startDate = $request->input('start_date');
+        $endDate   = $request->input('end_date');
+        $type      = $request->input('type'); // 'produksi' | 'trial' | null = keduanya
+
+        if (!$startDate || !$endDate) {
+            return response()->json([
+                'success' => false,
+                'status'  => 422,
+                'message' => 'Parameter start_date dan end_date wajib diisi.'
+            ], 422);
+        }
+
+        $typeLabel = match ($type) {
+            'trial'    => 'Trial_Produksi',
+            'produksi' => 'Produksi',
+            default    => 'Semua',
+        };
+
+        $fileName = 'Laporan_Analisa_Kurang_' . $typeLabel . '_' . $startDate . '_sd_' . $endDate . '.xlsx';
+
+        return Excel::download(
+            new DaftarAnalisaKurangExport($startDate, $endDate, $type),
+            $fileName
+        );
     }
     public function viewInformasiMultiQr($no_sub_sampel, $id_jenis_analisa)
     {
@@ -9810,6 +9839,7 @@ class UjiSampelController extends Controller
         $filterTanggalMulai = $request->input('tanggal_mulai');
         $filterTanggalSelesai = $request->input('tanggal_selesai');
         $filterQrCode = $request->input('qrcode');
+        $filterStatus = $request->input('status');
 
         $baseQuery = DB::table('N_EMI_LAB_Uji_Sampel')
             ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
@@ -9820,13 +9850,13 @@ class UjiSampelController extends Controller
                 'N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode',
                 'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa',
                 'N_EMI_LAB_Jenis_Analisa.Kode_Analisa',
-                DB::raw('MAX(N_EMI_LAB_Uji_Sampel.Tanggal) as Tanggal') 
+                DB::raw('MAX(N_EMI_LAB_Uji_Sampel.Tanggal) as Tanggal')
             )
             ->whereIn('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
             ->whereNull('N_EMI_LAB_Uji_Sampel.Flag_Selesai')
             ->where('N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 'menunggu')
-            ->whereNull('N_EMI_LAB_PO_Sampel.Flag_Trial_Produksi') 
+            ->whereNull('N_EMI_LAB_PO_Sampel.Flag_Trial_Produksi')
             ->groupBy(
                 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel',
                 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa',
@@ -9857,6 +9887,34 @@ class UjiSampelController extends Controller
                         ->orWhereNull('N_EMI_LAB_Uji_Sampel.Flag_Multi_QrCode');
                 });
             }
+        }
+
+        if ($filterStatus === 'lolos') {
+            $baseQuery->whereNotExists(function ($subQ) {
+                $subQ->select(DB::raw(1))
+                     ->from('N_EMI_LAB_Uji_Sampel as chk')
+                     ->whereColumn('chk.No_Po_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel')
+                     ->whereColumn('chk.Id_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa')
+                     ->whereNull('chk.Status')
+                     ->whereNull('chk.Flag_Selesai')
+                     ->where(function ($q2) {
+                         $q2->whereNull('chk.Flag_Layak')->orWhere('chk.Flag_Layak', '!=', 'Y');
+                     })
+                     ->whereRaw('chk.Tahapan_Ke = (SELECT MAX(mx.Tahapan_Ke) FROM N_EMI_LAB_Uji_Sampel mx WHERE mx.No_Po_Sampel = chk.No_Po_Sampel AND mx.Id_Jenis_Analisa = chk.Id_Jenis_Analisa AND mx.Status IS NULL AND mx.Flag_Selesai IS NULL)');
+            });
+        } elseif ($filterStatus === 'tidak_lolos') {
+            $baseQuery->whereExists(function ($subQ) {
+                $subQ->select(DB::raw(1))
+                     ->from('N_EMI_LAB_Uji_Sampel as chk')
+                     ->whereColumn('chk.No_Po_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel')
+                     ->whereColumn('chk.Id_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa')
+                     ->whereNull('chk.Status')
+                     ->whereNull('chk.Flag_Selesai')
+                     ->where(function ($q2) {
+                         $q2->whereNull('chk.Flag_Layak')->orWhere('chk.Flag_Layak', '!=', 'Y');
+                     })
+                     ->whereRaw('chk.Tahapan_Ke = (SELECT MAX(mx.Tahapan_Ke) FROM N_EMI_LAB_Uji_Sampel mx WHERE mx.No_Po_Sampel = chk.No_Po_Sampel AND mx.Id_Jenis_Analisa = chk.Id_Jenis_Analisa AND mx.Status IS NULL AND mx.Flag_Selesai IS NULL)');
+            });
         }
 
         // Urutkan menggunakan alias `Tanggal` yang didapat dari agregasi MAX()
@@ -10063,6 +10121,10 @@ class UjiSampelController extends Controller
             )
             ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->whereNull('po.Flag_Trial_Produksi')
+            // Tambahan kondisi untuk tabel N_EMI_LAB_PO_Sampel (alias: po)
+            ->whereNull('po.Flag_Selesai')
+            ->whereNull('po.Status')
+            // Kondisi tabel uji tetap dipertahankan sesuai aslinya
             ->whereNull('uji.Status')
             ->where('uji.Flag_Selesai', 'Y')
             ->whereNull('uji.Flag_Final')
@@ -10128,10 +10190,8 @@ class UjiSampelController extends Controller
             $analisaDetails = DB::table('N_EMI_LAB_Uji_Sampel as uji')
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'uji.Id_Jenis_Analisa', '=', 'ja.id')
                 ->whereIn('uji.No_Po_Sampel', $poSampelIds)
-                ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
                 ->whereNull('uji.Status')
                 ->where('uji.Flag_Selesai', 'Y')
-                ->whereNull('uji.Flag_Final')
                 ->where('uji.Status_Keputusan_Sampel', 'terima')
                 ->where(function($q) {
                     $q->where('uji.Flag_Resampling', '!=', 'Y')

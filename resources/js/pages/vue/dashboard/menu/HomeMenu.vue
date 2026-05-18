@@ -214,9 +214,6 @@
                                 class="btn btn-primary btn-sm d-flex align-items-center gap-1"
                                 type="button"
                                 @click="openAddForm"
-                                data-bs-toggle="offcanvas"
-                                data-bs-target="#offcanvasMenu"
-                                aria-controls="offcanvasMenu"
                             >
                                 <i class="ri-add-line"></i>
                                 <span>Tambah Menu</span>
@@ -332,7 +329,7 @@
                                 <td>
                                     <div class="avatar-xs">
                                         <span
-                                            class="avatar-title rounded-2 fs-5"
+                                            class="avatar-title bg-primary-subtle rounded-2 fs-5"
                                         >
                                             <i
                                                 :class="
@@ -425,9 +422,6 @@
                                     <button
                                         class="btn btn-sm btn-soft-warning waves-effect waves-light"
                                         @click="editData(item)"
-                                        data-bs-toggle="offcanvas"
-                                        data-bs-target="#offcanvasMenu"
-                                        aria-controls="offcanvasMenu"
                                         title="Edit Menu"
                                     >
                                         <i class="ri-edit-line"></i>
@@ -462,8 +456,6 @@
                     <button
                         v-if="!searchQuery"
                         class="btn btn-primary btn-sm"
-                        data-bs-toggle="offcanvas"
-                        data-bs-target="#offcanvasMenu"
                         @click="openAddForm"
                     >
                         <i class="ri-add-line me-1"></i>Tambah Menu Pertama
@@ -558,7 +550,6 @@
             tabindex="-1"
             id="offcanvasMenu"
             aria-labelledby="offcanvasMenuLabel"
-            data-bs-backdrop="static"
             style="width: 460px"
         >
             <!-- Offcanvas Header -->
@@ -918,6 +909,7 @@ export default {
 
             errors: {},
             isEdit: false,
+            offcanvasInstance: null,
         };
     },
 
@@ -944,6 +936,13 @@ export default {
     mounted() {
         this.fetchStats();
         this.fetchMasterMenu();
+        const el = document.getElementById("offcanvasMenu");
+        if (el) {
+            this.offcanvasInstance = new bootstrap.Offcanvas(el, {
+                backdrop: true,
+                keyboard: false,
+            });
+        }
     },
 
     methods: {
@@ -1010,6 +1009,7 @@ export default {
         /* ── Form ── */
         openAddForm() {
             this.resetForm();
+            this.offcanvasInstance?.show();
         },
 
         editData(item) {
@@ -1024,6 +1024,7 @@ export default {
             };
             this.errors = {};
             this.isEdit = true;
+            this.offcanvasInstance?.show();
         },
 
         resetForm() {
@@ -1068,9 +1069,7 @@ export default {
                 }
 
                 // Tutup offcanvas
-                const el = document.getElementById("offcanvasMenu");
-                const instance = bootstrap.Offcanvas.getInstance(el);
-                if (instance) instance.hide();
+                this.offcanvasInstance?.hide();
 
                 await Swal.fire({
                     icon: "success",
