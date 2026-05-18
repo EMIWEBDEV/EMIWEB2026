@@ -14508,4 +14508,156 @@ class UjiSampelController extends Controller
 
         return Storage::disk('gcs')->response($berkas->File_Path);
     }
+
+    public function storeBulkConfirmedUjiSampel(Request $request)
+    {
+        $request->validate([
+            'analyses'                    => 'required|array|min:1',
+            'analyses.*.No_Po_Sampel'     => 'required|string',
+            'analyses.*.Id_Jenis_Analisa' => 'required|string',
+            'analyses.*.Flag_Multi_QrCode'=> 'nullable|string',
+            'analyses.*.No_Fak_Sub_Po'    => 'nullable|string',
+        ]);
+
+        $waktuServer     = DB::select("SELECT dbo.Get_Date_Time() as DateTimeNow");
+        $dt              = $waktuServer[0]->DateTimeNow;
+        $tanggalSqlServer = date('Y-m-d', strtotime($dt));
+        $jamSqlServer     = date('H:i:s', strtotime($dt));
+
+        $userId = Auth::user()->UserId;
+
+        if (!DB::table('N_EMI_LAB_Users')->where('UserId', $userId)->exists()) {
+            return response()->json(['success' => false, 'message' => "User tidak ditemukan."], 404);
+        }
+
+        $analyses = collect($request->analyses);
+
+        // Decode hashed Id_Jenis_Analisa
+        $decodedAnalyses = $analyses->map(function ($a) {
+            $decoded = Hashids::connection('custom')->decode($a['Id_Jenis_Analisa']);
+            if (empty($decoded)) {
+                throw new \Exception("Id_Jenis_Analisa tidak valid: " . $a['Id_Jenis_Analisa']);
+            }
+            $a['_raw_id_jenis_analisa'] = $decoded[0];
+            return $a;
+        });
+
+        // Batch lookups
+        $noPoList = $decodedAnalyses->pluck('No_Po_Sampel')->unique()->values()->toArray();
+        $rawJaIds = $decodedAnalyses->pluck('_raw_id_jenis_analisa')->unique()->values()->toArray();
+
+        $poMap = DB::table('N_EMI_LAB_PO_Sampel')
+            ->whereIn('No_Sampel', $noPoList)
+            ->select('No_Sampel', 'Id_Mesin')
+            ->get()->keyBy('No_Sampel');
+
+        $mesinIds = $poMap->pluck('Id_Mesin')->unique()->filter()->values()->toArray();
+        $mesinMap = DB::table('EMI_Master_Mesin')
+            ->whereIn('Id_Master_Mesin', $mesinIds)
+            ->select('Id_Master_Mesin', 'Flag_FG')
+            ->get()->keyBy('Id_Master_Mesin');
+
+        $jenisAnalisaMap = DB::table('N_EMI_LAB_Jenis_Analisa')
+            ->whereIn('id', $rawJaIds)
+            ->select('id', 'Flag_Perhitungan')
+            ->get()->keyBy('id');
+
+        $tahapanMap = DB::table('N_EMI_LAB_Uji_Sampel')
+            ->whereIn('No_Po_Sampel', $noPoList)
+            ->whereIn('Id_Jenis_Analisa', $rawJaIds)
+            ->select('No_Po_Sampel', 'Id_Jenis_Analisa', DB::raw('MAX(Tahapan_Ke) as Tahapan_Ke'))
+            ->groupBy('No_Po_Sampel', 'Id_Jenis_Analisa')
+            ->get()->keyBy(fn($r) => $r->No_Po_Sampel . '|' . $r->Id_Jenis_Analisa);
+
+        $results           = [];
+        $finalDetailInserts = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($decodedAnalyses as $analisis) {
+                $noPo           = $analisis['No_Po_Sampel'];
+                $rawJaId        = $analisis['_raw_id_jenis_analisa'];
+                $isMultiQr      = ($analisis['Flag_Multi_QrCode'] ?? null) === 'Y';
+                $noFakSubPo     = $analisis['No_Fak_Sub_Po'] ?? null;
+
+                $po          = $poMap->get($noPo);
+                $idMesin     = $po?->Id_Mesin;
+                $mesin       = $idMesin ? $mesinMap->get($idMesin) : null;
+                $jenisAnalisa = $jenisAnalisaMap->get($rawJaId);
+
+                $isFG          = $mesin && $mesin->Flag_FG === 'Y';
+                $isPerhitungan = $jenisAnalisa && $jenisAnalisa->Flag_Perhitungan === 'Y';
+
+                $tahapanKey = $noPo . '|' . $rawJaId;
+                $tahapanKe  = $tahapanMap->get($tahapanKey)?->Tahapan_Ke ?? 1;
+
+                if ($isFG && $isPerhitungan) {
+                    $adaTidakLayak = DB::table('N_EMI_LAB_Uji_Sampel')
+                        ->where('No_Po_Sampel', $noPo)
+                        ->where('No_Fak_Sub_Po', $noFakSubPo)
+                        ->where('Id_Jenis_Analisa', $rawJaId)
+                        ->where('Flag_Layak', 'T')
+                        ->exists();
+                    $statusKelayakan = $adaTidakLayak ? 'T' : 'Y';
+
+                    DB::table('N_EMI_LAB_Uji_Sampel')
+                        ->where('No_Po_Sampel', $noPo)
+                        ->where('No_Fak_Sub_Po', $noFakSubPo)
+                        ->where('Id_Jenis_Analisa', $rawJaId)
+                        ->whereNull('Flag_Selesai')
+                        ->update(['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y']);
+
+                    $finalDetailInserts[] = [
+                        'No_Sampel'       => $noPo,
+                        'No_Sub_Sampel'   => $noFakSubPo ?? $noPo,
+                        'Id_Jenis_Analisa'=> $rawJaId,
+                        'Tahapan_Ke'      => $tahapanKe,
+                        'Flag_Layak'      => $statusKelayakan,
+                        'Tanggal'         => $tanggalSqlServer,
+                        'Jam'             => $jamSqlServer,
+                        'Id_User'         => $userId,
+                    ];
+                } elseif ($isFG && !$isPerhitungan) {
+                    $q = DB::table('N_EMI_LAB_Uji_Sampel')
+                        ->where('No_Po_Sampel', $noPo)
+                        ->where('Id_Jenis_Analisa', $rawJaId)
+                        ->whereNull('Flag_Selesai');
+                    if ($isMultiQr && $noFakSubPo) {
+                        $q->where('No_Fak_Sub_Po', $noFakSubPo);
+                    }
+                    $q->update(['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y', 'Flag_Layak' => 'Y', 'Flag_Final' => 'Y']);
+                } else {
+                    $q = DB::table('N_EMI_LAB_Uji_Sampel')
+                        ->where('No_Po_Sampel', $noPo)
+                        ->where('Id_Jenis_Analisa', $rawJaId)
+                        ->whereNull('Flag_Selesai');
+                    if ($isMultiQr && $noFakSubPo) {
+                        $q->where('No_Fak_Sub_Po', $noFakSubPo);
+                    }
+                    $q->update(['Flag_Selesai' => 'Y', 'Status_Keputusan_Sampel' => 'terima', 'Flag_Layak' => 'Y', 'Flag_Final' => 'Y']);
+                }
+
+                $results[] = ['No_Po_Sampel' => $noPo, 'success' => true];
+            }
+
+            if (!empty($finalDetailInserts)) {
+                DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Detail_Final')->insert($finalDetailInserts);
+            }
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => count($results) . ' analisa berhasil divalidasi.',
+                'data'    => $results,
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error($e);
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

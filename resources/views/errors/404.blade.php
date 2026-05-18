@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 – Halaman Tidak Ditemukan | EMI Lab</title>
+    <title>404 – Halaman Tidak Ditemukan | Laboratory Information System</title>
     <style>
         :root {
             --accent: #3b82f6;
@@ -270,7 +270,7 @@
     <div class="orb orb-3"></div>
 
     <div class="logo-bar">
-        <span class="logo-chip">EMI Lab</span>
+        <span class="logo-chip">Laboratory Information System</span>
         <span class="logo-name">Laboratory Information Management System</span>
     </div>
 
@@ -300,7 +300,7 @@
     </div>
 
     <div class="page-footer">
-        PT Evo Manufacturing Indonesia &nbsp;·&nbsp; EMI Laboratory Information Management System
+        PT Evo Manufacturing Indonesia &nbsp;·&nbsp; Laboratory Information Systemoratory Information Management System
     </div>
 
     <script>

@@ -163,7 +163,7 @@
                                                 <i class="ri-login-circle-line me-1"></i> Masuk
                                             </button>
                                         </div>
-                                        <small class="d-flex justify-content-center mt-3 text-muted fs-12">Versi 2.2.0</small>
+                                        <small class="d-flex justify-content-center mt-3 text-muted fs-12">Versi 3.0.0-Pra Rilis</small>
                                     </form>
                                 </div>
                             </div>
@@ -204,7 +204,7 @@
 <script>
   const year = new Date().getFullYear();
   const footer = document.getElementById("footer-text");
-  footer.innerHTML = `&copy; ${year} EMI LAB - Dashboard. Crafted with <i class="mdi mdi-heart text-danger"></i> by Evo Nusa`;
+  footer.innerHTML = `&copy; ${year} LIMS - Dashboard. Crafted with <i class="mdi mdi-heart text-danger"></i> by Evo Manufacturing Indonesia`;
 </script>
 
 <script>

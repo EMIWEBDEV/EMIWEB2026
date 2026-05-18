@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>500 – Kesalahan Server | EMI Lab</title>
+    <title>500 – Kesalahan Server | Laboratory Information System</title>
     <style>
         :root {
             --accent: #f97316;
@@ -272,7 +272,7 @@
     <div class="orb orb-3"></div>
 
     <div class="logo-bar">
-        <span class="logo-chip">EMI Lab</span>
+        <span class="logo-chip">Laboratory Information System</span>
         <span class="logo-name">Laboratory Information Management System</span>
     </div>
 
@@ -302,7 +302,7 @@
     </div>
 
     <div class="page-footer">
-        PT Evo Manufacturing Indonesia &nbsp;·&nbsp; EMI Laboratory Information Management System
+        PT Evo Manufacturing Indonesia &nbsp;·&nbsp; Laboratory Information Systemoratory Information Management System
     </div>
 
     <script>

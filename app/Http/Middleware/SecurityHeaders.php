@@ -16,7 +16,7 @@ class SecurityHeaders
         $scriptSrc = "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com https://kit.fontawesome.com https://challenges.cloudflare.com"
             . ($isLocal ? ' http://localhost:5173 ws://localhost:5173' : '');
 
-        $connectSrc = "connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com"
+        $connectSrc = "connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com wss://localhost:9956"
             . ($isLocal ? ' http://localhost:5173 ws://localhost:5173' : '');
 
         $csp = implode('; ', [

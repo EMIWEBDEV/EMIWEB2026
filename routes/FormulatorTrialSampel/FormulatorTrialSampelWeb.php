@@ -57,6 +57,7 @@ Route::get('/api/v1/formulator/validasi-hasil/uji-trial/sub/menunggu/{no_sampel}
 Route::post('/api/v1/formulator/validasi-hasil/uji-trial/resampeling/reanalisis', [FormulatorTrialSampelController::class, 'resampelingAnalisa']);
 Route::post('/api/v1/formulator/validasi-hasil/uji-trial/resampling-single/reanalisis', [FormulatorTrialSampelController::class, 'resampelingAnalisaSingle']);
 Route::post('/api/v1/formulator/validasi-hasil/uji-trial/approve', [FormulatorTrialSampelController::class, 'storeConfirmedUjiSampelV2']);
+Route::post('/api/v1/formulator/validasi-hasil/uji-trial/bulk/approve', [FormulatorTrialSampelController::class, 'storeBulkApprove']);
 Route::post('/api/v1/formulator/hasil-uji/berkas/foto/token/bulk', [FormulatorTrialSampelController::class, 'generateFotoToken']);
 Route::get('/api/v1/formulator/berkas/stream/foto-uji/{key}', [FormulatorTrialSampelController::class, 'streamFoto']);
 

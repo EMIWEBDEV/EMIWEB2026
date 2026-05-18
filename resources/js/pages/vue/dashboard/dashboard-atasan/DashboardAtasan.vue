@@ -1,540 +1,1114 @@
 <template>
-    <div class="at-page">
+    <div class="container-fluid qlms-wrap">
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- HERO BANNER                                               -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div class="qlms-hero mb-4">
+            <div class="qlms-hero-bg"></div>
+            <div class="qlms-hero-mesh"></div>
 
-        <!-- ═══════════════════════════════════════════════════ -->
-        <!-- HERO HEADER                                        -->
-        <!-- ═══════════════════════════════════════════════════ -->
-        <div class="at-hero">
-            <div class="at-hero-bg"></div>
-            <div class="at-hero-content">
-                <div class="at-hero-left">
-                    <div class="at-hero-icon"><i class="ri-dashboard-3-line"></i></div>
+            <div class="qlms-hero-inner">
+                <!-- Kiri: identitas -->
+                <div class="qlms-hero-left">
+                    <div class="qlms-hero-avatar">
+                        <i class="ri-microscope-line"></i>
+                    </div>
                     <div>
-                        <h2 class="at-hero-title">Dashboard Monitoring Laboratorium</h2>
-                        <p class="at-hero-sub">
-                            Ringkasan menyeluruh performa &amp; operasional lab —
-                            <strong>{{ namaPengguna }}</strong>
+                        <div class="qlms-hero-tag">
+                            LIMS · Executive Monitoring
+                        </div>
+                        <h2 class="qlms-hero-name text-white">
+                            Selamat, {{ namaPengguna }}
+                        </h2>
+                        <p class="qlms-hero-desc">
+                            Panel Kinerja Operasional Laboratorium —
+                            <strong>PT. Evo Manufacturing Indonesia</strong>
                         </p>
                     </div>
                 </div>
-                <div class="at-hero-right">
-                    <div class="at-hero-clock">
-                        <div class="at-clock-time">{{ liveClock }}</div>
-                        <div class="at-clock-date">{{ currentDate }}</div>
+
+                <!-- Kanan: jam + kontrol -->
+                <div class="qlms-hero-right">
+                    <div class="qlms-hero-clock-block">
+                        <div class="qlms-clock">{{ liveClock }}</div>
+                        <div class="qlms-date">{{ currentDate }}</div>
                     </div>
-                    <div class="at-periode-pill" v-if="kpi.periode">
-                        <i class="ri-calendar-check-line"></i>
-                        Periode: <strong>{{ kpi.periode }}</strong>
+                    <div
+                        class="d-flex align-items-center gap-2 flex-wrap justify-content-end"
+                    >
+                        <span class="qlms-periode-pill" v-if="kpi.periode">
+                            <i class="ri-calendar-event-line"></i>
+                            Periode: <strong>{{ kpi.periode }}</strong>
+                        </span>
+                        <button
+                            class="qlms-refresh-btn"
+                            @click="refreshAll"
+                            :disabled="anyLoading"
+                        >
+                            <i
+                                :class="
+                                    anyLoading
+                                        ? 'ri-loader-4-line qlms-spin'
+                                        : 'ri-refresh-line'
+                                "
+                            ></i>
+                            Segarkan
+                        </button>
                     </div>
-                    <button class="at-refresh-btn" @click="refreshAll" :disabled="anyLoading">
-                        <i :class="anyLoading ? 'ri-loader-4-line at-spin' : 'ri-refresh-line'"></i>
-                        Segarkan
-                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- ═══════════════════════════════════════════════════ -->
-        <!-- KPI BULANAN (6 cards)                              -->
-        <!-- ═══════════════════════════════════════════════════ -->
-        <div class="at-section-label">
-            <i class="ri-pulse-line"></i> KPI Bulan Berjalan
-        </div>
-        <div class="at-kpi6">
-            <template v-if="loading.kpi">
-                <div v-for="n in 6" :key="n" class="at-kpi-card at-sk">
-                    <div class="at-sk-icon at-shimmer"></div>
-                    <div style="flex:1">
-                        <div class="at-sk-line w55 at-shimmer mb2"></div>
-                        <div class="at-sk-line w35 at-shimmer mb2"></div>
-                        <div class="at-sk-line w45 at-shimmer"></div>
-                    </div>
-                </div>
-            </template>
-            <template v-else>
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- OVERVIEW STRIP — seperti panel attendance HCIS            -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body pb-0">
                 <div
-                    v-for="(c, i) in kpiCards"
-                    :key="i"
-                    class="at-kpi-card"
-                    :style="{ '--accent': c.color }"
+                    class="d-flex align-items-center justify-content-between mb-3"
                 >
-                    <div class="at-kpi-left">
-                        <div class="at-kpi-icon"><i :class="c.icon"></i></div>
-                        <div class="at-kpi-body">
-                            <div class="at-kpi-label">{{ c.label }}</div>
-                            <div class="at-kpi-value">{{ c.value }}</div>
-                            <div class="at-kpi-sub">{{ c.sub }}</div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="avatar-xs">
+                            <span
+                                class="avatar-title bg-primary-subtle rounded fs-5"
+                            >
+                                <i class="ri-pulse-line text-primary"></i>
+                            </span>
+                        </span>
+                        <div>
+                            <h6 class="mb-0 fw-semibold fs-14">
+                                Ringkasan Operasional Bulan Berjalan
+                            </h6>
+                            <small class="text-muted"
+                                >Data kumulatif sejak awal bulan sampai hari
+                                ini</small
+                            >
                         </div>
                     </div>
-                    <div class="at-kpi-trend" v-if="c.trend !== undefined">
-                        <span :class="c.trend >= 0 ? 'at-up' : 'at-dn'">
-                            <i :class="c.trend >= 0 ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'"></i>
+                    <span
+                        v-if="kpi.periode"
+                        class="badge bg-primary rounded-pill fs-12"
+                    >
+                        {{ kpi.periode }}
+                    </span>
+                </div>
+
+                <!-- Skeleton strip -->
+                <div v-if="loading.kpi" class="qlms-strip-grid pb-3">
+                    <div
+                        v-for="n in 6"
+                        :key="n"
+                        class="qlms-strip-box qlms-sk-box"
+                    >
+                        <div class="qlms-sk-line w-50 mb-2 qlms-shimmer"></div>
+                        <div class="qlms-sk-line w-75 qlms-shimmer"></div>
+                    </div>
+                </div>
+
+                <!-- Data strip -->
+                <div v-else class="qlms-strip-grid pb-3">
+                    <div
+                        v-for="(c, i) in kpiCards"
+                        :key="i"
+                        class="qlms-strip-box"
+                        :style="{ '--strip-c': c.color }"
+                    >
+                        <div class="qlms-strip-val">{{ c.value }}</div>
+                        <div class="qlms-strip-lbl">{{ c.label }}</div>
+                        <div class="qlms-strip-sub">{{ c.sub }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- ALERT CARDS (4)                                           -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div class="row g-3 mb-4">
+            <div
+                class="col-xl-3 col-sm-6"
+                v-for="(a, i) in alertCards"
+                :key="i"
+            >
+                <div
+                    class="card card-animate border-0 shadow-sm h-100"
+                    :class="a.cardClass"
+                >
+                    <div class="card-body">
+                        <div
+                            class="d-flex align-items-start justify-content-between"
+                        >
+                            <div class="flex-grow-1">
+                                <p
+                                    class="text-uppercase fw-medium fs-11 mb-1"
+                                    :class="a.labelClass"
+                                >
+                                    {{ a.tag }}
+                                </p>
+                                <div v-if="loading.kpi">
+                                    <div
+                                        class="qlms-sk-line w-50 qlms-shimmer mb-1"
+                                        style="height: 28px; border-radius: 6px"
+                                    ></div>
+                                </div>
+                                <h3
+                                    v-else
+                                    class="fw-bold mb-1"
+                                    :class="a.valClass"
+                                >
+                                    {{ a.value }}
+                                </h3>
+                                <p class="text-muted fs-12 mb-0">
+                                    {{ a.desc }}
+                                </p>
+                            </div>
+                            <div
+                                class="qlms-icon-sm flex-shrink-0 ms-2"
+                                :style="{ background: a.iconBgHex }"
+                            >
+                                <i :class="a.icon" :style="{ color: a.iconFgHex }"></i>
+                            </div>
+                        </div>
+                        <!-- Progress bar -->
+                        <div
+                            class="mt-3"
+                            v-if="!loading.kpi && a.pct !== undefined"
+                        >
+                            <div class="d-flex justify-content-between mb-1">
+                                <small class="text-muted">{{
+                                    a.pctLabel
+                                }}</small>
+                                <small :class="a.labelClass"
+                                    >{{ a.pct }}%</small
+                                >
+                            </div>
+                            <div class="progress" style="height: 5px">
+                                <div
+                                    class="progress-bar"
+                                    :class="a.barClass"
+                                    :style="{
+                                        width: Math.min(a.pct, 100) + '%',
+                                    }"
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- TREN AKTIVITAS — full width                               -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                <div
+                    class="d-flex align-items-start justify-content-between flex-wrap gap-2"
+                >
+                    <div>
+                        <h6 class="card-title fw-semibold mb-1">
+                            Tren Aktivitas Laboratorium {{ currentYear }}
+                        </h6>
+                        <p class="text-muted fs-12 mb-0">
+                            Registrasi sampel masuk, pengujian selesai, dan
+                            validasi final per bulan
+                        </p>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <span class="qlms-legend-pill" style="--lc: #405189">
+                            <span class="qlms-dot"></span> Registrasi Sampel
+                        </span>
+                        <span class="qlms-legend-pill" style="--lc: #0ab39c">
+                            <span class="qlms-dot"></span> Pengujian Selesai
+                        </span>
+                        <span class="qlms-legend-pill" style="--lc: #f7b84b">
+                            <span class="qlms-dot"></span> Validasi Final
                         </span>
                     </div>
                 </div>
-            </template>
-        </div>
-
-        <!-- ═══════════════════════════════════════════════════ -->
-        <!-- TREN BULANAN — full width                          -->
-        <!-- ═══════════════════════════════════════════════════ -->
-        <div class="at-card">
-            <div class="at-card-head">
-                <div>
-                    <div class="at-card-title">Tren Aktivitas Laboratorium {{ currentYear }}</div>
-                    <div class="at-card-sub">Registrasi sampel, uji selesai, dan validasi final per bulan</div>
-                </div>
-                <div class="at-legend-pills">
-                    <span class="at-pill" style="--c:#405189">Registrasi</span>
-                    <span class="at-pill" style="--c:#0ab39c">Uji Selesai</span>
-                    <span class="at-pill" style="--c:#f7b84b">Validasi</span>
-                </div>
             </div>
-            <div class="at-card-body">
-                <div v-if="loading.tren" class="at-chart-sk at-shimmer"></div>
-                <apexchart v-else type="area" height="300" :options="trenOptions" :series="trenSeries" />
+            <div class="card-body pt-2">
+                <div
+                    v-if="loading.tren"
+                    class="qlms-chart-sk qlms-shimmer"
+                ></div>
+                <apexchart
+                    v-else
+                    type="area"
+                    height="300"
+                    :options="trenOptions"
+                    :series="trenSeries"
+                />
             </div>
         </div>
 
-        <!-- ═══════════════════════════════════════════════════ -->
-        <!-- ROW: Beban Mesin + Status Overall                  -->
-        <!-- ═══════════════════════════════════════════════════ -->
-        <div class="at-row-6-4">
-            <!-- Beban Mesin horizontal bar -->
-            <div class="at-card">
-                <div class="at-card-head">
-                    <div>
-                        <div class="at-card-title">Beban Kerja Per Mesin</div>
-                        <div class="at-card-sub">Total &amp; selesai per mesin analisa</div>
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- ROW: Beban Mesin (6) + Status Keseluruhan (4)             -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div class="row g-3 mb-4">
+            <!-- Beban Mesin -->
+            <div class="col-xl-7">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                        <h6 class="card-title fw-semibold mb-1">
+                            Beban Kerja Per Mesin Analisa
+                        </h6>
+                        <p class="text-muted fs-12 mb-0">
+                            Total sampel terdaftar vs. pengujian selesai per
+                            mesin
+                        </p>
+                    </div>
+                    <div class="card-body pt-2">
+                        <div
+                            v-if="loading.beban"
+                            class="qlms-chart-sk qlms-shimmer"
+                            style="height: 280px"
+                        ></div>
+                        <apexchart
+                            v-else
+                            type="bar"
+                            height="280"
+                            :options="bebanOptions"
+                            :series="bebanSeries"
+                        />
                     </div>
                 </div>
-                <div class="at-card-body">
-                    <div v-if="loading.beban" class="at-chart-sk at-shimmer" style="height:280px"></div>
-                    <apexchart v-else type="bar" height="280" :options="bebanOptions" :series="bebanSeries" />
-                </div>
             </div>
 
-            <!-- Donut status overall -->
-            <div class="at-card">
-                <div class="at-card-head">
-                    <div class="at-card-title">Status Sampel Keseluruhan</div>
-                    <div class="at-card-sub">Distribusi status semua sampel</div>
-                </div>
-                <div class="at-card-body at-flex-center">
-                    <div v-if="loading.status" class="at-donut-sk at-shimmer"></div>
-                    <apexchart v-else type="donut" height="280" :options="statusDonutOptions" :series="statusDonutSeries" />
+            <!-- Status Donut -->
+            <div class="col-xl-5">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                        <h6 class="card-title fw-semibold mb-1">
+                            Distribusi Status Sampel
+                        </h6>
+                        <p class="text-muted fs-12 mb-0">
+                            Proporsi seluruh status sampel sejak awal
+                            operasional
+                        </p>
+                    </div>
+                    <div
+                        class="card-body pt-2 d-flex align-items-center justify-content-center"
+                    >
+                        <div
+                            v-if="loading.kpi"
+                            class="qlms-donut-sk qlms-shimmer"
+                        ></div>
+                        <apexchart
+                            v-else
+                            type="donut"
+                            height="280"
+                            :options="statusDonutOptions"
+                            :series="statusDonutSeries"
+                        />
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- ═══════════════════════════════════════════════════ -->
-        <!-- ROW: Pass Rate + Top Analis (bulan ini)            -->
-        <!-- ═══════════════════════════════════════════════════ -->
-        <div class="at-row-half">
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- ROW: Pass Rate + Produktivitas Analis                     -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div class="row g-3 mb-4">
             <!-- Pass Rate per Jenis Analisa -->
-            <div class="at-card">
-                <div class="at-card-head">
-                    <div>
-                        <div class="at-card-title">Pass Rate per Jenis Analisa</div>
-                        <div class="at-card-sub">Persentase hasil layak per kategori pengujian</div>
+            <div class="col-xl-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                        <div
+                            class="d-flex align-items-start justify-content-between"
+                        >
+                            <div>
+                                <h6 class="card-title fw-semibold mb-1">
+                                    Pass Rate per Jenis Analisa
+                                </h6>
+                                <p class="text-muted fs-12 mb-0">
+                                    Persentase hasil layak terhadap total
+                                    pengujian selesai
+                                </p>
+                            </div>
+                            <span
+                                class="badge bg-danger-subtle text-danger fs-11"
+                            >
+                                <i class="ri-flag-2-line me-1"></i>Target ≥ 95%
+                            </span>
+                        </div>
                     </div>
-                    <div class="at-badge-ok">Target ≥ 95%</div>
-                </div>
-                <div class="at-card-body">
-                    <div v-if="loading.passRate" class="at-chart-sk at-shimmer" style="height:300px"></div>
-                    <apexchart v-else type="bar" height="300" :options="passRateOptions" :series="passRateSeries" />
+                    <div class="card-body pt-2">
+                        <div
+                            v-if="loading.passRate"
+                            class="qlms-chart-sk qlms-shimmer"
+                            style="height: 300px"
+                        ></div>
+                        <apexchart
+                            v-else
+                            type="bar"
+                            height="300"
+                            :options="passRateOptions"
+                            :series="passRateSeries"
+                        />
+                    </div>
                 </div>
             </div>
 
-            <!-- Top Analis bulan ini -->
-            <div class="at-card">
-                <div class="at-card-head">
-                    <div>
-                        <div class="at-card-title">Produktivitas Analis — Bulan Ini</div>
-                        <div class="at-card-sub">Jumlah pengujian selesai per analis</div>
+            <!-- Top Analis -->
+            <div class="col-xl-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                        <h6 class="card-title fw-semibold mb-1">
+                            Produktivitas Analis — Bulan Ini
+                        </h6>
+                        <p class="text-muted fs-12 mb-0">
+                            Peringkat analis berdasarkan jumlah pengujian yang
+                            diselesaikan
+                        </p>
                     </div>
-                </div>
-                <div class="at-card-body">
-                    <div v-if="loading.topAnalis" class="at-chart-sk at-shimmer" style="height:300px"></div>
-                    <apexchart v-else type="bar" height="300" :options="topAnalisOptions" :series="topAnalisSeries" />
-                </div>
-            </div>
-        </div>
-
-        <!-- ═══════════════════════════════════════════════════ -->
-        <!-- RINGKASAN VALIDASI FINAL                           -->
-        <!-- ═══════════════════════════════════════════════════ -->
-        <div class="at-card">
-            <div class="at-card-head">
-                <div>
-                    <div class="at-card-title">Ringkasan Validasi Final — Bulan Ini</div>
-                    <div class="at-card-sub">Status persetujuan hasil pengujian akhir</div>
-                </div>
-            </div>
-            <div class="at-card-body">
-                <div v-if="loading.kpi" class="at-validasi-sk">
-                    <div v-for="n in 3" :key="n" class="at-validasi-sk-item at-shimmer"></div>
-                </div>
-                <div v-else class="at-validasi-summary">
-                    <div class="at-vs-item at-vs-total">
-                        <div class="at-vs-icon"><i class="ri-file-list-3-line"></i></div>
-                        <div class="at-vs-body">
-                            <div class="at-vs-val">{{ kpi.validasi_bulan ?? 0 }}</div>
-                            <div class="at-vs-lbl">Total Validasi</div>
-                        </div>
-                    </div>
-                    <div class="at-vs-divider"></div>
-                    <div class="at-vs-item at-vs-ok">
-                        <div class="at-vs-icon"><i class="ri-checkbox-circle-line"></i></div>
-                        <div class="at-vs-body">
-                            <div class="at-vs-val">{{ kpi.validasi_ok ?? 0 }}</div>
-                            <div class="at-vs-lbl">Disetujui (OK)</div>
-                        </div>
-                    </div>
-                    <div class="at-vs-divider"></div>
-                    <div class="at-vs-item at-vs-fg">
-                        <div class="at-vs-icon"><i class="ri-trophy-line"></i></div>
-                        <div class="at-vs-body">
-                            <div class="at-vs-val">{{ kpi.validasi_fg ?? 0 }}</div>
-                            <div class="at-vs-lbl">Finish Good (FG)</div>
-                        </div>
-                    </div>
-                    <div class="at-vs-divider"></div>
-                    <div class="at-vs-item at-vs-pct">
-                        <div class="at-vs-icon"><i class="ri-percent-line"></i></div>
-                        <div class="at-vs-body">
-                            <div class="at-vs-val">{{ validasiOkPct }}%</div>
-                            <div class="at-vs-lbl">Approval Rate</div>
-                        </div>
-                    </div>
-                    <div class="at-vs-divider"></div>
-                    <div class="at-vs-item at-vs-tat">
-                        <div class="at-vs-icon"><i class="ri-timer-2-line"></i></div>
-                        <div class="at-vs-body">
-                            <div class="at-vs-val">{{ kpi.tat_hours }}j {{ kpi.tat_minutes }}m</div>
-                            <div class="at-vs-lbl">Rata-rata TAT</div>
-                        </div>
-                    </div>
-                    <div class="at-vs-divider"></div>
-                    <div class="at-vs-item at-vs-pass">
-                        <div class="at-vs-icon"><i class="ri-shield-check-line"></i></div>
-                        <div class="at-vs-body">
-                            <div class="at-vs-val">{{ kpi.pass_rate_pct ?? 0 }}%</div>
-                            <div class="at-vs-lbl">Pass Rate Uji</div>
-                        </div>
+                    <div class="card-body pt-2">
+                        <div
+                            v-if="loading.topAnalis"
+                            class="qlms-chart-sk qlms-shimmer"
+                            style="height: 300px"
+                        ></div>
+                        <apexchart
+                            v-else
+                            type="bar"
+                            height="300"
+                            :options="topAnalisOptions"
+                            :series="topAnalisSeries"
+                        />
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ═══════════════════════════════════════════════════ -->
-        <!-- STATUS CARDS — all-time totals                     -->
-        <!-- ═══════════════════════════════════════════════════ -->
-        <div class="at-section-label">
-            <i class="ri-stack-line"></i> Rekap Keseluruhan
-        </div>
-        <div class="at-stat4">
-            <div class="at-stat-card" v-for="(s, i) in statusAllCards" :key="i" :style="{ '--c': s.color }">
-                <i :class="['at-stat-icon', s.icon]"></i>
-                <div class="at-stat-val">{{ s.value.toLocaleString('id-ID') }}</div>
-                <div class="at-stat-lbl">{{ s.label }}</div>
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- RINGKASAN VALIDASI FINAL                                  -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                <h6 class="card-title fw-semibold mb-1">
+                    Ringkasan Validasi Final — Bulan Ini
+                </h6>
+                <p class="text-muted fs-12 mb-0">
+                    Status persetujuan dan kualitas hasil pengujian akhir oleh
+                    Quality Control
+                </p>
+            </div>
+            <div class="card-body">
+                <!-- Skeleton -->
+                <div v-if="loading.kpi" class="d-flex gap-3">
+                    <div
+                        v-for="n in 6"
+                        :key="n"
+                        class="flex-fill qlms-shimmer rounded-3"
+                        style="height: 80px"
+                    ></div>
+                </div>
+
+                <!-- Data -->
+                <div v-else class="qlms-validasi-grid">
+                    <div
+                        class="qlms-vs-item"
+                        v-for="(v, i) in validasiItems"
+                        :key="i"
+                    >
+                        <div
+                            class="qlms-vs-icon"
+                            :style="{ background: v.bg, color: v.color }"
+                        >
+                            <i :class="v.icon"></i>
+                        </div>
+                        <div>
+                            <div class="qlms-vs-val">{{ v.value }}</div>
+                            <div class="qlms-vs-lbl">{{ v.label }}</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- ALL-TIME REKAP                                            -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div class="qlms-section-label mb-3">
+            <i class="ri-database-2-line"></i>
+            Rekap Kumulatif Keseluruhan
+        </div>
+        <div class="row g-3 mb-4">
+            <div
+                class="col-xl-3 col-sm-6"
+                v-for="(s, i) in allTimeCards"
+                :key="i"
+            >
+                <div class="card card-animate border-0 shadow-sm h-100">
+                    <div class="card-body text-center py-4">
+                        <div
+                            class="qlms-icon-lg mx-auto mb-3"
+                            :style="{ background: s.iconBgHex }"
+                        >
+                            <i :class="s.icon" :style="{ color: s.iconFgHex, fontSize: '2rem' }"></i>
+                        </div>
+                        <div v-if="loading.kpi">
+                            <div
+                                class="qlms-sk-line w-50 qlms-shimmer mx-auto mb-2"
+                                style="height: 28px; border-radius: 6px"
+                            ></div>
+                        </div>
+                        <h3 v-else class="fw-bold mb-1" :class="s.valClass">
+                            {{ s.value.toLocaleString("id-ID") }}
+                        </h3>
+                        <p class="text-muted fs-13 mb-0">{{ s.label }}</p>
+                        <div class="mt-2">
+                            <span
+                                class="badge rounded-pill fs-11"
+                                :class="s.badgeClass"
+                                >{{ s.badge }}</span
+                            >
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
 <script>
-import axios from 'axios';
-import VueApexCharts from 'vue3-apexcharts';
+import axios from "axios";
+import VueApexCharts from "vue3-apexcharts";
 
 export default {
+    name: "DashboardAtasanLab",
     components: { apexchart: VueApexCharts },
 
     props: {
-        namaPengguna: { type: String, default: 'Atasan' },
+        namaPengguna: { type: String, default: "Pimpinan" },
     },
 
     data() {
         const now = new Date();
         return {
-            currentDate: now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+            currentDate: now.toLocaleDateString("id-ID", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+            }),
             currentYear: now.getFullYear(),
-            liveClock: '',
+            liveClock: "",
             clockTimer: null,
 
             kpi: {},
             tren: { categories: [], series: [] },
             beban: { categories: [], total: [], selesai: [] },
-            statusOverall: { selesai: 0, pending: 0, trial: 0, close_po: 0 },
             passRate: { categories: [], data: [] },
             topAnalis: { categories: [], data: [] },
 
             loading: {
-                kpi: false,
-                tren: false,
-                beban: false,
-                status: false,
-                passRate: false,
-                topAnalis: false,
+                kpi: true,
+                tren: true,
+                beban: true,
+                passRate: true,
+                topAnalis: true,
             },
         };
     },
 
     computed: {
-        anyLoading() { return Object.values(this.loading).some(Boolean); },
+        anyLoading() {
+            return Object.values(this.loading).some(Boolean);
+        },
 
+        /* ── Strip KPI ── */
         kpiCards() {
             const k = this.kpi;
             return [
                 {
-                    icon: 'ri-test-tube-line', color: '#405189',
-                    label: 'Registrasi Sampel', sub: 'Bulan ini',
-                    value: (k.sampel_bulan_ini ?? 0).toLocaleString('id-ID'),
+                    color: "#405189",
+                    label: "Sampel Masuk",
+                    sub: "Registrasi bulan ini",
+                    value: (k.sampel_bulan_ini ?? 0).toLocaleString("id-ID"),
                 },
                 {
-                    icon: 'ri-checkbox-circle-line', color: '#0ab39c',
-                    label: 'Uji Selesai', sub: 'Bulan ini',
-                    value: (k.uji_selesai ?? 0).toLocaleString('id-ID'),
+                    color: "#0ab39c",
+                    label: "Pengujian Selesai",
+                    sub: "Selesai dianalisa",
+                    value: (k.uji_selesai ?? 0).toLocaleString("id-ID"),
                 },
                 {
-                    icon: 'ri-shield-check-line', color: '#4b93f7',
-                    label: 'Pass Rate', sub: 'Hasil layak / total uji',
-                    value: (k.pass_rate_pct ?? 0) + '%',
+                    color: "#4b93f7",
+                    label: "Pass Rate",
+                    sub: "Hasil layak / total uji",
+                    value: (k.pass_rate_pct ?? 0) + "%",
                 },
                 {
-                    icon: 'ri-timer-2-line', color: '#f7b84b',
-                    label: 'Rata-rata TAT', sub: 'Turn Around Time',
+                    color: "#f7b84b",
+                    label: "Rata-rata TAT",
+                    sub: "Turn Around Time uji",
                     value: `${k.tat_hours ?? 0}j ${k.tat_minutes ?? 0}m`,
                 },
                 {
-                    icon: 'ri-file-list-3-line', color: '#6f42c1',
-                    label: 'Validasi Final', sub: 'Bulan ini',
-                    value: (k.validasi_bulan ?? 0).toLocaleString('id-ID'),
+                    color: "#6f42c1",
+                    label: "Validasi Final",
+                    sub: "Divalidasi QC bulan ini",
+                    value: (k.validasi_bulan ?? 0).toLocaleString("id-ID"),
                 },
                 {
-                    icon: 'ri-flask-line', color: '#f06548',
-                    label: 'Trial Produksi', sub: 'Sampel trial bulan ini',
-                    value: (k.sampel_trial ?? 0).toLocaleString('id-ID'),
+                    color: "#f06548",
+                    label: "Trial Produksi",
+                    sub: "Sampel trial bulan ini",
+                    value: (k.sampel_trial ?? 0).toLocaleString("id-ID"),
                 },
             ];
         },
 
-        validasiOkPct() {
-            const total = this.kpi.validasi_bulan ?? 0;
-            const ok    = this.kpi.validasi_ok    ?? 0;
-            return total > 0 ? (ok / total * 100).toFixed(1) : '0.0';
-        },
+        /* ── Alert Cards ── */
+        alertCards() {
+            const k = this.kpi;
+            const pr = k.pass_rate_pct ?? 0;
+            const prOk = pr >= 95;
+            const selesaiPct =
+                (k.sampel_bulan_ini ?? 0) > 0
+                    ? Math.round(
+                          ((k.sampel_selesai ?? 0) / k.sampel_bulan_ini) * 100
+                      )
+                    : 0;
+            const validasiPct =
+                (k.validasi_bulan ?? 0) > 0
+                    ? Math.round(
+                          ((k.validasi_ok ?? 0) / k.validasi_bulan) * 100
+                      )
+                    : 0;
 
-        statusAllCards() {
-            const s = this.statusOverall;
             return [
-                { icon: 'ri-checkbox-circle-line', color: '#0ab39c', label: 'Selesai',       value: s.selesai  ?? 0 },
-                { icon: 'ri-time-line',             color: '#f7b84b', label: 'Pending',        value: s.pending  ?? 0 },
-                { icon: 'ri-flask-line',            color: '#4b93f7', label: 'Trial Produksi', value: s.trial    ?? 0 },
-                { icon: 'ri-lock-line',             color: '#f06548', label: 'Close PO',       value: s.close_po ?? 0 },
+                {
+                    tag: "Sampel Proses",
+                    value: (k.sampel_bulan_ini ?? 0).toLocaleString("id-ID"),
+                    desc: "Total registrasi masuk bulan ini",
+                    icon: "ri-flask-2-line",
+                    iconBgHex: "rgba(64,81,137,.14)",
+                    iconFgHex: "#405189",
+                    cardClass: "",
+                    labelClass: "text-primary",
+                    valClass: "text-primary",
+                    pct: selesaiPct,
+                    pctLabel: "Telah selesai diuji",
+                    barClass: "bg-primary",
+                },
+                {
+                    tag: "Pass Rate Uji",
+                    value: pr + "%",
+                    desc: prOk ? "Persentase baik" : "Perlu ditingkatkan",
+                    icon: prOk ? "ri-shield-check-line" : "ri-alert-line",
+                    iconBgHex: prOk ? "rgba(10,179,156,.14)" : "rgba(240,101,72,.14)",
+                    iconFgHex: prOk ? "#0ab39c" : "#f06548",
+                    cardClass: "",
+                    labelClass: prOk ? "text-success" : "text-danger",
+                    valClass: prOk ? "text-success" : "text-danger",
+                    pct: pr,
+                    pctLabel: "Actual",
+                    barClass: prOk ? "bg-success" : "bg-danger",
+                },
+                {
+                    tag: "Validasi Disetujui",
+                    value: (k.validasi_ok ?? 0).toLocaleString("id-ID"),
+                    desc: `Approval rate ${validasiPct}% dari ${k.validasi_bulan ?? 0} validasi`,
+                    icon: "ri-check-double-line",
+                    iconBgHex: "rgba(10,179,156,.14)",
+                    iconFgHex: "#0ab39c",
+                    cardClass: "",
+                    labelClass: "text-success",
+                    valClass: "text-success",
+                    pct: validasiPct,
+                    pctLabel: "Persetujuan QC",
+                    barClass: "bg-success",
+                },
+                {
+                    tag: "Trial Produksi",
+                    value: (k.sampel_trial ?? 0).toLocaleString("id-ID"),
+                    desc: "Sampel uji untuk trial batch produksi",
+                    icon: "ri-flask-line",
+                    iconBgHex: "rgba(247,184,75,.14)",
+                    iconFgHex: "#d08f00",
+                    cardClass: "",
+                    labelClass: "text-warning",
+                    valClass: "text-warning",
+                },
             ];
         },
 
-        // ── Tren Bulanan ──────────────────────────────────────
+        /* ── Validasi Items ── */
+        validasiItems() {
+            const k = this.kpi;
+            const total = k.validasi_bulan ?? 0;
+            const ok = k.validasi_ok ?? 0;
+            const okPct = total > 0 ? ((ok / total) * 100).toFixed(1) : "0.0";
+            return [
+                {
+                    icon: "ri-file-list-3-line",
+                    bg: "rgba(64,81,137,.12)",
+                    color: "#405189",
+                    label: "Total Validasi",
+                    value: total.toLocaleString("id-ID"),
+                },
+                {
+                    icon: "ri-checkbox-circle-line",
+                    bg: "rgba(10,179,156,.12)",
+                    color: "#0ab39c",
+                    label: "Disetujui (OK)",
+                    value: ok.toLocaleString("id-ID"),
+                },
+                {
+                    icon: "ri-trophy-line",
+                    bg: "rgba(75,147,247,.12)",
+                    color: "#4b93f7",
+                    label: "Finish Good (FG)",
+                    value: (k.validasi_fg ?? 0).toLocaleString("id-ID"),
+                },
+                {
+                    icon: "ri-percent-line",
+                    bg: "rgba(247,184,75,.12)",
+                    color: "#f7b84b",
+                    label: "Approval Rate",
+                    value: okPct + "%",
+                },
+                {
+                    icon: "ri-timer-2-line",
+                    bg: "rgba(111,66,193,.12)",
+                    color: "#6f42c1",
+                    label: "Rata-rata TAT",
+                    value: `${k.tat_hours ?? 0}j ${k.tat_minutes ?? 0}m`,
+                },
+                {
+                    icon: "ri-shield-check-line",
+                    bg: "rgba(240,101,72,.12)",
+                    color: "#f06548",
+                    label: "Pass Rate Uji",
+                    value: (k.pass_rate_pct ?? 0) + "%",
+                },
+            ];
+        },
+
+        /* ── All-time cards ── */
+        allTimeCards() {
+            const k = this.kpi;
+            return [
+                {
+                    icon: "ri-checkbox-circle-line",
+                    iconBgHex: "rgba(10,179,156,.14)",
+                    iconFgHex: "#0ab39c",
+                    label: "Total Sampel Selesai",
+                    value: k.selesai_all ?? 0,
+                    valClass: "text-success",
+                    badge: "Selesai Dianalisa",
+                    badgeClass: "bg-success-subtle text-success",
+                },
+                {
+                    icon: "ri-time-line",
+                    iconBgHex: "rgba(247,184,75,.14)",
+                    iconFgHex: "#d08f00",
+                    label: "Sampel Menunggu Proses",
+                    value: k.pending_all ?? 0,
+                    valClass: "text-warning",
+                    badge: "Belum Selesai",
+                    badgeClass: "bg-warning-subtle text-warning",
+                },
+                {
+                    icon: "ri-flask-line",
+                    iconBgHex: "rgba(75,147,247,.14)",
+                    iconFgHex: "#4b93f7",
+                    label: "Trial Produksi",
+                    value: k.trial_all ?? 0,
+                    valClass: "text-info",
+                    badge: "Batch Trial",
+                    badgeClass: "bg-info-subtle text-info",
+                },
+                {
+                    icon: "ri-lock-2-line",
+                    iconBgHex: "rgba(240,101,72,.14)",
+                    iconFgHex: "#f06548",
+                    label: "Close PO",
+                    value: k.close_po_all ?? 0,
+                    valClass: "text-danger",
+                    badge: "PO Ditutup",
+                    badgeClass: "bg-danger-subtle text-danger",
+                },
+            ];
+        },
+
+        /* ── Tren ── */
         trenOptions() {
             return {
-                chart: { type: 'area', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
-                colors: ['#405189', '#0ab39c', '#f7b84b'],
-                fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.04, stops: [0, 100] } },
-                stroke: { curve: 'smooth', width: [2.5, 2.5, 2] },
-                xaxis: { categories: this.tren.categories, labels: { style: { fontSize: '12px' } }, axisBorder: { show: false } },
-                yaxis: { labels: { style: { fontSize: '12px' } } },
-                tooltip: { shared: true, intersect: false },
+                chart: {
+                    type: "area",
+                    toolbar: { show: false },
+                    fontFamily: 'Inter, "Segoe UI", sans-serif',
+                    animations: {
+                        enabled: true,
+                        easing: "easeinout",
+                        speed: 600,
+                    },
+                },
+                colors: ["#405189", "#0ab39c", "#f7b84b"],
+                fill: {
+                    type: "gradient",
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.35,
+                        opacityTo: 0.02,
+                        stops: [0, 100],
+                    },
+                },
+                stroke: { curve: "smooth", width: [2.5, 2.5, 2] },
+                xaxis: {
+                    categories: this.tren.categories,
+                    labels: {
+                        style: {
+                            fontSize: "12px",
+                            fontFamily: "Inter, sans-serif",
+                        },
+                    },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                },
+                yaxis: { labels: { style: { fontSize: "11px" } } },
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    y: { formatter: (v) => v.toLocaleString("id-ID") },
+                },
                 legend: { show: false },
-                grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
+                grid: {
+                    borderColor: "#f1f5f9",
+                    strokeDashArray: 4,
+                    padding: { left: 0, right: 0 },
+                },
                 dataLabels: { enabled: false },
                 markers: { size: 0, hover: { size: 5 } },
             };
         },
-        trenSeries() { return this.tren.series; },
+        trenSeries() {
+            return this.tren.series;
+        },
 
-        // ── Beban Mesin ───────────────────────────────────────
+        /* ── Beban Mesin ── */
         bebanOptions() {
             return {
-                chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
-                plotOptions: { bar: { horizontal: true, borderRadius: 4, dataLabels: { position: 'top' }, barHeight: '65%' } },
-                colors: ['#405189', '#0ab39c'],
-                xaxis: { categories: this.beban.categories, labels: { style: { fontSize: '11px' } } },
-                yaxis: { labels: { style: { fontSize: '11px' }, maxWidth: 120 } },
-                legend: { position: 'top', fontSize: '12px' },
+                chart: {
+                    type: "bar",
+                    toolbar: { show: false },
+                    fontFamily: 'Inter, "Segoe UI", sans-serif',
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        borderRadius: 4,
+                        barHeight: "60%",
+                        dataLabels: { position: "top" },
+                    },
+                },
+                colors: ["#405189", "#0ab39c"],
+                xaxis: {
+                    categories: this.beban.categories,
+                    labels: {
+                        style: { fontSize: "11px" },
+                        formatter: (v) => v.toLocaleString("id-ID"),
+                    },
+                },
+                yaxis: {
+                    labels: { style: { fontSize: "11px" }, maxWidth: 130 },
+                },
+                legend: {
+                    position: "top",
+                    fontSize: "12px",
+                    fontFamily: "Inter, sans-serif",
+                },
                 dataLabels: { enabled: false },
-                grid: { borderColor: '#f1f5f9', strokeDashArray: 3 },
-                tooltip: { shared: true, intersect: false },
+                grid: { borderColor: "#f1f5f9", strokeDashArray: 3 },
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    y: {
+                        formatter: (v) => v.toLocaleString("id-ID") + " sampel",
+                    },
+                },
             };
         },
         bebanSeries() {
             return [
-                { name: 'Total Sampel', data: this.beban.total },
-                { name: 'Selesai',      data: this.beban.selesai },
+                { name: "Total Sampel", data: this.beban.total },
+                { name: "Pengujian Selesai", data: this.beban.selesai },
             ];
         },
 
-        // ── Status Donut ──────────────────────────────────────
+        /* ── Status Donut ── */
         statusDonutOptions() {
             return {
-                chart: { type: 'donut', fontFamily: 'Inter, sans-serif' },
-                labels: ['Selesai', 'Pending', 'Trial', 'Close PO'],
-                colors: ['#0ab39c', '#f7b84b', '#4b93f7', '#f06548'],
-                legend: { position: 'bottom', fontSize: '12px' },
+                chart: {
+                    type: "donut",
+                    fontFamily: 'Inter, "Segoe UI", sans-serif',
+                },
+                labels: [
+                    "Selesai",
+                    "Menunggu Proses",
+                    "Trial Produksi",
+                    "Close PO",
+                ],
+                colors: ["#0ab39c", "#f7b84b", "#4b93f7", "#f06548"],
+                legend: {
+                    position: "bottom",
+                    fontSize: "12px",
+                    fontFamily: "Inter, sans-serif",
+                },
                 plotOptions: {
                     pie: {
                         donut: {
-                            size: '72%',
+                            size: "72%",
                             labels: {
                                 show: true,
-                                total: { show: true, label: 'Total', fontSize: '13px', fontWeight: 700 },
+                                total: {
+                                    show: true,
+                                    label: "Total Sampel",
+                                    fontSize: "12px",
+                                    fontWeight: 700,
+                                    formatter: (w) =>
+                                        w.globals.seriesTotals
+                                            .reduce((a, b) => a + b, 0)
+                                            .toLocaleString("id-ID"),
+                                },
                             },
                         },
                     },
                 },
                 dataLabels: { enabled: false },
-                stroke: { width: 2, colors: ['#fff'] },
+                stroke: { width: 2, colors: ["#fff"] },
+                tooltip: {
+                    y: {
+                        formatter: (v) => v.toLocaleString("id-ID") + " sampel",
+                    },
+                },
             };
         },
         statusDonutSeries() {
-            const s = this.statusOverall;
-            return [s.selesai ?? 0, s.pending ?? 0, s.trial ?? 0, s.close_po ?? 0];
+            const k = this.kpi;
+            return [
+                k.selesai_all ?? 0,
+                k.pending_all ?? 0,
+                k.trial_all ?? 0,
+                k.close_po_all ?? 0,
+            ];
         },
 
-        // ── Pass Rate ─────────────────────────────────────────
+        /* ── Pass Rate ── */
         passRateOptions() {
             return {
-                chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+                chart: {
+                    type: "bar",
+                    toolbar: { show: false },
+                    fontFamily: 'Inter, "Segoe UI", sans-serif',
+                },
                 plotOptions: {
                     bar: {
                         horizontal: true,
                         borderRadius: 4,
-                        barHeight: '60%',
-                        dataLabels: { position: 'top' },
+                        barHeight: "55%",
+                        dataLabels: { position: "top" },
                     },
                 },
-                colors: [({ value }) => value >= 95 ? '#0ab39c' : value >= 80 ? '#f7b84b' : '#f06548'],
+                colors: [
+                    ({ value }) =>
+                        value >= 95
+                            ? "#0ab39c"
+                            : value >= 80
+                            ? "#f7b84b"
+                            : "#f06548",
+                ],
                 xaxis: {
                     categories: this.passRate.categories,
-                    min: 0, max: 100,
-                    labels: { formatter: v => v + '%', style: { fontSize: '11px' } },
+                    min: 0,
+                    max: 100,
+                    labels: {
+                        formatter: (v) => v + "%",
+                        style: { fontSize: "11px" },
+                    },
                 },
-                yaxis: { labels: { style: { fontSize: '11px' }, maxWidth: 130 } },
+                yaxis: {
+                    labels: { style: { fontSize: "11px" }, maxWidth: 140 },
+                },
                 dataLabels: {
                     enabled: true,
-                    formatter: v => v + '%',
-                    style: { fontSize: '11px', colors: ['#495057'] },
-                    offsetX: 24,
+                    formatter: (v) => v + "%",
+                    style: { fontSize: "11px", colors: ["#495057"] },
+                    offsetX: 28,
                 },
                 annotations: {
-                    xaxis: [{ x: 95, borderColor: '#f06548', strokeDashArray: 4, label: { text: '95%', style: { color: '#f06548', fontSize: '11px', background: 'transparent' } } }],
+                    xaxis: [
+                        {
+                            x: 95,
+                            borderColor: "#f06548",
+                            strokeDashArray: 5,
+                            label: {
+                                text: "Target 95%",
+                                style: {
+                                    color: "#f06548",
+                                    fontSize: "11px",
+                                    background: "transparent",
+                                    fontWeight: 600,
+                                },
+                            },
+                        },
+                    ],
                 },
-                grid: { borderColor: '#f1f5f9', strokeDashArray: 3 },
+                grid: { borderColor: "#f1f5f9", strokeDashArray: 3 },
                 legend: { show: false },
             };
         },
         passRateSeries() {
-            return [{ name: 'Pass Rate', data: this.passRate.data }];
+            return [{ name: "Pass Rate", data: this.passRate.data }];
         },
 
-        // ── Top Analis ────────────────────────────────────────
+        /* ── Top Analis ── */
         topAnalisOptions() {
             return {
-                chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+                chart: {
+                    type: "bar",
+                    toolbar: { show: false },
+                    fontFamily: 'Inter, "Segoe UI", sans-serif',
+                },
                 plotOptions: {
                     bar: {
                         horizontal: true,
                         borderRadius: 4,
-                        barHeight: '60%',
+                        barHeight: "55%",
                         distributed: true,
                     },
                 },
-                colors: ['#405189','#0ab39c','#f7b84b','#f06548','#4b93f7','#6f42c1','#e83e8c','#20c997'],
-                xaxis: { categories: this.topAnalis.categories, labels: { style: { fontSize: '11px' } } },
-                yaxis: { labels: { style: { fontSize: '11px', fontWeight: 600 }, maxWidth: 100 } },
-                dataLabels: { enabled: true, style: { fontSize: '11px', colors: ['#fff'] } },
+                colors: [
+                    "#405189",
+                    "#0ab39c",
+                    "#f7b84b",
+                    "#f06548",
+                    "#4b93f7",
+                    "#6f42c1",
+                    "#e83e8c",
+                    "#20c997",
+                ],
+                xaxis: {
+                    categories: this.topAnalis.categories,
+                    labels: {
+                        style: { fontSize: "11px" },
+                        formatter: (v) => v + " uji",
+                    },
+                },
+                yaxis: {
+                    labels: {
+                        style: { fontSize: "11px", fontWeight: 600 },
+                        maxWidth: 110,
+                    },
+                },
+                dataLabels: {
+                    enabled: true,
+                    formatter: (v) => v + " uji",
+                    style: {
+                        fontSize: "11px",
+                        colors: ["#fff"],
+                        fontWeight: 600,
+                    },
+                },
                 legend: { show: false },
-                grid: { borderColor: '#f1f5f9', strokeDashArray: 3 },
-                tooltip: { y: { formatter: v => v + ' pengujian' } },
+                grid: { borderColor: "#f1f5f9", strokeDashArray: 3 },
+                tooltip: {
+                    y: {
+                        formatter: (v) =>
+                            v.toLocaleString("id-ID") +
+                            " pengujian diselesaikan",
+                    },
+                },
             };
         },
         topAnalisSeries() {
-            return [{ name: 'Uji Selesai', data: this.topAnalis.data }];
+            return [{ name: "Pengujian Selesai", data: this.topAnalis.data }];
         },
     },
 
     methods: {
         tickClock() {
-            const now = new Date();
-            this.liveClock = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            this.liveClock = new Date().toLocaleTimeString("id-ID", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+            });
         },
 
         async fetchKpi() {
             this.loading.kpi = true;
             try {
-                const r = await axios.get('/api/v1/dashboard-atasan/kpi-bulanan');
+                const r = await axios.get("/api/v1/lims/kpi-rekap");
                 this.kpi = r.data?.result ?? {};
-            } catch { this.kpi = {}; }
-            finally { this.loading.kpi = false; }
+            } catch {
+                this.kpi = {};
+            } finally {
+                this.loading.kpi = false;
+            }
         },
 
         async fetchTren() {
             this.loading.tren = true;
             try {
-                const r = await axios.get('/api/v1/dashboard-atasan/tren-bulanan');
+                const r = await axios.get("/api/v1/lims/tren-aktivitas");
                 this.tren = r.data?.result ?? { categories: [], series: [] };
-            } catch { this.tren = { categories: [], series: [] }; }
-            finally { this.loading.tren = false; }
+            } catch {
+                this.tren = { categories: [], series: [] };
+            } finally {
+                this.loading.tren = false;
+            }
         },
 
         async fetchBeban() {
             this.loading.beban = true;
             try {
-                const r = await axios.get('/api/v1/dashboard-atasan/beban-mesin');
+                const r = await axios.get("/api/v1/lims/beban-mesin");
                 const d = r.data?.result ?? {};
                 this.beban = {
                     categories: d.categories ?? [],
-                    total:   d.total   ?? [],
+                    total: d.total ?? [],
                     selesai: d.selesai ?? [],
                 };
-            } catch { this.beban = { categories: [], total: [], selesai: [] }; }
-            finally { this.loading.beban = false; }
-        },
-
-        async fetchStatus() {
-            this.loading.status = true;
-            try {
-                const r = await axios.get('/api/v1/dashboard-atasan/status-overall');
-                this.statusOverall = r.data?.result ?? {};
-            } catch { this.statusOverall = {}; }
-            finally { this.loading.status = false; }
+            } catch {
+                this.beban = { categories: [], total: [], selesai: [] };
+            } finally {
+                this.loading.beban = false;
+            }
         },
 
         async fetchPassRate() {
             this.loading.passRate = true;
             try {
-                const r = await axios.get('/api/v1/dashboard-atasan/pass-rate-jenis');
+                const r = await axios.get("/api/v1/lims/pass-rate-jenis");
                 this.passRate = r.data?.result ?? { categories: [], data: [] };
-            } catch { this.passRate = { categories: [], data: [] }; }
-            finally { this.loading.passRate = false; }
+            } catch {
+                this.passRate = { categories: [], data: [] };
+            } finally {
+                this.loading.passRate = false;
+            }
         },
 
         async fetchTopAnalis() {
             this.loading.topAnalis = true;
             try {
-                const r = await axios.get('/api/v1/dashboard-atasan/top-analis');
+                const r = await axios.get("/api/v1/lims/top-analis");
                 this.topAnalis = r.data?.result ?? { categories: [], data: [] };
-            } catch { this.topAnalis = { categories: [], data: [] }; }
-            finally { this.loading.topAnalis = false; }
+            } catch {
+                this.topAnalis = { categories: [], data: [] };
+            } finally {
+                this.loading.topAnalis = false;
+            }
         },
 
         refreshAll() {
+            /* KPI + status dalam 1 request, chart endpoints paralel */
             Promise.all([
                 this.fetchKpi(),
                 this.fetchTren(),
                 this.fetchBeban(),
-                this.fetchStatus(),
                 this.fetchPassRate(),
                 this.fetchTopAnalis(),
             ]);
@@ -554,285 +1128,440 @@ export default {
 </script>
 
 <style scoped>
-/* ── Base ─────────────────────────────────────────────────── */
-.at-page {
-    font-family: 'Inter', 'Segoe UI', sans-serif;
-    color: #343a40;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+/* ═══════════════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════════════ */
+.qlms-wrap {
+    font-family: "Inter", "Segoe UI", sans-serif;
 }
 
-/* ── Hero Header ──────────────────────────────────────────── */
-.at-hero {
+/* ═══════════════════════════════════════════════════
+   HERO BANNER
+═══════════════════════════════════════════════════ */
+.qlms-hero {
     position: relative;
     border-radius: 16px;
     overflow: hidden;
-    padding: 28px 28px;
+    padding: 30px 28px;
     color: #fff;
+    min-height: 130px;
 }
 
-.at-hero-bg {
-    position: absolute; inset: 0;
-    background: linear-gradient(135deg, #405189 0%, #2d3a6b 45%, #1a2346 100%);
+.qlms-hero-bg {
+    position: absolute;
+    inset: 0;
     z-index: 0;
-}
-.at-hero-bg::after {
-    content: '';
-    position: absolute; inset: 0;
-    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='28'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+    background: linear-gradient(135deg, #405189 0%, #2c3b74 55%, #19254d 100%);
 }
 
-.at-hero-content {
-    position: relative; z-index: 1;
-    display: flex; align-items: center;
+/* Mesh dot overlay */
+.qlms-hero-mesh {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image: radial-gradient(
+        circle,
+        rgba(255, 255, 255, 0.06) 1px,
+        transparent 1px
+    );
+    background-size: 28px 28px;
+}
+
+.qlms-hero-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap; gap: 16px;
+    flex-wrap: wrap;
+    gap: 20px;
 }
 
-.at-hero-left { display: flex; align-items: center; gap: 16px; }
-
-.at-hero-icon {
-    width: 56px; height: 56px; border-radius: 14px;
-    background: rgba(255,255,255,.15);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 28px; flex-shrink: 0;
-    backdrop-filter: blur(6px);
-}
-
-.at-hero-title { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
-.at-hero-sub   { font-size: 13px; opacity: .75; margin: 0; }
-
-.at-hero-right {
-    display: flex; align-items: center;
-    gap: 12px; flex-wrap: wrap;
-}
-
-.at-hero-clock { text-align: right; }
-.at-clock-time { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .5px; }
-.at-clock-date { font-size: 11px; opacity: .7; }
-
-.at-periode-pill {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 14px; background: rgba(255,255,255,.12);
-    border: 1px solid rgba(255,255,255,.2); border-radius: 20px;
-    font-size: 12px; backdrop-filter: blur(4px);
-}
-
-.at-refresh-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 8px 18px; background: rgba(255,255,255,.15);
-    border: 1px solid rgba(255,255,255,.3); border-radius: 9px;
-    color: #fff; font-size: 13px; font-weight: 600;
-    cursor: pointer; transition: background .2s;
-    backdrop-filter: blur(4px);
-}
-.at-refresh-btn:hover:not(:disabled) { background: rgba(255,255,255,.25); }
-.at-refresh-btn:disabled { opacity: .5; cursor: not-allowed; }
-
-/* ── Section Label ────────────────────────────────────────── */
-.at-section-label {
-    font-size: 12px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: .8px; color: #878a99;
-    display: flex; align-items: center; gap: 6px;
-    margin-bottom: -8px;
-}
-
-/* ── KPI 6-col Grid ───────────────────────────────────────── */
-.at-kpi6 {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-}
-
-.at-kpi-card {
-    background: #fff;
-    border: 1px solid #e9ecef;
-    border-radius: 14px;
-    padding: 18px 20px;
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 12px;
-    border-left: 4px solid var(--accent, #405189);
-    transition: box-shadow .2s, transform .2s;
-}
-.at-kpi-card:hover {
-    box-shadow: 0 6px 20px rgba(64,81,137,.1);
-    transform: translateY(-2px);
-}
-.at-kpi-left { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
-
-.at-kpi-icon {
-    width: 46px; height: 46px; border-radius: 11px;
-    background: color-mix(in srgb, var(--accent, #405189) 12%, transparent);
-    color: var(--accent, #405189);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; flex-shrink: 0;
-}
-.at-kpi-body { flex: 1; min-width: 0; }
-.at-kpi-label { font-size: 11px; color: #878a99; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.at-kpi-value { font-size: 22px; font-weight: 800; color: var(--accent, #405189); line-height: 1.2; }
-.at-kpi-sub   { font-size: 11px; color: #adb5bd; margin-top: 2px; }
-
-.at-kpi-trend { font-size: 20px; flex-shrink: 0; }
-.at-up { color: #0ab39c; }
-.at-dn { color: #f06548; }
-
-/* ── Card ─────────────────────────────────────────────────── */
-.at-card {
-    background: #fff;
-    border: 1px solid #e9ecef;
-    border-radius: 14px;
-    overflow: hidden;
-}
-.at-card-head {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    padding: 18px 22px 0; gap: 10px;
-}
-.at-card-title { font-size: 14px; font-weight: 700; color: #212529; }
-.at-card-sub   { font-size: 11px; color: #878a99; margin-top: 3px; }
-.at-card-body  { padding: 14px 22px 18px; }
-.at-card-body.at-flex-center { display: flex; justify-content: center; align-items: center; }
-
-/* ── Legend Pills ─────────────────────────────────────────── */
-.at-legend-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
-.at-pill {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
-    background: color-mix(in srgb, var(--c, #405189) 12%, transparent);
-    color: var(--c, #405189);
-}
-.at-pill::before {
-    content: ''; width: 7px; height: 7px; border-radius: 50%;
-    background: var(--c, #405189); display: inline-block;
-}
-
-/* ── Badge ────────────────────────────────────────────────── */
-.at-badge-ok {
-    padding: 4px 10px; background: rgba(240,101,72,.1);
-    color: #f06548; border-radius: 6px;
-    font-size: 11px; font-weight: 600; white-space: nowrap;
-}
-
-/* ── Grid Layouts ─────────────────────────────────────────── */
-.at-row-6-4 {
-    display: grid;
-    grid-template-columns: 6fr 4fr;
+.qlms-hero-left {
+    display: flex;
+    align-items: center;
     gap: 18px;
-}
-.at-row-half {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 18px;
+    flex: 1;
+    min-width: 0;
 }
 
-/* ── Stat 4 ───────────────────────────────────────────────── */
-.at-stat4 {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-}
-.at-stat-card {
-    background: #fff;
-    border: 1px solid #e9ecef;
-    border-radius: 14px;
-    padding: 24px 20px;
-    display: flex; flex-direction: column; align-items: center;
-    gap: 8px; text-align: center;
-    transition: box-shadow .2s, transform .2s;
-    border-top: 4px solid var(--c, #405189);
-}
-.at-stat-card:hover {
-    box-shadow: 0 6px 20px rgba(0,0,0,.07);
-    transform: translateY(-2px);
-}
-.at-stat-icon { font-size: 28px; color: var(--c, #405189); }
-.at-stat-val  { font-size: 26px; font-weight: 800; color: #212529; }
-.at-stat-lbl  { font-size: 12px; color: #878a99; }
-
-/* ── Validasi Summary ─────────────────────────────────────── */
-.at-validasi-summary {
-    display: flex; align-items: center;
-    flex-wrap: wrap; gap: 0;
-    background: #f8f9fc; border-radius: 12px;
-    overflow: hidden;
-}
-.at-vs-item {
-    flex: 1; min-width: 140px;
-    display: flex; align-items: center; gap: 14px;
-    padding: 20px 24px;
-}
-.at-vs-divider {
-    width: 1px; background: #e9ecef; align-self: stretch;
+.qlms-hero-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
     flex-shrink: 0;
 }
-.at-vs-icon {
-    width: 42px; height: 42px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px; flex-shrink: 0;
-}
-.at-vs-val  { font-size: 20px; font-weight: 800; color: #212529; }
-.at-vs-lbl  { font-size: 11px; color: #878a99; margin-top: 2px; }
 
-.at-vs-total .at-vs-icon { background: rgba(64,81,137,.12); color: #405189; }
-.at-vs-ok    .at-vs-icon { background: rgba(10,179,156,.12); color: #0ab39c; }
-.at-vs-fg    .at-vs-icon { background: rgba(75,147,247,.12); color: #4b93f7; }
-.at-vs-pct   .at-vs-icon { background: rgba(247,184,75,.12); color: #f7b84b; }
-.at-vs-tat   .at-vs-icon { background: rgba(111,66,193,.12); color: #6f42c1; }
-.at-vs-pass  .at-vs-icon { background: rgba(240,101,72,.12); color: #f06548; }
-
-/* ── Skeleton ─────────────────────────────────────────────── */
-@keyframes at-shimmer {
-    0%   { background-position: -600px 0; }
-    100% { background-position:  600px 0; }
+.qlms-hero-tag {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 20px;
+    padding: 2px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
 }
-.at-shimmer {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
-    background-size: 1200px 100%;
-    animation: at-shimmer 1.5s infinite linear;
+
+.qlms-hero-name {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    line-height: 1.25;
+}
+
+.qlms-hero-desc {
+    font-size: 12.5px;
+    opacity: 0.75;
+    margin: 0;
+}
+
+.qlms-hero-right {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.qlms-hero-clock-block {
+    text-align: right;
+}
+.qlms-clock {
+    font-size: 28px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+    line-height: 1;
+}
+.qlms-date {
+    font-size: 11px;
+    opacity: 0.65;
+    margin-top: 2px;
+}
+
+.qlms-periode-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 14px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.qlms-refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 18px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    backdrop-filter: blur(4px);
+}
+.qlms-refresh-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.27);
+}
+.qlms-refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════
+   OVERVIEW STRIP
+═══════════════════════════════════════════════════ */
+.qlms-strip-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0;
+}
+
+.qlms-strip-box {
+    padding: 12px 16px;
+    border-right: 1px solid #f0f0f0;
+    border-top: 3px solid var(--strip-c, #405189);
+    background: #fff;
+    transition: background 0.15s;
+}
+.qlms-strip-box:first-child {
+    border-radius: 0 0 0 8px;
+}
+.qlms-strip-box:last-child {
+    border-right: none;
+    border-radius: 0 0 8px 0;
+}
+.qlms-strip-box:hover {
+    background: #f8f9fc;
+}
+
+.qlms-strip-val {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--strip-c, #405189);
+    line-height: 1.1;
+    margin-bottom: 3px;
+}
+.qlms-strip-lbl {
+    font-size: 12px;
+    font-weight: 600;
+    color: #343a40;
+    margin-bottom: 1px;
+}
+.qlms-strip-sub {
+    font-size: 10.5px;
+    color: #adb5bd;
+}
+
+/* ═══════════════════════════════════════════════════
+   VALIDASI GRID
+═══════════════════════════════════════════════════ */
+.qlms-validasi-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    background: #f8f9fc;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.qlms-vs-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.qlms-vs-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.qlms-vs-val {
+    font-size: 20px;
+    font-weight: 800;
+    color: #212529;
+}
+.qlms-vs-lbl {
+    font-size: 11px;
+    color: #878a99;
+    margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════════
+   LEGEND PILLS
+═══════════════════════════════════════════════════ */
+.qlms-legend-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--lc, #405189) 10%, transparent);
+    color: var(--lc, #405189);
+}
+.qlms-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--lc, #405189);
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION LABEL
+═══════════════════════════════════════════════════ */
+.qlms-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #878a99;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ═══════════════════════════════════════════════════
+   ICON BOXES (pengganti avatar-title Velzon)
+═══════════════════════════════════════════════════ */
+.qlms-icon-sm {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.qlms-icon-lg {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ═══════════════════════════════════════════════════
+   SKELETON / SHIMMER
+═══════════════════════════════════════════════════ */
+@keyframes qlms-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+.qlms-shimmer {
+    background: linear-gradient(90deg, #f0f2f5 25%, #e6e9ef 50%, #f0f2f5 75%);
+    background-size: 200% 100%;
+    animation: qlms-shimmer 1.4s infinite;
     border-radius: 6px;
 }
-.at-sk.at-kpi-card { pointer-events: none; }
-.at-sk-icon  { width: 46px; height: 46px; border-radius: 11px; flex-shrink: 0; }
-.at-sk-line  { height: 13px; border-radius: 4px; }
-.at-sk-line.w55 { width: 55%; }
-.at-sk-line.w35 { width: 35%; }
-.at-sk-line.w45 { width: 45%; }
-.mb2 { margin-bottom: 8px; }
 
-.at-chart-sk { height: 300px; border-radius: 8px; }
-.at-donut-sk { width: 200px; height: 200px; border-radius: 50%; }
-.at-validasi-sk { display: flex; gap: 12px; height: 84px; }
-.at-validasi-sk-item { flex: 1; border-radius: 10px; }
-
-/* ── Spinner ──────────────────────────────────────────────── */
-@keyframes at-spin { to { transform: rotate(360deg); } }
-.at-spin { display: inline-block; animation: at-spin .7s linear infinite; }
-
-/* ── Responsive ───────────────────────────────────────────── */
-@media (max-width: 1200px) {
-    .at-kpi6   { grid-template-columns: repeat(3, 1fr); }
-    .at-stat4  { grid-template-columns: repeat(2, 1fr); }
+.qlms-sk-box {
+    background: #fff !important;
+    border-top-color: #e9ecef !important;
 }
+.qlms-sk-line {
+    height: 12px;
+    border-radius: 4px;
+}
+
+.qlms-chart-sk {
+    height: 300px;
+}
+.qlms-donut-sk {
+    width: 210px;
+    height: 210px;
+    border-radius: 50%;
+}
+
+/* ═══════════════════════════════════════════════════
+   SPINNER
+═══════════════════════════════════════════════════ */
+@keyframes qlms-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+.qlms-spin {
+    display: inline-block;
+    animation: qlms-spin 0.7s linear infinite;
+}
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════ */
+@media (max-width: 1400px) {
+    .qlms-strip-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .qlms-validasi-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .qlms-strip-box:nth-child(3) {
+        border-right: none;
+    }
+    .qlms-strip-box:nth-child(3),
+    .qlms-strip-box:nth-child(4),
+    .qlms-strip-box:nth-child(5),
+    .qlms-strip-box:nth-child(6) {
+        border-top-width: 2px;
+    }
+}
+
 @media (max-width: 992px) {
-    .at-row-6-4  { grid-template-columns: 1fr; }
-    .at-row-half { grid-template-columns: 1fr; }
-    .at-kpi6     { grid-template-columns: repeat(2, 1fr); }
-    .at-hero-title { font-size: 17px; }
+    .qlms-strip-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .qlms-validasi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .qlms-strip-box:nth-child(2n) {
+        border-right: none;
+    }
+    .qlms-strip-box:nth-child(3),
+    .qlms-strip-box:nth-child(4) {
+        border-top-width: 2px;
+    }
+    .qlms-hero-name {
+        font-size: 17px;
+    }
+    .qlms-clock {
+        font-size: 22px;
+    }
 }
-@media (max-width: 700px) {
-    .at-kpi6     { grid-template-columns: 1fr 1fr; }
-    .at-stat4    { grid-template-columns: 1fr 1fr; }
-    .at-hero     { padding: 20px 16px; }
-    .at-clock-time { font-size: 20px; }
-    .at-hero-title { font-size: 15px; }
-    .at-hero-icon  { width: 44px; height: 44px; font-size: 22px; }
-    .at-validasi-summary { flex-direction: column; }
-    .at-vs-divider { width: 100%; height: 1px; align-self: auto; }
+
+@media (max-width: 768px) {
+    .qlms-strip-val {
+        font-size: 20px;
+    }
+    .qlms-hero {
+        padding: 22px 18px;
+    }
+    .qlms-hero-avatar {
+        width: 48px;
+        height: 48px;
+        font-size: 24px;
+    }
+    .qlms-hero-name {
+        font-size: 16px;
+    }
+    .qlms-clock {
+        font-size: 20px;
+    }
+    .qlms-hero-right {
+        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        gap: 8px;
+    }
 }
-@media (max-width: 480px) {
-    .at-kpi6  { grid-template-columns: 1fr; }
-    .at-stat4 { grid-template-columns: 1fr 1fr; }
-    .at-kpi-value { font-size: 18px; }
-    .at-legend-pills { display: none; }
+
+@media (max-width: 576px) {
+    .qlms-strip-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .qlms-validasi-grid {
+        grid-template-columns: repeat(1, 1fr);
+    }
+    .qlms-strip-val {
+        font-size: 18px;
+    }
+    .qlms-hero-left {
+        gap: 12px;
+    }
+    .qlms-hero-tag {
+        display: none;
+    }
 }
 </style>

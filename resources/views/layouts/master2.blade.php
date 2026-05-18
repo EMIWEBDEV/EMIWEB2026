@@ -499,17 +499,18 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const modal = new bootstrap.Modal(document.getElementById('EmiLab-Informasi'));
+        const modalEl = document.getElementById('EmiLab-Informasi');
         const understandBtn = document.getElementById('understandBtn');
-        
-       
+        if (!modalEl || !understandBtn) return;
+
+        const modal = new bootstrap.Modal(modalEl);
         const notificationStatus = localStorage.getItem('betaNotification');
         const now = new Date().getTime();
-        
+
         if (!notificationStatus || (now - JSON.parse(notificationStatus).timestamp) > 20 * 60 * 1000) {
             modal.show();
         }
-        
+
         understandBtn.addEventListener('click', function() {
             localStorage.setItem('betaNotification', JSON.stringify({
                 understood: true,

@@ -94,7 +94,7 @@
                 {{-- Mobile page title (center) --}}
                 <div class="d-flex d-md-none align-items-center ms-1">
                     <img src="{{ URL::asset('assets/images/evo.png') }}"
-                         alt="EMI Lab" height="28"
+                         alt="Laboratory Information System" height="28"
                          style="border-radius:6px; opacity:.9;">
                 </div>
             </div>

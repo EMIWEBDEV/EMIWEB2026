@@ -105,7 +105,7 @@
     </header>
 
     <footer>
-        Dokumen ini dibuat secara otomatis oleh EMI LAB | Halaman <span class="pagenum"></span>
+        Dokumen ini dibuat secara otomatis oleh Laboratory Information System | Halaman <span class="pagenum"></span>
     </footer>
 
     <main>

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 use Vinkla\Hashids\Facades\Hashids;
 
@@ -14,6 +15,7 @@ class ManagementAksesKontenController extends Controller
 {
     public function index()
     {
+        // dd(Session::get("user_permissions"));
         return inertia("vue/dashboard/management-konten/HomeManagementKonten");
     }
 
