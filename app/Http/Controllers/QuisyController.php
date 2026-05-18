@@ -350,7 +350,7 @@ class QuisyController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('ProgressAnalisaSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('QuisyController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,
@@ -957,7 +957,7 @@ class QuisyController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('QuisyController')->error('Error: ' . $e->getMessage());
+            Log::channel('QuisyController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,
@@ -1145,7 +1145,7 @@ class QuisyController extends Controller
             ];
             
             DB::table('N_EMI_LAB_Activity_Produksi_Sampel')->insert($payloadActivityProduksiSampel);
-            Log::channel('QuisyController')->error('Error: ' . $e->getMessage());
+            Log::channel('QuisyController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,
@@ -1217,7 +1217,7 @@ class QuisyController extends Controller
             ], 200);
         }catch(\Exception $e){
             DB::rollback();
-            Log::channel('QuisyController')->error('Error: ' . $e->getMessage());
+            Log::channel('QuisyController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,

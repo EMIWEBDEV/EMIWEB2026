@@ -52,7 +52,7 @@ class RoleMenuController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::channel('RoleMenuController')->error('Error: ' . $e->getMessage());
+            Log::channel('RoleMenuController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status'  => 500,
@@ -100,7 +100,7 @@ class RoleMenuController extends Controller
                 'total_data' => $total
             ]);
         } catch (\Exception $e) {
-            Log::channel('RoleMenuController')->error('Error: ' . $e->getMessage());
+            Log::channel('RoleMenuController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,
@@ -147,7 +147,7 @@ class RoleMenuController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('RoleMenuController')->error('Error: ' . $e->getMessage());
+            Log::channel('RoleMenuController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,
@@ -204,7 +204,7 @@ class RoleMenuController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('RoleMenuController')->error('Error: ' . $e->getMessage());
+            Log::channel('RoleMenuController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false, // Diubah menjadi false karena ini blok error
                 'status' => 500,
@@ -253,7 +253,7 @@ class RoleMenuController extends Controller
                 'data'    => $getData,
             ]);
         } catch (\Exception $e) {
-            Log::channel('RoleMenuController')->error('Error getAllMenuByUser: ' . $e->getMessage());
+            Log::channel('RoleMenuController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -290,7 +290,7 @@ class RoleMenuController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('RoleMenuController')->error('Error reorder: ' . $e->getMessage());
+            Log::channel('RoleMenuController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -329,7 +329,7 @@ class RoleMenuController extends Controller
             return response()->json(['success' => true, 'status' => 200, 'message' => 'Data Berhasil Diupdate']);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('RoleMenuController')->error('Error updatePageAccess: ' . $e->getMessage());
+            Log::channel('RoleMenuController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json(['success' => false, 'status' => 500, 'message' => 'Terjadi Kesalahan'], 500);
         }
     }
@@ -357,7 +357,7 @@ class RoleMenuController extends Controller
                 'data'    => $menus,
             ]);
         } catch (\Exception $e) {
-            Log::channel('RoleMenuController')->error('Error getAvailableMenus: ' . $e->getMessage());
+            Log::channel('RoleMenuController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -430,7 +430,7 @@ class RoleMenuController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('RoleMenuController')->error('Error batchSavePageAccess: ' . $e->getMessage());
+            Log::channel('RoleMenuController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -497,7 +497,7 @@ class RoleMenuController extends Controller
 
         }catch(\Exception $e){
             DB::rollBack();
-            Log::channel('RoleMenuController')->error('Error: ' . $e->getMessage());
+            Log::channel('RoleMenuController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,

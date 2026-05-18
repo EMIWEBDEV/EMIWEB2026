@@ -1148,7 +1148,7 @@ class FormulatorValidasiHirarkiController extends Controller
                 'v1'
             );
         } catch (\Exception $e) {
-            \Log::channel("FormulatorValidasiHirarkiController")->error($e->getMessage());
+            Log::channel('FormulatorValidasiHirarkiController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error(
                 'Terjadi kesalahan sistem',
                 500,

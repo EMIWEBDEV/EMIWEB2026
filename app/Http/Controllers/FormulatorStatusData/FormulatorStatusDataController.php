@@ -199,7 +199,7 @@ class FormulatorStatusDataController extends Controller
             );
 
         } catch (\Exception $e) {
-            \Log::channel("FormulatorValidasiHirarkiController")->error($e->getMessage());
+            Log::channel('FormulatorStatusDataController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error('Terjadi kesalahan sistem', 500, 'v1');
         }
     }

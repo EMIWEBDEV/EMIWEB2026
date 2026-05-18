@@ -31,7 +31,7 @@ class KlasifikasiJenisAnalisaController extends Controller
             });
             return ResponseHelper::success($encodedData, "Data Ditemukan !", 200);
         }catch(\Exception $e){
-            Log::channel("KlasifikasiJenisAnalisaController")->error($e->getMessage());
+            Log::channel('KlasifikasiJenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error("Terjadi Kesalahan", 500);
         }
     }

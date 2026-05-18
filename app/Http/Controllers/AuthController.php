@@ -67,7 +67,7 @@ class AuthController extends Controller
                 'result' => $user->UserId
             ], 200);
         } catch (\Exception $e) {
-            Log::error('Login Error: ' . $e->getMessage());
+            Log::channel('AuthController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -240,7 +240,7 @@ class AuthController extends Controller
             return redirect($firstRedirectUrl)->with('success', 'Login berhasil!');
 
         } catch (\Exception $e) {
-            Log::channel('AuthController')->error('Login Error: ' . $e->getMessage() . ' on line ' . $e->getLine());
+            Log::channel('AuthController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return back()->with('error', "Terjadi Kesalahan Sistem.");
         }
     }
@@ -283,7 +283,7 @@ class AuthController extends Controller
                 ]);
             return back()->with('success', "Berhasil Mengupdate Password");
         } catch (\Exception $e) {
-            Log::channel('AuthController')->error('Login Error: ' . $e->getMessage());
+            Log::channel('AuthController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return back()->with('error', "Terjadi Kesalahan");
         }
     }
@@ -322,7 +322,7 @@ class AuthController extends Controller
 
             return back()->with('success', "Berhasil Mengupdate Pin");
         } catch (\Exception $e) {
-            Log::channel('AuthController')->error('Login Error: ' . $e->getMessage());
+            Log::channel('AuthController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return back()->with('error', "Terjadi Kesalahan");
         }
     }
@@ -538,7 +538,7 @@ class AuthController extends Controller
             ], 200);
             
         } catch (\Exception $e) {
-            Log::channel('AuthController')->error('Login Error: ' . $e->getMessage());
+            Log::channel('AuthController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -569,7 +569,7 @@ class AuthController extends Controller
                 'result' => $getData,
             ]);
         } catch (\Exception $e) {
-            Log::channel('AuthController')->error('Login Error: ' . $e->getMessage());
+            Log::channel('AuthController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -627,14 +627,12 @@ class AuthController extends Controller
                 'result' => $data,
             ], 200);
        }catch(\Exception $e){
-        Log::channel('AuthController')->error('Login Error: ' . $e->getMessage());
+        Log::channel('AuthController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
-                'message' => [
-                    'error' => $e->getMessage()
-                ]
-            ]);
+                'message' => 'Terjadi kesalahan pada server.',
+            ], 500);
        }
     }
 
@@ -673,7 +671,7 @@ class AuthController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('AuthController')->error('Login Error: ' . $e->getMessage());
+            Log::channel('AuthController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,

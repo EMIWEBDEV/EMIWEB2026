@@ -63,7 +63,7 @@ class BarangAnalisaController extends Controller
             ], 200);
 
         } catch(\Exception $e) {
-            Log::channel('BarangAnalisaController')->error('Login Error: ' . $e->getMessage());
+            Log::channel('BarangAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -158,7 +158,7 @@ class BarangAnalisaController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('BarangAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('BarangAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -272,7 +272,7 @@ class BarangAnalisaController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('BarangAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('BarangAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -297,7 +297,7 @@ class BarangAnalisaController extends Controller
                 'Data Jenis Analisa berhasil diambil'
             );
         } catch (\Exception $e) {
-            Log::channel('BarangAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('BarangAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -320,7 +320,7 @@ class BarangAnalisaController extends Controller
                 'Data Varian Barang berhasil diambil'
             );
         } catch (\Exception $e) {
-           Log::channel('BarangAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('BarangAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -347,7 +347,7 @@ class BarangAnalisaController extends Controller
                 'Data Mesin berhasil diambil'
             );
         } catch (\Exception $e) {
-            Log::channel('BarangAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('BarangAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -368,7 +368,7 @@ class BarangAnalisaController extends Controller
                 'Data User berhasil diambil'
             );
         } catch (\Exception $e) {
-            Log::channel('BarangAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('BarangAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -525,7 +525,7 @@ class BarangAnalisaController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('BarangAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('BarangAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,

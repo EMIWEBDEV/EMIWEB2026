@@ -79,7 +79,7 @@ class JenisAnalisaBerkalaController extends Controller
                 'total_data' => $total
             ]);
         } catch (\Exception $e) {
-            Log::channel('JenisAnalisaBerkalaController')->error('Error: ' . $e->getMessage());
+            Log::channel('JenisAnalisaBerkalaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -152,7 +152,7 @@ class JenisAnalisaBerkalaController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('JenisAnalisaBerkalaController')->error('Error: ' . $e->getMessage());
+            Log::channel('JenisAnalisaBerkalaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -189,7 +189,7 @@ class JenisAnalisaBerkalaController extends Controller
                 'result' => $getData,
             ], 200);
         }catch(\Exception $e){
-            Log::channel('JenisAnalisaBerkalaController')->error('Error: ' . $e->getMessage());
+            Log::channel('JenisAnalisaBerkalaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -224,7 +224,7 @@ class JenisAnalisaBerkalaController extends Controller
                 'result' => $getData,
             ], 200);
         }catch(\Exception $e){
-            Log::channel('JenisAnalisaBerkalaController')->error('Error: ' . $e->getMessage());
+            Log::channel('JenisAnalisaBerkalaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -331,7 +331,7 @@ class JenisAnalisaBerkalaController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('JenisAnalisaBerkalaController')->error('Error: ' . $e->getMessage());
+            Log::channel('JenisAnalisaBerkalaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status'  => 500,
@@ -405,7 +405,7 @@ class JenisAnalisaBerkalaController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('JenisAnalisaBerkalaController')->error('Error: ' . $e->getMessage());
+            Log::channel('JenisAnalisaBerkalaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,

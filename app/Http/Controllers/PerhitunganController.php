@@ -141,7 +141,7 @@ class PerhitunganController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('PerhitunganController')->error('Error: ' . $e->getMessage());
+            Log::channel('PerhitunganController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -250,7 +250,7 @@ class PerhitunganController extends Controller
                 'total_data' => $total
             ], 200);
         } catch (\Exception $e) {
-            Log::channel('PerhitunganController')->error('Error: ' . $e->getMessage());
+            Log::channel('PerhitunganController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -315,7 +315,7 @@ class PerhitunganController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('PerhitunganController')->error('Error: ' . $e->getMessage());
+            Log::channel('PerhitunganController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -425,7 +425,7 @@ class PerhitunganController extends Controller
             ], 200);
         }catch(\Exception $e){
             DB::rollBack();
-            Log::channel('PerhitunganController')->error('Error: ' . $e->getMessage());
+            Log::channel('PerhitunganController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,

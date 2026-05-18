@@ -401,7 +401,7 @@ class FinalisasiLabProduksiTrialController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('FinalisasiLabProduksiTrialController')->error('Error: ' . $e->getMessage());
+            Log::channel('FinalisasiLabProduksiTrialController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -634,7 +634,7 @@ class FinalisasiLabProduksiTrialController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('FinalisasiLabProduksiTrialController')->error('storeBulk Error: ' . $e->getMessage());
+            Log::channel('FinalisasiLabProduksiTrialController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,

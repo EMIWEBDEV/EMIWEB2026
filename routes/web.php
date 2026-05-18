@@ -169,6 +169,7 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get('/lab/data-sampel/{no_sampel}', [UjiSampelController::class, 'getDataParameterUjiSampelByNoSampel'])->name('labujisampel.apidataujisampel');
     Route::get('/lab/detail-data-sampel/{no_sampel}', [UjiSampelController::class, 'getDetailSampelUji']);
     Route::get('/api/v2/lab/detail-data-sampel/{no_sampel}', [UjiSampelController::class, 'getDetailSampelUjiV2']);
+    Route::get('/api/v1/lab/daftar-sampel', [UjiSampelController::class, 'getDaftarLabPaginasi']);
     Route::get('/api/v1/lab/resampling/detail-data-sampel/{no_sampel}/{no_sub_sampel}/{no_resampling}/{id_jenis_analisa}', [UjiSampelController::class, 'getDetailResamplingV1']);
     Route::get('/api/v1/lab/resampling-detail-data-sampel/{No_Sampel_Resampling_Origin}/{No_Sampel_Resampling}/{Id_Jenis_Analisa}', [ResamplingController::class, 'getDetailSampelResampling']);
     Route::get('/api/v1/lab/hasil-analisa/multi/{id_jenis_analisa}/{no_po_sampel}/{flag_multi}/{no_sub}', [UjiSampelController::class, 'getDataHasilAnalisaPerhitunganByMulti']);

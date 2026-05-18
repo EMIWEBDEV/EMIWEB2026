@@ -134,7 +134,7 @@ class UjiValidasiFinalController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('UjiValidasiFinalController')->error('Error: ' . $e->getMessage());
+            Log::channel('UjiValidasiFinalController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,

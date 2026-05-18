@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FormulatorTrialSampel\FormulatorTrialSampelController;
 
 Route::get('/trial-sampel', [FormulatorTrialSampelController::class, "index"])->middleware('autotrack', 'permission:Trial_Sampel,VIEW');
+Route::get('/uji-sampel', [FormulatorTrialSampelController::class, "indexUjiSampel"])->middleware('autotrack', 'permission:Trial_Sampel,VIEW');
+Route::get('/api/v1/formulator/uji-sampel/daftar', [FormulatorTrialSampelController::class, 'getDaftarSampelPaginasi']);
 Route::get('/trial-sampel-testing', [FormulatorTrialSampelController::class, "indexTesting"]);
 Route::get('/api/v1/formulator/{no_PO_Multiqr}/multi-print/{id_jenis_analisa}/resampling', [FormulatorTrialSampelController::class, 'getPoSampelMultiQrDetail']);
 Route::get('/api/v1/formulator/detail-data-sampel/{no_sampel}', [FormulatorTrialSampelController::class, 'getDetailSampelUjiV2']);

@@ -30,7 +30,7 @@ class SubMenuController extends Controller
                 'result' => $getData,
             ]);
         } catch (\Exception $e) {
-            Log::channel('SubMenuController')->error('Error: ' . $e->getMessage());
+            Log::channel('SubMenuController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,

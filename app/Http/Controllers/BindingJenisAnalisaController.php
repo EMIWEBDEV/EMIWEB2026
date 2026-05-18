@@ -65,7 +65,7 @@ class BindingJenisAnalisaController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('BindingJenisAnalisaController')->error($e->getMessage());
+            Log::channel('BindingJenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -94,7 +94,7 @@ class BindingJenisAnalisaController extends Controller
             }
             return ResponseHelper::success($getDataJenisAnalisa, "Data Ditemukan !", 200);
         }catch(\Exception $e){
-            Log::channel("BindingJenisAnalisaController")->error($e->getMessage());
+            Log::channel('BindingJenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error("Terjadi Kesalahan", 500);
         }
     }
@@ -113,7 +113,7 @@ class BindingJenisAnalisaController extends Controller
             }
             return ResponseHelper::success($getDataQualityControl, "Data Ditemukan !", 200);
         }catch(\Exception $e){
-            Log::channel("BindingJenisAnalisaController")->error($e->getMessage());
+            Log::channel('BindingJenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error("Terjadi Kesalahan", 500);
         }
     }
@@ -196,7 +196,7 @@ class BindingJenisAnalisaController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('BindingJenisAnalisaController')->error('Error Binding store: ' . $e->getMessage());
+            Log::channel('BindingJenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error(
                 "Terjadi Kesalahan Sistem",
                 500
@@ -315,7 +315,7 @@ class BindingJenisAnalisaController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('BindingJenisAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('BindingJenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -392,7 +392,7 @@ class BindingJenisAnalisaController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('BindingJenisAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('BindingJenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -512,7 +512,7 @@ class BindingJenisAnalisaController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('BindingJenisAnalisaController')->error('Error Binding update: ' . $e->getMessage());
+            Log::channel('BindingJenisAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error("Terjadi Kesalahan Sistem: " . $e->getMessage(), 500);
         }
     }

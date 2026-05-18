@@ -75,7 +75,7 @@ class FormulatorTrialSampelController extends Controller
             return number_format((float)$finalResult, $decimalPlaces, '.', '');
 
         } catch (\Throwable $e) {
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return number_format(0, $decimalPlaces, '.', '');
         }
     }
@@ -142,7 +142,7 @@ class FormulatorTrialSampelController extends Controller
             return number_format((float)$finalResult, $decimalPlaces, '.', '');
 
         } catch (\Throwable $e) {
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return number_format(0, $decimalPlaces, '.', '');
         }
     }
@@ -431,7 +431,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -748,7 +748,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -1088,7 +1088,7 @@ class FormulatorTrialSampelController extends Controller
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -1545,7 +1545,7 @@ class FormulatorTrialSampelController extends Controller
             if (isset($gcsFilePath) && Storage::disk('gcs')->exists($gcsFilePath)) {
                 Storage::disk('gcs')->delete($gcsFilePath);
             }
-            Log::channel("FormulatorTrialSampelController")->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response('FormulatorTrialSampelController')->json([
                 'success' => false,
                 'status' => 500,
@@ -1608,7 +1608,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             // Kalau gagal, catch error-nya biar gampang di-debug
-            Log::channel("FormulatorTrialSampelController")->error('Error Testing GCS: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             
             return response()->json([
                 'success' => false,
@@ -2085,7 +2085,7 @@ class FormulatorTrialSampelController extends Controller
             if (isset($gcsFilePath) && Storage::disk('gcs')->exists($gcsFilePath)) {
                 Storage::disk('gcs')->delete($gcsFilePath);
             }
-            Log::channel('FormulatorTrialSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -2499,7 +2499,7 @@ class FormulatorTrialSampelController extends Controller
                     }
                 }
             }
-            Log::channel('FormulatorTrialSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -2978,7 +2978,7 @@ class FormulatorTrialSampelController extends Controller
                     }
                 }
             }
-            Log::channel('FormulatorTrialSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -3372,7 +3372,7 @@ class FormulatorTrialSampelController extends Controller
             if (isset($gcsFilePath) && Storage::disk('gcs')->exists($gcsFilePath)) {
                 Storage::disk('gcs')->delete($gcsFilePath);
             }
-            Log::channel('FormulatorTrialSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -3818,7 +3818,7 @@ class FormulatorTrialSampelController extends Controller
             if (isset($gcsFilePath) && Storage::disk('gcs')->exists($gcsFilePath)) {
                 Storage::disk('gcs')->delete($gcsFilePath);
             }
-            Log::channel('FormulatorTrialSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -4203,7 +4203,7 @@ class FormulatorTrialSampelController extends Controller
                     }
                 }
             }
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -4668,7 +4668,7 @@ class FormulatorTrialSampelController extends Controller
                 }
             }
 
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -5014,7 +5014,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -5361,7 +5361,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -5706,7 +5706,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6050,7 +6050,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6231,7 +6231,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6437,7 +6437,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6591,7 +6591,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6779,7 +6779,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -6905,7 +6905,7 @@ class FormulatorTrialSampelController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -7030,7 +7030,7 @@ class FormulatorTrialSampelController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -7177,7 +7177,7 @@ class FormulatorTrialSampelController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -7227,7 +7227,7 @@ class FormulatorTrialSampelController extends Controller
 
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+                    Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                     return response()->json([
                         'success' => false,
                         'status' => 500,
@@ -7252,7 +7252,7 @@ class FormulatorTrialSampelController extends Controller
 
                 }catch(\Exception $e){
                     DB::rollBack();
-                    Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+                    Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                     return response()->json([
                         'success' => false,
                         'status' => 500,
@@ -7331,7 +7331,7 @@ class FormulatorTrialSampelController extends Controller
                         return ResponseHelper::success(null, "Data berhasil diupdate dan status penyelesaian telah diperiksa.", 200);
                     } catch (\Exception $e) {
                         DB::rollBack();
-                        Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+                        Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                         return response()->json([
                             'success' => false,
                             'status' => 500,
@@ -7377,7 +7377,7 @@ class FormulatorTrialSampelController extends Controller
                         return ResponseHelper::success(null, "Data berhasil diupdate dan status penyelesaian telah diperiksa.", 200);
                     } catch (\Exception $e) {
                         DB::rollBack();
-                        Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+                        Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                         return response()->json([
                             'success' => false,
                             'status' => 500,
@@ -7455,7 +7455,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -7798,7 +7798,7 @@ class FormulatorTrialSampelController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::channel('UjiSampelController')->error('Error getDetailSampelUjiV2: ' . $e->getMessage(), [
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'no_sampel' => $no_sampel,
                 'line' => $e->getLine(),
                 'file' => $e->getFile(),
@@ -7868,7 +7868,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             // Menangkap error misal Hashids bermasalah, dll.
-            Log::channel('UjiSampelController')->error('Error getDetailSampelUjiV2: ' . $e->getMessage(), [
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'no_sampel' => $no_sampel,
                 'line'      => $e->getLine(),
                 'file'      => $e->getFile(),
@@ -8186,14 +8186,11 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
 
-            Log::channel('FormulatorTrialSampelController')->error(
-                'Error getParameterAndPerhitunganOld: ' . $e->getMessage(),
-                [
-                    'id_analisa' => $id_analisa,
-                    'line' => $e->getLine(),
-                    'file' => $e->getFile()
-                ]
-            );
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
+                'id_analisa' => $id_analisa,
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -8279,14 +8276,11 @@ class FormulatorTrialSampelController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('FormulatorTrialSampelController')->error(
-                'Error getParameterAndPerhitunganOldTesting: ' . $e->getMessage(),
-                [
-                    'id_analisa' => $id_analisa,
-                    'line'       => $e->getLine(),
-                    'file'       => $e->getFile()
-                ]
-            );
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
+                'id_analisa' => $id_analisa,
+                'line'       => $e->getLine(),
+                'file'       => $e->getFile()
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -8677,7 +8671,7 @@ class FormulatorTrialSampelController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('ujiSampelController')->error('Error getPoSampelMultiQrDetailV3: ' . $e->getMessage(), [
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'no_sampel' => $no_sampel,
                 'no_PO_Multiqr' => $no_PO_Multiqr,
                 'line' => $e->getLine(),
@@ -8717,7 +8711,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             // Tangkap error jika kebetulan ada kesalahan sistem (misal typo dsb)
-            Log::channel('ujiSampelController')->error('Error getPoSampelMultiQrDetailV3Testing: ' . $e->getMessage(), [
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'no_sampel'     => $no_sampel,
                 'no_PO_Multiqr' => $no_PO_Multiqr,
                 'line'          => $e->getLine(),
@@ -8920,7 +8914,7 @@ class FormulatorTrialSampelController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('ujiSampelController')->error('Error getPoSampelMultiQrDetailForRumus: ' . $e->getMessage(), [
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'no_PO_Multiqr' => $no_PO_Multiqr,
                 'line'          => $e->getLine(),
                 'file'          => $e->getFile()
@@ -9476,7 +9470,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -9939,7 +9933,7 @@ class FormulatorTrialSampelController extends Controller
             return ResponseHelper::success($finalResult, 'Data Ditemukan', 200);
 
         } catch (\Exception $e) {
-            Log::channel('FormulatorTrialSampelController')->error('Error getDataTrackingInformasi: ' . $e->getMessage(), [
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
             ]);
@@ -11018,7 +11012,7 @@ class FormulatorTrialSampelController extends Controller
                 'result' => $getDataSubPo
             ], 200);
         }catch(\Exception $e){
-            Log::channel("FormulatorTrialSampelController")->error($e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -11048,7 +11042,7 @@ class FormulatorTrialSampelController extends Controller
 
             return response()->json(['success' => true, 'status' => 200, 'result' => $subPoList], 200);
         } catch (\Exception $e) {
-            Log::channel("FormulatorTrialSampelController")->error($e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json(['success' => false, 'status' => 500, 'message' => 'Terjadi Kesalahan'], 500);
         }
     }
@@ -11080,7 +11074,7 @@ class FormulatorTrialSampelController extends Controller
 
         return ResponseHelper::success($result, "Data Ditemukan", 200);
        }catch(\Exception $e){
-            Log::channel("FormulatorTrialSampelController")->error($e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error("Terjadi Kesalahan", 500);
        }
     }
@@ -11301,7 +11295,7 @@ class FormulatorTrialSampelController extends Controller
                 'result' => $ujiSampel
             ], 200);
         }catch(\Exception $e){
-            Log::channel("FormulatorTrialSampelController")->error($e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error("Terjadi Kesalahan", 500);
         }
     }
@@ -11803,7 +11797,7 @@ class FormulatorTrialSampelController extends Controller
                 200
             );
         }catch(\Exception $e){
-            Log::channel("FormulatorTrialSampelController")->error($e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error('Terjadi kesalahan pada server. Silahkan hubungi administrator.', 500);
         }
     }
@@ -12038,7 +12032,7 @@ class FormulatorTrialSampelController extends Controller
         );
 
         } catch (\Exception $e) {
-            Log::channel('FormulatorTrialSampelController')->error('Error pada function ' . __FUNCTION__, [
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -12216,7 +12210,7 @@ class FormulatorTrialSampelController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::channel("FormulatorTrialSampelController")->error($e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return \App\Helpers\ResponseHelper::error('Terjadi kesalahan pada server. Silahkan hubungi administrator.', 500);
         }
     }
@@ -12391,7 +12385,7 @@ class FormulatorTrialSampelController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::channel("FormulatorTrialSampelController")->error($e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error('Terjadi kesalahan pada server. Silahkan hubungi administrator.', 500);
         }
     }
@@ -12703,7 +12697,7 @@ class FormulatorTrialSampelController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel("FormulatorTrialSampelController")->error($e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false, 
                 'status'  => 500, 
@@ -13198,7 +13192,7 @@ class FormulatorTrialSampelController extends Controller
             );
 
         } catch(\Exception $e){
-            \Illuminate\Support\Facades\Log::error('Error Export Detail Sampel: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -13326,7 +13320,7 @@ class FormulatorTrialSampelController extends Controller
             return response()->download($zipPath)->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => false,
                     'status' => 500,
@@ -13642,7 +13636,7 @@ class FormulatorTrialSampelController extends Controller
 
                 return Excel::download(new ParticleSizeExport($reports), $fileName);
         }catch(\Exception $e){
-            Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,
@@ -13987,7 +13981,7 @@ class FormulatorTrialSampelController extends Controller
                                 $fotoBase64 = 'data:image/png;base64,' . base64_encode($fileContent);
                             }
                         } catch (\Exception $e) {
-                            \Illuminate\Support\Facades\Log::error('Gagal Tarik Foto PDF: ' . $e->getMessage());
+                            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                         }
                     }
                     
@@ -14104,8 +14098,8 @@ class FormulatorTrialSampelController extends Controller
             }
             return response()->download($zipFilePath)->deleteFileAfterSend(true);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('UjiSampelController')->error('Error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => "Error: " . $e->getMessage()], 500);
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
+            return response()->json(['success' => false, 'status' => 500, 'message' => 'Terjadi kesalahan pada server.'], 500);
         }
     }
 
@@ -14374,7 +14368,7 @@ class FormulatorTrialSampelController extends Controller
                 'Laporan_Hasil_Analisa_' . now()->format('Ymd_His') . '.xlsx'
             );
         } catch(\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -14567,7 +14561,7 @@ class FormulatorTrialSampelController extends Controller
             );
 
         } catch(\Exception $e){
-            \Illuminate\Support\Facades\Log::error('Error Export Rekap Sampel: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -14633,7 +14627,7 @@ class FormulatorTrialSampelController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel("FormulatorTrialSampelController")->error($e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status' => 500,
@@ -14719,7 +14713,7 @@ class FormulatorTrialSampelController extends Controller
 
         } catch(\Exception $e){
             DB::rollBack();
-            Log::channel("UjiSampelController")->error("ERROR FUNCTION resampelingAnalisaSingle: ". $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'status'  => 500,
@@ -14830,7 +14824,7 @@ class FormulatorTrialSampelController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('ResamplingController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,
@@ -15000,11 +14994,262 @@ class FormulatorTrialSampelController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('UjiSampelController')->error('Bulk approve error: ' . $e->getMessage());
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function indexUjiSampel()
+    {
+        return inertia('vue/lab/formulator/HomeLab')->withViewData([
+            'layout' => 'layouts.master2',
+        ]);
+    }
+
+    public function getDaftarSampelPaginasi(Request $request)
+    {
+        try {
+            $userId  = Auth::user()->UserId;
+            $days    = max(1, min(90, (int) $request->input('days', 7)));
+            $page    = max(1, (int) $request->input('page', 1));
+            $perPage = 20;
+            $filter  = $request->input('filter', 'semua');
+            $search  = trim($request->input('search', ''));
+
+            $dateFrom = now()->subDays($days - 1)->startOfDay()->toDateString();
+            $dateTo   = now()->endOfDay()->toDateString();
+
+            $summaryRow = DB::table('N_LIMS_PO_Sampel')
+                ->whereNull('Status')
+                ->whereBetween(DB::raw('CAST(Tanggal AS DATE)'), [$dateFrom, $dateTo])
+                ->when(!empty($search), function ($q) use ($search) {
+                    $q->where(function ($inner) use ($search) {
+                        $inner->where('No_Sampel', 'like', '%' . $search . '%')
+                              ->orWhere('No_Po', 'like', '%' . $search . '%')
+                              ->orWhere('Kode_Barang', 'like', '%' . $search . '%');
+                    });
+                })
+                ->selectRaw("COUNT(*) as total_count, SUM(CASE WHEN Flag_Selesai = 'Y' THEN 1 ELSE 0 END) as selesai_count")
+                ->first();
+
+            $countAll     = (int) ($summaryRow->total_count ?? 0);
+            $countSelesai = (int) ($summaryRow->selesai_count ?? 0);
+            $summary = [
+                'semua'         => $countAll,
+                'selesai'       => $countSelesai,
+                'belum_selesai' => $countAll - $countSelesai,
+            ];
+
+            if ($filter === 'selesai') {
+                $total = $countSelesai;
+            } elseif ($filter === 'belum_selesai') {
+                $total = $countAll - $countSelesai;
+            } else {
+                $total = $countAll;
+            }
+
+            $lastPage = max(1, (int) ceil($total / $perPage));
+            $page     = min($page, $lastPage);
+            $offset   = ($page - 1) * $perPage;
+
+            $samples = DB::table('N_LIMS_PO_Sampel as po')
+                ->leftJoin('EMI_Master_Mesin as m', 'po.Id_Mesin', '=', 'm.Id_Master_Mesin')
+                ->whereNull('po.Status')
+                ->whereBetween(DB::raw('CAST(po.Tanggal AS DATE)'), [$dateFrom, $dateTo])
+                ->when($filter === 'selesai', fn($q) => $q->where('po.Flag_Selesai', 'Y'))
+                ->when($filter === 'belum_selesai', fn($q) => $q->where(function ($inner) {
+                    $inner->whereNull('po.Flag_Selesai')->orWhere('po.Flag_Selesai', '!=', 'Y');
+                }))
+                ->when(!empty($search), function ($q) use ($search) {
+                    $q->where(function ($inner) use ($search) {
+                        $inner->where('po.No_Sampel', 'like', '%' . $search . '%')
+                              ->orWhere('po.No_Po', 'like', '%' . $search . '%')
+                              ->orWhere('po.Kode_Barang', 'like', '%' . $search . '%');
+                    });
+                })
+                ->select(
+                    'po.id', 'po.No_Sampel', 'po.No_Po', 'po.No_Split_Po', 'po.No_Batch',
+                    'po.Kode_Barang', 'po.Id_Mesin', 'po.Tanggal', 'po.Jam',
+                    'po.Flag_Selesai', 'po.Id_User',
+                    'm.Nama_Mesin', 'm.Flag_Multi_Qrcode', 'm.Jumlah_Print_QRCode'
+                )
+                ->orderByDesc('po.Tanggal')
+                ->orderByDesc('po.id')
+                ->skip($offset)
+                ->take($perPage)
+                ->get();
+
+            if ($samples->isEmpty()) {
+                return response()->json([
+                    'success'    => true,
+                    'status'     => 200,
+                    'message'    => 'Tidak ada sampel pada periode ini.',
+                    'result'     => [],
+                    'summary'    => $summary,
+                    'pagination' => [
+                        'total' => 0, 'per_page' => $perPage,
+                        'current_page' => 1, 'total_pages' => 1,
+                        'from' => 0, 'to' => 0,
+                    ],
+                ]);
+            }
+
+            $noSampelList   = $samples->pluck('No_Sampel')->toArray();
+            $kodeBarangList = $samples->pluck('Kode_Barang')->unique()->filter()->toArray();
+            $idMesinList    = $samples->pluck('Id_Mesin')->unique()->filter()->toArray();
+
+            $barangNameMap = collect([]);
+            if (!empty($kodeBarangList)) {
+                foreach (array_chunk($kodeBarangList, 1000) as $chunk) {
+                    $barangNameMap = $barangNameMap->concat(
+                        DB::table('N_EMI_View_Barang')
+                            ->whereIn('Kode_Barang', $chunk)
+                            ->select('Kode_Barang', DB::raw('MAX(Nama) as Nama'))
+                            ->groupBy('Kode_Barang')
+                            ->get()
+                    );
+                }
+            }
+            $barangNameMap = $barangNameMap->pluck('Nama', 'Kode_Barang');
+
+            $allAnalisaRaw = collect([]);
+            if (!empty($kodeBarangList) && !empty($idMesinList)) {
+                foreach (array_chunk($kodeBarangList, 1000) as $kodeChunk) {
+                    $allAnalisaRaw = $allAnalisaRaw->concat(
+                        DB::table('N_EMI_LAB_Barang_Analisa as ba')
+                            ->join('N_EMI_LAB_Jenis_Analisa as ja', 'ba.Id_Jenis_Analisa', '=', 'ja.id')
+                            ->whereIn('ba.Kode_Barang', $kodeChunk)
+                            ->whereIn('ba.Id_Master_Mesin', $idMesinList)
+                            ->where('ba.Id_User', $userId)
+                            ->where('ba.Flag_Aktif', 'Y')
+                            ->where('ba.Kode_Role', 'FLM')
+                            ->where('ja.Kode_Role', 'FLM')
+                            ->select('ba.Kode_Barang', 'ba.Id_Master_Mesin', 'ja.id as analisa_id', 'ja.Kode_Analisa', 'ja.Jenis_Analisa')
+                            ->get()
+                    );
+                }
+            }
+            $analisaByKey = $allAnalisaRaw->groupBy(fn($i) => $i->Kode_Barang . '|' . $i->Id_Master_Mesin);
+
+            $allUjiRaw = collect([]);
+            foreach (array_chunk($noSampelList, 2000) as $chunk) {
+                $allUjiRaw = $allUjiRaw->concat(
+                    DB::table('N_EMI_LIMS_Uji_Sampel')
+                        ->whereIn('No_Po_Sampel', $chunk)
+                        ->select('No_Po_Sampel', 'Id_Jenis_Analisa', 'Flag_Selesai', 'Flag_Multi_QrCode', 'No_Fak_Sub_Po')
+                        ->get()
+                );
+            }
+            $ujiByNoSampel = $allUjiRaw->groupBy('No_Po_Sampel');
+
+            $multiQrData = DB::table('N_LIMS_PO_Sampel_Multi_QrCode')
+                ->whereIn('No_Po_Sampel', $noSampelList)
+                ->select('No_Po_Sampel', 'Id_Po_Sampel_Multi', 'No_Po_Multi', 'Flag_Selesai')
+                ->orderBy('No_Po_Multi')
+                ->get()
+                ->groupBy('No_Po_Sampel');
+
+            $allResamplingRaw = collect([]);
+            foreach (array_chunk($noSampelList, 2000) as $chunk) {
+                $allResamplingRaw = $allResamplingRaw->concat(
+                    DB::table('N_EMI_LIMS_Uji_Sampel_Resampling_Log')
+                        ->whereIn('No_Po_Sampel', $chunk)
+                        ->whereNull('Flag_Selesai_Resampling')
+                        ->select('No_Po_Sampel', 'Id_Jenis_Analisa', 'No_Sampel_Resampling_Origin')
+                        ->get()
+                );
+            }
+            $resamplingByNoSampel = $allResamplingRaw->groupBy('No_Po_Sampel');
+
+            $result = $samples->map(function ($po) use ($analisaByKey, $ujiByNoSampel, $multiQrData, $resamplingByNoSampel, $barangNameMap) {
+                $key          = $po->Kode_Barang . '|' . $po->Id_Mesin;
+                $analisaList  = $analisaByKey->get($key, collect());
+                $ujiList      = $ujiByNoSampel->get($po->No_Sampel, collect());
+                $ujiByAnalisa = $ujiList->groupBy('Id_Jenis_Analisa');
+                $multiQrList  = $multiQrData->get($po->No_Sampel, collect());
+                $multiQrCount = $multiQrList->count();
+
+                $resamplingForSample  = $resamplingByNoSampel->get($po->No_Sampel, collect());
+                $resamplingAnalisaIds = $resamplingForSample->pluck('Id_Jenis_Analisa')->unique()->toArray();
+                $resamplingOrigins    = $resamplingForSample->pluck('No_Sampel_Resampling_Origin')->unique()->toArray();
+
+                $analisaWithStatus = $analisaList->map(function ($analisa) use ($ujiByAnalisa, $multiQrCount, $resamplingAnalisaIds) {
+                    $entries   = $ujiByAnalisa->get($analisa->analisa_id, collect());
+                    $isStarted = $entries->isNotEmpty();
+                    $isDone    = false;
+
+                    if ($isStarted) {
+                        $isMultiQR = $entries->contains(fn($e) => $e->Flag_Multi_QrCode === 'Y');
+                        if ($isMultiQR) {
+                            $done   = $entries->where('Flag_Selesai', 'Y')->unique('No_Fak_Sub_Po')->count();
+                            $isDone = $multiQrCount > 0 && $done >= $multiQrCount;
+                        } else {
+                            $isDone = $entries->every(fn($e) => $e->Flag_Selesai === 'Y');
+                        }
+                    }
+
+                    return [
+                        'id'             => Hashids::connection('custom')->encode($analisa->analisa_id),
+                        'Kode_Analisa'   => $analisa->Kode_Analisa,
+                        'Jenis_Analisa'  => $analisa->Jenis_Analisa,
+                        'is_started'     => $isStarted,
+                        'is_done'        => $isDone,
+                        'has_resampling' => in_array($analisa->analisa_id, $resamplingAnalisaIds),
+                    ];
+                });
+
+                return [
+                    'no_sampel'      => $po->No_Sampel,
+                    'no_po'          => $po->No_Po,
+                    'no_split_po'    => $po->No_Split_Po,
+                    'no_batch'       => $po->No_Batch ?? '-',
+                    'kode_barang'    => $po->Kode_Barang,
+                    'nama_barang'    => $barangNameMap->get($po->Kode_Barang, $po->Kode_Barang),
+                    'nama_mesin'     => $po->Nama_Mesin,
+                    'Id_Mesin'       => $po->Id_Mesin,
+                    'is_multi_print' => $po->Flag_Multi_Qrcode,
+                    'jumlah_print'   => $po->Jumlah_Print_QRCode,
+                    'tanggal'        => $po->Tanggal,
+                    'jam'            => $po->Jam,
+                    'is_selesai'     => $po->Flag_Selesai === 'Y',
+                    'registrar'      => $po->Id_User,
+                    'multi_qr_list'  => $multiQrList->map(fn($qr) => [
+                        'id'                   => $qr->Id_Po_Sampel_Multi,
+                        'no_po_multi'          => $qr->No_Po_Multi,
+                        'flag_selesai'         => $qr->Flag_Selesai,
+                        'is_resampling_origin' => in_array($qr->No_Po_Multi, $resamplingOrigins),
+                    ])->values(),
+                    'analisa'        => $analisaWithStatus->values(),
+                ];
+            });
+
+            $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+                $result->values()->all(), $total, $perPage, $page
+            );
+            $pg = $paginator->toArray();
+
+            return response()->json([
+                'success'    => true,
+                'status'     => 200,
+                'message'    => 'Data berhasil diambil.',
+                'result'     => $pg['data'],
+                'summary'    => $summary,
+                'pagination' => [
+                    'total'        => $pg['total'],
+                    'per_page'     => $pg['per_page'],
+                    'current_page' => $pg['current_page'],
+                    'total_pages'  => $pg['last_page'],
+                    'from'         => $pg['from'],
+                    'to'           => $pg['to'],
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::channel('FormulatorTrialSampelController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
+            return response()->json(['success' => false, 'status' => 500, 'message' => 'Terjadi kesalahan pada server.'], 500);
         }
     }
 }

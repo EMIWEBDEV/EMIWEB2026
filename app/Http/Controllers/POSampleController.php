@@ -234,7 +234,7 @@ class POSampleController extends Controller
                     
                 DB::table('N_EMI_LAB_Activity_Produksi_Sampel')->insert($payloadActivityProduksiSampel);
                 DB::rollBack();
-                Log::channel('POSampleController')->error('Error: ' . $e->getMessage());
+                Log::channel('POSampleController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                 return response()->json([
                     'success' => true,
                     'status' => 500,
@@ -492,7 +492,7 @@ class POSampleController extends Controller
                 
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    Log::channel('POSampleController')->error('Error: ' . $e->getMessage());
+                    Log::channel('POSampleController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                     return response()->json([
                         'success' => true,
                         'status' => 500,
@@ -754,7 +754,7 @@ class POSampleController extends Controller
                     DB::commit();
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    Log::channel('POSampleController')->error('Error: ' . $e->getMessage());
+                    Log::channel('POSampleController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
                     return response()->json([
                         'success' => true,
                         'status' => 500,

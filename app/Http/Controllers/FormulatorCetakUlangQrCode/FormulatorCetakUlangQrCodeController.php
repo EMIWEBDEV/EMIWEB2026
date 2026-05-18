@@ -352,7 +352,7 @@ class FormulatorCetakUlangQrCodeController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('ProgressAnalisaSampelController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorCetakUlangQrCodeController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,
@@ -959,7 +959,7 @@ class FormulatorCetakUlangQrCodeController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('QuisyController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorCetakUlangQrCodeController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,
@@ -1219,7 +1219,7 @@ class FormulatorCetakUlangQrCodeController extends Controller
             ], 200);
         }catch(\Exception $e){
             DB::rollback();
-            Log::channel('QuisyController')->error('Error: ' . $e->getMessage());
+            Log::channel('FormulatorCetakUlangQrCodeController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                     'success' => true,
                     'status' => 500,

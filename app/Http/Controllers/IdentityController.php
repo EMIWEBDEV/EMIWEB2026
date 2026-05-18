@@ -62,7 +62,7 @@ class IdentityController extends Controller
                 'total_data' => $total
             ]);
         } catch (\Exception $e) {
-            Log::channel('IdentityController')->error('Error: ' . $e->getMessage());
+            Log::channel('IdentityController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -112,7 +112,7 @@ class IdentityController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::channel('IdentityController')->error('Error: ' . $e->getMessage());
+            Log::channel('IdentityController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -163,7 +163,7 @@ class IdentityController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('IdentityController')->error('Error: ' . $e->getMessage());
+            Log::channel('IdentityController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,
@@ -208,7 +208,7 @@ class IdentityController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::channel('IdentityController')->error('Error: ' . $e->getMessage());
+            Log::channel('IdentityController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => true,
                 'status' => 500,

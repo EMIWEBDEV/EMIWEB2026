@@ -95,7 +95,7 @@ class MesinAnalisaController extends Controller
                 200
             );
         } catch (\Exception $e) {
-            Log::channel('MesinAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('MesinAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error('Terjadi Kesalahan', 500);
         }
     }
@@ -181,7 +181,7 @@ class MesinAnalisaController extends Controller
             return ResponseHelper::success([$payload], "Data Berhasil Disimpan", 201);
         } catch(\Exception $e){
             DB::rollBack();
-            Log::channel('MesinAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('MesinAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error("Terjadi Kesalahan", 500); 
         }
     }
@@ -227,7 +227,7 @@ class MesinAnalisaController extends Controller
             return ResponseHelper::success(null, 'Data Berhasil Diperbaharui', 200);
         } catch(\Exception $e){
             DB::rollBack();
-            Log::channel('MesinAnalisaController')->error('Error: ' . $e->getMessage());
+            Log::channel('MesinAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return ResponseHelper::error('Terjadi Kesalahan', 500);
         }
     }

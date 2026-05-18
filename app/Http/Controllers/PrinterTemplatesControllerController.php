@@ -153,7 +153,7 @@ class PrinterTemplatesControllerController extends Controller
 
             DB::rollback();
 
-            Log::channel('PrinterTemplatesController')->error($e->getMessage());
+            Log::channel('PrinterTemplatesControllerController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
 
             return ResponseHelper::error("Terjadi Kesalahan Server", 500);
         }
