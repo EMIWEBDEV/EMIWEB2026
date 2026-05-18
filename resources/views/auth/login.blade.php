@@ -204,7 +204,7 @@
 <script>
   const year = new Date().getFullYear();
   const footer = document.getElementById("footer-text");
-  footer.innerHTML = `&copy; ${year} LIMS - Dashboard. Crafted with <i class="mdi mdi-heart text-danger"></i> by Evo Manufacturing Indonesia`;
+  footer.innerHTML = `&copy; ${year} Laboratory Information System. Crafted with <i class="mdi mdi-heart text-danger"></i> by Evo Manufacturing Indonesia`;
 </script>
 
 <script>
