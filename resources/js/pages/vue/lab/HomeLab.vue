@@ -181,6 +181,20 @@
                                 >
                                     <i class="ri-time-line me-1"></i>Expired
                                 </span>
+                                <span
+                                    v-if="sample.is_trial_produksi"
+                                    class="lhm-badge lhm-badge--trial"
+                                    title="Sampel Trial Produksi"
+                                >
+                                    <i class="ri-flask-line me-1"></i>Trial Produksi
+                                </span>
+                                <span
+                                    v-else
+                                    class="lhm-badge lhm-badge--produksi"
+                                    title="Sampel Produksi"
+                                >
+                                    <i class="ri-building-2-line me-1"></i>Produksi
+                                </span>
                             </div>
                             <div class="lhm-card-head-right">
                                 <span class="lhm-card-date">{{
@@ -1902,6 +1916,28 @@ export default {
     background: #fff3e0;
     color: #c2410c;
     border: 1px solid #fdba74;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0.1rem 0.45rem;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+}
+.lhm-badge--trial {
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0.1rem 0.45rem;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+}
+.lhm-badge--produksi {
+    background: rgba(var(--vz-primary-rgb), 0.1);
+    color: var(--vz-primary);
+    border: 1px solid rgba(var(--vz-primary-rgb), 0.3);
     font-size: 10px;
     font-weight: 600;
     padding: 0.1rem 0.45rem;

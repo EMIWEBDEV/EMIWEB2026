@@ -1,3 +1,13 @@
+@php
+    $userPerms = session('user_permissions');
+    $homeUrl = '/login';
+    $homeLabel = 'Beranda';
+    if ($userPerms && !empty($userPerms['permission_label'])) {
+        $firstEntry = reset($userPerms['permission_label']);
+        $homeUrl = $firstEntry['url'] ?? '/login';
+        $homeLabel = $firstEntry['nama_menu'] ?? 'Beranda';
+    }
+@endphp
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -78,9 +88,9 @@
         <div class="strip"><span class="strip-icon">🖥️</span><span>Status Server</span><span class="strip-val">ERROR</span></div>
         <div class="strip"><span class="strip-icon">👨‍💻</span><span>Tim IT</span><span class="strip-val">SEDANG MENANGANI</span></div>
         <div class="btn-wrap">
-            <a href="/dashboard" class="btn-main">
+            <a href="{{ $homeUrl }}" class="btn-main">
                 <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-                Dashboard
+                {{ $homeLabel }}
             </a>
             <a href="javascript:location.reload()" class="btn-ghost">
                 <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>

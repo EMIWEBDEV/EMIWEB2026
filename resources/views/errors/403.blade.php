@@ -1,3 +1,13 @@
+@php
+    $userPerms = session('user_permissions');
+    $homeUrl = '/login';
+    $homeLabel = 'Beranda';
+    if ($userPerms && !empty($userPerms['permission_label'])) {
+        $firstEntry = reset($userPerms['permission_label']);
+        $homeUrl = $firstEntry['url'] ?? '/login';
+        $homeLabel = $firstEntry['nama_menu'] ?? 'Beranda';
+    }
+@endphp
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -73,9 +83,9 @@
         <h1 class="title">Akses Ditolak</h1>
         <p class="desc">Anda tidak memiliki izin untuk mengakses halaman ini.<br>Hubungi administrator jika Anda yakin ini adalah kesalahan.</p>
         <div class="btn-wrap">
-            <a href="/dashboard" class="btn-main">
+            <a href="{{ $homeUrl }}" class="btn-main">
                 <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-                Dashboard
+                {{ $homeLabel }}
             </a>
             <a href="/login" class="btn-ghost">
                 <svg viewBox="0 0 24 24"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg>
