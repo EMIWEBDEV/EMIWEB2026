@@ -14786,7 +14786,7 @@ class UjiSampelController extends Controller
                 ->select(
                     'po.id', 'po.No_Sampel', 'po.No_Po', 'po.No_Split_Po', 'po.No_Batch',
                     'po.Kode_Barang', 'po.Id_Mesin', 'po.Tanggal', 'po.Jam',
-                    'po.Flag_Selesai', 'po.Id_User',
+                    'po.Flag_Selesai', 'po.Flag_Trial_Produksi', 'po.Id_User',
                     'm.Nama_Mesin', 'm.Flag_Multi_Qrcode', 'm.Jumlah_Print_QRCode'
                 )
                 ->orderByDesc('po.Tanggal')
@@ -14975,6 +14975,7 @@ class UjiSampelController extends Controller
                     'jumlah_print'   => $po->Jumlah_Print_QRCode,
                     'tanggal'        => $po->Tanggal,
                     'jam'            => $po->Jam,
+                    'is_trial_produksi' => $po->Flag_Trial_Produksi === 'Y',
                     'is_selesai'     => $po->Flag_Selesai === 'Y',
                     'is_expired'     => $expiredSet->has($po->No_Sampel),
                     'expired_at'     => $sampleDeadlines->has($po->No_Sampel)

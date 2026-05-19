@@ -1,3 +1,13 @@
+@php
+    $userPerms = session('user_permissions');
+    $homeUrl = '/login';
+    $homeLabel = 'Beranda';
+    if ($userPerms && !empty($userPerms['permission_label'])) {
+        $firstEntry = reset($userPerms['permission_label']);
+        $homeUrl = $firstEntry['url'] ?? '/login';
+        $homeLabel = $firstEntry['nama_menu'] ?? 'Beranda';
+    }
+@endphp
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -73,9 +83,9 @@
         <h1 class="title">Halaman Tidak Ditemukan</h1>
         <p class="desc">Halaman yang Anda cari tidak ada atau telah dipindahkan.<br>Silakan kembali ke dashboard atau coba halaman lain.</p>
         <div class="btn-wrap">
-            <a href="/dashboard" class="btn-main">
+            <a href="{{ $homeUrl }}" class="btn-main">
                 <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-                Dashboard
+                {{ $homeLabel }}
             </a>
             <a href="javascript:history.back()" class="btn-ghost">
                 <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
