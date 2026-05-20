@@ -38,7 +38,7 @@ class FinalisasiLabProduksiTrialController extends Controller
         $permissionKonten = $checkedAkses['permission_konten'] ?? [];
 
         $allowedAnalisaIds = [];
-        if (isset($permissionKonten['Finalisasi Trial Produksi']) && is_array($permissionKonten['Validasi Hasil Analisa'])) {
+        if (isset($permissionKonten['Finalisasi Trial Produksi']) && is_array($permissionKonten['Finalisasi Trial Produksi'])) {
                 foreach ($permissionKonten['Finalisasi Trial Produksi'] as $akses) {
                     if (isset($akses['flag']) && $akses['flag'] === 'Y' && isset($akses['id_jenis_analisa'])) {
                         $allowedAnalisaIds[] = $akses['id_jenis_analisa'];
@@ -161,15 +161,47 @@ class FinalisasiLabProduksiTrialController extends Controller
                     $q->where('uji.Flag_Resampling', '!=', 'Y')
                     ->orWhereNull('uji.Flag_Resampling');
                 })
-                ->select('uji.No_Po_Sampel', 'ja.id', 'ja.Kode_Analisa', 'ja.Jenis_Analisa')
+                ->select('uji.No_Po_Sampel', 'ja.id', 'ja.Kode_Analisa', 'ja.Jenis_Analisa', 'ja.Kode_Aktivitas_Lab')
                 ->distinct()
                 ->get()
                 ->groupBy('No_Po_Sampel');
 
-            $items = collect($items)->map(function ($item) use ($analisaDetails) {
+            $pltSessions = DB::table('N_EMI_LAB_Palatabilitas_Session as ps')
+                ->leftJoin('N_EMI_LAB_Palatabilitas_Pembanding as pp', function ($j) {
+                    $j->on('pp.Id_Session', '=', 'ps.Id_Session')->where('pp.Flag_Aktif', '=', 'Y');
+                })
+                ->whereIn('ps.No_Po_Sampel', $poSampelIds)
+                ->where('ps.Kode_Aktivitas_Lab', 'PLT')
+                ->select(
+                    'ps.No_Po_Sampel',
+                    'ps.Id_Session',
+                    'ps.Status_Session',
+                    DB::raw('COUNT(pp.Id_Pembanding) as jumlah_pembanding'),
+                    DB::raw("STRING_AGG(pp.Nama_Pembanding, ', ') as nama_pembanding_list")
+                )
+                ->groupBy('ps.No_Po_Sampel', 'ps.Id_Session', 'ps.Status_Session')
+                ->get()
+                ->keyBy('No_Po_Sampel');
+
+            $items = collect($items)->map(function ($item) use ($analisaDetails, $pltSessions) {
                 $analisa = $analisaDetails->get($item->No_Po_Sampel, collect());
                 $item->Total_Jenis_Analisa = $analisa->count();
                 $item->Detail_Jenis_Analisa = $analisa->values()->toArray();
+
+                $pltSession = $pltSessions->get($item->No_Po_Sampel);
+                if ($pltSession && (int)$pltSession->jumlah_pembanding > 0) {
+                    $item->plt_context = [
+                        'ada_plt'           => true,
+                        'jumlah_pembanding' => (int)$pltSession->jumlah_pembanding,
+                        'nama_pembanding'   => $pltSession->nama_pembanding_list,
+                        'status_session'    => $pltSession->Status_Session,
+                        'session_final'     => $pltSession->Status_Session === 'F',
+                    ];
+                } else {
+                    $adaPlt = $analisa->contains('Kode_Aktivitas_Lab', 'PLT');
+                    $item->plt_context = $adaPlt ? ['ada_plt' => true, 'jumlah_pembanding' => 0] : null;
+                }
+
                 return $item;
             })->toArray();
         }
@@ -188,24 +220,29 @@ class FinalisasiLabProduksiTrialController extends Controller
     public function validasiHasilAkhirDariValidasiAwalJenisAnalisaV1($No_Po_Sampel)
     {
         $result = collect(
-            DB::table('N_EMI_LAB_Uji_Sampel')
-                ->join('N_EMI_LAB_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', '=', 'N_EMI_LAB_Jenis_Analisa.id')
-                ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel') 
+            DB::table('N_EMI_LAB_Uji_Sampel as us')
+                ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
+                ->join('N_EMI_LAB_PO_Sampel as po', 'us.No_Po_Sampel', '=', 'po.No_Sampel')
+                ->leftJoin('N_EMI_LAB_Palatabilitas_Pembanding as pb', 'us.Id_Pembanding', '=', 'pb.Id_Pembanding')
                 ->select(
-                    'N_EMI_LAB_Uji_Sampel.*',
-                    'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa',
-                    'N_EMI_LAB_Jenis_Analisa.Kode_Analisa'
+                    'us.*',
+                    'ja.Jenis_Analisa',
+                    'ja.Kode_Analisa',
+                    'ja.Kode_Aktivitas_Lab',
+                    'pb.Nama_Pembanding',
+                    'pb.Kode_Barang_Pembanding'
                 )
-                ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $No_Po_Sampel)
-                ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
-                ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
-                ->where('N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel', 'terima')
-                ->where('N_EMI_LAB_PO_Sampel.Flag_Trial_Produksi', 'Y') 
-                ->orderByDesc('N_EMI_LAB_Uji_Sampel.Tanggal')
+                ->where('us.No_Po_Sampel', $No_Po_Sampel)
+                ->whereNull('us.Status')
+                ->where('us.Flag_Selesai', 'Y')
+                ->where('us.Status_Keputusan_Sampel', 'terima')
+                ->where('po.Flag_Trial_Produksi', 'Y')
+                ->orderByDesc('us.Tanggal')
                 ->get()
         )->map(function ($item) {
             /** @var object $item */
             $item->Id_Jenis_Analisa = Hashids::connection('custom')->encode($item->Id_Jenis_Analisa);
+            $item->is_plt = ($item->Kode_Aktivitas_Lab ?? null) === 'PLT';
             return $item;
         })->unique(function ($item) {
             return $item->No_Po_Sampel . '-' . $item->Id_Jenis_Analisa;
@@ -251,6 +288,65 @@ class FinalisasiLabProduksiTrialController extends Controller
                 ->whereNull('us.Flag_Resampling')
                 ->whereNull('us.Status')
                 ->get();
+
+            // ── Cek kelengkapan PLT (palatabilitas) ──────────────────────────────
+            $pltSession = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                ->where('No_Po_Sampel', $no_sampel)
+                ->where('Kode_Aktivitas_Lab', 'PLT')
+                ->first();
+
+            if ($pltSession) {
+                // Ada PLT session → pastikan semua draft sudah difinalisasi ke Uji_Sampel
+                $sisaDraftPlt = DB::table('N_EMI_LAB_Palatabilitas_Sementara')
+                    ->where('Id_Session', $pltSession->Id_Session)
+                    ->whereNull('Status')
+                    ->count();
+
+                if ($sisaDraftPlt > 0) {
+                    return response()->json([
+                        'success' => false,
+                        'status'  => 422,
+                        'message' => 'Masih ada ' . $sisaDraftPlt . ' data uji palatabilitas yang belum dikirim ke Uji Sampel. Selesaikan terlebih dahulu.',
+                    ], 422);
+                }
+
+                // Pastikan semua slot (pembanding × analisa PLT) sudah terisi
+                $pembandingList = DB::table('N_EMI_LAB_Palatabilitas_Pembanding')
+                    ->where('Id_Session', $pltSession->Id_Session)
+                    ->where('Flag_Aktif', 'Y')
+                    ->get();
+
+                $pltAnalisaIds = DB::table('N_EMI_LAB_Barang_Analisa as ba')
+                    ->join('N_EMI_LAB_Jenis_Analisa as ja', 'ba.Id_Jenis_Analisa', '=', 'ja.id')
+                    ->where('ba.Kode_Barang', $getInformasiPo->Kode_Barang)
+                    ->where('ba.Id_Master_Mesin', $getInformasiPo->Id_Mesin)
+                    ->where('ba.Flag_Aktif', 'Y')
+                    ->where('ba.Kode_Role', 'LAB')
+                    ->where('ja.Kode_Aktivitas_Lab', 'PLT')
+                    ->pluck('ja.id')
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                if (!empty($pltAnalisaIds) && $pembandingList->isNotEmpty()) {
+                    $totalSlot = count($pltAnalisaIds) * $pembandingList->count();
+                    $sudahFinal = DB::table('N_EMI_LAB_Uji_Sampel')
+                        ->where('No_Po_Sampel', $no_sampel)
+                        ->where('Id_Session', $pltSession->Id_Session)
+                        ->whereIn('Id_Jenis_Analisa', $pltAnalisaIds)
+                        ->whereNull('Flag_Resampling')
+                        ->count();
+
+                    if ($sudahFinal < $totalSlot) {
+                        return response()->json([
+                            'success' => false,
+                            'status'  => 422,
+                            'message' => 'Data uji palatabilitas belum lengkap. Sudah ' . $sudahFinal . ' dari ' . $totalSlot . ' slot yang terisi.',
+                        ], 422);
+                    }
+                }
+            }
+            // ── Akhir cek PLT ─────────────────────────────────────────────────────
 
             $kodeDikecualikan = ['HOMOGENITAS', 'MBLG-STR', 'PSZ'];
 

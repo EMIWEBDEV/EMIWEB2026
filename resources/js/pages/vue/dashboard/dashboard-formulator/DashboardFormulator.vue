@@ -250,6 +250,7 @@
 
 <script>
 import axios from 'axios';
+import VueApexCharts from 'vue3-apexcharts';
 
 const PALETTE = [
     '#405189','#0ab39c','#f7b84b','#4b93f7','#dc2626',
@@ -259,6 +260,8 @@ const PALETTE = [
 
 export default {
     name: 'DashboardFormulator',
+
+    components: { apexchart: VueApexCharts },
 
     props: {
         namaPengguna: { type: String, default: 'Formulator' },

@@ -24,6 +24,7 @@ use App\Http\Controllers\ResamplingController;
 use App\Http\Controllers\RoleMenuController;
 use App\Http\Controllers\StandarRentangController;
 use App\Http\Controllers\SubMenuController;
+use App\Http\Controllers\PalatabilitasController;
 use App\Http\Controllers\UjiSampelController;
 use App\Http\Controllers\UjiValidasiFinalController;
 
@@ -204,6 +205,20 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get('/api/v1/lab/laboratorium/no-uji/sampel/sub/all/{no_sampel}/{id_jenis_analisa}', [UjiSampelController::class, 'getDataSubSampelCurrentV1']);
     Route::post('/api/v1/lab/resampeling/reanalisis', [UjiSampelController::class, 'resampelingAnalisa']);
     Route::post('/api/v1/lab/resampling-single/reanalisis', [UjiSampelController::class, 'resampelingAnalisaSingle']);
+
+    // ── Palatabilitas (PLT) ───────────────────────────────────────────────────
+    Route::get   ('/api/v1/palatabilitas/session',           [PalatabilitasController::class, 'getSession']);
+    Route::post  ('/api/v1/palatabilitas/session',           [PalatabilitasController::class, 'createSession']);
+    Route::post  ('/api/v1/palatabilitas/pembanding',        [PalatabilitasController::class, 'addPembanding']);
+    Route::delete('/api/v1/palatabilitas/pembanding/{id}',   [PalatabilitasController::class, 'removePembanding']);
+    Route::get   ('/api/v1/palatabilitas/sementara',         [PalatabilitasController::class, 'getSementara']);
+    Route::post  ('/api/v1/palatabilitas/sementara',         [PalatabilitasController::class, 'saveSementara']);
+    Route::delete('/api/v1/palatabilitas/sementara/{id}',    [PalatabilitasController::class, 'deleteSementara']);
+    Route::post  ('/api/v1/palatabilitas/finalisasi',        [PalatabilitasController::class, 'finalisasi']);
+    Route::get   ('/api/v1/palatabilitas/kelengkapan',       [PalatabilitasController::class, 'getKelengkapan']);
+    Route::get   ('/api/v1/palatabilitas/hasil',             [PalatabilitasController::class, 'getHasil']);
+    Route::get   ('/lab/palatabilitas/{no_po_sampel}',       [PalatabilitasController::class, 'viewPalatabilitasManagement'])->middleware('autotrack');
+    // ── End Palatabilitas ─────────────────────────────────────────────────────
     Route::get('/fetch/lab/{id_mesin}/{id_analisa}/parameter-perhitungan', [UjiSampelController::class, 'getParameterAndPerhitungan']);
     Route::get('/fetch/lab/lama/{id_analisa}/parameter-perhitungan-old', [UjiSampelController::class, 'getParameterAndPerhitunganOld']);
     Route::get('/api/v1/{no_PO_Multiqr}/multi-print/{id_jenis_analisa}', [UjiSampelController::class, 'getPoSampelMultiQrDetail']);

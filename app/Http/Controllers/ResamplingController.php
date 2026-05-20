@@ -136,34 +136,46 @@ class ResamplingController extends Controller
             ], 400);
         }
 
-        $resampling = DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')
-        ->select('N_EMI_LAB_Uji_Sampel_Resampling_Log.*', 'N_EMI_LAB_PO_Sampel.Id_Mesin', 'N_EMI_LAB_PO_Sampel.Kode_Barang', 'N_EMI_LAB_PO_Sampel.No_Po', 'N_EMI_LAB_PO_Sampel.No_Split_Po', 'N_EMI_LAB_PO_Sampel.No_Batch', 'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa')
-        ->join('N_EMI_LAB_PO_Sampel', 'N_EMI_LAB_Uji_Sampel_Resampling_Log.No_Po_Sampel', '=', 'N_EMI_LAB_PO_Sampel.No_Sampel')
-        ->join('N_EMI_LAB_Jenis_Analisa', 'N_EMI_LAB_Uji_Sampel_Resampling_Log.Id_Jenis_Analisa', '=', 'N_EMI_LAB_Jenis_Analisa.id')
-        ->where('No_Sampel_Resampling_Origin', $No_Sampel_Resampling_Origin)
-        ->where('No_Sampel_Resampling', $No_Sampel_Resampling)
-        ->where('Id_Jenis_Analisa', $Id_Jenis_Analisa)
-        ->first();
+        $resampling = DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log as rsl')
+            ->select(
+                'rsl.*',
+                'po.Id_Mesin',
+                'po.Kode_Barang',
+                'po.No_Po',
+                'po.No_Split_Po',
+                'po.No_Batch',
+                'ja.Jenis_Analisa',
+                'ja.Kode_Aktivitas_Lab',
+                'pb.Nama_Pembanding',
+                'pb.Kode_Barang_Pembanding'
+            )
+            ->join('N_EMI_LAB_PO_Sampel as po',      'rsl.No_Po_Sampel',       '=', 'po.No_Sampel')
+            ->join('N_EMI_LAB_Jenis_Analisa as ja',   'rsl.Id_Jenis_Analisa',   '=', 'ja.id')
+            ->leftJoin('N_EMI_LAB_Palatabilitas_Pembanding as pb', 'rsl.Id_Pembanding', '=', 'pb.Id_Pembanding')
+            ->where('rsl.No_Sampel_Resampling_Origin', $No_Sampel_Resampling_Origin)
+            ->where('rsl.No_Sampel_Resampling',        $No_Sampel_Resampling)
+            ->where('rsl.Id_Jenis_Analisa',            $Id_Jenis_Analisa)
+            ->first();
 
-         if ($resampling) {
-            // Ubah ke array agar bisa dimodifikasi
+        if ($resampling) {
             $resampling = (array) $resampling;
 
-            // Encode ID ke hash sebelum dikembalikan
             if (isset($resampling['Id_Jenis_Analisa'])) {
                 $resampling['Id_Jenis_Analisa'] = Hashids::connection('custom')->encode($resampling['Id_Jenis_Analisa']);
             }
-
             if (isset($resampling['Id_Resampling'])) {
                 $resampling['Id_Resampling'] = Hashids::connection('custom')->encode($resampling['Id_Resampling']);
             }
+
+            // Flag PLT untuk keperluan tampilan
+            $resampling['is_plt'] = ($resampling['Kode_Aktivitas_Lab'] ?? null) === 'PLT';
         }
 
         return response()->json([
             'success' => true,
-            'status' => 200,
+            'status'  => 200,
             'message' => 'Data Ditemukan !',
-            'result' => $resampling
+            'result'  => $resampling,
         ]);
     }
 }

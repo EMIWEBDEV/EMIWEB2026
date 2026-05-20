@@ -337,8 +337,17 @@
                 <div v-else class="dflma-foto-grid">
                     <div class="dflma-foto-card" v-for="(f, i) in fotoTerbaru" :key="i">
                         <div class="dflma-foto-preview">
-                            <i class="ri-file-image-line"></i>
-                            <span class="dflma-foto-ext">{{ getFileExt(f.File_Path) }}</span>
+                            <img
+                                v-if="f.signed_url"
+                                :src="f.signed_url"
+                                :alt="f.Keterangan || f.No_Faktur"
+                                class="dflma-foto-img"
+                                @error="f.signed_url = null"
+                            />
+                            <template v-else>
+                                <i class="ri-file-image-line"></i>
+                                <span class="dflma-foto-ext">{{ getFileExt(f.File_Path) }}</span>
+                            </template>
                         </div>
                         <div class="dflma-foto-info">
                             <div class="dflma-foto-faktur font-monospace">{{ f.No_Faktur }}</div>
@@ -390,6 +399,7 @@
 
 <script>
 import axios from 'axios';
+import VueApexCharts from 'vue3-apexcharts';
 
 const PALETTE = [
     '#405189','#0ab39c','#f7b84b','#4b93f7','#dc2626',
@@ -399,6 +409,8 @@ const PALETTE = [
 
 export default {
     name: 'DashboardFormulatorAtasan',
+
+    components: { apexchart: VueApexCharts },
 
     props: {
         namaPengguna: { type: String, default: 'Atasan' },
@@ -877,7 +889,10 @@ export default {
 .dflma-foto-preview {
     height: 100px; background: linear-gradient(135deg, #f0f2f5 0%, #e6e9ef 100%);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 2.5rem; color: #405189;
+    font-size: 2.5rem; color: #405189; overflow: hidden;
+}
+.dflma-foto-img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
 }
 .dflma-foto-ext {
     font-size: 11px; font-weight: 700; color: #405189;

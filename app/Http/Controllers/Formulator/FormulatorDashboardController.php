@@ -7,6 +7,7 @@ use Carbon\CarbonPeriod;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 
 class FormulatorDashboardController extends Controller
@@ -115,7 +116,6 @@ class FormulatorDashboardController extends Controller
         $data = DB::table('N_EMI_LIMS_Uji_Sampel as us')
             ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
             ->whereNull('us.Status')
-            ->where('ja.Kode_Role', 'FLM')
             ->select('ja.Jenis_Analisa', DB::raw('COUNT(*) as total'))
             ->groupBy('ja.Jenis_Analisa', 'ja.id')
             ->orderByDesc(DB::raw('COUNT(*)'))
@@ -452,11 +452,23 @@ class FormulatorDashboardController extends Controller
             ->orderByDesc('b.Id_Berkas_Uji_Lab')
             ->take(12)
             ->get()
-            ->map(fn($item) => array_merge((array)$item, [
-                'Tanggal' => $item->Tanggal
-                    ? Carbon::parse($item->Tanggal)->format('d M Y')
-                    : '-',
-            ]));
+            ->map(function ($item) {
+                $signedUrl = null;
+                if (!empty($item->File_Path)) {
+                    try {
+                        $signedUrl = Storage::disk('gcs')->temporaryUrl(
+                            $item->File_Path,
+                            now()->addMinutes(60)
+                        );
+                    } catch (\Exception $e) {
+                        $signedUrl = null;
+                    }
+                }
+                return array_merge((array)$item, [
+                    'Tanggal'    => $item->Tanggal ? Carbon::parse($item->Tanggal)->format('d M Y') : '-',
+                    'signed_url' => $signedUrl,
+                ]);
+            });
 
         return response()->json(['status' => 200, 'result' => $data]);
     }
@@ -469,8 +481,8 @@ class FormulatorDashboardController extends Controller
         $praFinal = DB::table('N_EMI_LIMS_Uji_Pra_Final')
             ->selectRaw("
                 COUNT(*) as total,
-                COUNT(CASE WHEN Flag_Ok = 'Y' THEN 1 END) as ok,
-                COUNT(CASE WHEN Flag_FG = 'Y' THEN 1 END) as fg
+                COUNT(CASE WHEN Flag_Setuju = 'Y' THEN 1 END) as ok,
+                0 as fg
             ")->first();
 
         $validasiFinal = DB::table('N_EMI_LIMS_Hasil_Uji_Validasi_Final')

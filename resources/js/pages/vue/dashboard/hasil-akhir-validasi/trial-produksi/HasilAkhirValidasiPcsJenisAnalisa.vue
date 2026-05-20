@@ -104,23 +104,33 @@
                                 <a
                                     :href="`/hasil-analisa/validasi-close-sampel/moment-final/${item.No_Po_Sampel}/multi/${item.No_Fak_Sub_Po}/${item.Id_Jenis_Analisa}`"
                                 >
-                                    <div class="analysis-card">
-                                        <div class="analysis-icon">
+                                    <div :class="['analysis-card', item.is_plt ? 'border-info' : '']" :style="item.is_plt ? 'border: 2px solid #0ea5e9 !important;' : ''">
+                                        <div class="analysis-icon" :style="item.is_plt ? 'background: linear-gradient(135deg, #0ea5e9, #0284c7);' : ''">
                                             <i class="fas fa-flask"></i>
                                         </div>
 
                                         <div class="analysis-content">
-                                            <div class="analysis-badge">
+                                            <div class="analysis-badge d-flex flex-wrap gap-1 align-items-center">
                                                 <span
                                                     class="badge bg-primary-soft"
                                                 >
                                                     {{ item.Kode_Analisa }}
+                                                </span>
+                                                <span
+                                                    v-if="item.is_plt"
+                                                    class="badge rounded-pill px-2"
+                                                    style="background:#0284c7; font-size:0.65rem;"
+                                                >
+                                                    <i class="fas fa-flask me-1"></i>PLT
                                                 </span>
                                             </div>
 
                                             <h4 class="analysis-title">
                                                 {{ item.Jenis_Analisa }}
                                             </h4>
+                                            <div v-if="item.is_plt && item.Nama_Pembanding" class="small mt-1" style="color:#0284c7;">
+                                                <i class="fas fa-tag me-1"></i>{{ item.Nama_Pembanding }}
+                                            </div>
                                         </div>
                                     </div>
                                 </a>

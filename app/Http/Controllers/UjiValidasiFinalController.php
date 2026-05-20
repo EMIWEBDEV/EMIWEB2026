@@ -213,6 +213,60 @@ class UjiValidasiFinalController extends Controller
                 ->whereNull('us.Status')
                 ->get();
 
+            // ── Cek kelengkapan PLT (palatabilitas) ──────────────────────────────
+            $pltSession = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                ->where('No_Po_Sampel', $no_sampel)
+                ->where('Kode_Aktivitas_Lab', 'PLT')
+                ->first();
+
+            if ($pltSession) {
+                $sisaDraftPlt = DB::table('N_EMI_LAB_Palatabilitas_Sementara')
+                    ->where('Id_Session', $pltSession->Id_Session)
+                    ->whereNull('Status')
+                    ->count();
+
+                if ($sisaDraftPlt > 0) {
+                    return response()->json([
+                        'success' => false,
+                        'status'  => 422,
+                        'message' => 'Masih ada ' . $sisaDraftPlt . ' data uji palatabilitas yang belum dikirim ke Uji Sampel. Selesaikan terlebih dahulu.',
+                    ], 422);
+                }
+
+                $pembandingList = DB::table('N_EMI_LAB_Palatabilitas_Pembanding')
+                    ->where('Id_Session', $pltSession->Id_Session)
+                    ->where('Flag_Aktif', 'Y')
+                    ->get();
+
+                $pltAnalisaIds = DB::table('N_EMI_LAB_Barang_Analisa as ba')
+                    ->join('N_EMI_LAB_Jenis_Analisa as ja', 'ba.Id_Jenis_Analisa', '=', 'ja.id')
+                    ->where('ba.Kode_Barang', $getInformasiPo->Kode_Barang)
+                    ->where('ba.Id_Master_Mesin', $getInformasiPo->Id_Mesin)
+                    ->where('ba.Flag_Aktif', 'Y')
+                    ->where('ba.Kode_Role', 'LAB')
+                    ->where('ja.Kode_Aktivitas_Lab', 'PLT')
+                    ->pluck('ja.id')->unique()->values()->all();
+
+                if (!empty($pltAnalisaIds) && $pembandingList->isNotEmpty()) {
+                    $totalSlot  = count($pltAnalisaIds) * $pembandingList->count();
+                    $sudahFinal = DB::table('N_EMI_LAB_Uji_Sampel')
+                        ->where('No_Po_Sampel', $no_sampel)
+                        ->where('Id_Session', $pltSession->Id_Session)
+                        ->whereIn('Id_Jenis_Analisa', $pltAnalisaIds)
+                        ->whereNull('Flag_Resampling')
+                        ->count();
+
+                    if ($sudahFinal < $totalSlot) {
+                        return response()->json([
+                            'success' => false,
+                            'status'  => 422,
+                            'message' => 'Data uji palatabilitas belum lengkap. Sudah ' . $sudahFinal . ' dari ' . $totalSlot . ' slot yang terisi.',
+                        ], 422);
+                    }
+                }
+            }
+            // ── Akhir cek PLT ─────────────────────────────────────────────────────
+
             // Mengambil data kode dikecualikan dari database
             $kodeDikecualikan = DB::table('N_EMI_LAB_Jenis_Analisa_Opsional')
                 ->pluck('Kode_Analisa')
