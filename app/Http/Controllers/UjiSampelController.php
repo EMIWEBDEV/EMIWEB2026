@@ -318,8 +318,8 @@ class UjiSampelController extends Controller
 
     public function viewSubHasilAnalisa($id_jenis_analisa)
     {
-        return inertia('vue/dashboard/lab/hasil-analisis/SubHasilAnalisa', [
-            'id_jenis_analisa' => $id_jenis_analisa
+        return inertia('vue/dashboard/lab/hasil-analisis/HasilAnalisa', [
+            'selected_id' => $id_jenis_analisa
         ]);
     }
 
@@ -10755,7 +10755,7 @@ class UjiSampelController extends Controller
         $permissionKonten = $checkedAkses['permission_konten'] ?? [];
 
         $allowedAnalisaIds = [];
-        if (isset($permissionKonten['Hasil Analisa']) && is_array($permissionKonten['Validasi Hasil Analisa'])) {
+        if (isset($permissionKonten['Hasil Analisa']) && is_array($permissionKonten['Hasil Analisa'])) {
                 foreach ($permissionKonten['Hasil Analisa'] as $akses) {
                     if (isset($akses['flag']) && $akses['flag'] === 'Y' && isset($akses['id_jenis_analisa'])) {
                         $allowedAnalisaIds[] = $akses['id_jenis_analisa'];
@@ -10806,13 +10806,14 @@ class UjiSampelController extends Controller
         }
 
         // Ambil parameter dari request
-        $searchQuery = $request->input('q', ''); 
+        $searchQuery = $request->input('q', '');
         $limit = $request->input('limit', 10);
         $filterTanggalMulai = $request->input('tanggal_mulai');
         $filterTanggalSelesai = $request->input('tanggal_selesai');
         $filterMesin = $request->input('mesin');
         $filterQrCode = $request->input('qrcode');
         $filterStatus = $request->input('status');
+        $filterTipeProduksi = $request->input('tipe_produksi');
  
 
         $baseQuery = DB::table('N_EMI_LAB_Uji_Sampel')
@@ -10838,6 +10839,7 @@ class UjiSampelController extends Controller
                 'N_EMI_LAB_PO_Sampel.Kode_Barang',
                 'N_EMI_LAB_Uji_Sampel.Status_Keputusan_Sampel',
                 'N_EMI_LAB_PO_Sampel.Flag_Selesai as is_selesai',
+                'N_EMI_LAB_PO_Sampel.Flag_Trial_Produksi',
                 'EMI_Master_Mesin.Seri_Mesin',
                 'EMI_Master_Mesin.Nama_Mesin',
                 DB::raw("ISNULL((SELECT x.Hasil_Perhitungan FROM N_EMI_LAB_Perhitungan x 
@@ -10894,13 +10896,40 @@ class UjiSampelController extends Controller
             }
         }
 
-        // Urutkan dari data terbaru ke terlama dan lakukan pagination
-        $ujiSampel = $baseQuery
-            ->orderBy('N_EMI_LAB_Uji_Sampel.Tanggal', 'desc')
-            ->orderBy('N_EMI_LAB_Uji_Sampel.Jam', 'desc')
-            ->paginate($limit);
+        // 6. Filter Tipe Produksi
+        if ($filterTipeProduksi === 'trial') {
+            $baseQuery->where('N_EMI_LAB_PO_Sampel.Flag_Trial_Produksi', 'Y');
+        } elseif ($filterTipeProduksi === 'produksi') {
+            $baseQuery->where(function ($query) {
+                $query->where('N_EMI_LAB_PO_Sampel.Flag_Trial_Produksi', '!=', 'Y')
+                      ->orWhereNull('N_EMI_LAB_PO_Sampel.Flag_Trial_Produksi');
+            });
+        }
 
-        if ($ujiSampel->isEmpty()) {
+        $page = (int) $request->input('page', 1);
+
+        // Hitung total No_Po_Sampel unik (bukan baris mentah)
+        $totalDistinct = (clone $baseQuery)
+            ->count(DB::raw('DISTINCT N_EMI_LAB_Uji_Sampel.No_Po_Sampel'));
+
+        $totalPage = $limit > 0 ? (int) ceil($totalDistinct / $limit) : 1;
+
+        // Ambil daftar No_Po_Sampel untuk halaman saat ini, urut dari terbaru
+        $pagedPoSampel = (clone $baseQuery)
+            ->select(
+                'N_EMI_LAB_Uji_Sampel.No_Po_Sampel as NoPo',
+                DB::raw('MAX(N_EMI_LAB_Uji_Sampel.Tanggal) as MaxTgl'),
+                DB::raw('MAX(N_EMI_LAB_Uji_Sampel.Jam) as MaxJam')
+            )
+            ->groupBy('N_EMI_LAB_Uji_Sampel.No_Po_Sampel')
+            ->orderByDesc('MaxTgl')
+            ->orderByDesc('MaxJam')
+            ->offset(($page - 1) * $limit)
+            ->limit($limit)
+            ->pluck('NoPo')
+            ->toArray();
+
+        if (empty($pagedPoSampel)) {
             return response()->json([
                 'success' => true,
                 'status'  => 200,
@@ -10911,8 +10940,15 @@ class UjiSampelController extends Controller
                 ]
             ], 200);
         }
-        
-        // Proses data seperti sebelumnya, namun hanya untuk data di halaman saat ini
+
+        // Ambil semua baris untuk No_Po_Sampel di halaman ini
+        $ujiSampel = $baseQuery
+            ->whereIn('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $pagedPoSampel)
+            ->orderBy('N_EMI_LAB_Uji_Sampel.Tanggal', 'desc')
+            ->orderBy('N_EMI_LAB_Uji_Sampel.Jam', 'desc')
+            ->get();
+
+        // Proses nilai hasil
         foreach ($ujiSampel as $item) {
             $item->Hasil_Akhir_Analisa = number_format((float)$item->Hasil_Akhir_Analisa, $item->Pembulatan, '.', '');
         }
@@ -10937,7 +10973,7 @@ class UjiSampelController extends Controller
                     'flag_multi'        => $item->Flag_Multi_QrCode === 'Y' ? 'Y' : null,
                     'is_selesai'        => $item->is_selesai,
                     'nama_mesin'        => $item->Nama_Mesin,
-                    'nama_barang'       => $namaBarang ?? 'Nama Barang Tidak Ditemukan', 
+                    'nama_barang'       => $namaBarang ?? 'Nama Barang Tidak Ditemukan',
                     'no_po'             => $item->No_Po,
                     'no_split_po'       => $item->No_Split_Po,
                     'no_batch'          => $item->No_Batch,
@@ -10946,6 +10982,7 @@ class UjiSampelController extends Controller
                     'tanggal_pengajuan' => $item->Tanggal_Pengajuan,
                     'jam_pengajuan'     => $item->Jam_Pengajuan,
                     'status_keputusan'  => $finalStatus,
+                    'tipe_produksi'     => $item->Flag_Trial_Produksi === 'Y' ? 'Trial Produksi' : 'Produksi',
                 ];
             }
         }
@@ -10957,10 +10994,10 @@ class UjiSampelController extends Controller
             'result'  => [
                 'data_sampel' => $dataGrouped,
                 'pagination'  => [
-                    'page'      => $ujiSampel->currentPage(),
-                    'limit'     => $ujiSampel->perPage(),
-                    'totalPage' => $ujiSampel->lastPage(),
-                    'totalData' => $ujiSampel->total(),
+                    'page'      => $page,
+                    'limit'     => $limit,
+                    'totalPage' => $totalPage,
+                    'totalData' => $totalDistinct,
                 ],
             ]
         ], 200);
