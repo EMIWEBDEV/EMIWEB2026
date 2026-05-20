@@ -245,6 +245,28 @@
                     </div>
                 </div>
 
+                <!-- ── Banner PLT Pembanding ─────────────────────────────── -->
+                <div
+                    v-if="nomorSampel.sampleDetails?.resampling_info?.is_plt && nomorSampel.sampleDetails?.resampling_info?.Nama_Pembanding"
+                    class="plt-banner"
+                    style="margin: 0 0 16px 0; padding: 14px 18px; background: linear-gradient(135deg,#e8f4fd 0%,#d1ecf1 100%); border-left: 5px solid #0ea5e9; border-radius: 8px; display: flex; align-items: center; gap: 12px;"
+                >
+                    <i class="fas fa-flask" style="font-size:1.4rem;color:#0ea5e9;flex-shrink:0;"></i>
+                    <div>
+                        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0369a1;margin-bottom:2px;">Uji Palatabilitas — Produk Pembanding</div>
+                        <div style="font-size:1rem;font-weight:700;color:#0c4a6e;">
+                            {{ nomorSampel.sampleDetails.resampling_info.Nama_Pembanding }}
+                            <span v-if="nomorSampel.sampleDetails.resampling_info.Kode_Barang_Pembanding" style="font-size:0.8rem;font-weight:500;color:#0369a1;margin-left:8px;">
+                                ({{ nomorSampel.sampleDetails.resampling_info.Kode_Barang_Pembanding }})
+                            </span>
+                        </div>
+                        <div style="font-size:0.78rem;color:#0369a1;margin-top:2px;">
+                            Reanalisa ini terkait dengan sesi palatabilitas yang dibandingkan terhadap produk di atas.
+                        </div>
+                    </div>
+                </div>
+                <!-- ── End Banner PLT ──────────────────────────────────────── -->
+
                 <div class="panel-header">
                     <h2>
                         <i class="fas fa-file-alt"></i> Pilih Template Analisis

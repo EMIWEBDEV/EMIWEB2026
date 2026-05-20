@@ -20,9 +20,11 @@ class UjiSampel extends Model
         'Hasil',
         'Flag_Perhitungan',
         'Flag_Multi_Qrcode',
-        "Status" ,
+        "Status",
         "Tanggal",
         "Jam",
         "Id_User",
+        "Id_Session",
+        "Id_Pembanding",
     ];
 }

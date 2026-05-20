@@ -40,6 +40,39 @@
                             </div>
                         </div>
                         <div v-else-if="listData.length > 0">
+                            <!-- PLT Palatabilitas Banner -->
+                            <div
+                                v-if="pltItem"
+                                class="alert border-0 shadow-sm mb-4 p-0 overflow-hidden"
+                                style="border-radius: 10px;"
+                            >
+                                <div class="d-flex align-items-stretch">
+                                    <div
+                                        class="d-flex align-items-center justify-content-center px-4"
+                                        style="background: linear-gradient(135deg, #0ea5e9, #0284c7); min-width: 64px;"
+                                    >
+                                        <i class="fas fa-flask fa-2x text-white"></i>
+                                    </div>
+                                    <div class="flex-grow-1 py-3 px-4" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd);">
+                                        <div class="d-flex align-items-center flex-wrap gap-3">
+                                            <div>
+                                                <div class="text-uppercase fw-bold mb-1" style="font-size: 0.7rem; letter-spacing: 1px; color: #0369a1;">
+                                                    <i class="fas fa-tag me-1"></i>Uji Palatabilitas — Produk Pembanding
+                                                </div>
+                                                <div class="fw-bold text-dark" style="font-size: 1rem;">
+                                                    {{ pltItem.Nama_Pembanding || '-' }}
+                                                </div>
+                                            </div>
+                                            <div class="ms-auto">
+                                                <span class="badge px-3 py-2 rounded-pill" style="background: #0284c7; font-size: 0.82rem; letter-spacing: 0.5px;">
+                                                    <i class="fas fa-barcode me-1"></i>{{ pltItem.Kode_Barang_Pembanding || '-' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- End PLT Banner -->
                             <div class="row mb-3">
                                 <div class="col-xl-12">
                                     <div class="card h-100">
@@ -659,6 +692,9 @@ export default {
         };
     },
     computed: {
+        pltItem() {
+            return this.listData?.find((item) => item.is_plt && item.Nama_Pembanding) || null;
+        },
         timelineChartSeries() {
             if (!this.listData || this.listData.length === 0) {
                 return [];

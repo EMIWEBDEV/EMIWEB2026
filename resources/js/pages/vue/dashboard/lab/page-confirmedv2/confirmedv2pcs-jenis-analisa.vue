@@ -42,6 +42,51 @@
                 <div class="col-12 mt-3 content-area">
                     <ListSkeleton :page="5" v-if="loading.loadingListData" />
                     <div class="row" v-else>
+                        <!-- PLT Palatabilitas Alert -->
+                        <div class="col-12 mb-3" v-if="plt_kelengkapan">
+                            <div class="d-flex align-items-stretch shadow-sm rounded-3 overflow-hidden"
+                                 style="border: 1.5px solid #0ea5e9;">
+                                <div class="d-flex align-items-center justify-content-center px-3"
+                                     style="background: linear-gradient(135deg, #0ea5e9, #0284c7); min-width:56px;">
+                                    <i class="fas fa-flask fa-lg text-white"></i>
+                                </div>
+                                <div class="flex-grow-1 px-4 py-3"
+                                     style="background: linear-gradient(135deg, #e0f2fe, #bae6fd);">
+                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                        <div>
+                                            <div class="fw-bold text-dark" style="font-size:0.95rem;">
+                                                Sampel Ini Memerlukan Uji Palatabilitas (PLT)
+                                            </div>
+                                            <div class="small text-muted mt-1" v-if="plt_kelengkapan.ada_plt">
+                                                <span v-if="plt_kelengkapan.semua_lengkap">
+                                                    <i class="fas fa-check-circle text-success me-1"></i>
+                                                    Data PLT lengkap — {{ plt_kelengkapan.total_pembanding }} produk pembanding
+                                                </span>
+                                                <span v-else-if="plt_kelengkapan.total_pembanding > 0">
+                                                    <i class="fas fa-clock text-warning me-1"></i>
+                                                    {{ plt_kelengkapan.sudah_final }}/{{ plt_kelengkapan.total_slot }} slot terisi
+                                                </span>
+                                                <span v-else>
+                                                    <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                                                    Belum ada produk pembanding — kelola PLT terlebih dahulu
+                                                </span>
+                                            </div>
+                                            <div class="small text-muted mt-1" v-else>
+                                                <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                                                Sesi PLT belum dibuat untuk sampel ini
+                                            </div>
+                                        </div>
+                                        <a :href="`/lab/palatabilitas/${No_Sampel}`"
+                                           class="btn btn-sm px-4 fw-semibold"
+                                           :class="plt_kelengkapan.semua_lengkap ? 'btn-outline-success' : 'btn-primary'">
+                                            <i class="fas fa-flask me-1"></i>
+                                            {{ plt_kelengkapan.semua_lengkap ? 'Lihat PLT' : 'Kelola PLT' }}
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <template v-if="listData.length">
                             <div
                                 class="col-lg-4"
@@ -126,6 +171,7 @@ export default {
             listData: [],
             listSecondData: [],
             template: [],
+            plt_kelengkapan: null,
             loading: {
                 loadingListData: false,
             },
@@ -133,6 +179,27 @@ export default {
     },
 
     methods: {
+        async checkPlt() {
+            try {
+                const res = await axios.get("/api/v1/palatabilitas/kelengkapan", {
+                    params: { no_po_sampel: this.No_Sampel },
+                });
+                if (res.data.success) {
+                    const r = res.data.result;
+                    // Juga cek getSession untuk tahu apakah sample ini butuh PLT
+                    const sessionRes = await axios.get("/api/v1/palatabilitas/session", {
+                        params: { no_po_sampel: this.No_Sampel },
+                    });
+                    const butuhPlt = sessionRes.data?.butuh_plt ?? r.ada_plt;
+                    if (butuhPlt || r.ada_plt) {
+                        this.plt_kelengkapan = r;
+                    }
+                }
+            } catch (e) {
+                // PLT check gagal — abaikan
+            }
+        },
+
         async fetchConfirmedUjiAnalisa() {
             this.loading.loadingListData = true;
             try {
@@ -161,6 +228,7 @@ export default {
 
     mounted() {
         this.fetchConfirmedUjiAnalisa();
+        this.checkPlt();
     },
 };
 </script>

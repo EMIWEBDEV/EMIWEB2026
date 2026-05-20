@@ -610,6 +610,152 @@
                     </div>
                 </div>
                 <!-- /form area -->
+
+                <!-- PLT Palatabilitas Panel -->
+                <div v-if="selectedSample && selectedAnalisa && selectedAnalisa.is_plt">
+                    <div v-if="pltPanel.loading" class="lhm-form-loading">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <span>Memuat sesi palatabilitas...</span>
+                    </div>
+                    <template v-else>
+                        <!-- No session: create -->
+                        <div v-if="!pltPanel.session" class="text-center py-5 px-3">
+                            <div class="mb-3">
+                                <i class="ri-flask-2-line" style="font-size:3rem;color:#6c757d"></i>
+                            </div>
+                            <p class="fw-semibold mb-1">Belum ada Sesi Palatabilitas</p>
+                            <p class="text-muted small mb-4">
+                                Buat sesi baru untuk mulai input data palatabilitas sampel ini.
+                            </p>
+                            <button class="btn btn-primary" @click="createPltSession">
+                                <i class="ri-add-circle-line me-1"></i>Buat Sesi Palatabilitas
+                            </button>
+                        </div>
+                        <!-- Session exists -->
+                        <div v-else class="p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span
+                                        class="badge"
+                                        :class="pltPanel.session.status_session === 'F' ? 'bg-success' : 'bg-warning text-dark'"
+                                    >
+                                        {{ pltPanel.session.status_session === 'F' ? 'Selesai' : 'Draft' }}
+                                    </span>
+                                    <small class="text-muted">Palatabilitas · {{ selectedSample.no_sampel }}</small>
+                                </div>
+                                <a
+                                    :href="`/lab/palatabilitas/${selectedSample.no_sampel}`"
+                                    class="btn btn-sm btn-outline-secondary"
+                                >
+                                    <i class="ri-external-link-line me-1"></i>Halaman Penuh
+                                </a>
+                            </div>
+
+                            <!-- Finalisasi done -->
+                            <div v-if="pltPanel.session.status_session === 'F'" class="alert alert-success mb-0">
+                                <i class="ri-check-double-line me-2"></i>
+                                Palatabilitas telah difinalisasi. Data sudah tersimpan ke Uji Sampel.
+                            </div>
+
+                            <!-- Draft mode -->
+                            <div v-else>
+                                <!-- Add pembanding -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold small mb-1">Tambah Bahan Pembanding</label>
+                                    <div class="input-group input-group-sm">
+                                        <input
+                                            v-model="pltPanel.newPembanding"
+                                            type="text"
+                                            class="form-control"
+                                            placeholder="Nama bahan pembanding..."
+                                            @keydown.enter="addPembandingPlt"
+                                        />
+                                        <button
+                                            class="btn btn-primary"
+                                            @click="addPembandingPlt"
+                                            :disabled="pltPanel.loadingAdd || !pltPanel.newPembanding.trim()"
+                                        >
+                                            <span v-if="pltPanel.loadingAdd" class="spinner-border spinner-border-sm"></span>
+                                            <i v-else class="ri-add-line"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- No pembanding -->
+                                <div
+                                    v-if="!pltPanel.pembanding.length"
+                                    class="text-muted small text-center py-3 border rounded mb-3"
+                                >
+                                    <i class="ri-information-line me-1"></i>
+                                    Belum ada bahan pembanding. Tambahkan di atas untuk mulai input data.
+                                </div>
+
+                                <!-- Data matrix -->
+                                <div v-else-if="pltPanel.analisa.length" class="mb-3">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-2" style="font-size:12px">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="min-width:120px">Pembanding</th>
+                                                    <th
+                                                        v-for="a in pltPanel.analisa"
+                                                        :key="a.id_jenis_analisa"
+                                                        class="text-center"
+                                                        style="min-width:80px"
+                                                    >
+                                                        {{ a.Jenis_Analisa }}
+                                                    </th>
+                                                    <th style="width:44px"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="p in pltPanel.pembanding" :key="p.id_pembanding">
+                                                    <td class="fw-semibold align-middle">{{ p.nama_pembanding }}</td>
+                                                    <td
+                                                        v-for="a in pltPanel.analisa"
+                                                        :key="a.id_jenis_analisa"
+                                                        class="p-1"
+                                                    >
+                                                        <input
+                                                            type="text"
+                                                            class="form-control form-control-sm text-center"
+                                                            :value="pltCellValue(p.id_pembanding, a.id_jenis_analisa)"
+                                                            @blur="e => saveDraftPlt(p.id_pembanding, a.id_jenis_analisa, e.target.value)"
+                                                        />
+                                                    </td>
+                                                    <td class="text-center align-middle">
+                                                        <button
+                                                            class="btn btn-sm btn-outline-danger py-0 px-1"
+                                                            @click="removePembandingPlt(p.id_pembanding)"
+                                                            title="Hapus"
+                                                        >
+                                                            <i class="ri-delete-bin-line"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="text-end">
+                                        <button
+                                            class="btn btn-success"
+                                            @click="finalisasiPlt"
+                                            :disabled="pltPanel.loadingFinalisasi"
+                                        >
+                                            <span
+                                                v-if="pltPanel.loadingFinalisasi"
+                                                class="spinner-border spinner-border-sm me-1"
+                                            ></span>
+                                            <i v-else class="ri-check-double-line me-1"></i>
+                                            Finalisasi Palatabilitas
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <!-- /PLT panel -->
             </div>
             <!-- /lhm-form-col -->
         </div>
@@ -847,6 +993,7 @@ export default {
             /* selection */
             selectedSample: null,
             selectedActiveAnalisaId: null,
+            selectedAnalisa: null,
 
             /* form state */
             selectedTemplating: null,
@@ -863,6 +1010,16 @@ export default {
             loading: {
                 detailTemplate: false,
                 multiSampel: null,
+            },
+            pltPanel: {
+                loading: false,
+                session: null,
+                analisa: [],
+                pembanding: [],
+                draftMap: {},
+                newPembanding: '',
+                loadingFinalisasi: false,
+                loadingAdd: false,
             },
 
             /* QR modal */
@@ -936,6 +1093,7 @@ export default {
             this.sampleNumber = sample.no_sampel;
             this.selectedSample = sample;
             this.selectedActiveAnalisaId = analisa.id;
+            this.selectedAnalisa = analisa;
             this.reactiveIdJenisAnalisa = analisa.id;
             this.kodeAnalisa = analisa.Kode_Analisa;
             this.samplePoMulti = null;
@@ -969,6 +1127,20 @@ export default {
                     is_done: a.is_done,
                 })),
             };
+
+            if (analisa.is_plt) {
+                this.pltPanel = {
+                    loading: false, session: null, analisa: [], pembanding: [],
+                    draftMap: {}, newPembanding: '', loadingFinalisasi: false, loadingAdd: false,
+                };
+                await this.loadPltPanel();
+                this.$nextTick(() => {
+                    const el = document.getElementById("lhm-form-panel");
+                    if (el && window.innerWidth < 1024)
+                        el.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+                return;
+            }
 
             this.loading.detailTemplate = true;
             try {
@@ -1008,10 +1180,155 @@ export default {
         clearSelection() {
             this.selectedSample = null;
             this.selectedActiveAnalisaId = null;
+            this.selectedAnalisa = null;
             this.selectedTemplating = null;
             this.nomorSampel.sampleDetails = null;
             this.nomorSampel.multiSampel = null;
             this.samplePoMulti = null;
+            this.pltPanel = {
+                loading: false, session: null, analisa: [], pembanding: [],
+                draftMap: {}, newPembanding: '', loadingFinalisasi: false, loadingAdd: false,
+            };
+        },
+
+        /* ── PLT Palatabilitas ──────────────────────────────────── */
+        async loadPltPanel() {
+            this.pltPanel.loading = true;
+            try {
+                const res = await axios.get('/api/v1/palatabilitas/session', {
+                    params: { no_po_sampel: this.sampleNumber },
+                });
+                if (res.data.success) {
+                    this.pltPanel.analisa = res.data.plt_analisa || [];
+                    if (res.data.result) {
+                        this.pltPanel.session = res.data.result;
+                        this.pltPanel.pembanding = res.data.result.pembanding || [];
+                        await this.loadPltSementara();
+                    }
+                }
+            } catch { }
+            finally { this.pltPanel.loading = false; }
+        },
+
+        async loadPltSementara() {
+            try {
+                const res = await axios.get('/api/v1/palatabilitas/sementara', {
+                    params: { no_po_sampel: this.sampleNumber },
+                });
+                if (res.data.success) {
+                    const map = {};
+                    for (const row of (res.data.result || [])) {
+                        map[`${row.id_pembanding}|${row.id_jenis_analisa}`] = row;
+                    }
+                    this.pltPanel.draftMap = map;
+                }
+            } catch { }
+        },
+
+        async createPltSession() {
+            this.pltPanel.loading = true;
+            try {
+                const res = await axios.post('/api/v1/palatabilitas/session', {
+                    no_po_sampel: this.sampleNumber,
+                });
+                if (res.data.success) {
+                    await this.loadPltPanel();
+                } else {
+                    Swal.fire('Gagal', res.data.message || 'Gagal membuat sesi.', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', e?.response?.data?.message || e.message, 'error');
+            } finally {
+                this.pltPanel.loading = false;
+            }
+        },
+
+        async addPembandingPlt() {
+            const nama = (this.pltPanel.newPembanding || '').trim();
+            if (!nama) return;
+            this.pltPanel.loadingAdd = true;
+            try {
+                const res = await axios.post('/api/v1/palatabilitas/pembanding', {
+                    no_po_sampel: this.sampleNumber,
+                    nama_pembanding: nama,
+                });
+                if (res.data.success) {
+                    this.pltPanel.newPembanding = '';
+                    await this.loadPltPanel();
+                } else {
+                    Swal.fire('Gagal', res.data.message || 'Gagal menambah pembanding.', 'warning');
+                }
+            } catch (e) {
+                Swal.fire('Error', e?.response?.data?.message || e.message, 'error');
+            } finally {
+                this.pltPanel.loadingAdd = false;
+            }
+        },
+
+        async removePembandingPlt(idPembanding) {
+            try {
+                const res = await axios.delete(`/api/v1/palatabilitas/pembanding/${idPembanding}`);
+                if (res.data.success) await this.loadPltPanel();
+            } catch { }
+        },
+
+        async saveDraftPlt(idPembanding, idJenisAnalisa, value) {
+            const val = (value ?? '').toString().trim();
+            if (val === '') return;
+            try {
+                const isNum = !isNaN(parseFloat(val)) && isFinite(val);
+                await axios.post('/api/v1/palatabilitas/sementara', {
+                    no_po_sampel: this.sampleNumber,
+                    id_pembanding: idPembanding,
+                    id_jenis_analisa: idJenisAnalisa,
+                    ...(isNum ? { hasil: parseFloat(val) } : { nilai_hasil_string: val }),
+                });
+                const key = `${idPembanding}|${idJenisAnalisa}`;
+                this.pltPanel.draftMap = {
+                    ...this.pltPanel.draftMap,
+                    [key]: {
+                        id_pembanding: idPembanding,
+                        id_jenis_analisa: idJenisAnalisa,
+                        hasil: isNum ? parseFloat(val) : null,
+                        nilai_hasil_string: isNum ? null : val,
+                    },
+                };
+            } catch { }
+        },
+
+        pltCellValue(idPembanding, idJenisAnalisa) {
+            const d = this.pltPanel.draftMap[`${idPembanding}|${idJenisAnalisa}`];
+            if (!d) return '';
+            return d.nilai_hasil_string ?? (d.hasil !== null && d.hasil !== undefined ? String(d.hasil) : '');
+        },
+
+        async finalisasiPlt() {
+            const confirm = await Swal.fire({
+                title: 'Finalisasi Palatabilitas?',
+                text: 'Data akan disimpan ke Uji Sampel dan tidak dapat diubah.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Finalisasi',
+                cancelButtonText: 'Batal',
+            });
+            if (!confirm.isConfirmed) return;
+            this.pltPanel.loadingFinalisasi = true;
+            try {
+                const res = await axios.post('/api/v1/palatabilitas/finalisasi', {
+                    no_po_sampel: this.sampleNumber,
+                });
+                if (res.data.success) {
+                    Swal.fire('Berhasil', 'Palatabilitas telah difinalisasi.', 'success');
+                    await this.loadPltPanel();
+                    await this.fetchSampleList();
+                } else {
+                    Swal.fire('Gagal', res.data.message || 'Gagal finalisasi.', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', e?.response?.data?.message || e.message, 'error');
+            } finally {
+                this.pltPanel.loadingFinalisasi = false;
+            }
         },
 
         /* ── Multi-QR sub-sample ────────────────────────────────── */

@@ -87,6 +87,30 @@
                                     </div>
                                 </div>
                                 <div v-else-if="listData.length > 0">
+                                    <!-- PLT Palatabilitas Banner -->
+                                    <div
+                                        v-if="informasiData && informasiData.is_plt"
+                                        class="alert border-0 shadow-sm mb-4 p-0 overflow-hidden"
+                                        style="border-radius: 10px;"
+                                    >
+                                        <div class="d-flex align-items-stretch">
+                                            <div
+                                                class="d-flex align-items-center justify-content-center px-4"
+                                                style="background: linear-gradient(135deg, #0ea5e9, #0284c7); min-width: 64px;"
+                                            >
+                                                <i class="fas fa-flask fa-2x text-white"></i>
+                                            </div>
+                                            <div class="flex-grow-1 py-3 px-4" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd);">
+                                                <div class="text-uppercase fw-bold mb-1" style="font-size: 0.7rem; letter-spacing: 1px; color: #0369a1;">
+                                                    <i class="fas fa-tag me-1"></i>Uji Palatabilitas — Hasil Per Produk Pembanding
+                                                </div>
+                                                <div class="text-dark small">
+                                                    Setiap baris menunjukkan hasil uji palatabilitas untuk masing-masing produk pembanding yang digunakan.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- End PLT Banner -->
                                     <div class="table-responsive">
                                         <table
                                             class="table table-bordered table-nowrap align-middle mb-0"
@@ -99,6 +123,9 @@
                                                     <th>No PO</th>
                                                     <th>No Split Po</th>
                                                     <th>Tanggal</th>
+                                                    <th v-if="informasiData && informasiData.is_plt" style="background:#e0f2fe; color:#0284c7; white-space:nowrap;">
+                                                        <i class="fas fa-flask me-1"></i>Produk Pembanding
+                                                    </th>
                                                     <th
                                                         v-for="param in template.parameter"
                                                         :key="param.id_qc"
@@ -153,6 +180,14 @@
                                                             )
                                                         }}
                                                     </td>
+                                                    <td v-if="informasiData && informasiData.is_plt" style="background:#f0f9ff;">
+                                                        <div v-if="row.Nama_Pembanding" class="d-flex align-items-center gap-1">
+                                                            <span class="badge rounded-pill px-2 py-1" style="background:#0284c7; font-size:0.72rem;">
+                                                                <i class="fas fa-flask me-1"></i>{{ row.Nama_Pembanding }}
+                                                            </span>
+                                                        </div>
+                                                        <span v-else class="text-muted small">-</span>
+                                                    </td>
                                                     <td
                                                         v-for="(
                                                             paramValue, pIndex
@@ -203,6 +238,7 @@
                                                     <td
                                                         :colspan="
                                                             6 +
+                                                            (informasiData && informasiData.is_plt ? 1 : 0) +
                                                             (template.parameter
                                                                 ? template
                                                                       .parameter
