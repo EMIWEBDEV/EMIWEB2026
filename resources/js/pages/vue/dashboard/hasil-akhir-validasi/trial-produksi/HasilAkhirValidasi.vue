@@ -373,37 +373,45 @@
                                                                     <i v-if="analisa.Kode_Aktivitas_Lab === 'PLT'" class="fas fa-flask" style="font-size:0.65rem;"></i>
                                                                 </span>
                                                             </div>
-                                                            <!-- PLT Palatabilitas Context -->
+                                                            <!-- PLT Palatabilitas — Enterprise Display -->
                                                             <div
                                                                 v-if="item.plt_context && item.plt_context.ada_plt"
-                                                                class="mt-3 p-2 rounded-3 d-flex align-items-center gap-2 flex-wrap"
-                                                                style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); border-left: 4px solid #0ea5e9;"
+                                                                class="card border-0 shadow-sm mt-3"
+                                                                style="border-radius: 8px; overflow: hidden;"
                                                             >
-                                                                <i class="fas fa-flask text-info"></i>
-                                                                <span class="fw-semibold small text-dark">Palatabilitas:</span>
-                                                                <span v-if="item.plt_context.jumlah_pembanding > 0" class="small text-dark">
-                                                                    {{ item.plt_context.jumlah_pembanding }} produk pembanding
-                                                                    <span class="text-muted" v-if="item.plt_context.nama_pembanding">
-                                                                        — {{ item.plt_context.nama_pembanding }}
+                                                                <div class="d-flex align-items-center px-3 py-2" style="background: linear-gradient(135deg, #405189, #2e3a64);">
+                                                                    <i class="fas fa-flask text-white me-2" style="font-size: 0.85rem;"></i>
+                                                                    <span class="fw-semibold text-white" style="font-size: 0.82rem; letter-spacing: 0.2px;">Uji Palatabilitas</span>
+                                                                    <span
+                                                                        v-if="item.plt_context.session_final"
+                                                                        class="badge ms-auto rounded-pill"
+                                                                        style="background: rgba(255,255,255,0.2); color: #d1fae5; font-size: 0.68rem;"
+                                                                    >
+                                                                        <i class="fas fa-check me-1"></i>Selesai
                                                                     </span>
-                                                                </span>
-                                                                <span v-else class="small text-warning fw-semibold">
-                                                                    <i class="fas fa-exclamation-triangle me-1"></i>Pembanding belum diatur
-                                                                </span>
-                                                                <span
-                                                                    v-if="item.plt_context.session_final"
-                                                                    class="badge bg-success rounded-pill ms-auto"
-                                                                    style="font-size: 0.7rem;"
-                                                                >
-                                                                    <i class="fas fa-check me-1"></i>Selesai
-                                                                </span>
-                                                                <span
-                                                                    v-else-if="item.plt_context.jumlah_pembanding > 0"
-                                                                    class="badge bg-warning text-dark rounded-pill ms-auto"
-                                                                    style="font-size: 0.7rem;"
-                                                                >
-                                                                    <i class="fas fa-clock me-1"></i>Proses
-                                                                </span>
+                                                                    <span
+                                                                        v-else-if="item.plt_context.jumlah_pembanding > 0"
+                                                                        class="badge ms-auto rounded-pill"
+                                                                        style="background: rgba(255,255,255,0.2); color: #fde68a; font-size: 0.68rem;"
+                                                                    >
+                                                                        <i class="fas fa-clock me-1"></i>Proses
+                                                                    </span>
+                                                                </div>
+                                                                <div v-if="item.plt_context.jumlah_pembanding > 0" style="background: #f8faff;">
+                                                                    <div
+                                                                        v-for="(nama, ni) in (item.plt_context.nama_pembanding || '').split(', ').filter(n => n.trim())"
+                                                                        :key="ni"
+                                                                        class="d-flex align-items-center gap-2 px-3 py-2"
+                                                                        :style="ni > 0 ? 'border-top: 1px solid #eef0f7;' : ''"
+                                                                    >
+                                                                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold flex-shrink-0" style="width: 20px; height: 20px; font-size: 0.62rem; background: #405189; color: #fff;">{{ ni + 1 }}</span>
+                                                                        <span class="fw-medium text-dark" style="font-size: 0.82rem;">{{ nama.trim() }}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div v-else class="px-3 py-2 d-flex align-items-center gap-2" style="background: #fff9ec;">
+                                                                    <i class="fas fa-exclamation-triangle text-warning" style="font-size: 0.78rem;"></i>
+                                                                    <span class="text-warning fw-semibold" style="font-size: 0.78rem;">Pembanding belum diatur</span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>

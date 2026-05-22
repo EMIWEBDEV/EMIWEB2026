@@ -296,12 +296,41 @@
                     </table>
                 </div>
 
+                <!-- Bulk Action Bar -->
+                <div
+                    v-if="checkedItems.length > 0"
+                    class="d-flex align-items-center gap-2 px-3 py-2 bg-primary-subtle border-bottom"
+                >
+                    <i class="ri-checkbox-multiple-line text-primary"></i>
+                    <span class="small fw-semibold text-primary">
+                        {{ checkedItems.length }} menu dipilih
+                    </span>
+                    <button
+                        class="btn btn-sm btn-outline-secondary ms-auto"
+                        @click="checkedItems = []"
+                    >
+                        <i class="ri-close-line me-1"></i>Batal Pilih
+                    </button>
+                </div>
+
                 <!-- Data Table -->
-                <div v-else-if="menuList.length" class="table-responsive">
+                <div v-if="menuList.length" class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-4" width="50">No</th>
+                                <th class="ps-3" width="40">
+                                    <div class="form-check mb-0">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            id="checkAll"
+                                            :checked="isAllChecked"
+                                            :indeterminate.prop="isIndeterminate"
+                                            @change="toggleCheckAll($event.target.checked)"
+                                        />
+                                    </div>
+                                </th>
+                                <th width="40">No</th>
                                 <th width="64">Icon</th>
                                 <th>Nama Menu</th>
                                 <th>URL Route</th>
@@ -314,9 +343,22 @@
                             <tr
                                 v-for="(item, index) in menuList"
                                 :key="item.Id_Menu"
+                                :class="{ 'table-active': checkedItems.includes(item.Id_Menu) }"
                             >
+                                <!-- Checkbox -->
+                                <td class="ps-3">
+                                    <div class="form-check mb-0">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            :value="item.Id_Menu"
+                                            v-model="checkedItems"
+                                        />
+                                    </div>
+                                </td>
+
                                 <!-- No -->
-                                <td class="ps-4 text-muted fw-medium">
+                                <td class="text-muted fw-medium">
                                     {{
                                         (pagination.page - 1) *
                                             pagination.limit +
@@ -432,9 +474,10 @@
                     </table>
                 </div>
 
+
                 <!-- Empty State -->
                 <div
-                    v-else
+                    v-if="!loading.menuLoading && !menuList.length"
                     class="d-flex flex-column align-items-center justify-content-center py-5 my-2"
                 >
                     <DotLottieVue
@@ -907,6 +950,7 @@ export default {
                 Sub_Sub_Header: "",
             },
 
+            checkedItems: [],
             errors: {},
             isEdit: false,
             offcanvasInstance: null,
@@ -914,6 +958,14 @@ export default {
     },
 
     computed: {
+        isAllChecked() {
+            return this.menuList.length > 0 && this.checkedItems.length === this.menuList.length;
+        },
+
+        isIndeterminate() {
+            return this.checkedItems.length > 0 && this.checkedItems.length < this.menuList.length;
+        },
+
         visiblePages() {
             const total = this.pagination.totalPage;
             const current = this.pagination.page;
@@ -946,6 +998,15 @@ export default {
     },
 
     methods: {
+        /* ── Check All ── */
+        toggleCheckAll(checked) {
+            if (checked) {
+                this.checkedItems = this.menuList.map(m => m.Id_Menu);
+            } else {
+                this.checkedItems = [];
+            }
+        },
+
         /* ── Stats ── */
         async fetchStats() {
             this.loadingStats = true;
@@ -1103,22 +1164,22 @@ export default {
 
         /* ── Pagination ── */
         prevPage() {
-            if (this.pagination.page > 1)
-                this.fetchMasterMenu(
-                    this.pagination.page - 1,
-                    this.searchQuery
-                );
+            if (this.pagination.page > 1) {
+                this.checkedItems = [];
+                this.fetchMasterMenu(this.pagination.page - 1, this.searchQuery);
+            }
         },
         nextPage() {
-            if (this.pagination.page < this.pagination.totalPage)
-                this.fetchMasterMenu(
-                    this.pagination.page + 1,
-                    this.searchQuery
-                );
+            if (this.pagination.page < this.pagination.totalPage) {
+                this.checkedItems = [];
+                this.fetchMasterMenu(this.pagination.page + 1, this.searchQuery);
+            }
         },
         changePage(page) {
-            if (page !== this.pagination.page)
+            if (page !== this.pagination.page) {
+                this.checkedItems = [];
                 this.fetchMasterMenu(page, this.searchQuery);
+            }
         },
     },
 };

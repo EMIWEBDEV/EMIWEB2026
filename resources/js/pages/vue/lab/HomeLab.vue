@@ -186,14 +186,16 @@
                                     class="lhm-badge lhm-badge--trial"
                                     title="Sampel Trial Produksi"
                                 >
-                                    <i class="ri-flask-line me-1"></i>Trial Produksi
+                                    <i class="ri-flask-line me-1"></i>Trial
+                                    Produksi
                                 </span>
                                 <span
                                     v-else
                                     class="lhm-badge lhm-badge--produksi"
                                     title="Sampel Produksi"
                                 >
-                                    <i class="ri-building-2-line me-1"></i>Produksi
+                                    <i class="ri-building-2-line me-1"></i
+                                    >Produksi
                                 </span>
                             </div>
                             <div class="lhm-card-head-right">
@@ -245,35 +247,86 @@
                             class="lhm-chips"
                         >
                             <button
-                                v-for="analisa in sample.analisa"
+                                v-for="analisa in displayChips(sample)"
                                 :key="analisa.id"
                                 class="lhm-chip"
-                                :class="chipClass(analisa, sample)"
+                                :class="[
+                                    chipClass(analisa, sample),
+                                    analisa.is_plt_group
+                                        ? 'lhm-chip--plt-group'
+                                        : '',
+                                    analisa.is_berkala
+                                        ? 'lhm-chip--berkala'
+                                        : '',
+                                ]"
                                 :disabled="
-                                    sample.is_selesai || sample.is_expired
+                                    sample.is_selesai ||
+                                    (sample.is_expired &&
+                                        !analisa.is_expired_exempt)
                                 "
-                                :title="analisa.Kode_Analisa"
+                                :title="
+                                    analisa.is_plt_group
+                                        ? 'Palatabilitas — klik untuk input data'
+                                        : analisa.is_berkala
+                                        ? 'Berkala — klik untuk input data'
+                                        : analisa.Kode_Analisa
+                                "
                                 @click="
-                                    !sample.is_selesai &&
-                                        !sample.is_expired &&
-                                        selectAnalisa(sample, analisa)
+                                    !(
+                                        sample.is_selesai ||
+                                        (sample.is_expired &&
+                                            !analisa.is_expired_exempt)
+                                    ) && selectAnalisa(sample, analisa)
                                 "
                             >
                                 <i
-                                    v-if="analisa.is_done"
+                                    v-if="
+                                        analisa.is_done && analisa.is_plt_group
+                                    "
+                                    class="ri-check-double-line"
+                                ></i>
+                                <i
+                                    v-else-if="
+                                        analisa.is_done && analisa.is_berkala
+                                    "
+                                    class="ri-check-double-line"
+                                ></i>
+                                <i
+                                    v-else-if="analisa.is_done"
                                     class="ri-check-line"
                                 ></i>
                                 <i
                                     v-else-if="
                                         analisa.is_started && !analisa.is_done
                                     "
-                                    class="ri-loader-4-line lhm-spin"
+                                    class="ri-pencil-line"
                                 ></i>
                                 <i
                                     v-else-if="analisa.has_resampling"
                                     class="ri-refresh-line"
                                 ></i>
+                                <i
+                                    v-else-if="analisa.is_plt_group"
+                                    class="ri-heart-pulse-line"
+                                ></i>
+                                <i
+                                    v-else-if="analisa.is_berkala"
+                                    class="ri-pulse-line"
+                                ></i>
                                 {{ analisa.Jenis_Analisa }}
+                                <span
+                                    v-if="analisa.is_plt_group"
+                                    class="lhm-plt-badge"
+                                    >{{ analisa._plt_items.length }}</span
+                                >
+                                <span
+                                    v-if="
+                                        analisa.is_berkala &&
+                                        analisa._berkala_items?.length
+                                    "
+                                    class="lhm-plt-badge"
+                                    >{{ analisa._berkala_items.length }}</span
+                                >
                             </button>
                         </div>
                         <div v-else class="lhm-no-analisa">
@@ -548,6 +601,16 @@
                                     :kodeAnalisa="kodeAnalisa"
                                     :sampleNumber="sampleNumber"
                                     :Flag_Foto="Flag_Foto"
+                                    :plt_session_id="
+                                        selectedPltSubAnalisa
+                                            ? plt.session?.id_session ?? null
+                                            : null
+                                    "
+                                    :plt_pembanding_list="
+                                        selectedPltSubAnalisa
+                                            ? plt.session?.pembanding || []
+                                            : []
+                                    "
                                 />
                                 <NotRumus
                                     v-else
@@ -568,6 +631,16 @@
                                     :kodeAnalisa="kodeAnalisa"
                                     :Flag_Foto="Flag_Foto"
                                     :sampleNumber="sampleNumber"
+                                    :plt_session_id="
+                                        selectedPltSubAnalisa
+                                            ? plt.session?.id_session ?? null
+                                            : null
+                                    "
+                                    :plt_pembanding_list="
+                                        selectedPltSubAnalisa
+                                            ? plt.session?.pembanding || []
+                                            : []
+                                    "
                                 />
                             </div>
                         </div>
@@ -590,6 +663,16 @@
                             :kodeAnalisa="kodeAnalisa"
                             :Flag_Foto="Flag_Foto"
                             :sampleNumber="sampleNumber"
+                            :plt_session_id="
+                                selectedPltSubAnalisa
+                                    ? plt.session?.id_session ?? null
+                                    : null
+                            "
+                            :plt_pembanding_list="
+                                selectedPltSubAnalisa
+                                    ? plt.session?.pembanding || []
+                                    : []
+                            "
                         />
                         <NotRumus
                             v-else
@@ -606,154 +689,267 @@
                             "
                             :Flag_Foto="Flag_Foto"
                             :sampleNumber="sampleNumber"
+                            :plt_session_id="
+                                selectedPltSubAnalisa
+                                    ? plt.session?.id_session ?? null
+                                    : null
+                            "
+                            :plt_pembanding_list="
+                                selectedPltSubAnalisa
+                                    ? plt.session?.pembanding || []
+                                    : []
+                            "
                         />
                     </div>
                 </div>
                 <!-- /form area -->
 
-                <!-- PLT Palatabilitas Panel -->
-                <div v-if="selectedSample && selectedAnalisa && selectedAnalisa.is_plt">
-                    <div v-if="pltPanel.loading" class="lhm-form-loading">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <span>Memuat sesi palatabilitas...</span>
+                <!-- PLT: Pembanding + Analisa Card Selector -->
+                <div
+                    v-if="
+                        selectedSample &&
+                        selectedAnalisa &&
+                        selectedAnalisa.is_plt &&
+                        !selectedPltSubAnalisa &&
+                        !loading.detailTemplate
+                    "
+                    class="plt-panel"
+                >
+                    <!-- Loading pembanding -->
+                    <div v-if="plt.loading" class="plt-panel-loading">
+                        <i class="ri-loader-4-line lhm-spin"></i>
+                        <span>Memuat data...</span>
                     </div>
+
                     <template v-else>
-                        <!-- No session: create -->
-                        <div v-if="!pltPanel.session" class="text-center py-5 px-3">
-                            <div class="mb-3">
-                                <i class="ri-flask-2-line" style="font-size:3rem;color:#6c757d"></i>
+                        <!-- SECTION 1: Produk Pembanding — badge style -->
+                        <div class="plt-section">
+                            <div class="plt-section-title">
+                                <i class="ri-flask-line me-1"></i>Produk Pembanding
+                                <span v-if="plt.session?.pembanding?.length" class="plt-section-count">
+                                    ({{ plt.session.pembanding.length }})
+                                </span>
                             </div>
-                            <p class="fw-semibold mb-1">Belum ada Sesi Palatabilitas</p>
-                            <p class="text-muted small mb-4">
-                                Buat sesi baru untuk mulai input data palatabilitas sampel ini.
-                            </p>
-                            <button class="btn btn-primary" @click="createPltSession">
-                                <i class="ri-add-circle-line me-1"></i>Buat Sesi Palatabilitas
-                            </button>
+
+                            <!-- Badge list (flex wrap) -->
+                            <div class="plt-badge-list" v-if="plt.session?.pembanding?.length">
+                                <span
+                                    v-for="(p, idx) in plt.session.pembanding"
+                                    :key="p.id_pembanding"
+                                    class="plt-badge-item"
+                                >
+                                    <span class="plt-badge-num">{{ idx + 1 }}</span>
+                                    <span class="plt-badge-name">{{ p.nama_pembanding }}</span>
+                                    <button
+                                        class="plt-badge-del"
+                                        @click="pltRemovePembanding(p.id_pembanding)"
+                                        title="Hapus"
+                                    ><i class="ri-close-line"></i></button>
+                                </span>
+                            </div>
+                            <div v-else class="plt-pb-empty">
+                                <i class="ri-information-line me-1"></i>Belum ada produk pembanding
+                            </div>
+
+                            <!-- Input tambah pembanding -->
+                            <div class="plt-pb-add-row">
+                                <input
+                                    v-model="plt.newRow"
+                                    class="plt-pb-input"
+                                    placeholder="Nama produk pembanding..."
+                                    @keydown.enter="pltAddPembanding"
+                                />
+                                <button
+                                    class="plt-pb-add-btn"
+                                    @click="pltAddPembanding"
+                                    :disabled="!plt.newRow.trim() || plt.addingPembanding"
+                                >
+                                    <i :class="plt.addingPembanding ? 'ri-loader-4-line lhm-spin' : 'ri-add-line'"></i>
+                                    Tambah
+                                </button>
+                            </div>
                         </div>
-                        <!-- Session exists -->
-                        <div v-else class="p-3">
-                            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span
-                                        class="badge"
-                                        :class="pltPanel.session.status_session === 'F' ? 'bg-success' : 'bg-warning text-dark'"
-                                    >
-                                        {{ pltPanel.session.status_session === 'F' ? 'Selesai' : 'Draft' }}
+
+                        <!-- SECTION 2: Jenis Analisa — locked jika belum ada pembanding -->
+                        <div class="plt-section">
+                            <div class="plt-section-title">
+                                <i class="ri-test-tube-line me-1"></i>Jenis Analisa
+                            </div>
+
+                            <!-- Banner kunci jika belum ada pembanding -->
+                            <div
+                                v-if="!plt.session?.pembanding?.length"
+                                class="plt-lock-banner"
+                            >
+                                <i class="ri-lock-2-line plt-lock-icon"></i>
+                                <div>
+                                    <div class="plt-lock-title">Analisa Terkunci</div>
+                                    <div class="plt-lock-sub">Tambahkan minimal 1 produk pembanding di atas untuk membuka analisa</div>
+                                </div>
+                            </div>
+
+                            <div class="plt-sub-list">
+                                <button
+                                    v-for="(sub, idx) in pltSubItems"
+                                    :key="sub.id"
+                                    class="plt-sub-card"
+                                    :class="{
+                                        'plt-sub-done': sub.is_done,
+                                        'plt-sub-locked': !plt.session?.pembanding?.length
+                                    }"
+                                    @click="plt.session?.pembanding?.length ? selectPltSubAnalisa(sub) : null"
+                                    :disabled="!plt.session?.pembanding?.length"
+                                >
+                                    <span class="plt-sub-num">{{ idx + 1 }}</span>
+                                    <div class="plt-sub-body">
+                                        <div class="plt-sub-name">{{ sub.Jenis_Analisa }}</div>
+                                        <div class="plt-sub-code">{{ sub.Kode_Analisa }}</div>
+                                    </div>
+                                    <!-- Badge "Belum Ada Pembanding" saat terkunci -->
+                                    <span v-if="!plt.session?.pembanding?.length" class="plt-lock-badge">
+                                        <i class="ri-lock-2-line me-1"></i>Input Pembanding
                                     </span>
-                                    <small class="text-muted">Palatabilitas · {{ selectedSample.no_sampel }}</small>
-                                </div>
-                                <a
-                                    :href="`/lab/palatabilitas/${selectedSample.no_sampel}`"
-                                    class="btn btn-sm btn-outline-secondary"
-                                >
-                                    <i class="ri-external-link-line me-1"></i>Halaman Penuh
-                                </a>
-                            </div>
-
-                            <!-- Finalisasi done -->
-                            <div v-if="pltPanel.session.status_session === 'F'" class="alert alert-success mb-0">
-                                <i class="ri-check-double-line me-2"></i>
-                                Palatabilitas telah difinalisasi. Data sudah tersimpan ke Uji Sampel.
-                            </div>
-
-                            <!-- Draft mode -->
-                            <div v-else>
-                                <!-- Add pembanding -->
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold small mb-1">Tambah Bahan Pembanding</label>
-                                    <div class="input-group input-group-sm">
-                                        <input
-                                            v-model="pltPanel.newPembanding"
-                                            type="text"
-                                            class="form-control"
-                                            placeholder="Nama bahan pembanding..."
-                                            @keydown.enter="addPembandingPlt"
-                                        />
-                                        <button
-                                            class="btn btn-primary"
-                                            @click="addPembandingPlt"
-                                            :disabled="pltPanel.loadingAdd || !pltPanel.newPembanding.trim()"
-                                        >
-                                            <span v-if="pltPanel.loadingAdd" class="spinner-border spinner-border-sm"></span>
-                                            <i v-else class="ri-add-line"></i>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- No pembanding -->
-                                <div
-                                    v-if="!pltPanel.pembanding.length"
-                                    class="text-muted small text-center py-3 border rounded mb-3"
-                                >
-                                    <i class="ri-information-line me-1"></i>
-                                    Belum ada bahan pembanding. Tambahkan di atas untuk mulai input data.
-                                </div>
-
-                                <!-- Data matrix -->
-                                <div v-else-if="pltPanel.analisa.length" class="mb-3">
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-bordered mb-2" style="font-size:12px">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th style="min-width:120px">Pembanding</th>
-                                                    <th
-                                                        v-for="a in pltPanel.analisa"
-                                                        :key="a.id_jenis_analisa"
-                                                        class="text-center"
-                                                        style="min-width:80px"
-                                                    >
-                                                        {{ a.Jenis_Analisa }}
-                                                    </th>
-                                                    <th style="width:44px"></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr v-for="p in pltPanel.pembanding" :key="p.id_pembanding">
-                                                    <td class="fw-semibold align-middle">{{ p.nama_pembanding }}</td>
-                                                    <td
-                                                        v-for="a in pltPanel.analisa"
-                                                        :key="a.id_jenis_analisa"
-                                                        class="p-1"
-                                                    >
-                                                        <input
-                                                            type="text"
-                                                            class="form-control form-control-sm text-center"
-                                                            :value="pltCellValue(p.id_pembanding, a.id_jenis_analisa)"
-                                                            @blur="e => saveDraftPlt(p.id_pembanding, a.id_jenis_analisa, e.target.value)"
-                                                        />
-                                                    </td>
-                                                    <td class="text-center align-middle">
-                                                        <button
-                                                            class="btn btn-sm btn-outline-danger py-0 px-1"
-                                                            @click="removePembandingPlt(p.id_pembanding)"
-                                                            title="Hapus"
-                                                        >
-                                                            <i class="ri-delete-bin-line"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div class="text-end">
-                                        <button
-                                            class="btn btn-success"
-                                            @click="finalisasiPlt"
-                                            :disabled="pltPanel.loadingFinalisasi"
-                                        >
-                                            <span
-                                                v-if="pltPanel.loadingFinalisasi"
-                                                class="spinner-border spinner-border-sm me-1"
-                                            ></span>
-                                            <i v-else class="ri-check-double-line me-1"></i>
-                                            Finalisasi Palatabilitas
-                                        </button>
-                                    </div>
-                                </div>
+                                    <!-- Status normal saat tidak terkunci -->
+                                    <span
+                                        v-else
+                                        class="plt-sub-status"
+                                        :class="sub.is_done ? 'plt-done' : sub.is_started ? 'plt-progress' : 'plt-pending'"
+                                    >
+                                        <i v-if="sub.is_done" class="ri-check-double-line"></i>
+                                        <i v-else-if="sub.is_started" class="ri-loader-4-line lhm-spin"></i>
+                                        <i v-else class="ri-circle-line"></i>
+                                        {{ sub.is_done ? "Selesai" : sub.is_started ? "Proses" : "Belum" }}
+                                    </span>
+                                    <i v-if="plt.session?.pembanding?.length" class="ri-arrow-right-s-line plt-sub-arrow"></i>
+                                    <i v-else class="ri-lock-line plt-lock-arrow"></i>
+                                </button>
                             </div>
                         </div>
                     </template>
+                </div>
+
+                <!-- PLT: Back bar ketika sub-analisa dipilih -->
+                <div
+                    v-if="
+                        selectedSample &&
+                        selectedAnalisa &&
+                        selectedAnalisa.is_plt &&
+                        selectedPltSubAnalisa
+                    "
+                    class="plt-back-bar"
+                >
+                    <button
+                        class="plt-back-btn"
+                        @click="
+                            selectedPltSubAnalisa = null;
+                            selectedTemplating = null;
+                        "
+                    >
+                        <i class="ri-arrow-left-s-line me-1"></i>Kembali ke
+                        Palatabilitas
+                    </button>
+                    <span class="plt-back-name">{{
+                        selectedPltSubAnalisa.Jenis_Analisa
+                    }}</span>
+                </div>
+
+                <!-- Berkala: Sub-analisa card selector -->
+                <div
+                    v-if="
+                        selectedSample &&
+                        selectedAnalisa &&
+                        selectedAnalisa.is_berkala &&
+                        !berkala.selectedSubAnalisa &&
+                        !loading.detailTemplate
+                    "
+                    class="plt-panel"
+                >
+                    <div class="plt-section">
+                        <div class="plt-section-title">
+                            <i class="ri-pulse-line me-1"></i>Jenis Analisa
+                            Berkala
+                            <span
+                                v-if="berkala.subItems.length"
+                                class="plt-section-count"
+                            >
+                                ({{ berkala.subItems.length }})
+                            </span>
+                        </div>
+                        <div class="plt-sub-list">
+                            <button
+                                v-for="(sub, idx) in berkala.subItems"
+                                :key="sub.id"
+                                class="plt-sub-card"
+                                :class="{ 'plt-sub-done': sub.is_done }"
+                                @click="selectBerkalaSubAnalisa(sub)"
+                            >
+                                <span class="plt-sub-num">{{ idx + 1 }}</span>
+                                <div class="plt-sub-body">
+                                    <div class="plt-sub-name">
+                                        {{ sub.Jenis_Analisa }}
+                                    </div>
+                                    <div class="plt-sub-code">
+                                        {{ sub.Kode_Analisa }}
+                                    </div>
+                                </div>
+                                <span
+                                    class="plt-sub-status"
+                                    :class="
+                                        sub.is_done
+                                            ? 'plt-done'
+                                            : sub.is_started
+                                            ? 'plt-progress'
+                                            : 'plt-pending'
+                                    "
+                                >
+                                    <i
+                                        v-if="sub.is_done"
+                                        class="ri-check-double-line"
+                                    ></i>
+                                    <i
+                                        v-else-if="sub.is_started"
+                                        class="ri-loader-4-line lhm-spin"
+                                    ></i>
+                                    <i v-else class="ri-circle-line"></i>
+                                    {{
+                                        sub.is_done
+                                            ? "Selesai"
+                                            : sub.is_started
+                                            ? "Proses"
+                                            : "Belum"
+                                    }}
+                                </span>
+                                <i
+                                    class="ri-arrow-right-s-line plt-sub-arrow"
+                                ></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Berkala: Back bar ketika sub-analisa dipilih -->
+                <div
+                    v-if="
+                        selectedSample &&
+                        selectedAnalisa &&
+                        selectedAnalisa.is_berkala &&
+                        berkala.selectedSubAnalisa
+                    "
+                    class="plt-back-bar"
+                >
+                    <button
+                        class="plt-back-btn"
+                        @click="
+                            berkala.selectedSubAnalisa = null;
+                            selectedTemplating = null;
+                        "
+                    >
+                        <i class="ri-arrow-left-s-line me-1"></i>Kembali ke
+                        {{ selectedAnalisa.Jenis_Analisa }}
+                    </button>
+                    <span class="plt-back-name">{{
+                        berkala.selectedSubAnalisa.Jenis_Analisa
+                    }}</span>
                 </div>
                 <!-- /PLT panel -->
             </div>
@@ -1011,15 +1207,21 @@ export default {
                 detailTemplate: false,
                 multiSampel: null,
             },
-            pltPanel: {
+            /* PLT Palatabilitas panel state */
+            pltSubItems: [],
+            selectedPltSubAnalisa: null,
+
+            /* Berkala (Homogenitas, dll.) panel state */
+            berkala: {
+                subItems: [],
+                selectedSubAnalisa: null,
+            },
+            plt: {
                 loading: false,
-                session: null,
-                analisa: [],
-                pembanding: [],
-                draftMap: {},
-                newPembanding: '',
-                loadingFinalisasi: false,
-                loadingAdd: false,
+                sessionLoaded: false,
+                session: null, // { id_session, status_session, pembanding[] }
+                newRow: "",
+                addingPembanding: false,
             },
 
             /* QR modal */
@@ -1090,6 +1292,16 @@ export default {
 
         /* ── Select analisa ─────────────────────────────────────── */
         async selectAnalisa(sample, analisa) {
+            // PLT group chip: keep _plt_items intact so pltSubItems branch can use them
+            if (analisa.is_plt_group) {
+                analisa = {
+                    ...analisa._plt_items[0],
+                    id: "__plt_group__",
+                    is_plt_group: true,
+                    _plt_items: analisa._plt_items,
+                };
+            }
+
             this.sampleNumber = sample.no_sampel;
             this.selectedSample = sample;
             this.selectedActiveAnalisaId = analisa.id;
@@ -1129,15 +1341,33 @@ export default {
             };
 
             if (analisa.is_plt) {
-                this.pltPanel = {
-                    loading: false, session: null, analisa: [], pembanding: [],
-                    draftMap: {}, newPembanding: '', loadingFinalisasi: false, loadingAdd: false,
-                };
-                await this.loadPltPanel();
+                this.pltSubItems = analisa._plt_items || [];
+                this.selectedPltSubAnalisa = null;
+                this.plt.session = null;
+                this.plt.newRow = "";
+                this.loadPltSession(sample.no_sampel);
                 this.$nextTick(() => {
                     const el = document.getElementById("lhm-form-panel");
                     if (el && window.innerWidth < 1024)
-                        el.scrollIntoView({ behavior: "smooth", block: "start" });
+                        el.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                        });
+                });
+                return;
+            }
+
+            if (analisa.is_berkala) {
+                this.berkala.subItems = analisa._berkala_items || [];
+                this.berkala.selectedSubAnalisa = null;
+                this.selectedTemplating = null;
+                this.$nextTick(() => {
+                    const el = document.getElementById("lhm-form-panel");
+                    if (el && window.innerWidth < 1024)
+                        el.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                        });
                 });
                 return;
             }
@@ -1185,149 +1415,194 @@ export default {
             this.nomorSampel.sampleDetails = null;
             this.nomorSampel.multiSampel = null;
             this.samplePoMulti = null;
-            this.pltPanel = {
-                loading: false, session: null, analisa: [], pembanding: [],
-                draftMap: {}, newPembanding: '', loadingFinalisasi: false, loadingAdd: false,
-            };
+            this.pltSubItems = [];
+            this.selectedPltSubAnalisa = null;
+            this.plt.session = null;
+            this.plt.newRow = "";
+            this.plt.sessionLoaded = false;
+            this.berkala.subItems = [];
+            this.berkala.selectedSubAnalisa = null;
         },
 
-        /* ── PLT Palatabilitas ──────────────────────────────────── */
-        async loadPltPanel() {
-            this.pltPanel.loading = true;
+        /* ── PLT: load session (untuk data pembanding) ─────────── */
+        async loadPltSession(noPoSampel) {
+            this.plt.loading = true;
+            this.plt.sessionLoaded = false;
             try {
-                const res = await axios.get('/api/v1/palatabilitas/session', {
-                    params: { no_po_sampel: this.sampleNumber },
+                const resp = await axios.get("/api/v1/palatabilitas/session", {
+                    params: { no_po_sampel: noPoSampel },
                 });
-                if (res.data.success) {
-                    this.pltPanel.analisa = res.data.plt_analisa || [];
-                    if (res.data.result) {
-                        this.pltPanel.session = res.data.result;
-                        this.pltPanel.pembanding = res.data.result.pembanding || [];
-                        await this.loadPltSementara();
-                    }
-                }
-            } catch { }
-            finally { this.pltPanel.loading = false; }
-        },
-
-        async loadPltSementara() {
-            try {
-                const res = await axios.get('/api/v1/palatabilitas/sementara', {
-                    params: { no_po_sampel: this.sampleNumber },
-                });
-                if (res.data.success) {
-                    const map = {};
-                    for (const row of (res.data.result || [])) {
-                        map[`${row.id_pembanding}|${row.id_jenis_analisa}`] = row;
-                    }
-                    this.pltPanel.draftMap = map;
-                }
-            } catch { }
-        },
-
-        async createPltSession() {
-            this.pltPanel.loading = true;
-            try {
-                const res = await axios.post('/api/v1/palatabilitas/session', {
-                    no_po_sampel: this.sampleNumber,
-                });
-                if (res.data.success) {
-                    await this.loadPltPanel();
-                } else {
-                    Swal.fire('Gagal', res.data.message || 'Gagal membuat sesi.', 'error');
-                }
-            } catch (e) {
-                Swal.fire('Error', e?.response?.data?.message || e.message, 'error');
-            } finally {
-                this.pltPanel.loading = false;
-            }
-        },
-
-        async addPembandingPlt() {
-            const nama = (this.pltPanel.newPembanding || '').trim();
-            if (!nama) return;
-            this.pltPanel.loadingAdd = true;
-            try {
-                const res = await axios.post('/api/v1/palatabilitas/pembanding', {
-                    no_po_sampel: this.sampleNumber,
-                    nama_pembanding: nama,
-                });
-                if (res.data.success) {
-                    this.pltPanel.newPembanding = '';
-                    await this.loadPltPanel();
-                } else {
-                    Swal.fire('Gagal', res.data.message || 'Gagal menambah pembanding.', 'warning');
-                }
-            } catch (e) {
-                Swal.fire('Error', e?.response?.data?.message || e.message, 'error');
-            } finally {
-                this.pltPanel.loadingAdd = false;
-            }
-        },
-
-        async removePembandingPlt(idPembanding) {
-            try {
-                const res = await axios.delete(`/api/v1/palatabilitas/pembanding/${idPembanding}`);
-                if (res.data.success) await this.loadPltPanel();
-            } catch { }
-        },
-
-        async saveDraftPlt(idPembanding, idJenisAnalisa, value) {
-            const val = (value ?? '').toString().trim();
-            if (val === '') return;
-            try {
-                const isNum = !isNaN(parseFloat(val)) && isFinite(val);
-                await axios.post('/api/v1/palatabilitas/sementara', {
-                    no_po_sampel: this.sampleNumber,
-                    id_pembanding: idPembanding,
-                    id_jenis_analisa: idJenisAnalisa,
-                    ...(isNum ? { hasil: parseFloat(val) } : { nilai_hasil_string: val }),
-                });
-                const key = `${idPembanding}|${idJenisAnalisa}`;
-                this.pltPanel.draftMap = {
-                    ...this.pltPanel.draftMap,
-                    [key]: {
-                        id_pembanding: idPembanding,
-                        id_jenis_analisa: idJenisAnalisa,
-                        hasil: isNum ? parseFloat(val) : null,
-                        nilai_hasil_string: isNum ? null : val,
-                    },
+                const result = resp.data?.result;
+                this.plt.session = result
+                    ? {
+                          id_session: result.id_session,
+                          status_session: result.status_session,
+                          pembanding: result.pembanding || [],
+                      }
+                    : {
+                          id_session: null,
+                          status_session: null,
+                          pembanding: [],
+                      };
+            } catch (err) {
+                this.plt.session = {
+                    id_session: null,
+                    status_session: null,
+                    pembanding: [],
                 };
-            } catch { }
-        },
-
-        pltCellValue(idPembanding, idJenisAnalisa) {
-            const d = this.pltPanel.draftMap[`${idPembanding}|${idJenisAnalisa}`];
-            if (!d) return '';
-            return d.nilai_hasil_string ?? (d.hasil !== null && d.hasil !== undefined ? String(d.hasil) : '');
-        },
-
-        async finalisasiPlt() {
-            const confirm = await Swal.fire({
-                title: 'Finalisasi Palatabilitas?',
-                text: 'Data akan disimpan ke Uji Sampel dan tidak dapat diubah.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Ya, Finalisasi',
-                cancelButtonText: 'Batal',
-            });
-            if (!confirm.isConfirmed) return;
-            this.pltPanel.loadingFinalisasi = true;
-            try {
-                const res = await axios.post('/api/v1/palatabilitas/finalisasi', {
-                    no_po_sampel: this.sampleNumber,
-                });
-                if (res.data.success) {
-                    Swal.fire('Berhasil', 'Palatabilitas telah difinalisasi.', 'success');
-                    await this.loadPltPanel();
-                    await this.fetchSampleList();
-                } else {
-                    Swal.fire('Gagal', res.data.message || 'Gagal finalisasi.', 'error');
-                }
-            } catch (e) {
-                Swal.fire('Error', e?.response?.data?.message || e.message, 'error');
             } finally {
-                this.pltPanel.loadingFinalisasi = false;
+                this.plt.loading = false;
+                this.plt.sessionLoaded = true;
+            }
+        },
+
+        /* ── PLT: pastikan session ada sebelum tambah pembanding ─ */
+        async pltEnsureSession(noPoSampel) {
+            if (this.plt.session?.id_session) return true;
+            try {
+                const resp = await axios.post("/api/v1/palatabilitas/session", {
+                    no_po_sampel: noPoSampel,
+                });
+                if (resp.data?.id_session) {
+                    this.plt.session = {
+                        ...this.plt.session,
+                        id_session: resp.data.id_session,
+                        status_session: "D",
+                    };
+                }
+                return true;
+            } catch (err) {
+                if (err?.response?.status === 409) {
+                    await this.loadPltSession(noPoSampel);
+                    return true;
+                }
+                Swal.fire(
+                    "Error",
+                    err?.response?.data?.message || "Gagal membuat sesi PLT.",
+                    "error"
+                );
+                return false;
+            }
+        },
+
+        /* ── PLT: tambah bahan pembanding ───────────────────────── */
+        async pltAddPembanding() {
+            const nama = this.plt.newRow.trim();
+            if (!nama) return;
+            const noPoSampel = this.selectedSample?.no_sampel;
+            if (!noPoSampel) return;
+            this.plt.addingPembanding = true;
+            try {
+                const ok = await this.pltEnsureSession(noPoSampel);
+                if (!ok) return;
+                const resp = await axios.post(
+                    "/api/v1/palatabilitas/pembanding",
+                    {
+                        no_po_sampel: noPoSampel,
+                        nama_pembanding: nama,
+                    }
+                );
+                if (resp.data?.success) {
+                    this.plt.newRow = "";
+                    await this.loadPltSession(noPoSampel);
+                }
+            } catch (err) {
+                Swal.fire(
+                    "Error",
+                    err?.response?.data?.message ||
+                        "Gagal menambah pembanding.",
+                    "error"
+                );
+            } finally {
+                this.plt.addingPembanding = false;
+            }
+        },
+
+        /* ── PLT: hapus bahan pembanding ────────────────────────── */
+        async pltRemovePembanding(idPembanding) {
+            const noPoSampel = this.selectedSample?.no_sampel;
+            try {
+                await axios.delete(
+                    `/api/v1/palatabilitas/pembanding/${idPembanding}`
+                );
+                await this.loadPltSession(noPoSampel);
+            } catch (err) {
+                Swal.fire(
+                    "Error",
+                    err?.response?.data?.message ||
+                        "Gagal menghapus pembanding.",
+                    "error"
+                );
+            }
+        },
+
+        /* ── PLT: klik card analisa → load parameter-old (flow sama seperti analisa biasa) */
+        async selectPltSubAnalisa(subAnalisa) {
+            this.selectedPltSubAnalisa = subAnalisa;
+            this.reactiveIdJenisAnalisa = subAnalisa.id;
+            this.kodeAnalisa = subAnalisa.Kode_Analisa;
+            this.selectedTemplating = null;
+            this.nomorSampel.multiSampel = null;
+            this.loading.detailTemplate = true;
+            try {
+                const response = await axios.get(
+                    `/fetch/lab/lama/${subAnalisa.id}/parameter-perhitungan-old`
+                );
+                if (response.status === 200 && response.data?.result) {
+                    this.selectedTemplating = response.data.result;
+                    this.Flag_Foto = response.data.result?.sesi_foto ?? "T";
+                    (this.selectedTemplating.parameter || []).forEach((p) => {
+                        this.inputValues[p.id_qc] = null;
+                    });
+                } else {
+                    this.selectedTemplating = null;
+                }
+            } catch (err) {
+                this.selectedTemplating = null;
+                Swal.fire(
+                    "Peringatan",
+                    err?.response?.data?.message ||
+                        err?.message ||
+                        "Template analisa tidak ditemukan.",
+                    "warning"
+                );
+            } finally {
+                this.loading.detailTemplate = false;
+            }
+        },
+
+        /* ── Berkala: klik card sub-analisa → load parameter-old ── */
+        async selectBerkalaSubAnalisa(subAnalisa) {
+            this.berkala.selectedSubAnalisa = subAnalisa;
+            this.reactiveIdJenisAnalisa = subAnalisa.id;
+            this.kodeAnalisa = subAnalisa.Kode_Analisa;
+            this.selectedTemplating = null;
+            this.nomorSampel.multiSampel = null;
+            this.loading.detailTemplate = true;
+            try {
+                const response = await axios.get(
+                    `/fetch/lab/lama/${subAnalisa.id}/parameter-perhitungan-old`
+                );
+                if (response.status === 200 && response.data?.result) {
+                    this.selectedTemplating = response.data.result;
+                    this.Flag_Foto = response.data.result?.sesi_foto ?? "T";
+                    (this.selectedTemplating.parameter || []).forEach((p) => {
+                        this.inputValues[p.id_qc] = null;
+                    });
+                } else {
+                    this.selectedTemplating = null;
+                }
+            } catch (err) {
+                this.selectedTemplating = null;
+                Swal.fire(
+                    "Peringatan",
+                    err?.response?.data?.message ||
+                        err?.message ||
+                        "Template analisa tidak ditemukan.",
+                    "warning"
+                );
+            } finally {
+                this.loading.detailTemplate = false;
             }
         },
 
@@ -1375,9 +1650,39 @@ export default {
             }
         },
 
+        /* ── Build display chips: group PLT into one chip ──────── */
+        displayChips(sample) {
+            const all = sample.analisa || [];
+            const nonPlt = all.filter((a) => !a.is_plt);
+            const pltItems = all.filter((a) => a.is_plt);
+            if (!pltItems.length) return nonPlt;
+
+            const allDone = pltItems.every((a) => a.is_done);
+            const anyStarted = pltItems.some((a) => a.is_started);
+            const anyResampling = pltItems.some((a) => a.has_resampling);
+
+            const pltChip = {
+                id: "__plt_group__",
+                is_plt: true,
+                is_plt_group: true,
+                is_expired_exempt: true,
+                Jenis_Analisa: "Palatabilitas",
+                Kode_Analisa: "PLT",
+                Kode_Aktivitas_Lab: "PLT",
+                is_done: allDone,
+                is_started: anyStarted && !allDone,
+                has_resampling: anyResampling,
+                _plt_items: pltItems,
+            };
+            return [...nonPlt, pltChip];
+        },
+
         /* ── Chip styling ───────────────────────────────────────── */
         chipClass(analisa, sample) {
-            if (sample.is_selesai) return "lhm-chip--disabled";
+            const isLocked =
+                sample.is_selesai ||
+                (sample.is_expired && !analisa.is_expired_exempt);
+            if (isLocked) return "lhm-chip--disabled";
             if (analisa.is_done) return "lhm-chip--done";
             if (analisa.has_resampling) return "lhm-chip--resampling";
             if (analisa.is_started) return "lhm-chip--progress";
@@ -1451,9 +1756,12 @@ export default {
 .lhm-wrap {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100vh;          /* fallback */
+    height: 100dvh;         /* iOS Safari 15.4+ dynamic viewport */
     background: #f4f6fb;
     overflow: hidden;
+    /* iPhone notch / Dynamic Island top padding */
+    padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* ════════════════════════════════════════════════════════════ */
@@ -1466,6 +1774,8 @@ export default {
     flex-wrap: wrap;
     gap: 0.75rem;
     padding: 0.85rem 1.25rem;
+    padding-left: max(1.25rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1.25rem, env(safe-area-inset-right, 0px));
     flex-shrink: 0;
 }
 .lhm-title-left {
@@ -1566,6 +1876,8 @@ export default {
     background: #fff;
     border-right: 1px solid #e5e7eb;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 }
 
 /* ── Search bar ── */
@@ -1806,6 +2118,67 @@ export default {
 }
 .lhm-chip--resampling:hover {
     background: #ffe69c;
+}
+
+.lhm-chip--plt-group {
+    background: rgba(64, 81, 137, 0.1);
+    color: #405189;
+    border: 1px dashed rgba(64, 81, 137, 0.4);
+}
+.lhm-chip--plt-group:hover {
+    background: rgba(64, 81, 137, 0.17);
+}
+.lhm-chip--plt-group.lhm-chip--active {
+    background: #405189;
+    color: #fff;
+    border-style: solid;
+}
+.lhm-chip--plt-group.lhm-chip--done {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+.lhm-plt-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 9px;
+    font-size: 9px;
+    font-weight: 700;
+    background: rgba(64, 81, 137, 0.18);
+    color: #405189;
+    margin-left: 2px;
+}
+.lhm-chip--active .lhm-plt-badge,
+.lhm-chip--plt-group.lhm-chip--active .lhm-plt-badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+}
+
+.lhm-chip--berkala {
+    background: rgba(13, 148, 136, 0.08);
+    color: #0f766e;
+    border: 1px dashed rgba(13, 148, 136, 0.4);
+}
+.lhm-chip--berkala:hover {
+    background: rgba(13, 148, 136, 0.15);
+}
+.lhm-chip--berkala.lhm-chip--active {
+    background: #0f766e;
+    color: #fff;
+    border-style: solid;
+}
+.lhm-chip--berkala.lhm-chip--done {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+.lhm-chip--active .lhm-plt-badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
 }
 
 .lhm-no-analisa {
@@ -2146,11 +2519,353 @@ export default {
 }
 
 /* ════════════════════════════════════════════════════════════ */
+/* PLT PALATABILITAS — PANEL                                     */
+/* ════════════════════════════════════════════════════════════ */
+.plt-panel {
+    display: flex;
+    flex-direction: column;
+    background: #f4f6fb;
+    flex: 1;
+    overflow-y: auto;
+}
+.plt-panel-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 2rem;
+    color: #405189;
+    font-size: 13px;
+}
+.plt-section {
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 1rem 1.25rem;
+}
+.plt-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.plt-section-count {
+    font-weight: 600;
+    color: #405189;
+    margin-left: 0.2rem;
+}
+
+/* Pembanding badges (flex wrap) */
+.plt-badge-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+}
+.plt-badge-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.55rem 0.3rem 0.45rem;
+    background: rgba(64, 81, 137, 0.08);
+    border: 1px solid rgba(64, 81, 137, 0.2);
+    border-radius: 20px;
+    max-width: 200px;
+}
+.plt-badge-num {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #405189;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.plt-badge-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #405189;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 130px;
+}
+.plt-badge-del {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.07);
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.12s;
+    padding: 0;
+}
+.plt-badge-del:hover {
+    background: #ef4444;
+    color: #fff;
+    border-color: #ef4444;
+}
+.plt-pb-empty {
+    font-size: 12px;
+    color: #9ca3af;
+    padding: 0.4rem 0;
+    margin-bottom: 0.4rem;
+}
+
+/* Lock banner */
+.plt-lock-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.65rem 0.85rem;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+.plt-lock-icon {
+    font-size: 18px;
+    color: #d97706;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.plt-lock-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: 2px;
+}
+.plt-lock-sub {
+    font-size: 11px;
+    color: #b45309;
+    line-height: 1.4;
+}
+
+/* Lock badge on each card */
+.plt-lock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0.18rem 0.5rem;
+    border-radius: 20px;
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.plt-lock-arrow {
+    font-size: 16px;
+    color: #d1d5db;
+    flex-shrink: 0;
+}
+
+/* Locked sub-card state */
+.plt-sub-locked {
+    opacity: 0.6;
+    cursor: not-allowed !important;
+    background: #f9fafb !important;
+    border-color: #e5e7eb !important;
+}
+.plt-sub-locked:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    border-color: #e5e7eb !important;
+    background: #f9fafb !important;
+}
+.plt-pb-add-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+.plt-pb-input {
+    flex: 1;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #1e293b;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.plt-pb-input:focus {
+    border-color: #405189;
+    box-shadow: 0 0 0 3px rgba(64, 81, 137, 0.1);
+}
+.plt-pb-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    border: none;
+    background: #405189;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.plt-pb-add-btn:hover:not(:disabled) {
+    background: #2e3a64;
+}
+.plt-pb-add-btn:disabled {
+    background: #8f9fc6;
+    cursor: not-allowed;
+}
+
+/* Sub-analisa cards */
+.plt-sub-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.plt-sub-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.8rem 0.9rem;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+}
+.plt-sub-card:hover {
+    border-color: #405189;
+    background: #fff;
+    box-shadow: 0 3px 10px rgba(64, 81, 137, 0.1);
+    transform: translateY(-1px);
+}
+.plt-sub-done {
+    border-color: #bbf7d0 !important;
+    background: #f0fdf4 !important;
+}
+.plt-sub-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(64, 81, 137, 0.08);
+    color: #405189;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.plt-sub-body {
+    flex: 1;
+    min-width: 0;
+}
+.plt-sub-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+}
+.plt-sub-code {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+.plt-sub-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 0.18rem 0.5rem;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.plt-done {
+    background: #dcfce7;
+    color: #166534;
+}
+.plt-progress {
+    background: #fef3c7;
+    color: #92400e;
+}
+.plt-pending {
+    background: #f1f5f9;
+    color: #94a3b8;
+}
+.plt-sub-arrow {
+    font-size: 18px;
+    color: #9ca3af;
+    flex-shrink: 0;
+    transition: color 0.15s, transform 0.15s;
+}
+.plt-sub-card:hover .plt-sub-arrow {
+    color: #405189;
+    transform: translateX(3px);
+}
+
+/* Back bar when sub-analisa selected */
+.plt-back-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+.plt-back-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #f8f9fc;
+    font-size: 12px;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.plt-back-btn:hover {
+    background: rgba(64, 81, 137, 0.07);
+    border-color: #405189;
+    color: #405189;
+}
+.plt-back-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #405189;
+}
+
+/* ════════════════════════════════════════════════════════════ */
 /* RESPONSIVE                                                    */
 /* ════════════════════════════════════════════════════════════ */
+
+/* ── Tablet portrait & smaller ── */
 @media (max-width: 1023px) {
     .lhm-wrap {
         height: auto;
+        min-height: 100svh;
+        min-height: 100dvh;
         overflow: visible;
     }
     .lhm-panels {
@@ -2162,17 +2877,22 @@ export default {
         min-width: 0;
         border-right: none;
         border-bottom: 1px solid #e5e7eb;
-        max-height: 480px;
+        max-height: 50svh;
+        max-height: 50dvh;
         overflow-y: auto;
     }
     .lhm-form-col {
         overflow-y: visible;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 }
 
+/* ── Mobile landscape / large phone ── */
 @media (max-width: 767px) {
     .lhm-title-bar {
-        padding: 0.65rem 0.85rem;
+        padding: 0.6rem 0.85rem;
+        padding-left: max(0.85rem, env(safe-area-inset-left, 0px));
+        padding-right: max(0.85rem, env(safe-area-inset-right, 0px));
     }
     .lhm-title-main {
         font-size: 0.9rem;
@@ -2191,7 +2911,8 @@ export default {
         padding: 0.7rem 0.85rem;
     }
     .lhm-list-col {
-        max-height: 420px;
+        max-height: 45svh;
+        max-height: 45dvh;
     }
     .lhm-filter-tab {
         font-size: 11px;
@@ -2210,12 +2931,44 @@ export default {
     .lhm-banner-sampel {
         font-size: 13px;
     }
+    /* QR modal on mobile: sheet from bottom */
+    .lhm-modal-overlay {
+        align-items: flex-end;
+        padding: 0;
+    }
     .lhm-modal-box {
-        width: 96vw;
-        max-height: 92vh;
+        width: 100vw;
+        max-width: 100vw;
+        max-height: 92svh;
+        max-height: 92dvh;
+        border-radius: 18px 18px 0 0;
     }
     .lhm-multi-qr-grid {
         grid-template-columns: 1fr;
+    }
+    /* Ticket card full-width on phone */
+    .lhm-ticket {
+        max-width: 100%;
+    }
+}
+
+/* ── Small phone (< 400px – iPhone SE etc.) ── */
+@media (max-width: 399.98px) {
+    .lhm-title-icon {
+        display: none;
+    }
+    .lhm-day-tab {
+        padding: 0.2rem 0.35rem;
+        font-size: 10px;
+    }
+    .lhm-card {
+        padding: 0.6rem 0.7rem;
+    }
+    .lhm-sampel-no {
+        font-size: 13px;
+    }
+    .lhm-modal-body {
+        padding: 0.75rem;
     }
 }
 
@@ -2304,15 +3057,19 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    /* Horizontal safe-area so modal never hides behind notch */
+    padding: 1rem max(1rem, env(safe-area-inset-right, 0px)) max(1rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
     backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
 }
 .lhm-modal-box {
     background: #fff;
     border-radius: 16px;
     width: 600px;
     max-width: 96vw;
+    /* dvh so iOS address-bar never clips the modal */
     max-height: 88vh;
+    max-height: 88dvh;
     display: flex;
     flex-direction: column;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
@@ -2350,6 +3107,8 @@ export default {
 
 .lhm-modal-body {
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     flex: 1;
     padding: 1rem;
 }

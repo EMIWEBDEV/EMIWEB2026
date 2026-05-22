@@ -17,6 +17,37 @@
 
         <div class="panel-body" v-else>
             <div class="analysis-table-container">
+
+                <!-- PLT Resampling: Pembanding Context Bar -->
+                <div v-if="plt_pembanding_list && plt_pembanding_list.length" class="plt-rsmp-bar">
+                    <div class="plt-rsmp-bar-left">
+                        <i class="fas fa-flask plt-rsmp-icon"></i>
+                        <div>
+                            <div class="plt-rsmp-title">Uji Palatabilitas — Resampling</div>
+                            <div class="plt-rsmp-chips">
+                                <span
+                                    v-for="(p, i) in plt_pembanding_list"
+                                    :key="p.id_pembanding"
+                                    class="plt-rsmp-chip"
+                                    :class="{ 'plt-rsmp-chip--active': plt_selected_pembanding === p.id_pembanding }"
+                                    @click="plt_selected_pembanding = p.id_pembanding"
+                                    title="Klik untuk memilih sebagai pembanding aktif"
+                                >
+                                    <span class="plt-rsmp-chip-num">{{ i + 1 }}</span>
+                                    {{ p.nama_pembanding }}
+                                    <i v-if="plt_selected_pembanding === p.id_pembanding" class="fas fa-check ms-1" style="font-size:9px"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="plt-rsmp-bar-right">
+                        <span class="plt-rsmp-selected-label">Pembanding dipilih:</span>
+                        <strong class="plt-rsmp-selected-name">
+                            {{ selectedPembandingName || '—' }}
+                        </strong>
+                    </div>
+                </div>
+
                 <div class="mb-3 mt-2 d-flex justify-content-between p-2">
                     <button
                         @click="addRow"
@@ -1319,7 +1350,7 @@
                     style="display: none"
                     data-bs-backdrop="static"
                 >
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h5 class="modal-title" id="myModalLabel">
@@ -1384,7 +1415,7 @@
                     style="display: none"
                     data-bs-backdrop="static"
                 >
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h5 class="modal-title" id="myModalLabel">
@@ -1460,7 +1491,7 @@
                 style="display: none"
                 data-bs-backdrop="static"
             >
-                <div class="modal-dialog modal-lg">
+                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title">
@@ -1764,9 +1795,23 @@ export default {
         },
         Id_Jenis_Analisa: [Number, String],
         Id_Mesin: [Number, String],
+        /* ── PLT Resampling ── */
+        plt_pembanding_list: {
+            type: Array,
+            default: () => [],
+        },
+        plt_session_id: {
+            type: String,
+            default: null,
+        },
+        plt_id_pembanding_default: {
+            type: String,
+            default: null,
+        },
     },
     data() {
         return {
+            plt_selected_pembanding: null,
             rows: [],
             idLogYangDitampilkan: null,
             modalConfirmed: false,
@@ -1861,10 +1906,18 @@ export default {
             immediate: true,
         },
     },
-    // mounted() {
-    //     this.fetchDraftData();
-    // },
+    mounted() {
+        // Init pembanding default dari prop
+        if (this.plt_id_pembanding_default) {
+            this.plt_selected_pembanding = this.plt_id_pembanding_default;
+        }
+    },
     computed: {
+        selectedPembandingName() {
+            if (!this.plt_selected_pembanding || !this.plt_pembanding_list) return null;
+            const found = this.plt_pembanding_list.find(p => p.id_pembanding === this.plt_selected_pembanding);
+            return found ? found.nama_pembanding : null;
+        },
         formattedCurrentDataSubmitAnalisa() {
             if (
                 !this.currentDataSubmitAnalisa ||
@@ -2548,6 +2601,8 @@ export default {
                             id_mesin: this.Id_Mesin,
                             Tahapan_Ke: this.Tahapan_Ke,
                             Id_Resampling: this.Id_Resampling,
+                            Id_Pembanding: this.plt_selected_pembanding || null,
+                            plt_session_id: this.plt_session_id || null,
                         };
 
                         if (this.is_multi_print === "Y") {
@@ -2631,6 +2686,8 @@ export default {
                             id_mesin: this.Id_Mesin,
                             Tahapan_Ke: this.Tahapan_Ke,
                             Id_Resampling: this.Id_Resampling,
+                            Id_Pembanding: this.plt_selected_pembanding || null,
+                            plt_session_id: this.plt_session_id || null,
                         };
 
                         if (this.is_multi_print === "Y") {
@@ -4246,6 +4303,200 @@ export default {
 @media (min-width: 1200px) {
     .calculation-container {
         grid-template-columns: 2fr 1fr;
+    }
+}
+</style>
+
+<style>
+/* ==========================================================================
+   RESPONSIVE MODAL & LAYOUT — iOS / Android / Enterprise LIMS
+   ========================================================================== */
+
+.modal-body,
+.modal-fullscreen .modal-body,
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+#myModal .modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+}
+
+#myModalInformasiSubmit .modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+}
+#myModalInformasiSubmit .modal-footer,
+#myModalEdit .modal-footer,
+#myModalHapus .modal-footer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem));
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+@media (max-width: 575.98px) {
+    #myModalInformasiSubmit .modal-dialog {
+        margin: 0 !important;
+        max-width: 100vw !important;
+    }
+    #myModalInformasiSubmit .modal-content {
+        border-radius: 16px 16px 0 0 !important;
+        max-height: 94svh;
+        max-height: 94dvh;
+    }
+    #myModalInformasiSubmit .modal-body .d-flex > * {
+        height: 100px !important;
+        width: 200px !important;
+    }
+    #myModalInformasiSubmit .modal-footer .btn,
+    #myModalEdit .modal-footer .btn,
+    #myModalHapus .modal-footer .btn {
+        flex: 1 1 auto;
+        min-width: 120px;
+    }
+    #myModal .nav-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    #myModal .nav-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    #myModal .nav-item .nav-link {
+        white-space: nowrap;
+        font-size: 12px;
+        padding: 0.45rem 0.65rem;
+    }
+}
+
+@media (max-width: 399.98px) {
+    .modal-body {
+        padding: 0.75rem !important;
+    }
+    .modal-header {
+        padding: 0.65rem 0.85rem !important;
+    }
+    .modal-footer {
+        padding: 0.5rem 0.75rem !important;
+    }
+}
+
+/* ══════════════════════════════════════════════════════
+   PLT Resampling Context Bar
+══════════════════════════════════════════════════════ */
+.plt-rsmp-bar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+    border: 1px solid #7dd3fc;
+    border-left: 4px solid #0ea5e9;
+    border-radius: 10px;
+    margin: 0.5rem 0.5rem 0;
+}
+.plt-rsmp-bar-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    flex: 1;
+    min-width: 0;
+}
+.plt-rsmp-icon {
+    font-size: 1.3rem;
+    color: #0ea5e9;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.plt-rsmp-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #0369a1;
+    margin-bottom: 0.4rem;
+}
+.plt-rsmp-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.plt-rsmp-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.22rem 0.6rem 0.22rem 0.35rem;
+    background: #fff;
+    border: 1.5px solid #bae6fd;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #0c4a6e;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+.plt-rsmp-chip:hover {
+    border-color: #0ea5e9;
+    background: #e0f2fe;
+}
+.plt-rsmp-chip--active {
+    background: #0ea5e9 !important;
+    border-color: #0284c7 !important;
+    color: #fff !important;
+}
+.plt-rsmp-chip-num {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #0369a1;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.plt-rsmp-chip--active .plt-rsmp-chip-num {
+    background: rgba(255,255,255,0.3);
+}
+.plt-rsmp-bar-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+}
+.plt-rsmp-selected-label {
+    font-size: 0.7rem;
+    color: #0369a1;
+    font-weight: 500;
+}
+.plt-rsmp-selected-name {
+    font-size: 0.82rem;
+    color: #0c4a6e;
+    font-weight: 700;
+}
+
+@media (max-width: 575.98px) {
+    .plt-rsmp-bar {
+        flex-direction: column;
+        padding: 0.7rem 0.85rem;
+        margin: 0.5rem 0 0;
+    }
+    .plt-rsmp-bar-right {
+        align-items: flex-start;
+        flex-direction: row;
+        gap: 0.4rem;
+        align-items: center;
     }
 }
 </style>

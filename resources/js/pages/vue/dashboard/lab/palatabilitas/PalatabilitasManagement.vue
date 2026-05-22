@@ -333,17 +333,20 @@ export default {
 
     data() {
         return {
-            session:  null,
-            draftMap: {},   // { "pembId|analisaId": { hasil, status } }
+            session:            null,
+            draftMap:           {},
+            resamplingPending:  [],
+            resamplingInputMap: {},
             newPembanding: { nama: "", kode: "" },
             loading: {
-                session:          true,
-                createSession:    false,
-                addPembanding:    false,
-                removePembanding: null,
-                sementara:        false,
-                finalisasi:       false,
-                saveDraft:        {},
+                session:              true,
+                createSession:        false,
+                addPembanding:        false,
+                removePembanding:     null,
+                sementara:            false,
+                finalisasi:           false,
+                saveDraft:            {},
+                finalisasiResampling: false,
             },
         };
     },
@@ -420,7 +423,7 @@ export default {
             this.loading.sementara = true;
             try {
                 const res = await axios.get("/api/v1/palatabilitas/sementara", {
-                    params: { id_session: this.session.id_session },
+                    params: { no_po_sampel: this.No_Po_Sampel },
                 });
                 if (res.data.success) {
                     const map = {};
@@ -462,7 +465,7 @@ export default {
             this.loading.addPembanding = true;
             try {
                 await axios.post("/api/v1/palatabilitas/pembanding", {
-                    id_session:             this.session.id_session,
+                    no_po_sampel:           this.No_Po_Sampel,
                     nama_pembanding:        this.newPembanding.nama.trim(),
                     kode_barang_pembanding: this.newPembanding.kode.trim() || null,
                 });
@@ -552,7 +555,7 @@ export default {
             });
             try {
                 const res = await axios.post("/api/v1/palatabilitas/finalisasi", {
-                    id_session: this.session.id_session,
+                    no_po_sampel: this.No_Po_Sampel,
                 });
                 Swal.fire({
                     icon: "success",

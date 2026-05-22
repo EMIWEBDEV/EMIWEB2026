@@ -348,13 +348,17 @@ class FinalisasiLabProduksiTrialController extends Controller
             }
             // ── Akhir cek PLT ─────────────────────────────────────────────────────
 
-            $kodeDikecualikan = ['HOMOGENITAS', 'MBLG-STR', 'PSZ'];
+            $kodeDikecualikan = DB::table('N_EMI_LAB_Jenis_Analisa_Opsional')
+                ->pluck('Kode_Analisa')
+                ->toArray();
 
             $checkedJumlahStandarMutu = DB::table('N_EMI_LAB_Barang_Analisa as ba')
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'ba.Id_Jenis_Analisa', '=', 'ja.id')
                 ->select('ba.Id_Jenis_Analisa')
-                ->where('ba.Flag_Aktif', 'Y')
+                ->where('ja.Kode_Role', 'LAB')
                 ->where('ba.Kode_Role', 'LAB')
+                ->where('ba.Flag_Aktif', 'Y')
+                ->where('ja.Kode_Aktivitas_Lab', 'ANL')
                 ->where('ba.Kode_Barang', $getInformasiPo->Kode_Barang)
                 ->where('ba.Id_Master_Mesin', $getInformasiPo->Id_Mesin)
                 ->whereNotIn('ja.Kode_Analisa', $kodeDikecualikan)
@@ -366,7 +370,9 @@ class FinalisasiLabProduksiTrialController extends Controller
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
                 ->join('N_EMI_LAB_PO_Sampel as ps', 'us.No_Po_Sampel', '=', 'ps.No_Sampel')
                 ->where('us.No_Po_Sampel', $no_sampel)
-                ->where('ps.Flag_Trial_Produksi', 'Y') 
+                ->where('ps.Flag_Trial_Produksi', 'Y')
+                ->where('ja.Kode_Role', 'LAB')
+                ->where('ja.Kode_Aktivitas_Lab', 'ANL')
                 ->whereNull('us.Flag_Resampling')
                 ->whereNull('us.Status')
                 ->where('us.Status_Keputusan_Sampel', 'terima')
@@ -391,7 +397,9 @@ class FinalisasiLabProduksiTrialController extends Controller
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
                 ->join('N_EMI_LAB_PO_Sampel as ps', 'us.No_Po_Sampel', '=', 'ps.No_Sampel')
                 ->where('us.No_Po_Sampel', $no_sampel)
-                ->where('ps.Flag_Trial_Produksi', 'Y') 
+                ->where('ps.Flag_Trial_Produksi', 'Y')
+                ->where('ja.Kode_Role', 'LAB')
+                ->where('ja.Kode_Aktivitas_Lab', 'ANL')
                 ->where('us.Status_Keputusan_Sampel', 'terima')
                 ->whereNull('us.Flag_Selesai')
                 ->whereNull('us.Status')
@@ -526,7 +534,9 @@ class FinalisasiLabProduksiTrialController extends Controller
             $tanggalSqlServer = date('Y-m-d', strtotime($dt));
             $jamSqlServer     = date('H:i:s', strtotime($dt));
 
-            $kodeDikecualikan = ['HOMOGENITAS', 'MBLG-STR', 'PSZ'];
+            $kodeDikecualikan = DB::table('N_EMI_LAB_Jenis_Analisa_Opsional')
+                ->pluck('Kode_Analisa')
+                ->toArray();
 
             $masterAnalisa = DB::table('N_EMI_LAB_Jenis_Analisa')
                 ->pluck('Jenis_Analisa', 'id')
@@ -553,8 +563,10 @@ class FinalisasiLabProduksiTrialController extends Controller
 
             $stdMutuGrouped = DB::table('N_EMI_LAB_Barang_Analisa as ba')
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'ba.Id_Jenis_Analisa', '=', 'ja.id')
-                ->where('ba.Flag_Aktif', 'Y')
+                ->where('ja.Kode_Role', 'LAB')
                 ->where('ba.Kode_Role', 'LAB')
+                ->where('ba.Flag_Aktif', 'Y')
+                ->where('ja.Kode_Aktivitas_Lab', 'ANL')
                 ->whereIn('ba.Kode_Barang', $kodes)
                 ->whereIn('ba.Id_Master_Mesin', $mesins)
                 ->whereNotIn('ja.Kode_Analisa', $kodeDikecualikan)
@@ -567,6 +579,8 @@ class FinalisasiLabProduksiTrialController extends Controller
                 ->join('N_EMI_LAB_PO_Sampel as ps', 'us.No_Po_Sampel', '=', 'ps.No_Sampel')
                 ->whereIn('us.No_Po_Sampel', $no_sampel_list)
                 ->where('ps.Flag_Trial_Produksi', 'Y')
+                ->where('ja.Kode_Role', 'LAB')
+                ->where('ja.Kode_Aktivitas_Lab', 'ANL')
                 ->whereNull('us.Flag_Resampling')
                 ->whereNull('us.Status')
                 ->where('us.Status_Keputusan_Sampel', 'terima')
@@ -580,6 +594,8 @@ class FinalisasiLabProduksiTrialController extends Controller
                 ->join('N_EMI_LAB_PO_Sampel as ps', 'us.No_Po_Sampel', '=', 'ps.No_Sampel')
                 ->whereIn('us.No_Po_Sampel', $no_sampel_list)
                 ->where('ps.Flag_Trial_Produksi', 'Y')
+                ->where('ja.Kode_Role', 'LAB')
+                ->where('ja.Kode_Aktivitas_Lab', 'ANL')
                 ->where('us.Status_Keputusan_Sampel', 'terima')
                 ->whereNull('us.Flag_Selesai')
                 ->whereNull('us.Status')

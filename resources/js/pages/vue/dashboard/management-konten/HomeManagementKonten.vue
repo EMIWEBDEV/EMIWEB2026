@@ -2,27 +2,58 @@
     <div class="container-fluid px-0">
         <div class="card shadow-sm border-0 w-100">
             <div class="card-body">
-                <div class="mb-4 text-center text-md-start">
-                    <h1 class="text-2xl md:text-3xl font-bold text-primary">
-                        Akses Halaman
-                    </h1>
-                    <p class="text-sm md:text-base text-muted">
-                        Daftar Akses Halaman Website Lab PT. Evo Manufacturing
-                        Indonesia
-                    </p>
-                    <div class="divider my-3"></div>
-                </div>
-                <div
-                    class="d-flex justify-content-center justify-content-lg-start"
-                >
+                <!-- Page Header -->
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+                    <div>
+                        <h4 class="fw-bold mb-1" style="color: #1e293b">
+                            <i class="fas fa-shield-alt me-2 text-primary"></i>
+                            Management Akses Halaman
+                        </h4>
+                        <p class="text-muted small mb-0">
+                            Kelola hak akses halaman & konten untuk setiap pengguna LIMS
+                        </p>
+                    </div>
                     <button
-                        class="btn btn-primary"
+                        class="btn btn-primary d-flex align-items-center gap-2"
                         type="button"
                         data-bs-toggle="modal"
                         data-bs-target="#aksesHalamanModal"
                     >
-                        + Tambah Akses Halaman
+                        <i class="ri-add-circle-line fs-5"></i>
+                        <span>Tambah Akses Halaman</span>
                     </button>
+                </div>
+
+                <!-- Search & Filter Bar -->
+                <div class="row g-2 mb-4 align-items-center">
+                    <div class="col-sm">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="ri-search-line text-muted"></i>
+                            </span>
+                            <input
+                                type="text"
+                                class="form-control border-start-0 bg-light"
+                                placeholder="Cari pengguna berdasarkan nama atau username..."
+                                v-model="userSearchQuery"
+                            />
+                            <button
+                                v-if="userSearchQuery"
+                                class="btn btn-light border"
+                                type="button"
+                                @click="userSearchQuery = ''"
+                            >
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-sm-auto">
+                        <small class="text-muted">
+                            <span v-if="!loading.loadinMenuCurrentList">
+                                Menampilkan <strong>{{ filteredListData.length }}</strong> dari <strong>{{ listData.length }}</strong> pengguna
+                            </span>
+                        </small>
+                    </div>
                 </div>
 
                 <div
@@ -64,10 +95,31 @@
                                             <div
                                                 class="card shadow-none border mb-0"
                                             >
+                                                <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-2">
+                                                    <label class="form-label mb-0 fw-semibold">
+                                                        <i class="ri-pages-line me-1 text-primary"></i>
+                                                        Akses Halaman
+                                                    </label>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span class="badge bg-primary-subtle text-primary">
+                                                            {{ selectedPages.length }} / {{ pageAccessUser.length }} dipilih
+                                                        </span>
+                                                        <div class="form-check form-switch mb-0">
+                                                            <input
+                                                                class="form-check-input"
+                                                                type="checkbox"
+                                                                role="switch"
+                                                                id="checkAllPages"
+                                                                :checked="selectedPages.length === pageAccessUser.length && pageAccessUser.length > 0"
+                                                                @change="toggleSelectAllPages($event.target.checked)"
+                                                            />
+                                                            <label class="form-check-label small" for="checkAllPages" style="cursor:pointer">
+                                                                Pilih Semua
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                                 <div class="card-body">
-                                                    <label class="form-label"
-                                                        >Akses Halaman</label
-                                                    >
                                                     <el-select
                                                         v-model="selectedPages"
                                                         multiple
@@ -77,7 +129,7 @@
                                                         :placeholder="
                                                             pageAccessUser.length >
                                                             0
-                                                                ? '--- Pilih satu atau lebih Akses Halaman ---'
+                                                                ? '--- Ketik untuk cari akses halaman ---'
                                                                 : 'Data Halaman Kosong'
                                                         "
                                                         no-data-text="Tidak ada data halaman tersedia"
@@ -460,11 +512,11 @@
                         <div
                             class="accordion"
                             id="accordionRoleAccess"
-                            v-if="listData.length"
+                            v-if="filteredListData.length"
                         >
                             <div
                                 class="accordion-item shadow-sm mb-3 border rounded"
-                                v-for="(user, index) in listData"
+                                v-for="(user, index) in filteredListData"
                                 :key="user.Id_User"
                             >
                                 <h2
@@ -772,6 +824,18 @@
                             </div>
                         </div>
 
+                        <!-- Empty state: search found nothing -->
+                        <div
+                            v-if="userSearchQuery && !filteredListData.length && listData.length"
+                            class="text-center py-5"
+                        >
+                            <i class="ri-search-line fs-40 text-muted mb-3 d-block"></i>
+                            <p class="text-muted mb-2 fw-medium">Pengguna "{{ userSearchQuery }}" tidak ditemukan</p>
+                            <button class="btn btn-sm btn-outline-secondary" @click="userSearchQuery = ''">
+                                <i class="ri-refresh-line me-1"></i>Reset Pencarian
+                            </button>
+                        </div>
+
                         <div
                             v-if="
                                 !listData.length &&
@@ -888,6 +952,7 @@ export default {
             pageAccessUser: [],
             listData: [],
             selectedPages: [],
+            userSearchQuery: "",
             loading: {
                 loadinMenuCurrentList: false,
                 menuSaveToDatabase: false,
@@ -900,6 +965,17 @@ export default {
                 limit: 10,
             },
         };
+    },
+
+    computed: {
+        filteredListData() {
+            if (!this.userSearchQuery) return this.listData;
+            const q = this.userSearchQuery.toLowerCase();
+            return this.listData.filter(user =>
+                (user.Nama || "").toLowerCase().includes(q) ||
+                (user.Username || "").toLowerCase().includes(q)
+            );
+        },
     },
     // --- DITAMBAHKAN: Watcher agar v-model checkbox mengenali array sejak awal ---
     watch: {
@@ -926,6 +1002,14 @@ export default {
         },
     },
     methods: {
+        toggleSelectAllPages(isChecked) {
+            if (isChecked) {
+                this.selectedPages = [...this.pageAccessUser];
+            } else {
+                this.selectedPages = [];
+            }
+        },
+
         getRoleByMenu(pageName) {
             if (!pageName) return null;
             const lowerPageName = pageName.toLowerCase();

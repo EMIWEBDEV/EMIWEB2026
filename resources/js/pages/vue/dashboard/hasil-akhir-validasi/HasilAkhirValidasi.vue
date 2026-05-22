@@ -107,16 +107,6 @@
                                 </el-select>
                             </div>
                         </div>
-                        <div class="col-12 mt-3 d-flex justify-content-end">
-                            <button
-                                class="btn btn-success rounded-pill fw-semibold px-4 shadow-sm d-flex align-items-center gap-2"
-                                data-bs-toggle="modal"
-                                data-bs-target="#exportAnalisaKurangModal"
-                            >
-                                <i class="fas fa-file-excel"></i>
-                                Export Analisa Kurang
-                            </button>
-                        </div>
                     </div>
                     <hr />
                     <ListSkeleton :page="5" v-if="loading.loadingListData" />
@@ -344,54 +334,38 @@
                                                                     :key="idx"
                                                                     :class="[
                                                                         'badge rounded-pill px-3 py-2 shadow-sm fw-medium d-flex align-items-center gap-2',
-                                                                        analisa.Kode_Aktivitas_Lab === 'PLT'
+                                                                        analisa.Kode_Aktivitas_Lab ===
+                                                                        'PLT'
                                                                             ? 'bg-info bg-opacity-10 text-info border border-info border-opacity-25'
-                                                                            : 'bg-white text-dark border border-secondary border-opacity-25'
+                                                                            : 'bg-white text-dark border border-secondary border-opacity-25',
                                                                     ]"
                                                                 >
                                                                     <span
                                                                         :class="[
                                                                             'rounded-circle',
-                                                                            analisa.Kode_Aktivitas_Lab === 'PLT' ? 'bg-info' : 'bg-primary'
+                                                                            analisa.Kode_Aktivitas_Lab ===
+                                                                            'PLT'
+                                                                                ? 'bg-info'
+                                                                                : 'bg-primary',
                                                                         ]"
-                                                                        style="width: 6px; height: 6px;"
+                                                                        style="
+                                                                            width: 6px;
+                                                                            height: 6px;
+                                                                        "
                                                                     ></span>
                                                                     {{
                                                                         analisa.Jenis_Analisa
                                                                     }}
-                                                                    <i v-if="analisa.Kode_Aktivitas_Lab === 'PLT'" class="fas fa-flask" style="font-size:0.65rem;"></i>
-                                                                </span>
-                                                            </div>
-                                                            <!-- PLT Palatabilitas Context -->
-                                                            <div
-                                                                v-if="item.plt_context && item.plt_context.ada_plt"
-                                                                class="mt-3 p-2 rounded-3 d-flex align-items-center gap-2 flex-wrap"
-                                                                style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); border-left: 4px solid #0ea5e9;"
-                                                            >
-                                                                <i class="fas fa-flask text-info"></i>
-                                                                <span class="fw-semibold small text-dark">Palatabilitas:</span>
-                                                                <span v-if="item.plt_context.jumlah_pembanding > 0" class="small text-dark">
-                                                                    {{ item.plt_context.jumlah_pembanding }} produk pembanding
-                                                                    <span class="text-muted" v-if="item.plt_context.nama_pembanding">
-                                                                        — {{ item.plt_context.nama_pembanding }}
-                                                                    </span>
-                                                                </span>
-                                                                <span v-else class="small text-warning fw-semibold">
-                                                                    <i class="fas fa-exclamation-triangle me-1"></i>Pembanding belum diatur
-                                                                </span>
-                                                                <span
-                                                                    v-if="item.plt_context.session_final"
-                                                                    class="badge bg-success rounded-pill ms-auto"
-                                                                    style="font-size: 0.7rem;"
-                                                                >
-                                                                    <i class="fas fa-check me-1"></i>Selesai
-                                                                </span>
-                                                                <span
-                                                                    v-else-if="item.plt_context.jumlah_pembanding > 0"
-                                                                    class="badge bg-warning text-dark rounded-pill ms-auto"
-                                                                    style="font-size: 0.7rem;"
-                                                                >
-                                                                    <i class="fas fa-clock me-1"></i>Proses
+                                                                    <i
+                                                                        v-if="
+                                                                            analisa.Kode_Aktivitas_Lab ===
+                                                                            'PLT'
+                                                                        "
+                                                                        class="fas fa-flask"
+                                                                        style="
+                                                                            font-size: 0.65rem;
+                                                                        "
+                                                                    ></i>
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -1196,7 +1170,10 @@ export default {
                     const url = window.URL.createObjectURL(blob);
                     const link = document.createElement("a");
                     link.href = url;
-                    const ts = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 15);
+                    const ts = new Date()
+                        .toISOString()
+                        .replace(/[-:T]/g, "")
+                        .slice(0, 15);
                     link.download = `Laporan_Analisa_Kurang_Produksi_${this.exportModal.startDate}_sd_${this.exportModal.endDate}_${ts}.xlsx`;
                     document.body.appendChild(link);
                     link.click();

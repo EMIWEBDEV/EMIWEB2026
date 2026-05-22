@@ -52,17 +52,19 @@ COPY --from=node-builder /app/public/build ./public/build
 
 RUN cp .env.example .env \
     && php artisan key:generate --ansi \
-    && php artisan config:clear \
-    && php artisan route:clear \
-    && php artisan view:clear \
-    && php artisan route:cache \
-    && php artisan view:cache \
+    && php artisan storage:link \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-COPY docker/php.ini /usr/local/etc/php/conf.d/custom.ini
+COPY docker/php.ini        /usr/local/etc/php/conf.d/custom.ini
+COPY docker/entrypoint.sh  /usr/local/bin/entrypoint.sh
 
-RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf \
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf \
     && a2enmod rewrite
 
-EXPOSE 80
+EXPOSE 8080
+
+# entrypoint.sh: clear cache lama → rebuild cache dgn env asli → start Apache
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["apache2-foreground"]

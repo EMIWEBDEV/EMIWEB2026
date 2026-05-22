@@ -594,7 +594,10 @@ export default {
 .app-container {
     background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
     min-height: 100vh;
+    min-height: 100svh;
+    min-height: 100dvh;
     padding: 2rem;
+    padding: max(1.25rem, env(safe-area-inset-top, 1.25rem)) max(1.25rem, env(safe-area-inset-right, 1.25rem)) max(1.25rem, env(safe-area-inset-bottom, 1.25rem)) max(1.25rem, env(safe-area-inset-left, 1.25rem));
 }
 
 /* Card Styles */

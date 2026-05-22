@@ -39,116 +39,225 @@
                                 </div>
                             </div>
                         </div>
-                        <div
-                            v-else-if="listData.length > 0"
-                            class="table-responsive"
-                        >
-                            <table
-                                class="table table-bordered table-nowrap align-middle mb-0"
+                        <div v-else-if="listData.length > 0">
+                            <!-- PLT Palatabilitas: daftar bahan pembanding -->
+                            <div
+                                v-if="
+                                    informasiData?.is_plt &&
+                                    informasiData?.plt_pembanding?.length
+                                "
+                                class="card border-0 shadow-sm mb-3"
+                                style="border-radius: 10px; overflow: hidden"
                             >
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>No</th>
-                                        <th>No Transaksi</th>
-                                        <th>No Sampel</th>
-                                        <th>No PO</th>
-                                        <th>No Split Po</th>
-                                        <th>Batch</th>
-                                        <th>Tanggal</th>
-                                        <th
-                                            v-for="param in template.parameter"
-                                            :key="param.id_qc"
-                                        >
-                                            {{ param.nama_parameter }}
-                                        </th>
-                                        <th
-                                            v-for="(
-                                                hitung, i
-                                            ) in template.formula"
-                                            :key="'hitung-header-' + i"
-                                        >
-                                            {{ hitung.nama_kolom }}
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr
-                                        v-for="(row, rowIndex) in listData"
-                                        :key="rowIndex"
-                                        :class="
-                                            row.Flag_Layak === 'Y'
-                                                ? 'table-success'
-                                                : 'table-danger'
-                                        "
-                                    >
-                                        <td>
-                                            {{ rowIndex + 1 }}
-                                        </td>
-                                        <td>
-                                            {{ row.No_Faktur }}
-                                        </td>
-                                        <td>{{ row.No_Po_Sampel }}</td>
-                                        <td>{{ row.No_Po }}</td>
-                                        <td>{{ row.No_Split_Po }}</td>
-                                        <td>Batch {{ row.No_Batch }}</td>
-                                        <td>
-                                            {{ formatTanggal(row.Tanggal) }}
-                                        </td>
-                                        <td
-                                            v-for="(
-                                                paramValue, pIndex
-                                            ) in row.parameters"
-                                            :key="`param-${rowIndex}-${pIndex}`"
-                                        >
-                                            {{ paramValue }}
-                                        </td>
-                                        <td
-                                            v-for="(
-                                                formula, fIndex
-                                            ) in template.formula"
-                                            :key="`formula-${rowIndex}-${fIndex}`"
-                                        >
-                                            {{
-                                                row.results[fIndex] &&
-                                                row.results[fIndex].value !==
-                                                    undefined &&
-                                                row.results[fIndex].value !==
-                                                    null
-                                                    ? row.results[fIndex].value
-                                                    : "-"
-                                            }}
-                                        </td>
-                                    </tr>
-                                    <tr
-                                        v-if="
-                                            template.formula &&
-                                            template.formula.length > 0 &&
-                                            formulaAverages.length > 0
-                                        "
-                                        class="table-warning fw-bold"
-                                    >
-                                        <td
-                                            :colspan="
-                                                7 +
-                                                (template.parameter
-                                                    ? template.parameter.length
-                                                    : 0)
+                                <div
+                                    class="d-flex align-items-center px-4 py-3"
+                                    style="
+                                        background: linear-gradient(
+                                            135deg,
+                                            #405189,
+                                            #2e3a64
+                                        );
+                                    "
+                                >
+                                    <i
+                                        class="fas fa-flask fa-lg text-white me-3"
+                                    ></i>
+                                    <div class="text-white">
+                                        <div
+                                            class="fw-bold"
+                                            style="
+                                                font-size: 0.9rem;
+                                                letter-spacing: 0.3px;
                                             "
-                                            class="text-center"
                                         >
-                                            <strong>Rata-Rata</strong>
-                                        </td>
-                                        <td
+                                            Uji Palatabilitas
+                                        </div>
+                                        <div
+                                            style="
+                                                font-size: 0.72rem;
+                                                opacity: 0.8;
+                                                margin-top: 1px;
+                                            "
+                                        >
+                                            Nama Produk Pembanding:
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="badge ms-auto px-3 py-2 rounded-pill"
+                                        style="
+                                            background: rgba(
+                                                255,
+                                                255,
+                                                255,
+                                                0.18
+                                            );
+                                            font-size: 0.77rem;
+                                            color: #fff;
+                                        "
+                                    >
+                                        <i class="fas fa-layer-group me-1"></i
+                                        >{{
+                                            informasiData.plt_pembanding.length
+                                        }}
+                                        Produk
+                                    </span>
+                                </div>
+                                <div class="card-body px-4 py-2">
+                                    <div class="d-flex flex-wrap gap-2 py-1">
+                                        <span
                                             v-for="(
-                                                avg, fIndex
-                                            ) in formulaAverages"
-                                            :key="'avg-formula-' + fIndex"
+                                                pb, idx
+                                            ) in informasiData.plt_pembanding"
+                                            :key="idx"
+                                            class="badge rounded-pill d-flex align-items-center gap-1 px-3 py-2"
+                                            style="
+                                                background: rgba(
+                                                    64,
+                                                    81,
+                                                    137,
+                                                    0.1
+                                                );
+                                                color: #405189;
+                                                font-size: 0.8rem;
+                                                font-weight: 600;
+                                                border: 1px solid
+                                                    rgba(64, 81, 137, 0.2);
+                                            "
                                         >
-                                            {{ avg }}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                            <span
+                                                class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold me-1"
+                                                style="
+                                                    width: 18px;
+                                                    height: 18px;
+                                                    font-size: 0.65rem;
+                                                    background: #405189;
+                                                    color: #fff;
+                                                "
+                                                >{{ idx + 1 }}</span
+                                            >
+                                            {{ pb.nama }}
+                                            <span
+                                                v-if="pb.kode"
+                                                class="ms-1 opacity-75"
+                                                style="font-size: 0.7rem"
+                                                >({{ pb.kode }})</span
+                                            >
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table
+                                    class="table table-bordered table-nowrap align-middle mb-0"
+                                >
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>No</th>
+                                            <th>No Transaksi</th>
+                                            <th>No Sampel</th>
+                                            <th>No PO</th>
+                                            <th>No Split Po</th>
+                                            <th>Batch</th>
+                                            <th>Tanggal</th>
+                                            <th
+                                                v-for="param in template.parameter"
+                                                :key="param.id_qc"
+                                            >
+                                                {{ param.nama_parameter }}
+                                            </th>
+                                            <th
+                                                v-for="(
+                                                    hitung, i
+                                                ) in template.formula"
+                                                :key="'hitung-header-' + i"
+                                            >
+                                                {{ hitung.nama_kolom }}
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            v-for="(row, rowIndex) in listData"
+                                            :key="rowIndex"
+                                            :class="
+                                                row.Flag_Layak === 'Y'
+                                                    ? 'table-success'
+                                                    : 'table-danger'
+                                            "
+                                        >
+                                            <td>
+                                                {{ rowIndex + 1 }}
+                                            </td>
+                                            <td>
+                                                {{ row.No_Faktur }}
+                                            </td>
+                                            <td>{{ row.No_Po_Sampel }}</td>
+                                            <td>{{ row.No_Po }}</td>
+                                            <td>{{ row.No_Split_Po }}</td>
+                                            <td>Batch {{ row.No_Batch }}</td>
+                                            <td>
+                                                {{ formatTanggal(row.Tanggal) }}
+                                            </td>
+                                            <td
+                                                v-for="(
+                                                    paramValue, pIndex
+                                                ) in row.parameters"
+                                                :key="`param-${rowIndex}-${pIndex}`"
+                                            >
+                                                {{ paramValue }}
+                                            </td>
+                                            <td
+                                                v-for="(
+                                                    formula, fIndex
+                                                ) in template.formula"
+                                                :key="`formula-${rowIndex}-${fIndex}`"
+                                            >
+                                                {{
+                                                    row.results[fIndex] &&
+                                                    row.results[fIndex]
+                                                        .value !== undefined &&
+                                                    row.results[fIndex]
+                                                        .value !== null
+                                                        ? row.results[fIndex]
+                                                              .value
+                                                        : "-"
+                                                }}
+                                            </td>
+                                        </tr>
+                                        <tr
+                                            v-if="
+                                                template.formula &&
+                                                template.formula.length > 0 &&
+                                                formulaAverages.length > 0 &&
+                                                !informasiData?.is_plt
+                                            "
+                                            class="table-warning fw-bold"
+                                        >
+                                            <td
+                                                :colspan="
+                                                    7 +
+                                                    (template.parameter
+                                                        ? template.parameter
+                                                              .length
+                                                        : 0)
+                                                "
+                                                class="text-center"
+                                            >
+                                                <strong>Rata-Rata</strong>
+                                            </td>
+                                            <td
+                                                v-for="(
+                                                    avg, fIndex
+                                                ) in formulaAverages"
+                                                :key="'avg-formula-' + fIndex"
+                                            >
+                                                {{ avg }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- end table-responsive -->
                             <div
                                 v-if="informasiData?.sesi_foto === 'Y'"
                                 class="mt-5 pt-3"

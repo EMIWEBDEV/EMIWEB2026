@@ -17,19 +17,34 @@
 
         <div class="panel-body" v-else>
             <div class="analysis-table-container">
+                <!-- PLT: Banner produk pembanding sebagai badges di atas tabel -->
+                <div
+                    v-if="plt_pembanding_list && plt_pembanding_list.length"
+                    class="plt-pb-bar"
+                >
+                    <div class="plt-pb-bar-label">
+                        <i class="fas fa-flask me-1"></i>
+                        Uji Palatabilitas
+                        <span class="plt-pb-bar-count">({{ plt_pembanding_list.length }} Produk Pembanding)</span>
+                    </div>
+                    <div class="plt-pb-bar-chips">
+                        <span
+                            v-for="(p, i) in plt_pembanding_list"
+                            :key="p.id_pembanding"
+                            class="plt-pb-chip"
+                        >
+                            <span class="plt-pb-chip-num">{{ i + 1 }}</span>
+                            {{ p.nama_pembanding }}
+                        </span>
+                    </div>
+                </div>
+
                 <div class="mb-3 mt-2 d-flex justify-content-between p-2">
+                    <!-- Tambah Baris: selalu tampil, analyzer yang kontrol -->
                     <button
                         @click="addRow"
                         class="btn btn-primary"
-                        v-if="!dataSampel.length"
-                    >
-                        <i class="fas fa-plus"></i> Tambah Baris
-                    </button>
-                    <button
-                        @click="addRow"
-                        class="btn btn-primary"
-                        v-else
-                        :disabled="!isSubmitDone"
+                        :disabled="dataSampel.length && !isSubmitDone"
                     >
                         <i class="fas fa-plus"></i> Tambah Baris
                     </button>
@@ -1317,9 +1332,8 @@
                     aria-labelledby="myModalLabel"
                     aria-hidden="true"
                     style="display: none"
-                    data-bs-backdrop="static"
                 >
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h5 class="modal-title" id="myModalLabel">
@@ -1382,9 +1396,8 @@
                     aria-labelledby="myModalLabel"
                     aria-hidden="true"
                     style="display: none"
-                    data-bs-backdrop="static"
                 >
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h5 class="modal-title" id="myModalLabel">
@@ -1451,206 +1464,220 @@
             </div>
 
             <!-- modal informasi submit -->
-            <div
-                id="myModalInformasiSubmit"
-                class="modal fade"
-                tabindex="-1"
-                aria-labelledby="myModalLabel"
-                aria-hidden="true"
-                style="display: none"
-                data-bs-backdrop="static"
-            >
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">
-                                Konfirmasi dan Pernyataan Tanggung Jawab
-                            </h5>
-                            <button
-                                type="button"
-                                class="btn-close btn-close-white"
-                                data-bs-dismiss="modal"
-                                aria-label="Close"
-                            ></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="container-fluid">
-                                <div class="d-flex justify-content-center mb-4">
-                                    <DotLottieVue
-                                        style="height: 150px; width: 300px"
-                                        autoplay
-                                        loop
-                                        src="/animation/warning-submit.json"
-                                    />
-                                </div>
-
-                                <div
-                                    class="informasi-konfirmasi"
-                                    style="
-                                        max-height: 400px;
-                                        overflow-y: auto;
-                                        padding: 10px;
-                                        border: 1px solid #eee;
-                                        border-radius: 5px;
-                                    "
-                                >
-                                    <h6 class="text-danger">
-                                        PERHATIAN: Harap baca seluruh informasi
-                                        berikut sebelum melanjutkan
-                                    </h6>
-
-                                    <div class="mb-3">
-                                        <h6>1. Tanggung Jawab Analisis</h6>
-                                        <p>
-                                            Dengan menekan tombol "Submit
-                                            Analysis", Anda menyatakan bahwa:
-                                        </p>
-                                        <ul>
-                                            <li>
-                                                Anda bertanggung jawab penuh
-                                                atas semua hasil analisa ini
-                                            </li>
-                                            <li>
-                                                Data yang digunakan telah
-                                                diverifikasi kebenarannya
-                                            </li>
-                                            <li>
-                                                Parameter yang dimasukkan telah
-                                                sesuai dengan ketentuan
-                                            </li>
-                                            <li>
-                                                Anda memahami implikasi dari
-                                                hasil analisa ini
-                                            </li>
-                                        </ul>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <h6>2. Proses Analisis Sistem</h6>
-                                        <p>
-                                            Analisis ini menggunakan perhitungan
-                                            otomatis dengan ketentuan:
-                                        </p>
-                                        <ul>
-                                            <li>
-                                                Rumus perhitungan telah
-                                                ditetapkan oleh sistem
-                                            </li>
-                                            <li>
-                                                Perhitungan dilakukan secara
-                                                real-time seperti Excel
-                                            </li>
-                                            <li>
-                                                Hasil bergantung pada parameter
-                                                yang dimasukkan
-                                            </li>
-                                            <li>
-                                                Sistem tidak bertanggung jawab
-                                                atas kesalahan input data
-                                            </li>
-                                        </ul>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <h6>3. Keterbatasan Analisis</h6>
-                                        <p>
-                                            Analisis ini memiliki beberapa
-                                            keterbatasan:
-                                        </p>
-                                        <ul>
-                                            <li>
-                                                Hasil hanya seakurat data yang
-                                                dimasukkan
-                                            </li>
-                                            <li>
-                                                Tidak memperhitungkan faktor
-                                                eksternal yang tidak terukur
-                                            </li>
-                                            <li>
-                                                Interval kepercayaan berdasarkan
-                                                asumsi distribusi normal
-                                            </li>
-                                            <li>
-                                                Perlu verifikasi manual untuk
-                                                kasus khusus
-                                            </li>
-                                        </ul>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <h6>4. Penggunaan Hasil</h6>
-                                        <p>Hasil analisis ini:</p>
-                                        <ul>
-                                            <li>
-                                                Hanya untuk tujuan pengambilan
-                                                keputusan pendukung
-                                            </li>
-                                            <li>
-                                                Bukan merupakan jaminan mutlak
-                                            </li>
-                                            <li>
-                                                Harus diinterpretasikan oleh
-                                                profesional terkait
-                                            </li>
-                                            <li>
-                                                Tidak menggantikan analisis
-                                                komprehensif
-                                            </li>
-                                        </ul>
-                                    </div>
-
-                                    <!-- Checkbox Konfirmasi -->
-                                    <div class="form-check mt-4">
-                                        <input
-                                            class="form-check-input"
-                                            type="checkbox"
-                                            id="modalConfirmCheckbox"
-                                            v-model="modalConfirmed"
-                                            required
+            <Teleport to="body">
+                <div
+                    id="myModalInformasiSubmit"
+                    class="modal fade"
+                    tabindex="-1"
+                    aria-labelledby="myModalLabel"
+                    aria-hidden="true"
+                    style="display: none"
+                    data-bs-backdrop="static"
+                >
+                    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    Konfirmasi dan Pernyataan Tanggung Jawab
+                                </h5>
+                                <button
+                                    type="button"
+                                    class="btn-close btn-close-white"
+                                    data-bs-dismiss="modal"
+                                    aria-label="Close"
+                                ></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="container-fluid">
+                                    <div
+                                        class="d-flex justify-content-center mb-4"
+                                    >
+                                        <DotLottieVue
+                                            style="height: 150px; width: 300px"
+                                            autoplay
+                                            loop
+                                            src="/animation/warning-submit.json"
                                         />
-                                        <label
-                                            class="form-check-label fw-bold"
-                                            for="modalConfirmCheckbox"
-                                        >
-                                            Saya telah membaca dan memahami
-                                            semua informasi di atas, dan
-                                            bertanggung jawab penuh atas hasil
-                                            analisis ini.
-                                        </label>
+                                    </div>
+
+                                    <div
+                                        class="informasi-konfirmasi"
+                                        style="
+                                            max-height: 400px;
+                                            overflow-y: auto;
+                                            padding: 10px;
+                                            border: 1px solid #eee;
+                                            border-radius: 5px;
+                                        "
+                                    >
+                                        <h6 class="text-danger">
+                                            PERHATIAN: Harap baca seluruh
+                                            informasi berikut sebelum
+                                            melanjutkan
+                                        </h6>
+
+                                        <div class="mb-3">
+                                            <h6>1. Tanggung Jawab Analisis</h6>
+                                            <p>
+                                                Dengan menekan tombol "Submit
+                                                Analysis", Anda menyatakan
+                                                bahwa:
+                                            </p>
+                                            <ul>
+                                                <li>
+                                                    Anda bertanggung jawab penuh
+                                                    atas semua hasil analisa ini
+                                                </li>
+                                                <li>
+                                                    Data yang digunakan telah
+                                                    diverifikasi kebenarannya
+                                                </li>
+                                                <li>
+                                                    Parameter yang dimasukkan
+                                                    telah sesuai dengan
+                                                    ketentuan
+                                                </li>
+                                                <li>
+                                                    Anda memahami implikasi dari
+                                                    hasil analisa ini
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <h6>2. Proses Analisis Sistem</h6>
+                                            <p>
+                                                Analisis ini menggunakan
+                                                perhitungan otomatis dengan
+                                                ketentuan:
+                                            </p>
+                                            <ul>
+                                                <li>
+                                                    Rumus perhitungan telah
+                                                    ditetapkan oleh sistem
+                                                </li>
+                                                <li>
+                                                    Perhitungan dilakukan secara
+                                                    real-time seperti Excel
+                                                </li>
+                                                <li>
+                                                    Hasil bergantung pada
+                                                    parameter yang dimasukkan
+                                                </li>
+                                                <li>
+                                                    Sistem tidak bertanggung
+                                                    jawab atas kesalahan input
+                                                    data
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <h6>3. Keterbatasan Analisis</h6>
+                                            <p>
+                                                Analisis ini memiliki beberapa
+                                                keterbatasan:
+                                            </p>
+                                            <ul>
+                                                <li>
+                                                    Hasil hanya seakurat data
+                                                    yang dimasukkan
+                                                </li>
+                                                <li>
+                                                    Tidak memperhitungkan faktor
+                                                    eksternal yang tidak terukur
+                                                </li>
+                                                <li>
+                                                    Interval kepercayaan
+                                                    berdasarkan asumsi
+                                                    distribusi normal
+                                                </li>
+                                                <li>
+                                                    Perlu verifikasi manual
+                                                    untuk kasus khusus
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <h6>4. Penggunaan Hasil</h6>
+                                            <p>Hasil analisis ini:</p>
+                                            <ul>
+                                                <li>
+                                                    Hanya untuk tujuan
+                                                    pengambilan keputusan
+                                                    pendukung
+                                                </li>
+                                                <li>
+                                                    Bukan merupakan jaminan
+                                                    mutlak
+                                                </li>
+                                                <li>
+                                                    Harus diinterpretasikan oleh
+                                                    profesional terkait
+                                                </li>
+                                                <li>
+                                                    Tidak menggantikan analisis
+                                                    komprehensif
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <div class="form-check mt-4">
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                id="modalConfirmCheckbox"
+                                                v-model="modalConfirmed"
+                                                required
+                                            />
+                                            <label
+                                                class="form-check-label fw-bold"
+                                                for="modalConfirmCheckbox"
+                                            >
+                                                Saya telah membaca dan memahami
+                                                semua informasi di atas, dan
+                                                bertanggung jawab penuh atas
+                                                hasil analisis ini.
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button
-                                type="button"
-                                class="btn btn-light"
-                                data-bs-dismiss="modal"
-                                @click="modalConfirmed = false"
-                            >
-                                <i class="fas fa-times me-2"></i>Tutup
-                            </button>
-                            <button
-                                :disabled="
-                                    !modalConfirmed || loading.saveToDatabase
-                                "
-                                @click="
-                                    modalConfirmed ? submitAnalysis() : null
-                                "
-                                class="btn btn-primary"
-                                :class="{ 'disabled-opacity': !modalConfirmed }"
-                            >
-                                <i class="fas fa-paper-plane me-2"></i>
-                                {{
-                                    loading.saveToDatabase
-                                        ? "Loading..."
-                                        : "Submit Analysis"
-                                }}
-                            </button>
+                            <div class="modal-footer">
+                                <button
+                                    type="button"
+                                    class="btn btn-light"
+                                    data-bs-dismiss="modal"
+                                    @click="modalConfirmed = false"
+                                >
+                                    <i class="fas fa-times me-2"></i>Tutup
+                                </button>
+                                <button
+                                    :disabled="
+                                        !modalConfirmed ||
+                                        loading.saveToDatabase
+                                    "
+                                    @click="
+                                        modalConfirmed ? submitAnalysis() : null
+                                    "
+                                    class="btn btn-primary"
+                                    :class="{
+                                        'disabled-opacity': !modalConfirmed,
+                                    }"
+                                >
+                                    <i class="fas fa-paper-plane me-2"></i>
+                                    {{
+                                        loading.saveToDatabase
+                                            ? "Loading..."
+                                            : "Submit Analysis"
+                                    }}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </Teleport>
             <div class="form-check mt-4" v-if="dataSampel.length">
                 <input
                     class="form-check-input"
@@ -1778,6 +1805,8 @@ export default {
         },
         Id_Jenis_Analisa: [Number, String],
         Id_Mesin: [Number, String],
+        plt_session_id: { type: [String, Number], default: null },
+        plt_pembanding_list: { type: Array, default: () => [] },
     },
     data() {
         return {
@@ -2324,11 +2353,18 @@ export default {
             this.addRow();
         },
         addRow() {
+            const rowIndex = this.rows.length;
+            const pltPb =
+                this.plt_pembanding_list && this.plt_pembanding_list.length > 0
+                    ? this.plt_pembanding_list[rowIndex] || null
+                    : null;
             const newRow = {
                 inputValues: {},
                 formulaResults: {},
                 lockedInputs: {},
                 draftDetails: {},
+                plt_id_pembanding: pltPb ? pltPb.id_pembanding : null,
+                plt_nama_pembanding: pltPb ? pltPb.nama_pembanding : null,
             };
 
             this.selectedTemplating.parameter.forEach((param) => {
@@ -2567,6 +2603,8 @@ export default {
                             formulas,
                             is_multi_print: this.is_multi_print,
                             id_mesin: this.Id_Mesin,
+                            Id_Pembanding: row.plt_id_pembanding || null,
+                            plt_session_id: this.plt_session_id || null,
                         };
 
                         if (this.is_multi_print === "Y") {
@@ -2648,6 +2686,8 @@ export default {
                             formulas,
                             is_multi_print: this.is_multi_print,
                             id_mesin: this.Id_Mesin,
+                            Id_Pembanding: row.plt_id_pembanding || null,
+                            plt_session_id: this.plt_session_id || null,
                         };
 
                         if (this.is_multi_print === "Y") {
@@ -3712,6 +3752,17 @@ export default {
 </style>
 
 <style>
+/* Memastikan konten di dalam modal bisa di-scroll dengan lancar di Mobile */
+.modal-dialog-scrollable .modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* Efek momentum scroll untuk iOS/iPhone */
+    padding-bottom: 2rem; /* Memberikan ruang ekstra di bagian bawah saat di-scroll */
+}
+
+/* Memastikan wrapper tabel di dalam modal juga nyaman di-scroll secara horizontal */
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+}
 /* Kontainer utama untuk input dan tombol */
 .input-container {
     position: relative;
@@ -4290,6 +4341,160 @@ export default {
 @media (min-width: 1200px) {
     .calculation-container {
         grid-template-columns: 2fr 1fr;
+    }
+}
+</style>
+
+<style>
+/* ==========================================================================
+   RESPONSIVE MODAL & LAYOUT — iOS / Android / Enterprise LIMS
+   ========================================================================== */
+
+.modal-body,
+.modal-fullscreen .modal-body,
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+#myModal .modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+}
+
+#myModalInformasiSubmit .modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+}
+#myModalInformasiSubmit .modal-footer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem));
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+#myModalEdit .modal-footer,
+#myModalHapus .modal-footer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem));
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+@media (max-width: 575.98px) {
+    #myModalInformasiSubmit .modal-dialog {
+        margin: 0 !important;
+        max-width: 100vw !important;
+    }
+    #myModalInformasiSubmit .modal-content {
+        border-radius: 16px 16px 0 0 !important;
+        max-height: 94svh;
+        max-height: 94dvh;
+    }
+    #myModalInformasiSubmit .modal-body .d-flex > * {
+        height: 100px !important;
+        width: 200px !important;
+    }
+    #myModalInformasiSubmit .modal-footer .btn,
+    #myModalEdit .modal-footer .btn,
+    #myModalHapus .modal-footer .btn {
+        flex: 1 1 auto;
+        min-width: 120px;
+    }
+    #myModal .nav-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    #myModal .nav-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    #myModal .nav-item .nav-link {
+        white-space: nowrap;
+        font-size: 12px;
+        padding: 0.45rem 0.65rem;
+    }
+}
+
+@media (max-width: 399.98px) {
+    .modal-body {
+        padding: 0.75rem !important;
+    }
+    .modal-header {
+        padding: 0.65rem 0.85rem !important;
+    }
+    .modal-footer {
+        padding: 0.5rem 0.75rem !important;
+    }
+}
+
+/* ══════════════════════════════════════════════════════
+   PLT Produk Pembanding Badge Bar
+══════════════════════════════════════════════════════ */
+.plt-pb-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    padding: 0.6rem 1rem;
+    background: linear-gradient(135deg, rgba(64,81,137,0.06) 0%, rgba(64,81,137,0.03) 100%);
+    border: 1px solid rgba(64,81,137,0.15);
+    border-radius: 10px;
+    margin: 0.5rem 0.5rem 0;
+}
+.plt-pb-bar-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #405189;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.plt-pb-bar-count {
+    font-weight: 600;
+    color: #6674c4;
+    margin-left: 0.2rem;
+}
+.plt-pb-bar-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.plt-pb-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.22rem 0.6rem 0.22rem 0.35rem;
+    background: #fff;
+    border: 1px solid rgba(64,81,137,0.25);
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #374151;
+    box-shadow: 0 1px 3px rgba(64,81,137,0.08);
+}
+.plt-pb-chip-num {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #405189;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+@media (max-width: 575.98px) {
+    .plt-pb-bar {
+        padding: 0.5rem 0.75rem;
+        margin: 0.5rem 0 0;
+    }
+    .plt-pb-bar-label {
+        font-size: 0.75rem;
+        width: 100%;
     }
 }
 </style>

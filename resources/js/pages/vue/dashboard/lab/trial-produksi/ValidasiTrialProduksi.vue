@@ -110,18 +110,27 @@
                     <!-- Items -->
                     <div v-else>
                         <!-- Check All Bar -->
-                        <div class="vld-checkall-bar" v-if="listData.length > 0">
+                        <div
+                            class="vld-checkall-bar"
+                            v-if="listData.length > 0"
+                        >
                             <label class="vld-checkall-label">
                                 <input
                                     type="checkbox"
                                     class="vld-checkall-cb"
                                     :checked="allCurrentPageChecked"
-                                    :indeterminate.prop="someCurrentPageChecked && !allCurrentPageChecked"
+                                    :indeterminate.prop="
+                                        someCurrentPageChecked &&
+                                        !allCurrentPageChecked
+                                    "
                                     @change="toggleCheckAll"
                                 />
                                 <span>Pilih Semua</span>
                             </label>
-                            <span v-if="selectedItems.length > 0" class="vld-checkall-count">
+                            <span
+                                v-if="selectedItems.length > 0"
+                                class="vld-checkall-count"
+                            >
                                 {{ selectedItems.length }} item dipilih
                             </span>
                         </div>
@@ -576,6 +585,74 @@
                                     ></apexchart>
                                 </div>
                             </div>
+
+                            <!-- PLT Palatabilitas — Referensi Produk Pembanding -->
+                            <div
+                                v-for="(pb, idx) in pltPembandingList"
+                                :key="idx"
+                                class="d-flex align-items-center justify-content-between p-3 mb-3 rounded shadow-sm"
+                                style="
+                                    background-color: #f3f6f9;
+                                    border-left: 4px solid #405189 !important;
+                                "
+                            >
+                                <div class="d-flex align-items-center gap-3">
+                                    <div
+                                        class="d-flex align-items-center justify-content-center bg-white rounded shadow-sm"
+                                        style="
+                                            width: 42px;
+                                            height: 42px;
+                                            color: #405189;
+                                        "
+                                    >
+                                        <i
+                                            class="ri-test-tube-line"
+                                            style="font-size: 1.5rem"
+                                        ></i>
+                                    </div>
+
+                                    <div>
+                                        <h6
+                                            class="mb-1 fw-bold"
+                                            style="
+                                                color: #212529;
+                                                font-size: 0.95rem;
+                                            "
+                                        >
+                                            Referensi Uji Palatabilitas
+                                        </h6>
+                                        <p
+                                            class="text-muted mb-0"
+                                            style="font-size: 0.8rem"
+                                        >
+                                            Data sampel ini dianalisa dengan
+                                            membandingkannya terhadap produk
+                                            standar.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="text-end">
+                                    <span
+                                        class="d-block text-muted fw-bold mb-1"
+                                        style="
+                                            font-size: 0.65rem;
+                                            text-transform: uppercase;
+                                            letter-spacing: 0.5px;
+                                        "
+                                    >
+                                        Produk Pembanding
+                                    </span>
+                                    <span
+                                        class="badge border border-primary text-primary bg-white px-3 py-2"
+                                        style="font-size: 0.85rem"
+                                    >
+                                        {{ pb.nama }}
+                                        <span v-if="pb.kode" class="ms-1 text-muted" style="font-size:0.75rem">({{ pb.kode }})</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <!-- End PLT Section -->
 
                             <!-- Section: Data Table -->
                             <div class="vld-section">
@@ -1510,7 +1587,11 @@ export default {
         return {
             listData: [],
             searchQuery: "",
-            filters: { tanggal: { mulai: "", selesai: "" }, qrcode: "", status: "" },
+            filters: {
+                tanggal: { mulai: "", selesai: "" },
+                qrcode: "",
+                status: "",
+            },
             pagination: { page: 1, limit: 12, totalPage: 0, totalData: 0 },
             loading: {
                 list: false,
@@ -1539,6 +1620,7 @@ export default {
             detailData: [],
             formulaAverages: [],
             informasiData: null,
+            pltPembandingList: [],
             hasStandardConfiguration: true,
             template: { parameter: [], formula: [] },
             fotoBlobUrls: {},
@@ -1759,7 +1841,11 @@ export default {
 
         resetFiltersAndFetch() {
             this.searchQuery = "";
-            this.filters = { tanggal: { mulai: "", selesai: "" }, qrcode: "", status: "" };
+            this.filters = {
+                tanggal: { mulai: "", selesai: "" },
+                qrcode: "",
+                status: "",
+            };
             this.fetchList(1);
         },
 
@@ -1767,13 +1853,16 @@ export default {
             if (this.allCurrentPageChecked) {
                 this.listData.forEach((item) => {
                     const idx = this.selectedItems.findIndex(
-                        (s) => s.No_Po_Sampel === item.No_Po_Sampel && s.Id_Jenis_Analisa === item.Id_Jenis_Analisa
+                        (s) =>
+                            s.No_Po_Sampel === item.No_Po_Sampel &&
+                            s.Id_Jenis_Analisa === item.Id_Jenis_Analisa
                     );
                     if (idx >= 0) this.selectedItems.splice(idx, 1);
                 });
             } else {
                 this.listData.forEach((item) => {
-                    if (!this.isSelectedBulk(item)) this.selectedItems.push(item);
+                    if (!this.isSelectedBulk(item))
+                        this.selectedItems.push(item);
                 });
             }
         },
@@ -1881,8 +1970,11 @@ export default {
                 this.hasStandardConfiguration =
                     dataRes.data.result.informasi?.has_standard_configuration ??
                     true;
+                const rawSampel = dataRes.data.result.sampel;
+                this.pltPembandingList =
+                    dataRes.data.result.informasi?.plt_pembanding || [];
                 const { data, formulaAverages } = this.processItems(
-                    dataRes.data.result.sampel,
+                    rawSampel,
                     this.template
                 );
                 this.detailData = data;

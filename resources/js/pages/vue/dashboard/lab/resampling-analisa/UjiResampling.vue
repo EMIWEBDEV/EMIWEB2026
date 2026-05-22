@@ -425,6 +425,9 @@
                     :kodeAnalisa="kodeAnalisa"
                     :sampleNumber="No_Sampel"
                     :Flag_Foto="Flag_Foto"
+                    :plt_pembanding_list="nomorSampel.sampleDetails.resampling_info?.plt_pembanding_list ?? []"
+                    :plt_session_id="nomorSampel.sampleDetails.resampling_info?.plt_session_id ?? null"
+                    :plt_id_pembanding_default="nomorSampel.sampleDetails.resampling_info?.Id_Pembanding ?? null"
                 />
             </div>
             <div v-else-if="selectedTemplating">
@@ -440,6 +443,11 @@
                     :kodeAnalisa="kodeAnalisa"
                     :Flag_Foto="Flag_Foto"
                     :sampleNumber="No_Sampel"
+                    :Tahapan_Ke="nomorSampel.sampleDetails.resampling_info?.Tahapan_Ke ?? null"
+                    :Id_Resampling="nomorSampel.sampleDetails.resampling_info?.Id_Resampling ?? null"
+                    :plt_pembanding_list="nomorSampel.sampleDetails.resampling_info?.plt_pembanding_list ?? []"
+                    :plt_session_id="nomorSampel.sampleDetails.resampling_info?.plt_session_id ?? null"
+                    :plt_id_pembanding_default="nomorSampel.sampleDetails.resampling_info?.Id_Pembanding ?? null"
                 />
             </div>
         </div>

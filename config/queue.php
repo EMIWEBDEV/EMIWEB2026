@@ -36,7 +36,7 @@ return [
 
         'database' => [
             'driver' => 'database',
-            'table' => 'N_EMI_LAB_jobs',
+            'table' => 'N_EMI_LAB_Jobs',
             'queue' => 'default',
             'retry_after' => 90,
             'after_commit' => false,
@@ -99,7 +99,7 @@ return [
     'failed' => [
         'driver' => env('QUEUE_FAILED_DRIVER', 'database-uuids'),
         'database' => env('DB_CONNECTION', 'mysql'),
-        'table' => 'failed_jobs',
+        'table' => 'N_EMI_LAB_Failed_Jobs',
     ],
 
 ];

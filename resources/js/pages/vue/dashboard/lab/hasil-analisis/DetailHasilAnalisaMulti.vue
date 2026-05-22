@@ -75,6 +75,40 @@
                                     </div>
                                 </div>
                                 <div v-else-if="listData.length > 0">
+                                    <!-- PLT Palatabilitas Banner -->
+                                    <div
+                                        v-if="informasiData && informasiData.is_plt"
+                                        class="mb-4 overflow-hidden"
+                                        style="border-radius:12px;box-shadow:0 2px 12px rgba(2,132,199,.12);border:1px solid #bae6fd;"
+                                    >
+                                        <div class="d-flex align-items-stretch">
+                                            <div class="d-flex align-items-center justify-content-center px-4 flex-shrink-0"
+                                                style="background:linear-gradient(135deg,#0ea5e9,#0284c7);min-width:64px;">
+                                                <i class="fas fa-flask fa-2x text-white"></i>
+                                            </div>
+                                            <div class="flex-grow-1 py-3 px-4" style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);">
+                                                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0369a1;" class="mb-2">
+                                                    <i class="fas fa-tag me-1"></i>Nama Produk Pembanding
+                                                </div>
+
+                                                <div v-if="informasiData.plt_pembanding?.length"
+                                                    class="d-flex align-items-center gap-2 flex-wrap">
+                                                    <span
+                                                        v-for="(pb, i) in informasiData.plt_pembanding"
+                                                        :key="i"
+                                                        class="badge px-3 py-1"
+                                                        style="background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;font-size:0.8rem;font-weight:600;border-radius:20px;"
+                                                    >
+                                                        <i class="fas fa-flask me-1" style="font-size:0.7rem;"></i>{{ pb?.nama || pb }}
+                                                    </span>
+                                                </div>
+                                                <div v-else class="text-muted small">
+                                                    Data produk pembanding belum tersedia.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- End PLT Banner -->
                                     <div class="table-responsive">
                                         <table
                                             class="table table-bordered table-nowrap align-middle mb-0"
@@ -177,9 +211,7 @@
                                                         :colspan="
                                                             6 +
                                                             (template.parameter
-                                                                ? template
-                                                                      .parameter
-                                                                      .length
+                                                                ? template.parameter.length
                                                                 : 0)
                                                         "
                                                         class="text-center"
@@ -890,15 +922,13 @@ export default {
                         No_Po_Sampel: firstItemInGroup.No_Po_Sampel || "-",
                         No_Fak_Sub_Po: firstItemInGroup.No_Fak_Sub_Po || "-",
                         Tanggal: firstItemInGroup.Tanggal_Pengujian || "-",
-
-                        // --- Menggunakan Flag_Layak yang sudah diproses ---
+                        Nama_Pembanding:
+                            firstItemInGroup.Nama_Pembanding || null,
                         Flag_Layak: groupFlagLayak,
-                        // ------------------------------------------------
-
                         foto_analisa: firstItemInGroup.foto_analisa || [],
                         parameters: parameterResults,
                         results: finalResults,
-                        _originalGroup: group, // Properti sementara
+                        _originalGroup: group,
                     };
                 }
             );

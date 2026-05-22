@@ -15,6 +15,7 @@ use App\Exports\RekapSampelExport;
 use App\Exports\ParticleSizeExport;
 use App\Exports\DaftarAnalisaKurangExport;
 use App\Helpers\ResponseHelper;
+use App\Jobs\ExportRekapSampelJob;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Validator; 
 use Illuminate\Support\Facades\File;
@@ -1188,6 +1189,18 @@ class UjiSampelController extends Controller
             $idDecoded = Hashids::connection('custom')->decode($firstAnalysis['Id_Jenis_Analisa']);
             $jenisAnalisa = isset($idDecoded[0]) ? $idDecoded[0] : null;
 
+            // PLT: cek apakah analisa ini PLT dan ambil Id_Session
+            $isPlt = DB::table('N_EMI_LAB_Jenis_Analisa')
+                ->where('id', $jenisAnalisa)
+                ->value('Kode_Aktivitas_Lab') === 'PLT';
+            $idSessionForPlt = null;
+            if ($isPlt) {
+                $idSessionForPlt = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                    ->where('No_Po_Sampel', $firstAnalysis['No_Po_Sampel'])
+                    ->where('Kode_Aktivitas_Lab', 'PLT')
+                    ->value('Id_Session');
+            }
+
             $payloadActivityUjiSampel = [
                 'Kode_Perusahaan' => '001',
                 'No_Po_Sampel' => $firstAnalysis['No_Po_Sampel'],
@@ -1205,8 +1218,14 @@ class UjiSampelController extends Controller
             foreach ($request->analyses as $analysisData) {
                 $noSementara = $analysisData['No_Sementara'] ?? null;
                 $sumberData = (object) $analysisData;
-                $idUserUntukInsert = $pengguna->UserId;   
+                $idUserUntukInsert = $pengguna->UserId;
                 $isFromSementara = false;
+
+                $idPembandingForRow = null;
+                if ($isPlt && !empty($analysisData['Id_Pembanding'])) {
+                    $decoded = Hashids::connection('custom')->decode($analysisData['Id_Pembanding']);
+                    $idPembandingForRow = $decoded[0] ?? null;
+                }
 
                 $isFlagKhusus = DB::table('N_EMI_LAB_PO_Sampel')
                         ->where('No_Sampel', $sumberData->No_Po_Sampel)
@@ -1412,8 +1431,10 @@ class UjiSampelController extends Controller
                                     ->where('Flag_FG', 'Y')
                                     ->first();
 
-                    if($getDataMesin){
-                            $payloadUjiSampleData[] = [
+                    $basePltPayload = $isPlt ? ['Id_Session' => $idSessionForPlt, 'Id_Pembanding' => $idPembandingForRow] : [];
+
+                    if ($getDataMesin) {
+                        $payloadUjiSampleData[] = array_merge([
                             "No_Faktur" => $newNumber,
                             "Kode_Perusahaan" => "001",
                             "Id_Jenis_Analisa" => $result['Id_Jenis_Analisa'],
@@ -1434,10 +1455,10 @@ class UjiSampelController extends Controller
                             "Status_Keputusan_Sampel" => "menunggu",
                             'Flag_Layak' => $Flag_Layak,
                             "Flag_Final" => null,
-                            'Id_Mesin' => $sumberData->Id_Mesin
-                        ];
-                    }else {
-                        $payloadUjiSampleData[] = [
+                            'Id_Mesin' => $sumberData->Id_Mesin,
+                        ], $basePltPayload);
+                    } else {
+                        $payloadUjiSampleData[] = array_merge([
                             "No_Faktur" => $newNumber,
                             "Kode_Perusahaan" => "001",
                             "Id_Jenis_Analisa" => $result['Id_Jenis_Analisa'],
@@ -1458,11 +1479,11 @@ class UjiSampelController extends Controller
                             "Status_Keputusan_Sampel" => "menunggu",
                             'Flag_Layak' => $Flag_Layak,
                             "Flag_Final" => null,
-                            'Id_Mesin' => $sumberData->Id_Mesin
-                        ];
+                            'Id_Mesin' => $sumberData->Id_Mesin,
+                        ], $basePltPayload);
                     }
 
-                    
+
 
                     $payloadActivityUjiSampelHasil[] = [
                         "Kode_Perusahaan" => "001",
@@ -2011,6 +2032,18 @@ class UjiSampelController extends Controller
             $idDecodedFirst = Hashids::connection('custom')->decode($firstAnalysis['Id_Jenis_Analisa']);
             $jenisAnalisaIdFirst = isset($idDecodedFirst[0]) ? $idDecodedFirst[0] : null;
 
+            // PLT: cek apakah analisa ini PLT dan ambil Id_Session
+            $isPlt = DB::table('N_EMI_LAB_Jenis_Analisa')
+                ->where('id', $jenisAnalisaIdFirst)
+                ->value('Kode_Aktivitas_Lab') === 'PLT';
+            $idSessionForPlt = null;
+            if ($isPlt) {
+                $idSessionForPlt = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                    ->where('No_Po_Sampel', $firstAnalysis['No_Po_Sampel'])
+                    ->where('Kode_Aktivitas_Lab', 'PLT')
+                    ->value('Id_Session');
+            }
+
             $payloadActivityUjiSampel = [
                 'Kode_Perusahaan' => '001',
                 'No_Po_Sampel' => $firstAnalysis['No_Po_Sampel'],
@@ -2055,6 +2088,12 @@ class UjiSampelController extends Controller
             foreach ($request->analyses as $analysisData) {
                 $idDecoded = Hashids::connection('custom')->decode($analysisData['Id_Jenis_Analisa']);
                 $jenisAnalisaId = isset($idDecoded[0]) ? $idDecoded[0] : null;
+
+                $idPembandingForRow = null;
+                if ($isPlt && !empty($analysisData['Id_Pembanding'])) {
+                    $decoded = Hashids::connection('custom')->decode($analysisData['Id_Pembanding']);
+                    $idPembandingForRow = $decoded[0] ?? null;
+                }
 
                 $kodeAktivitasLab = DB::table('N_EMI_LAB_Jenis_Analisa')
                     ->where('id', $jenisAnalisaId)
@@ -2249,7 +2288,7 @@ class UjiSampelController extends Controller
                     $rangeAwal = $standardRangeValue;
                     $rangeAkhir = $standardRangeValue;
 
-                    $payloadUjiSampleData[] = [
+                    $payloadUjiSampleData[] = array_merge([
                         "No_Faktur" => $newNumber,
                         "Kode_Perusahaan" => "001",
                         "Id_Jenis_Analisa" => $sumberData->Id_Jenis_Analisa,
@@ -2270,8 +2309,8 @@ class UjiSampelController extends Controller
                         "Nilai_Hasil_String" => $nilaiHasilString,
                         "Flag_Layak" => $flagLayak,
                         "Range_Awal" => $rangeAwal,
-                        "Range_Akhir" => $rangeAkhir
-                    ];
+                        "Range_Akhir" => $rangeAkhir,
+                    ], $isPlt ? ['Id_Session' => $idSessionForPlt, 'Id_Pembanding' => $idPembandingForRow] : []);
 
                     $payloadActivityUjiSampelHasil[] = [
                         "Kode_Perusahaan" => "001",
@@ -2491,11 +2530,24 @@ class UjiSampelController extends Controller
             $jenisAnalisaId = isset($idDecoded[0]) ? $idDecoded[0] : null;
             $noPoSampel = $firstAnalysis['No_Po_Sampel'];
 
+            // PLT: cek apakah analisa ini PLT dan ambil Id_Session
+            $isPlt = DB::table('N_EMI_LAB_Jenis_Analisa')
+                ->where('id', $jenisAnalisaId)
+                ->value('Kode_Aktivitas_Lab') === 'PLT';
+
+            $idSessionForPlt = null;
+            if ($isPlt) {
+                $idSessionForPlt = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                    ->where('No_Po_Sampel', $firstAnalysis['No_Po_Sampel'])
+                    ->where('Kode_Aktivitas_Lab', 'PLT')
+                    ->value('Id_Session');
+            }
+
             $dataResampling = DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')
                 ->where('No_Po_Sampel', $firstAnalysis['No_Po_Sampel'])
                 ->where('Id_Jenis_Analisa', $jenisAnalisaId)
-                ->whereNull('Flag_Selesai_Resampling') 
-                ->orderBy('Tanggal', 'desc') 
+                ->whereNull('Flag_Selesai_Resampling')
+                ->orderBy('Tanggal', 'desc')
                 ->first();
 
             if (!$dataResampling) {
@@ -2581,6 +2633,12 @@ class UjiSampelController extends Controller
                 $noSementara = $analysisData['No_Sementara'] ?? null;
                 $sumberData = (object) $analysisData;
                 $isFromSementara = false;
+
+                $idPembandingForRow = null;
+                if ($isPlt && !empty($analysisData['Id_Pembanding'])) {
+                    $decodedPb = Hashids::connection('custom')->decode($analysisData['Id_Pembanding']);
+                    $idPembandingForRow = $decodedPb[0] ?? null;
+                }
 
                 $poData = DB::table('N_EMI_LAB_PO_Sampel')
                     ->where('No_Sampel', $sumberData->No_Po_Sampel)
@@ -2767,29 +2825,31 @@ class UjiSampelController extends Controller
                         }
                     }
 
-                    $payloadUjiSampleData[] = [
+                    $basePltPayload = $isPlt ? ['Id_Session' => $idSessionForPlt, 'Id_Pembanding' => $idPembandingForRow] : [];
+
+                    $payloadUjiSampleData[] = array_merge([
                         "No_Faktur" => $newNumber,
                         "Kode_Perusahaan" => "001",
                         "Flag_Foto" => $request->flag_foto,
                         "Id_Jenis_Analisa" => $jenisAnalisaId,
                         "Hasil" => $paramValueFloat,
                         "Flag_Perhitungan" => $flagPerhitunganVal,
-                        "Flag_Multi_QrCode" => $analysisData['is_multi_print'] ?? 'N', 
-                        "No_Fak_Sub_Po" => $fixedNoFakSubPo, 
+                        "Flag_Multi_QrCode" => $analysisData['is_multi_print'] ?? 'N',
+                        "No_Fak_Sub_Po" => $fixedNoFakSubPo,
                         "Status" => null,
                         "Tanggal" => $tanggalSqlServer,
                         "Jam" => $jamSqlServer,
                         "Id_User" => $pengguna->UserId,
                         "No_Po_Sampel" => $firstAnalysis['No_Po_Sampel'],
                         'Status_Keputusan_Sampel' => 'menunggu',
-                        'Tahapan_Ke' => $fixedTahapanKe, 
-                        'Id_Mesin' => $analysisData['id_mesin'], 
+                        'Tahapan_Ke' => $fixedTahapanKe,
+                        'Id_Mesin' => $analysisData['id_mesin'],
                         "Flag_String" => $flagString,
                         "Nilai_Hasil_String" => $nilaiHasilString,
                         "Range_Awal" => $rangeAwal,
                         "Range_Akhir" => $rangeAkhir,
                         "Flag_Layak" => $flagLayak
-                    ];
+                    ], $basePltPayload);
 
                     $payloadActivityUjiSampelHasil[] = [
                         "Kode_Perusahaan" => "001",
@@ -2952,6 +3012,18 @@ class UjiSampelController extends Controller
             $idDecoded = Hashids::connection('custom')->decode($firstAnalysis['Id_Jenis_Analisa']);
             $jenisAnalisa = isset($idDecoded[0]) ? $idDecoded[0] : null;
 
+            // PLT: cek apakah analisa ini PLT dan ambil Id_Session
+            $isPlt = DB::table('N_EMI_LAB_Jenis_Analisa')
+                ->where('id', $jenisAnalisa)
+                ->value('Kode_Aktivitas_Lab') === 'PLT';
+            $idSessionForPlt = null;
+            if ($isPlt) {
+                $idSessionForPlt = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                    ->where('No_Po_Sampel', $firstAnalysis['No_Po_Sampel'])
+                    ->where('Kode_Aktivitas_Lab', 'PLT')
+                    ->value('Id_Session');
+            }
+
             $payloadActivityUjiSampel = [
                 'Kode_Perusahaan' => '001',
                 'No_Po_Sampel' => $firstAnalysis['No_Po_Sampel'],
@@ -2965,11 +3037,18 @@ class UjiSampelController extends Controller
 
             $idLogActivity = DB::table('N_EMI_LAB_Activity_Uji_Sampel')->insertGetId($payloadActivityUjiSampel, 'Id_Log_Activity');
 
-              foreach ($request->analyses as $analysisData) {
+            foreach ($request->analyses as $analysisData) {
                 $noSementara = $analysisData['No_Sementara'] ?? null;
                 $sumberData = (object) $analysisData;
-                $idUserUntukInsert = $pengguna->UserId;   
+                $idUserUntukInsert = $pengguna->UserId;
                 $isFromSementara = false;
+
+                $idPembandingForRow = null;
+                if ($isPlt && !empty($analysisData['Id_Pembanding'])) {
+                    $decoded = Hashids::connection('custom')->decode($analysisData['Id_Pembanding']);
+                    $idPembandingForRow = $decoded[0] ?? null;
+                }
+
                 $isFlagKhusus = DB::table('N_EMI_LAB_PO_Sampel')
                         ->where('No_Sampel', $sumberData->No_Po_Sampel)
                         ->where('Flag_Khusus', 'Y')
@@ -3309,6 +3388,19 @@ class UjiSampelController extends Controller
             $idDecoded = Hashids::connection('custom')->decode($firstAnalysis['Id_Jenis_Analisa']);
             $jenisAnalisa = isset($idDecoded[0]) ? $idDecoded[0] : null;
 
+            // PLT: cek apakah analisa ini PLT dan ambil Id_Session
+            $isPlt = DB::table('N_EMI_LAB_Jenis_Analisa')
+                ->where('id', $jenisAnalisa)
+                ->value('Kode_Aktivitas_Lab') === 'PLT';
+
+            $idSessionForPlt = null;
+            if ($isPlt) {
+                $idSessionForPlt = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                    ->where('No_Po_Sampel', $firstAnalysis['No_Po_Sampel'])
+                    ->where('Kode_Aktivitas_Lab', 'PLT')
+                    ->value('Id_Session');
+            }
+
             $payloadActivityUjiSampel = [
                 'Kode_Perusahaan' => '001',
                 'No_Po_Sampel' => $firstAnalysis['No_Po_Sampel'],
@@ -3322,10 +3414,10 @@ class UjiSampelController extends Controller
 
             $idLogActivity = DB::table('N_EMI_LAB_Activity_Uji_Sampel')->insertGetId($payloadActivityUjiSampel, 'Id_Log_Activity');
 
-              foreach ($request->analyses as $analysisData) {
+            foreach ($request->analyses as $analysisData) {
                 $noSementara = $analysisData['No_Sementara'] ?? null;
                 $sumberData = (object) $analysisData;
-                $idUserUntukInsert = $pengguna->UserId;   
+                $idUserUntukInsert = $pengguna->UserId;
                 $isFromSementara = false;
 
                 try {
@@ -3341,6 +3433,18 @@ class UjiSampelController extends Controller
                         'status' => 400,
                         'message' => 'Format Id_Resampling tidak valid.'
                     ], 400);
+                }
+
+                $resamplingLog = DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')
+                    ->where('Id_Resampling', $id_resampling)
+                    ->first();
+
+                $tahapanKe = $resamplingLog->Tahapan_Ke ?? 1;
+
+                $idPembandingForRow = null;
+                if ($isPlt && !empty($analysisData['Id_Pembanding'])) {
+                    $decodedPb = Hashids::connection('custom')->decode($analysisData['Id_Pembanding']);
+                    $idPembandingForRow = $decodedPb[0] ?? null;
                 }
 
                 $isFlagKhusus = DB::table('N_EMI_LAB_PO_Sampel')
@@ -3525,7 +3629,9 @@ class UjiSampelController extends Controller
                         }
                     }
 
-                    $payloadUjiSampleData[] = [
+                    $basePltPayload = $isPlt ? ['Id_Session' => $idSessionForPlt, 'Id_Pembanding' => $idPembandingForRow] : [];
+
+                    $payloadUjiSampleData[] = array_merge([
                         "No_Faktur" => $newNumber,
                         "Kode_Perusahaan" => "001",
                         "Id_Jenis_Analisa" => $result['Id_Jenis_Analisa'],
@@ -3536,7 +3642,7 @@ class UjiSampelController extends Controller
                         "Status" => null,
                         "Tanggal" => $tanggalSqlServer,
                         "Jam" => $jamSqlServer,
-                        'Tahapan_Ke' => 1,
+                        'Tahapan_Ke' => $tahapanKe,
                         'Status_Keputusan_Sampel' => 'menunggu',
                         "Id_User" => $idUserUntukInsert,
                         'Flag_Layak' => $Flag_Layak,
@@ -3544,7 +3650,7 @@ class UjiSampelController extends Controller
                         "Id_Mesin" => $sumberData->Id_Mesin,
                         "Range_Awal" => $result['Range_Awal'],
                         "Range_Akhir" => $result['Range_Akhir'],
-                    ];
+                    ], $basePltPayload);
 
                     $payloadActivityUjiSampelHasil[] = [
                         "Kode_Perusahaan" => "001",
@@ -3783,6 +3889,21 @@ class UjiSampelController extends Controller
                     ->where('id', $idJenisAnalisa)
                     ->value('Kode_Aktivitas_Lab');
 
+                // PLT: lookup session dan pembanding sekali per analisa (di luar inner loop)
+                $idSessionForPlt = null;
+                $idPembandingForRow = null;
+                if ($kodeAktivitasLab === 'PLT') {
+                    $idSessionForPlt = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                        ->where('No_Po_Sampel', $analysisData['No_Po_Sampel'])
+                        ->where('Kode_Aktivitas_Lab', 'PLT')
+                        ->value('Id_Session');
+
+                    if (!empty($analysisData['Id_Pembanding'])) {
+                        $decodedPb = Hashids::connection('custom')->decode($analysisData['Id_Pembanding']);
+                        $idPembandingForRow = $decodedPb[0] ?? null;
+                    }
+                }
+
                 $parameters = collect($analysisData['parameters'])->map(function ($param) {
                     $decoded = !empty($param['Id_Quality_Control']) ? Hashids::connection('custom')->decode($param['Id_Quality_Control']) : [];
                     $decodedId = isset($decoded[0]) ? (string) $decoded[0] : null;
@@ -3900,13 +4021,15 @@ class UjiSampelController extends Controller
                         $flagLayak = 'Y';
                     }
 
-                    $payloadUjiSampleData[] = [
+                    $basePltPayload = $kodeAktivitasLab === 'PLT' ? ['Id_Session' => $idSessionForPlt, 'Id_Pembanding' => $idPembandingForRow] : [];
+
+                    $payloadUjiSampleData[] = array_merge([
                         "No_Faktur" => $newNumber,
                         "Kode_Perusahaan" => "001",
                         "Id_Jenis_Analisa" => $result['Id_Jenis_Analisa'],
                         "Hasil" => $hasilFloat,
                         "Flag_Foto" => $request->flag_foto,
-                        "Flag_Perhitungan" => $flagPerhitunganValue, 
+                        "Flag_Perhitungan" => $flagPerhitunganValue,
                         "Flag_Multi_QrCode" => null,
                         "Status" => null,
                         "Tanggal" => $tanggalSqlServer,
@@ -3921,7 +4044,7 @@ class UjiSampelController extends Controller
                         'Tahapan_Ke' => 1,
                         "Flag_String" => $flagString,
                         "Nilai_Hasil_String" => $nilaiHasilString
-                    ];
+                    ], $basePltPayload);
 
                     $payloadActivityUjiSampelHasil[] = [
                         "Kode_Perusahaan" => "001",
@@ -4093,16 +4216,29 @@ class UjiSampelController extends Controller
             $firstAnalysisHash = $request->analyses[0]['Id_Jenis_Analisa'];
             $firstIdDecoded = Hashids::connection('custom')->decode($firstAnalysisHash)[0] ?? null;
 
+            // PLT: cek apakah analisa ini PLT dan ambil Id_Session
+            $isPlt = DB::table('N_EMI_LAB_Jenis_Analisa')
+                ->where('id', $firstIdDecoded)
+                ->value('Kode_Aktivitas_Lab') === 'PLT';
+
+            $idSessionForPlt = null;
+            if ($isPlt) {
+                $idSessionForPlt = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                    ->where('No_Po_Sampel', $request->analyses[0]['No_Po_Sampel'])
+                    ->where('Kode_Aktivitas_Lab', 'PLT')
+                    ->value('Id_Session');
+            }
+
             $dataResamplingFirst = DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')
                 ->where('No_Po_Sampel', $request->analyses[0]['No_Po_Sampel'])
                 ->where('Id_Jenis_Analisa', $firstIdDecoded)
-                ->whereNull('Flag_Selesai_Resampling') 
+                ->whereNull('Flag_Selesai_Resampling')
                 ->orderByDesc('Tanggal')
                 ->orderByDesc('Jam')
                 ->orderByDesc('Id_Resampling')
                 ->first();
 
-            
+
             if (!$dataResamplingFirst) {
                 throw new \Exception("Data Resampling Aktif tidak ditemukan.");
             }
@@ -4211,7 +4347,7 @@ class UjiSampelController extends Controller
                         ->where('Id_User', $userId)
                         ->where('Id_Jenis_Analisa', $idJenisAnalisa)
                         ->exists();
-                    
+
                     if (!$allowed) {
                         return response()->json([
                             'success' => false,
@@ -4236,6 +4372,13 @@ class UjiSampelController extends Controller
 
                 $noSementara = $analysisData['No_Sementara'] ?? null;
                 $isFromSementara = false;
+
+                $idPembandingForRow = null;
+                if ($isPlt && !empty($analysisData['Id_Pembanding'])) {
+                    $decodedPb = Hashids::connection('custom')->decode($analysisData['Id_Pembanding']);
+                    $idPembandingForRow = $decodedPb[0] ?? null;
+                }
+
                 $sumberData = (object) [
                     'No_Po_Sampel' => $analysisData['No_Po_Sampel'],
                     'Id_Jenis_Analisa' => $idJenisAnalisa,
@@ -4337,7 +4480,9 @@ class UjiSampelController extends Controller
 
                     $tahapanKe = $dataResampling->Tahapan_Ke ?? 1;
 
-                    $payloadUjiSampleData[] = [
+                    $basePltPayload = $isPlt ? ['Id_Session' => $idSessionForPlt, 'Id_Pembanding' => $idPembandingForRow] : [];
+
+                    $payloadUjiSampleData[] = array_merge([
                         "No_Faktur" => $newNumber,
                         "Kode_Perusahaan" => "001",
                         "Flag_Foto" => $request->flag_foto,
@@ -4358,7 +4503,7 @@ class UjiSampelController extends Controller
                         'Tahapan_Ke' => $tahapanKe,
                         "Flag_String" => $flagString,
                         "Nilai_Hasil_String" => $nilaiHasilString
-                    ];
+                    ], $basePltPayload);
 
                     $payloadActivityUjiSampelHasil[] = [
                         "Kode_Perusahaan" => "001",
@@ -7751,7 +7896,14 @@ class UjiSampelController extends Controller
 
         $checkedResempling = DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log as r')
             ->join('N_EMI_LAB_Jenis_Analisa as ja', 'r.Id_Jenis_Analisa', '=', 'ja.id')
-            ->select('r.*', 'ja.Jenis_Analisa')
+            ->leftJoin('N_EMI_LAB_Palatabilitas_Pembanding as pb', 'r.Id_Pembanding', '=', 'pb.Id_Pembanding')
+            ->select(
+                'r.*',
+                'ja.Jenis_Analisa',
+                'ja.Kode_Aktivitas_Lab',
+                'pb.Nama_Pembanding',
+                'pb.Kode_Barang_Pembanding'
+            )
             ->where('r.No_Po_Sampel', $sampelRow->No_Sampel)
             ->where('r.No_Sampel_Resampling_Origin', $no_sub_sampel)
             ->where('r.No_Sampel_Resampling', $no_resampling)
@@ -7828,19 +7980,66 @@ class UjiSampelController extends Controller
 
         $isResampling = $sampelRow->Flag_FG === 'Y';
 
+        // ── PLT: ambil seluruh daftar pembanding dalam session (jika PLT) ──
+        $pltPembandingList = [];
+        $pltSessionId      = null;
+
+        if ($checkedResempling && ($checkedResempling->Kode_Aktivitas_Lab ?? null) === 'PLT') {
+            // Primary: gunakan Id_Session dari resampling log
+            $actualSessionId = $checkedResempling->Id_Session ?? null;
+
+            // Fallback: cari dari N_EMI_LAB_Palatabilitas_Session jika log tidak punya Id_Session
+            // (terjadi pada data lama sebelum fix PLT diterapkan)
+            if (empty($actualSessionId)) {
+                $actualSessionId = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                    ->where('No_Po_Sampel', $sampelRow->No_Sampel)
+                    ->where('Kode_Aktivitas_Lab', 'PLT')
+                    ->value('Id_Session');
+            }
+
+            if (!empty($actualSessionId)) {
+                $pltSessionId = Hashids::connection('custom')->encode($actualSessionId);
+
+                $pltPembandingList = DB::table('N_EMI_LAB_Palatabilitas_Pembanding')
+                    ->where('Id_Session', $actualSessionId)
+                    ->where('Flag_Aktif', 'Y')
+                    ->select('Id_Pembanding', 'Urutan', 'Nama_Pembanding', 'Kode_Barang_Pembanding')
+                    ->orderBy('Urutan')
+                    ->orderBy('Id_Pembanding')
+                    ->get()
+                    ->map(fn($p) => [
+                        'id_pembanding'          => Hashids::connection('custom')->encode($p->Id_Pembanding),
+                        'urutan'                 => $p->Urutan,
+                        'nama_pembanding'        => $p->Nama_Pembanding,
+                        'kode_barang_pembanding' => $p->Kode_Barang_Pembanding,
+                    ])
+                    ->values()
+                    ->toArray();
+            }
+        }
+
         $resamplingInfo = $checkedResempling ? [
-            'Id_Resampling' => Hashids::connection('custom')->encode($checkedResempling->Id_Resampling),
-            'No_Po_Sampel' => $checkedResempling->No_Po_Sampel,
-            'Tahapan_Ke' => $checkedResempling->Tahapan_Ke,
-            'No_Sampel_Resampling_Origin' => $checkedResempling->No_Sampel_Resampling_Origin,
-            'No_Sampel_Resampling' => $checkedResempling->No_Sampel_Resampling,
-            'Keterangan_Resempling' => $checkedResempling->Keterangan,
-            'Tanggal' => $checkedResempling->Tanggal,
-            'Jam' => $checkedResempling->Jam,
-            'Id_User' => $checkedResempling->Id_User,
-            'Id_Jenis_Analisa' => Hashids::connection('custom')->encode($checkedResempling->Id_Jenis_Analisa),
-            'Flag_Selesai_Resampling' => $checkedResempling->Flag_Selesai_Resampling,
-            'Jenis_Analisa' => $checkedResempling->Jenis_Analisa,
+            'Id_Resampling'              => Hashids::connection('custom')->encode($checkedResempling->Id_Resampling),
+            'No_Po_Sampel'               => $checkedResempling->No_Po_Sampel,
+            'Tahapan_Ke'                 => $checkedResempling->Tahapan_Ke,
+            'No_Sampel_Resampling_Origin'=> $checkedResempling->No_Sampel_Resampling_Origin,
+            'No_Sampel_Resampling'       => $checkedResempling->No_Sampel_Resampling,
+            'Keterangan_Resempling'      => $checkedResempling->Keterangan,
+            'Tanggal'                    => $checkedResempling->Tanggal,
+            'Jam'                        => $checkedResempling->Jam,
+            'Id_User'                    => $checkedResempling->Id_User,
+            'Id_Jenis_Analisa'           => Hashids::connection('custom')->encode($checkedResempling->Id_Jenis_Analisa),
+            'Flag_Selesai_Resampling'    => $checkedResempling->Flag_Selesai_Resampling,
+            'Jenis_Analisa'              => $checkedResempling->Jenis_Analisa,
+            // ── PLT fields ──
+            'is_plt'                     => ($checkedResempling->Kode_Aktivitas_Lab ?? null) === 'PLT',
+            'Id_Pembanding'              => $checkedResempling->Id_Pembanding
+                                              ? Hashids::connection('custom')->encode($checkedResempling->Id_Pembanding)
+                                              : null,
+            'plt_session_id'             => $pltSessionId,
+            'Nama_Pembanding'            => $checkedResempling->Nama_Pembanding ?? null,
+            'Kode_Barang_Pembanding'     => $checkedResempling->Kode_Barang_Pembanding ?? null,
+            'plt_pembanding_list'        => $pltPembandingList,
         ] : null;
 
         return response()->json([
@@ -10819,7 +11018,8 @@ class UjiSampelController extends Controller
                     DB::raw('MAX(N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa) as Id_Jenis_Analisa'),
                     DB::raw('MAX(N_EMI_LAB_Jenis_Analisa.Jenis_Analisa) as Jenis_Analisa'),
                     DB::raw('MAX(N_EMI_LAB_Jenis_Analisa.Kode_Analisa) as Kode_Analisa'),
-               
+                    DB::raw('MAX(N_EMI_LAB_Jenis_Analisa.Kode_Aktivitas_Lab) as Kode_Aktivitas_Lab'),
+
                 )
                 ->whereIn('N_EMI_LAB_Jenis_Analisa.id', $allowedAnalisaIds)
                 ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
@@ -11387,9 +11587,10 @@ class UjiSampelController extends Controller
                     'N_EMI_LAB_PO_Sampel.No_Batch',
                     'N_EMI_LAB_PO_Sampel.Kode_Barang',
                     'EMI_Master_Mesin.Seri_Mesin',
-                    'EMI_Master_Mesin.Nama_Mesin', 
+                    'EMI_Master_Mesin.Nama_Mesin',
                     'N_EMI_LAB_Jenis_Analisa.Kode_Analisa',
-                    'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa'
+                    'N_EMI_LAB_Jenis_Analisa.Jenis_Analisa',
+                    'N_EMI_LAB_Jenis_Analisa.Kode_Aktivitas_Lab'
                 )
                 ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
                 ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
@@ -11399,9 +11600,31 @@ class UjiSampelController extends Controller
                 ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
                 ->first();
 
-            // PERBAIKAN: Tambahkan sesi foto ke object informasi agar Vue mengetahui ada foto
+            // ── PLT: ambil daftar pembanding dari session ──
+            $isPltMultiHasil = $informasi && ($informasi->Kode_Aktivitas_Lab ?? null) === 'PLT';
+            $pltPembandingMultiHasil = [];
+            if ($isPltMultiHasil) {
+                $pltPembandingMultiHasil = DB::table('N_EMI_LAB_Palatabilitas_Pembanding as pb')
+                    ->join('N_EMI_LAB_Palatabilitas_Session as ps', 'pb.Id_Session', '=', 'ps.Id_Session')
+                    ->where('ps.No_Po_Sampel', $no_po_sampel)
+                    ->where('ps.Kode_Aktivitas_Lab', 'PLT')
+                    ->where('pb.Flag_Aktif', 'Y')
+                    ->select('pb.Urutan', 'pb.Nama_Pembanding', 'pb.Kode_Barang_Pembanding')
+                    ->orderBy('pb.Urutan')
+                    ->orderBy('pb.Id_Pembanding')
+                    ->get()
+                    ->map(fn($r) => ['nama' => $r->Nama_Pembanding, 'kode' => $r->Kode_Barang_Pembanding])
+                    ->values()
+                    ->toArray();
+            }
+
             if ($informasi) {
-                $informasi->sesi_foto = $hasSesiFoto;
+                $informasi->sesi_foto            = $hasSesiFoto;
+                $informasi->is_plt               = $isPltMultiHasil;
+                $informasi->plt_pembanding        = $pltPembandingMultiHasil;
+                $informasi->plt_pembanding_nama   = $isPltMultiHasil && !empty($pltPembandingMultiHasil)
+                                                        ? implode(', ', array_column($pltPembandingMultiHasil, 'nama'))
+                                                        : null;
             }
 
             return response()->json([
@@ -11653,6 +11876,7 @@ class UjiSampelController extends Controller
                 'N_EMI_LAB_PO_Sampel.No_Split_Po',
                 'EMI_Master_Mesin.Flag_FG',
                 'N_EMI_LAB_Uji_Sampel.Flag_Foto', // Flag Foto terambil di sini
+                'N_EMI_LAB_Jenis_Analisa.Kode_Aktivitas_Lab',
                 DB::raw("ISNULL(N_EMI_LAB_Perhitungan.Hasil_Perhitungan, 0) AS Pembulatan")
             )
             ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
@@ -11784,14 +12008,40 @@ class UjiSampelController extends Controller
                 ->exists();
         }
 
+        // ── PLT: ambil daftar produk pembanding dalam session ──
+        $isPltMulti       = ($firstUji->Kode_Aktivitas_Lab ?? null) === 'PLT';
+        $pltPembandingMulti = [];
+        if ($isPltMulti) {
+            $pltPembandingMulti = DB::table('N_EMI_LAB_Palatabilitas_Pembanding as pb')
+                ->join('N_EMI_LAB_Palatabilitas_Session as ps', 'pb.Id_Session', '=', 'ps.Id_Session')
+                ->where('ps.No_Po_Sampel', $no_po_sampel)
+                ->where('ps.Kode_Aktivitas_Lab', 'PLT')
+                ->where('pb.Flag_Aktif', 'Y')
+                ->select('pb.Urutan', 'pb.Nama_Pembanding', 'pb.Kode_Barang_Pembanding')
+                ->orderBy('pb.Urutan')
+                ->orderBy('pb.Id_Pembanding')
+                ->get()
+                ->map(fn($r) => [
+                    'nama' => $r->Nama_Pembanding,
+                    'kode' => $r->Kode_Barang_Pembanding,
+                ])
+                ->values()
+                ->toArray();
+        }
+
         return response()->json([
             'success' => true,
             'status' => 200,
             'message' => 'Data Ditemukan',
             'result' => [
                 'informasi' => [
-                    'sesi_foto' => $hasSesiFoto,
+                    'sesi_foto'                  => $hasSesiFoto,
                     'has_standard_configuration' => $hasStdConfig,
+                    'is_plt'                     => $isPltMulti,
+                    'plt_pembanding'             => $pltPembandingMulti,
+                    'plt_pembanding_nama'        => $isPltMulti && !empty($pltPembandingMulti)
+                                                        ? implode(', ', array_column($pltPembandingMulti, 'nama'))
+                                                        : null,
                 ],
                 'sampel' => $result
             ]
@@ -11848,7 +12098,8 @@ class UjiSampelController extends Controller
                     'N_EMI_LAB_Jenis_Analisa.Flag_Perhitungan', 
                     DB::raw("ISNULL(N_EMI_LAB_Perhitungan.Hasil_Perhitungan, 0) AS Pembulatan"),
                     DB::raw("CASE WHEN N_EMI_LAB_Standar_Rentang.Id_Standar_Rentang IS NOT NULL THEN N_EMI_LAB_Standar_Rentang.Range_Awal ELSE NULL END AS Range_Awal"),
-                    DB::raw("CASE WHEN N_EMI_LAB_Standar_Rentang.Id_Standar_Rentang IS NOT NULL THEN N_EMI_LAB_Standar_Rentang.Range_Akhir ELSE NULL END AS Range_Akhir")
+                    DB::raw("CASE WHEN N_EMI_LAB_Standar_Rentang.Id_Standar_Rentang IS NOT NULL THEN N_EMI_LAB_Standar_Rentang.Range_Akhir ELSE NULL END AS Range_Akhir"),
+                    'N_EMI_LAB_Jenis_Analisa.Kode_Aktivitas_Lab'
                 )
                 ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
                 ->where('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $no_po_sampel)
@@ -11976,14 +12227,39 @@ class UjiSampelController extends Controller
                     ->exists();
             }
 
+            $isPltSingle = ($firstSampel->Kode_Aktivitas_Lab ?? null) === 'PLT';
+            $pltPembandingSingle = [];
+            if ($isPltSingle) {
+                $pltPembandingSingle = DB::table('N_EMI_LAB_Palatabilitas_Pembanding as pb')
+                    ->join('N_EMI_LAB_Palatabilitas_Session as ps', 'pb.Id_Session', '=', 'ps.Id_Session')
+                    ->where('ps.No_Po_Sampel', $firstSampel->No_Po_Sampel)
+                    ->where('ps.Kode_Aktivitas_Lab', 'PLT')
+                    ->where('pb.Flag_Aktif', 'Y')
+                    ->select('pb.Urutan', 'pb.Nama_Pembanding', 'pb.Kode_Barang_Pembanding')
+                    ->orderBy('pb.Urutan')
+                    ->orderBy('pb.Id_Pembanding')
+                    ->get()
+                    ->map(fn($r) => [
+                        'nama' => $r->Nama_Pembanding,
+                        'kode' => $r->Kode_Barang_Pembanding,
+                    ])
+                    ->values()
+                    ->toArray();
+            }
+
             return response()->json([
                 'success' => true,
                 'status' => 200,
                 'message' => 'Data Ditemukan',
                 'result' => [
                     'informasi' => [
-                        'sesi_foto' => $hasSesiFoto,
+                        'sesi_foto'                => $hasSesiFoto,
                         'has_standard_configuration' => $hasStdConfigSingle,
+                        'is_plt'                   => $isPltSingle,
+                        'plt_pembanding'           => $pltPembandingSingle,
+                        'plt_pembanding_nama'      => $isPltSingle && !empty($pltPembandingSingle)
+                                                          ? implode(', ', array_column($pltPembandingSingle, 'nama'))
+                                                          : null,
                     ],
                     'sampel' => $result
                 ]
@@ -12162,6 +12438,27 @@ class UjiSampelController extends Controller
                 $result[] = $item;
             }
 
+            // ── PLT: cek apakah analisa ini PLT dan ambil pembanding ──
+            $kodeAktivitasLab = DB::table('N_EMI_LAB_Jenis_Analisa')
+                ->where('id', $id_jenis_analisa_decoded)
+                ->value('Kode_Aktivitas_Lab');
+            $isPltFinal = $kodeAktivitasLab === 'PLT';
+            $pltPembandingFinal = [];
+            if ($isPltFinal && !empty($no_po_sampel)) {
+                $pltPembandingFinal = DB::table('N_EMI_LAB_Palatabilitas_Pembanding as pb')
+                    ->join('N_EMI_LAB_Palatabilitas_Session as ps', 'pb.Id_Session', '=', 'ps.Id_Session')
+                    ->where('ps.No_Po_Sampel', $no_po_sampel)
+                    ->where('ps.Kode_Aktivitas_Lab', 'PLT')
+                    ->where('pb.Flag_Aktif', 'Y')
+                    ->select('pb.Urutan', 'pb.Nama_Pembanding', 'pb.Kode_Barang_Pembanding')
+                    ->orderBy('pb.Urutan')
+                    ->orderBy('pb.Id_Pembanding')
+                    ->get()
+                    ->map(fn($r) => ['nama' => $r->Nama_Pembanding, 'kode' => $r->Kode_Barang_Pembanding])
+                    ->values()
+                    ->toArray();
+            }
+
             // Return Data Sesuai Pola Baru
             return response()->json([
                 'success' => true,
@@ -12169,7 +12466,12 @@ class UjiSampelController extends Controller
                 'message' => 'Data Ditemukan',
                 'result' => [
                     'informasi' => [
-                        'sesi_foto' => $hasSesiFoto
+                        'sesi_foto'          => $hasSesiFoto,
+                        'is_plt'             => $isPltFinal,
+                        'plt_pembanding'     => $pltPembandingFinal,
+                        'plt_pembanding_nama'=> $isPltFinal && !empty($pltPembandingFinal)
+                                                    ? implode(', ', array_column($pltPembandingFinal, 'nama'))
+                                                    : null,
                     ],
                     'sampel' => $result
                 ]
@@ -12179,8 +12481,8 @@ class UjiSampelController extends Controller
             // Logging error (pastikan Log di-import di atas, e.g: use Illuminate\Support\Facades\Log;)
             Log::error($e->getMessage());
             return response()->json([
-                'success' => false, 
-                'status' => 500, 
+                'success' => false,
+                'status' => 500,
                 'message' => 'Terjadi kesalahan pada server. Silahkan hubungi administrator.'
             ], 500);
         }
@@ -12535,13 +12837,39 @@ class UjiSampelController extends Controller
                 $result[] = $sampel;
             }
 
+            // ── PLT: cek apakah analisa ini PLT dan ambil pembanding ──
+            $kodeAktivitasLabNoPcs = DB::table('N_EMI_LAB_Jenis_Analisa')
+                ->where('id', $id_jenis_analisa)
+                ->value('Kode_Aktivitas_Lab');
+            $isPltFinalNoPcs = $kodeAktivitasLabNoPcs === 'PLT';
+            $pltPembandingFinalNoPcs = [];
+            if ($isPltFinalNoPcs && !empty($no_po_sampel)) {
+                $pltPembandingFinalNoPcs = DB::table('N_EMI_LAB_Palatabilitas_Pembanding as pb')
+                    ->join('N_EMI_LAB_Palatabilitas_Session as ps', 'pb.Id_Session', '=', 'ps.Id_Session')
+                    ->where('ps.No_Po_Sampel', $no_po_sampel)
+                    ->where('ps.Kode_Aktivitas_Lab', 'PLT')
+                    ->where('pb.Flag_Aktif', 'Y')
+                    ->select('pb.Urutan', 'pb.Nama_Pembanding', 'pb.Kode_Barang_Pembanding')
+                    ->orderBy('pb.Urutan')
+                    ->orderBy('pb.Id_Pembanding')
+                    ->get()
+                    ->map(fn($r) => ['nama' => $r->Nama_Pembanding, 'kode' => $r->Kode_Barang_Pembanding])
+                    ->values()
+                    ->toArray();
+            }
+
             return response()->json([
                 'success' => true,
                 'status' => 200,
                 'message' => 'Data Ditemukan',
                 'result' => [
                     'informasi' => [
-                        'sesi_foto' => $hasSesiFoto
+                        'sesi_foto'          => $hasSesiFoto,
+                        'is_plt'             => $isPltFinalNoPcs,
+                        'plt_pembanding'     => $pltPembandingFinalNoPcs,
+                        'plt_pembanding_nama'=> $isPltFinalNoPcs && !empty($pltPembandingFinalNoPcs)
+                                                    ? implode(', ', array_column($pltPembandingFinalNoPcs, 'nama'))
+                                                    : null,
                     ],
                     'sampel' => $result
                 ]
@@ -12801,25 +13129,51 @@ class UjiSampelController extends Controller
         // 3. Buat objek `informasi` dari data sampel PERTAMA
         // Karena informasi ini (No PO, Mesin, dll) seharusnya sama untuk semua baris
         $sampelPertama = $daftarSampel->first();
+        $isPlt = ($sampelPertama->Kode_Aktivitas_Lab ?? null) === 'PLT';
+
+        // Ambil daftar bahan pembanding via session PLT (dengan filter Flag_Aktif)
+        $pltPembanding = [];
+        if ($isPlt) {
+            $pltPembanding = DB::table('N_EMI_LAB_Palatabilitas_Pembanding as pb')
+                ->join('N_EMI_LAB_Palatabilitas_Session as ps', 'pb.Id_Session', '=', 'ps.Id_Session')
+                ->where('ps.No_Po_Sampel', $sampelPertama->No_Po_Sampel)
+                ->where('ps.Kode_Aktivitas_Lab', 'PLT')
+                ->where('pb.Flag_Aktif', 'Y')
+                ->select('pb.Urutan', 'pb.Nama_Pembanding', 'pb.Kode_Barang_Pembanding')
+                ->orderBy('pb.Urutan')
+                ->orderBy('pb.Id_Pembanding')
+                ->get()
+                ->map(fn($r) => [
+                    'nama' => $r->Nama_Pembanding,
+                    'kode' => $r->Kode_Barang_Pembanding,
+                ])
+                ->values()
+                ->toArray();
+        }
+
         $informasi = [
-            'No_Faktur'          => $sampelPertama->No_Faktur,
-            'No_Po_Sampel'       => $sampelPertama->No_Po_Sampel,
-            'Flag_Perhitungan'   => $sampelPertama->Flag_Perhitungan,
-            'Tanggal_Pengujian'  => $sampelPertama->Tanggal_Pengujian,
-            'Jam_Pengujian'      => $sampelPertama->Jam_Pengujian,
-            'Tanggal_Pengajuan'  => $sampelPertama->Tanggal_Pengajuan,
-            'Jam_Pengajuan'      => $sampelPertama->Jam_Pengajuan,
-            'No_Po'              => $sampelPertama->No_Po,
-            'Catatan'            => $sampelPertama->Catatan,
-            'No_Split_Po'        => $sampelPertama->No_Split_Po,
-            'No_Batch'           => $sampelPertama->No_Batch,
-            'Kode_Barang'        => $sampelPertama->Kode_Barang,
-            'Seri_Mesin'         => $sampelPertama->Seri_Mesin,
-            'Nama_Mesin'         => $sampelPertama->Nama_Mesin,
-            'Kode_Analisa'       => $sampelPertama->Kode_Analisa,
-            'Jenis_Analisa'      => $sampelPertama->Jenis_Analisa,
-            'Kode_Aktivitas_Lab' => $sampelPertama->Kode_Aktivitas_Lab,
-            'is_plt'             => ($sampelPertama->Kode_Aktivitas_Lab ?? null) === 'PLT',
+            'No_Faktur'            => $sampelPertama->No_Faktur,
+            'No_Po_Sampel'         => $sampelPertama->No_Po_Sampel,
+            'Flag_Perhitungan'     => $sampelPertama->Flag_Perhitungan,
+            'Tanggal_Pengujian'    => $sampelPertama->Tanggal_Pengujian,
+            'Jam_Pengujian'        => $sampelPertama->Jam_Pengujian,
+            'Tanggal_Pengajuan'    => $sampelPertama->Tanggal_Pengajuan,
+            'Jam_Pengajuan'        => $sampelPertama->Jam_Pengajuan,
+            'No_Po'                => $sampelPertama->No_Po,
+            'Catatan'              => $sampelPertama->Catatan,
+            'No_Split_Po'          => $sampelPertama->No_Split_Po,
+            'No_Batch'             => $sampelPertama->No_Batch,
+            'Kode_Barang'          => $sampelPertama->Kode_Barang,
+            'Seri_Mesin'           => $sampelPertama->Seri_Mesin,
+            'Nama_Mesin'           => $sampelPertama->Nama_Mesin,
+            'Kode_Analisa'         => $sampelPertama->Kode_Analisa,
+            'Jenis_Analisa'        => $sampelPertama->Jenis_Analisa,
+            'Kode_Aktivitas_Lab'   => $sampelPertama->Kode_Aktivitas_Lab,
+            'is_plt'               => $isPlt,
+            'plt_pembanding'       => $pltPembanding,
+            'plt_pembanding_nama'  => $isPlt && !empty($pltPembanding)
+                                         ? implode(', ', array_column($pltPembanding, 'nama'))
+                                         : null,
         ];
 
         // 4. Kembalikan respons dalam struktur yang diharapkan frontend
@@ -13096,6 +13450,161 @@ class UjiSampelController extends Controller
 
     //     return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
     // }
+
+    public function dispatchExportJob(Request $request)
+    {
+        // Validasi basic
+        $request->validate([
+            'format' => 'required|in:pdf,excell',
+            'jenis_print' => 'nullable|string', // 'psz' atau 'ringkas' atau null
+            'analysis' => 'required',
+            'startDate' => 'required|date',
+            'endDate' => 'required|date',
+        ]);
+
+        $trackId  = (string) Str::uuid();
+        $queueConn = config('queue.default');
+        $handlerUrl = config('queue.connections.cloudtasks.handler', '-');
+        $cloudTasksUri = config('cloud-tasks.uri', 'handle-task');
+
+        Log::channel('export_job')->info('[DISPATCH] dispatchExportJob dipanggil', [
+            'track_id'        => $trackId,
+            'queue_conn'      => $queueConn,
+            'handler_url'     => $handlerUrl,
+            'cloud_tasks_uri' => $cloudTasksUri,
+            'format'          => $request->format,
+            'jenis_print'     => $request->jenis_print,
+            'env'             => app()->environment(),
+        ]);
+
+        DB::table('N_EMI_LAB_Export_Tracking')->insert([
+            'id'           => $trackId,
+            'jenis_export' => $request->jenis_print === 'psz' ? 'psz_' . $request->format : 'rekap_' . $request->format,
+            'status'       => 'pending',
+            'progress'     => 0,
+            'message'      => 'Menunggu antrean...',
+            'created_at'   => Carbon::now(),
+            'updated_at'   => Carbon::now(),
+        ]);
+
+        $payload = [
+            'track_id'         => $trackId,
+            'format'           => $request->format,
+            'jenis_print'      => $request->jenis_print,
+            'analysis'         => is_array($request->analysis) ? $request->analysis : [$request->analysis],
+            'Flag_Perhitungan' => is_array($request->Flag_Perhitungan) ? $request->Flag_Perhitungan : [$request->Flag_Perhitungan],
+            'startDate'        => $request->startDate,
+            'endDate'          => $request->endDate,
+            'Id_Master_Mesin'  => $request->Id_Master_Mesin,
+        ];
+
+        try {
+            ExportRekapSampelJob::dispatch($payload);
+            Log::channel('export_job')->info('[DISPATCH] Job berhasil di-dispatch', [
+                'track_id'   => $trackId,
+                'queue_conn' => $queueConn,
+            ]);
+        } catch (\Exception $e) {
+            Log::channel('export_job')->error('[DISPATCH] Gagal dispatch job', [
+                'track_id' => $trackId,
+                'error'    => $e->getMessage(),
+                'trace'    => $e->getTraceAsString(),
+            ]);
+            DB::table('N_EMI_LAB_Export_Tracking')->where('id', $trackId)->update([
+                'status'        => 'failed',
+                'message'       => 'Gagal mengirim ke antrian.',
+                'error_message' => $e->getMessage(),
+                'updated_at'    => Carbon::now(),
+            ]);
+            return response()->json(['success' => false, 'status' => 500, 'message' => 'Gagal mengirim job ke antrian: ' . $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'status'  => 202,
+            'message' => 'Laporan sedang diproses di background.',
+            'data'    => ['track_id' => $trackId],
+        ], 202);
+    }
+
+    public function checkExportStatus($trackId)
+    {
+        $tracking = DB::table('N_EMI_LAB_Export_Tracking')->where('id', $trackId)->first();
+
+        if (!$tracking) {
+            return response()->json(['success' => false, 'message' => 'Tracking ID tidak ditemukan'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'status'   => $tracking->status,
+            'progress' => $tracking->progress,
+            'message'  => $tracking->message,
+            'file_url' => $tracking->file_url,
+        ]);
+    }
+
+    /**
+     * Stream file ekspor dari GCS ke browser.
+     * Route: GET /api/v1/export-download/{trackId}
+     */
+    public function downloadExport($trackId)
+    {
+        $tracking = DB::table('N_EMI_LAB_Export_Tracking')->where('id', $trackId)->first();
+
+        if (!$tracking || !$tracking->file_path) {
+            return response()->json(['success' => false, 'message' => 'File belum tersedia.'], 404);
+        }
+
+        if ($tracking->status !== 'completed') {
+            return response()->json(['success' => false, 'message' => 'Ekspor belum selesai diproses.'], 409);
+        }
+
+        if (!Storage::disk('gcs')->exists($tracking->file_path)) {
+            return response()->json(['success' => false, 'message' => 'File tidak ditemukan di storage.'], 404);
+        }
+
+        $fileName = basename($tracking->file_path);
+        $ext      = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        $mimeMap  = [
+            'pdf'  => 'application/pdf',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'zip'  => 'application/zip',
+        ];
+        $mimeType = $mimeMap[$ext] ?? 'application/octet-stream';
+
+        $stream = Storage::disk('gcs')->readStream($tracking->file_path);
+
+        return response()->stream(function () use ($stream) {
+            fpassthru($stream);
+            if (is_resource($stream)) fclose($stream);
+        }, 200, [
+            'Content-Type'        => $mimeType,
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Cache-Control'       => 'no-store',
+        ]);
+    }
+
+    /**
+     * Hapus file ekspor dari GCS dan record tracking.
+     * Route: DELETE /api/v1/export-file/{trackId}
+     */
+    public function deleteExportFile($trackId)
+    {
+        $tracking = DB::table('N_EMI_LAB_Export_Tracking')->where('id', $trackId)->first();
+
+        if (!$tracking) {
+            return response()->json(['success' => false, 'message' => 'Tracking tidak ditemukan.'], 404);
+        }
+
+        if ($tracking->file_path && Storage::disk('gcs')->exists($tracking->file_path)) {
+            Storage::disk('gcs')->delete($tracking->file_path);
+        }
+
+        DB::table('N_EMI_LAB_Export_Tracking')->where('id', $trackId)->delete();
+
+        return response()->json(['success' => true, 'message' => 'File berhasil dihapus.']);
+    }
 
     public function downloadRekapSampel(Request $request)
     {
@@ -14485,6 +14994,23 @@ class UjiSampelController extends Controller
         $idSessionPlt    = $getTahapan->Id_Session ?? null;
         $idPembandingPlt = $getTahapan->Id_Pembanding ?? null;
 
+        // Fallback: jika parent tidak punya Id_Session, cari dari Palatabilitas_Session
+        if (empty($idSessionPlt)) {
+            $idSessionPlt = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                ->where('No_Po_Sampel', $request->No_Po_Sampel)
+                ->where('Kode_Aktivitas_Lab', 'PLT')
+                ->value('Id_Session');
+        }
+
+        // Fallback Id_Pembanding: cari dari row uji sampel sebelumnya jika NULL
+        if (empty($idPembandingPlt) && !empty($idSessionPlt)) {
+            $idPembandingPlt = DB::table('N_EMI_LAB_Uji_Sampel')
+                ->where('No_Po_Sampel', $request->No_Po_Sampel)
+                ->where('No_Fak_Sub_Po', $request->No_Sampel_Resampling_Origin)
+                ->whereNotNull('Id_Pembanding')
+                ->value('Id_Pembanding');
+        }
+
         try {
             $payloadResampling = [
                 'No_Po_Sampel'                => $request->No_Po_Sampel,
@@ -14588,6 +15114,23 @@ class UjiSampelController extends Controller
             // Carry PLT context jika analisa ini adalah PLT
             $idSessionPlt    = $data->Id_Session ?? null;
             $idPembandingPlt = $data->Id_Pembanding ?? null;
+
+            // Fallback: jika parent tidak punya Id_Session, cari dari Palatabilitas_Session
+            if (empty($idSessionPlt)) {
+                $idSessionPlt = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                    ->where('No_Po_Sampel', $request->No_Po_Sampel)
+                    ->where('Kode_Aktivitas_Lab', 'PLT')
+                    ->value('Id_Session');
+            }
+
+            // Fallback Id_Pembanding: cari dari row uji sampel sebelumnya jika NULL
+            if (empty($idPembandingPlt) && !empty($idSessionPlt)) {
+                $idPembandingPlt = DB::table('N_EMI_LAB_Uji_Sampel')
+                    ->where('No_Po_Sampel', $request->No_Po_Sampel)
+                    ->where('No_Fak_Sub_Po', $request->No_Fak_Sub_Po)
+                    ->whereNotNull('Id_Pembanding')
+                    ->value('Id_Pembanding');
+            }
 
             DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')->insert([
                 'No_Po_Sampel'                => $request->No_Po_Sampel,
@@ -14947,7 +15490,7 @@ class UjiSampelController extends Controller
                             ->where('ba.Flag_Aktif', 'Y')
                             ->where('ba.Kode_Role', 'LAB')
                             ->where('ja.Kode_Role', 'LAB')
-                            ->select('ba.Kode_Barang', 'ba.Id_Master_Mesin', 'ja.id as analisa_id', 'ja.Kode_Analisa', 'ja.Jenis_Analisa')
+                            ->select('ba.Kode_Barang', 'ba.Id_Master_Mesin', 'ja.id as analisa_id', 'ja.Kode_Analisa', 'ja.Jenis_Analisa', 'ja.Kode_Aktivitas_Lab')
                             ->get()
                     );
                 }
@@ -15095,14 +15638,17 @@ class UjiSampelController extends Controller
                         $isStarted = true;
                     }
 
+                    $kodeAktivitas = $analisa->Kode_Aktivitas_Lab ?? 'ANL';
                     $item = [
-                        'id'             => Hashids::connection('custom')->encode($analisa->analisa_id),
-                        'Kode_Analisa'   => $analisa->Kode_Analisa,
-                        'Jenis_Analisa'  => $analisa->Jenis_Analisa,
-                        'is_started'     => $isStarted,
-                        'is_done'        => $isDone,
-                        'has_resampling' => in_array($analisa->analisa_id, $resamplingAnalisaIds),
-                        'is_plt'         => $isPlt,
+                        'id'                 => Hashids::connection('custom')->encode($analisa->analisa_id),
+                        'Kode_Analisa'       => $analisa->Kode_Analisa,
+                        'Jenis_Analisa'      => $analisa->Jenis_Analisa,
+                        'Kode_Aktivitas_Lab' => $kodeAktivitas,
+                        'is_expired_exempt'  => $kodeAktivitas !== 'ANL',
+                        'is_started'         => $isStarted,
+                        'is_done'            => $isDone,
+                        'has_resampling'     => in_array($analisa->analisa_id, $resamplingAnalisaIds),
+                        'is_plt'             => $isPlt,
                     ];
 
                     // Sertakan info PLT session jika ini analisa PLT

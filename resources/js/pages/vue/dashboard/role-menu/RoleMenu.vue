@@ -74,7 +74,7 @@
         <!-- ═══ User Grid ═══ -->
         <div class="card shadow-sm border-0">
             <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                     <h5 class="mb-0 fw-semibold" style="color: #1e293b">
                         <i class="fas fa-user-shield me-2 text-primary"></i>
                         Daftar Pengguna & Akses Menu
@@ -83,8 +83,35 @@
                         v-if="!loading.loadingListData"
                         class="badge bg-primary rounded-pill px-3 py-2"
                     >
-                        {{ listData.length }} pengguna
+                        {{ filteredListData.length }} pengguna
                     </span>
+                </div>
+
+                <!-- Search bar -->
+                <div class="mb-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0">
+                            <i class="ri-search-line text-muted"></i>
+                        </span>
+                        <input
+                            type="text"
+                            class="form-control border-start-0 bg-light"
+                            placeholder="Cari pengguna berdasarkan ID atau nama..."
+                            v-model="userSearchQuery"
+                        />
+                        <button
+                            v-if="userSearchQuery"
+                            class="btn btn-light border"
+                            type="button"
+                            @click="userSearchQuery = ''"
+                            title="Hapus pencarian"
+                        >
+                            <i class="ri-close-line"></i>
+                        </button>
+                    </div>
+                    <small v-if="userSearchQuery" class="text-muted mt-1 d-block">
+                        Menampilkan {{ filteredListData.length }} dari {{ listData.length }} pengguna
+                    </small>
                 </div>
 
                 <!-- Loading skeleton -->
@@ -95,9 +122,9 @@
                 </div>
 
                 <!-- User cards grid -->
-                <div v-else-if="listData.length" class="row g-3">
+                <div v-else-if="filteredListData.length" class="row g-3">
                     <div
-                        v-for="(item, index) in listData"
+                        v-for="(item, index) in filteredListData"
                         :key="index"
                         class="col-md-6 col-lg-4 col-xl-3"
                     >
@@ -163,6 +190,15 @@
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Empty state search -->
+                <div v-else-if="userSearchQuery && !filteredListData.length" class="text-center py-5">
+                    <i class="ri-search-line fs-40 text-muted mb-3 d-block"></i>
+                    <p class="text-muted mb-2 fw-medium">Pengguna "{{ userSearchQuery }}" tidak ditemukan</p>
+                    <button class="btn btn-sm btn-outline-secondary" @click="userSearchQuery = ''">
+                        <i class="ri-refresh-line me-1"></i>Reset Pencarian
+                    </button>
                 </div>
 
                 <!-- Empty state -->
@@ -233,10 +269,11 @@
                             v-if="userCurrentList && userCurrentList.length"
                             v-model="selectedOptionUser"
                             multiple
+                            filterable
                             collapse-tags
                             collapse-tags-tooltip
                             :max-collapse-tags="2"
-                            placeholder="--- Pilih Pengguna ---"
+                            placeholder="--- Ketik untuk cari pengguna ---"
                             style="width: 100%"
                             clearable
                         >
@@ -266,17 +303,18 @@
                             v-if="menuCurrentList && menuCurrentList.length"
                             v-model="selectedOptionIdentity"
                             multiple
+                            filterable
                             collapse-tags
                             collapse-tags-tooltip
                             :max-collapse-tags="2"
-                            placeholder="--- Pilih Menu Sidebar ---"
+                            placeholder="--- Ketik untuk cari menu ---"
                             style="width: 100%"
                             clearable
                             @change="handleMenuChange"
                             :disabled="selectedOptionUser.length === 0"
                         >
                             <el-option
-                                label="— Pilih Semua Menu —"
+                                label="✓ Pilih Semua Menu"
                                 value="ALL"
                                 class="fw-bold text-primary"
                             />
@@ -375,6 +413,7 @@ export default {
             selectedOptionIdentity: [],
             selectedOptionUser: [],
             urutanMenu: {},
+            userSearchQuery: "",
             meta: {
                 total_users: 0,
                 total_menu_available: 0,
@@ -389,6 +428,14 @@ export default {
     },
 
     computed: {
+        filteredListData() {
+            if (!this.userSearchQuery) return this.listData;
+            const q = this.userSearchQuery.toLowerCase();
+            return this.listData.filter(item =>
+                (item.Id_User || "").toLowerCase().includes(q)
+            );
+        },
+
         processedMenuOptions() {
             return this.menuCurrentList.map((menu) => {
                 if (!this.selectedOptionUser || !this.selectedOptionUser.length) {

@@ -90,22 +90,34 @@
                                     <!-- PLT Palatabilitas Banner -->
                                     <div
                                         v-if="informasiData && informasiData.is_plt"
-                                        class="alert border-0 shadow-sm mb-4 p-0 overflow-hidden"
-                                        style="border-radius: 10px;"
+                                        class="mb-4 overflow-hidden"
+                                        style="border-radius:12px;box-shadow:0 2px 12px rgba(2,132,199,.12);border:1px solid #bae6fd;"
                                     >
                                         <div class="d-flex align-items-stretch">
-                                            <div
-                                                class="d-flex align-items-center justify-content-center px-4"
-                                                style="background: linear-gradient(135deg, #0ea5e9, #0284c7); min-width: 64px;"
-                                            >
+                                            <!-- Icon strip -->
+                                            <div class="d-flex align-items-center justify-content-center px-4 flex-shrink-0"
+                                                style="background:linear-gradient(135deg,#0ea5e9,#0284c7);min-width:64px;">
                                                 <i class="fas fa-flask fa-2x text-white"></i>
                                             </div>
-                                            <div class="flex-grow-1 py-3 px-4" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd);">
-                                                <div class="text-uppercase fw-bold mb-1" style="font-size: 0.7rem; letter-spacing: 1px; color: #0369a1;">
-                                                    <i class="fas fa-tag me-1"></i>Uji Palatabilitas — Hasil Per Produk Pembanding
+                                            <!-- Content -->
+                                            <div class="flex-grow-1 py-3 px-4" style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);">
+                                                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0369a1;" class="mb-2">
+                                                    <i class="fas fa-tag me-1"></i>Nama Produk Pembanding
                                                 </div>
-                                                <div class="text-dark small">
-                                                    Setiap baris menunjukkan hasil uji palatabilitas untuk masing-masing produk pembanding yang digunakan.
+
+                                                <div v-if="informasiData.plt_pembanding?.length"
+                                                    class="d-flex align-items-center gap-2 flex-wrap">
+                                                    <span
+                                                        v-for="(pb, i) in informasiData.plt_pembanding"
+                                                        :key="i"
+                                                        class="badge px-3 py-1"
+                                                        style="background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;font-size:0.8rem;font-weight:600;border-radius:20px;"
+                                                    >
+                                                        <i class="fas fa-flask me-1" style="font-size:0.7rem;"></i>{{ pb?.nama || pb }}
+                                                    </span>
+                                                </div>
+                                                <div v-else class="text-muted small">
+                                                    Data produk pembanding belum tersedia.
                                                 </div>
                                             </div>
                                         </div>
@@ -123,9 +135,6 @@
                                                     <th>No PO</th>
                                                     <th>No Split Po</th>
                                                     <th>Tanggal</th>
-                                                    <th v-if="informasiData && informasiData.is_plt" style="background:#e0f2fe; color:#0284c7; white-space:nowrap;">
-                                                        <i class="fas fa-flask me-1"></i>Produk Pembanding
-                                                    </th>
                                                     <th
                                                         v-for="param in template.parameter"
                                                         :key="param.id_qc"
@@ -180,14 +189,6 @@
                                                             )
                                                         }}
                                                     </td>
-                                                    <td v-if="informasiData && informasiData.is_plt" style="background:#f0f9ff;">
-                                                        <div v-if="row.Nama_Pembanding" class="d-flex align-items-center gap-1">
-                                                            <span class="badge rounded-pill px-2 py-1" style="background:#0284c7; font-size:0.72rem;">
-                                                                <i class="fas fa-flask me-1"></i>{{ row.Nama_Pembanding }}
-                                                            </span>
-                                                        </div>
-                                                        <span v-else class="text-muted small">-</span>
-                                                    </td>
                                                     <td
                                                         v-for="(
                                                             paramValue, pIndex
@@ -238,7 +239,10 @@
                                                     <td
                                                         :colspan="
                                                             6 +
-                                                            (informasiData && informasiData.is_plt ? 1 : 0) +
+                                                            (informasiData &&
+                                                            informasiData.is_plt
+                                                                ? 1
+                                                                : 0) +
                                                             (template.parameter
                                                                 ? template
                                                                       .parameter
@@ -1455,16 +1459,15 @@ export default {
                     ];
 
                     return {
-                        // ... properti lain dari item
                         No_Po: item.No_Po || "-",
                         No_Split_Po: item.No_Split_Po || "-",
                         No_Faktur: item.No_Faktur || "-",
                         No_Po_Sampel: item.No_Po_Sampel || "-",
                         No_Fak_Sub_Po: item.No_Fak_Sub_Po || "-",
                         Tanggal: item.Tanggal_Pengujian || "-",
-                        // ... properti flag jika ada
+                        Nama_Pembanding: item.Nama_Pembanding || null,
                         parameters: parameterResults,
-                        results: results, // Gunakan struktur 'results' yang baru
+                        results: results,
                     };
                 })
                 .filter(Boolean); // Menghapus item null jika ada
@@ -1509,26 +1512,8 @@ export default {
         },
 
         getRowClass(row) {
-            let hasValidSopResult = false;
-
-            for (const result of row.results) {
-                if (result && result.is_sop && result.value !== "-") {
-                    const value = parseFloat(result.value);
-                    const rangeAwal = parseFloat(result.range_awal);
-
-                    if (isNaN(value) || isNaN(rangeAwal)) {
-                        continue;
-                    }
-
-                    hasValidSopResult = true;
-                    if (value < rangeAwal) {
-                        return "bg-danger text-white";
-                    }
-                }
-            }
-            if (hasValidSopResult) {
-                return "bg-success text-white";
-            }
+            if (row.Flag_Layak === 'Y') return 'table-success';
+            if (row.Flag_Layak === 'T') return 'table-danger';
             return null;
         },
         getActivityStyle(jenis) {
