@@ -78,13 +78,13 @@ class AuthController extends Controller
     
     public function proses_login(Request $request)
     {
-        if (app()->environment('production')) {
-            if (!$this->verifyCloudflareCaptcha($request)) {
-                return back()
-                    ->withErrors(['captcha' => 'Please complete the security check'])
-                    ->withInput($request->except('password'));
-            }
-        }
+        // if (app()->environment('production')) {
+        //     if (!$this->verifyCloudflareCaptcha($request)) {
+        //         return back()
+        //             ->withErrors(['captcha' => 'Please complete the security check'])
+        //             ->withInput($request->except('password'));
+        //     }
+        // }
 
         $request->validate([
             'UserId' => 'required|string',

@@ -10125,7 +10125,7 @@ class FormulatorTrialSampelController extends Controller
         $permissionKonten = $checkedAkses['permission_konten'] ?? [];
         
         $allowedAnalisaIds = [];
-        if (isset($permissionKonten['Validasi Hasil Trial']) && is_array($permissionKonten['Validasi Hasil Analisa'])) {
+        if (isset($permissionKonten['Validasi Hasil Trial']) && is_array($permissionKonten['Validasi Hasil Trial'])) {
                 foreach ($permissionKonten['Validasi Hasil Trial'] as $akses) {
                     if (isset($akses['flag']) && $akses['flag'] === 'Y' && isset($akses['id_jenis_analisa'])) {
                         $allowedAnalisaIds[] = $akses['id_jenis_analisa'];
