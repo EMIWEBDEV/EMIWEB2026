@@ -1,9 +1,7 @@
 <template>
     <div class="camera-panel modern-form">
         <!-- ===== PANEL HEADER ===== -->
-        <div
-            class="panel-header d-flex justify-content-between align-items-md-center flex-column flex-md-row mb-4 gap-3"
-        >
+        <div class="panel-header d-flex justify-content-between align-items-md-center flex-column flex-md-row mb-4 gap-3">
             <div>
                 <h2 class="h5 fw-bold mb-1">
                     <i class="fas fa-camera me-2"></i> Dokumentasi
@@ -17,15 +15,12 @@
                     {{ getValidPhotosCount }} Foto berhasil didokumentasikan
                 </p>
             </div>
-            <button
-                @click="addRow"
-                class="btn btn-outline-primary rounded-pill shadow-sm fw-bold btn-tambah"
-            >
+            <button @click="addRow" class="btn btn-outline-primary rounded-pill shadow-sm fw-bold btn-tambah">
                 <i class="fas fa-plus me-2"></i> Tambah Baris Baru
             </button>
         </div>
 
-        <!-- ===== TABEL (Desktop/Tablet) ===== -->
+        <!-- ===== TABEL (Desktop/Tablet ≥ md) ===== -->
         <div class="d-none d-md-block table-responsive shadow-sm rounded-4 border bg-white">
             <table class="table table-bordered table-hover mb-0 align-middle w-100">
                 <thead class="table-light text-center">
@@ -78,10 +73,7 @@
                                     <i class="fas fa-camera me-1"></i>
                                     {{ row.url ? "Retake" : "Ambil Foto" }}
                                 </button>
-                                <button
-                                    @click="removeRow(row.id)"
-                                    class="btn btn-outline-danger btn-sm shadow-sm action-btn"
-                                >
+                                <button @click="removeRow(row.id)" class="btn btn-outline-danger btn-sm shadow-sm action-btn">
                                     <i class="fas fa-trash"></i> Hapus
                                 </button>
                             </div>
@@ -97,30 +89,15 @@
                 <i class="fas fa-images fa-2x mb-2 text-secondary d-block"></i>
                 Belum ada daftar dokumentasi. Silakan klik "Tambah Baris Baru".
             </div>
-            <div
-                v-for="(row, index) in sortedRows"
-                :key="row.id"
-                class="mobile-card mb-3"
-            >
-                <!-- Nomor badge -->
+            <div v-for="(row, index) in sortedRows" :key="row.id" class="mobile-card mb-3">
                 <div class="mobile-card-no">{{ index + 1 }}</div>
-
-                <!-- Foto -->
                 <div class="mobile-foto-wrapper">
-                    <img
-                        v-if="row.url"
-                        :src="row.url"
-                        class="mobile-foto"
-                        @click="openPreview(row.url)"
-                        alt="Foto dokumentasi"
-                    />
+                    <img v-if="row.url" :src="row.url" class="mobile-foto" @click="openPreview(row.url)" alt="Foto dokumentasi" />
                     <div v-else class="mobile-foto-empty">
                         <i class="fas fa-image fa-2x text-secondary mb-1"></i>
                         <small class="text-muted">Belum ada foto</small>
                     </div>
                 </div>
-
-                <!-- Keterangan -->
                 <div class="mobile-section-label">Keterangan (Opsional)</div>
                 <textarea
                     class="form-control form-control-sm border shadow-none bg-white rounded-3 w-100"
@@ -130,8 +107,6 @@
                     placeholder="Tambahkan keterangan..."
                     style="resize: none"
                 ></textarea>
-
-                <!-- Aksi -->
                 <div class="mobile-aksi-row">
                     <button
                         @click="openCameraModal(row.id)"
@@ -140,110 +115,175 @@
                         <i class="fas fa-camera me-1"></i>
                         {{ row.url ? "Retake Foto" : "Ambil Foto" }}
                     </button>
-                    <button
-                        @click="removeRow(row.id)"
-                        class="btn btn-outline-danger btn-sm"
-                    >
+                    <button @click="removeRow(row.id)" class="btn btn-outline-danger btn-sm">
                         <i class="fas fa-trash me-1"></i> Hapus
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- ===== CUSTOM CAMERA OVERLAY (Teleport, z-index 999999) ===== -->
-        <!-- Tidak pakai Bootstrap modal agar tidak konflik z-index dengan topbar/bottom-nav -->
+        <!-- ===== OVERLAY FOTO (Teleport, z-index 999999) ===== -->
         <Teleport to="body">
             <Transition name="cam-fade">
-                <div
-                    v-if="isCameraVisible"
-                    class="cam-overlay"
-                    @keydown.esc="closeCameraModal"
-                    tabindex="-1"
-                >
-                    <!-- Backdrop gelap (hanya desktop, mobile overlay = hitam penuh) -->
+                <div v-if="isCameraVisible" class="cam-overlay" @keydown.esc="closeCameraModal" tabindex="-1">
                     <div class="cam-backdrop" @click="closeCameraModal"></div>
-
-                    <!-- Dialog -->
                     <div class="cam-dialog">
+
                         <!-- Header -->
                         <div class="cam-header">
                             <div class="cam-header-title">
-                                <i class="fas fa-camera me-2"></i>
-                                Ambil Dokumentasi Foto
+                                <i class="fas fa-camera me-2"></i> Dokumentasi Foto
                             </div>
                             <button class="cam-close-btn" @click="closeCameraModal">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
 
-                        <!-- Pilih Kamera -->
-                        <div class="cam-selector-bar">
-                            <i class="fas fa-video cam-selector-icon"></i>
-                            <select
-                                class="cam-select"
-                                v-model="selectedCameraId"
-                                @change="switchCamera"
-                                :disabled="isCameraLoading"
+                        <!-- Tab Bar -->
+                        <div class="cam-tabs">
+                            <button
+                                :class="['cam-tab', activeTab === 'langsung' ? 'cam-tab-active' : '']"
+                                @click="switchTab('langsung')"
                             >
-                                <option value="" disabled v-if="availableCameras.length === 0">
-                                    Mencari kamera...
-                                </option>
-                                <option
-                                    v-for="(cam, idx) in availableCameras"
-                                    :key="cam.deviceId"
-                                    :value="cam.deviceId"
-                                >
-                                    {{ cam.label || "Kamera " + (idx + 1) }}
-                                </option>
-                            </select>
+                                <i class="fas fa-camera me-2"></i> Langsung
+                            </button>
+                            <button
+                                :class="['cam-tab', activeTab === 'upload' ? 'cam-tab-active' : '']"
+                                @click="switchTab('upload')"
+                            >
+                                <i class="fas fa-upload me-2"></i> Upload Foto
+                            </button>
                         </div>
 
-                        <!-- Area Video -->
-                        <div class="cam-video-area">
-                            <video
-                                ref="videoStream"
-                                autoplay
-                                playsinline
-                                class="cam-video"
-                            ></video>
-                            <div v-if="isCameraLoading" class="cam-loading">
-                                <div class="spinner-border text-light mb-2" role="status"></div>
-                                <span class="fw-semibold small">Menyalakan Kamera...</span>
+                        <!-- ── TAB: LANGSUNG (Kamera) ── -->
+                        <template v-if="activeTab === 'langsung'">
+                            <div class="cam-selector-bar">
+                                <i class="fas fa-video cam-selector-icon"></i>
+                                <select class="cam-select" v-model="selectedCameraId" @change="switchCamera" :disabled="isCameraLoading">
+                                    <option value="" disabled v-if="availableCameras.length === 0">Mencari kamera...</option>
+                                    <option v-for="(cam, idx) in availableCameras" :key="cam.deviceId" :value="cam.deviceId">
+                                        {{ cam.label || "Kamera " + (idx + 1) }}
+                                    </option>
+                                </select>
                             </div>
-                        </div>
+                            <div class="cam-video-area">
+                                <video ref="videoStream" autoplay playsinline class="cam-video"></video>
+                                <div v-if="isCameraLoading" class="cam-loading">
+                                    <div class="spinner-border text-light mb-2" role="status"></div>
+                                    <span class="fw-semibold small">Menyalakan Kamera...</span>
+                                </div>
+                            </div>
+                            <div class="cam-footer">
+                                <button type="button" class="cam-btn cam-btn-cancel" @click="closeCameraModal">
+                                    <i class="fas fa-times me-1"></i> Batal
+                                </button>
+                                <button type="button" class="cam-btn cam-btn-capture" @click="capturePhoto" :disabled="isCameraLoading">
+                                    <span v-if="isCameraLoading" class="spinner-border spinner-border-sm me-2"></span>
+                                    <i v-else class="fas fa-camera me-2"></i>
+                                    Capture & Simpan
+                                </button>
+                            </div>
+                        </template>
 
-                        <!-- Footer Actions -->
-                        <div class="cam-footer">
-                            <button
-                                type="button"
-                                class="cam-btn cam-btn-cancel"
-                                @click="closeCameraModal"
-                            >
-                                <i class="fas fa-times me-1"></i> Batal
-                            </button>
-                            <button
-                                type="button"
-                                class="cam-btn cam-btn-capture"
-                                @click="capturePhoto"
-                                :disabled="isCameraLoading"
-                            >
-                                <span v-if="isCameraLoading" class="spinner-border spinner-border-sm me-2"></span>
-                                <i v-else class="fas fa-camera me-2"></i>
-                                Capture & Simpan
-                            </button>
-                        </div>
+                        <!-- ── TAB: UPLOAD FOTO ── -->
+                        <template v-else>
+                            <div class="upload-area-wrapper">
+                                <!-- Dropzone -->
+                                <div
+                                    class="upload-dropzone"
+                                    :class="{ 'upload-dropzone-drag': isDragging }"
+                                    @click="triggerFileInput"
+                                    @dragover.prevent="isDragging = true"
+                                    @dragleave.prevent="isDragging = false"
+                                    @drop.prevent="handleDrop"
+                                >
+                                    <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-primary"></i>
+                                    <p class="mb-1 fw-semibold text-dark">Klik atau seret foto ke sini</p>
+                                    <p class="text-muted small mb-0">
+                                        JPG, PNG, HEIC (iPhone) &mdash; bisa pilih beberapa sekaligus
+                                    </p>
+                                    <input
+                                        ref="fileInput"
+                                        type="file"
+                                        accept="image/*,.heic,.heif"
+                                        multiple
+                                        style="display: none"
+                                        @change="handleFileChange"
+                                    />
+                                </div>
+
+                                <!-- Daftar file yang dipilih -->
+                                <div v-if="uploadFiles.length > 0" class="upload-file-list">
+                                    <div class="upload-file-count">
+                                        <i class="fas fa-images me-1 text-primary"></i>
+                                        <span class="fw-semibold">{{ uploadFiles.filter(f => !f.converting).length }}</span>
+                                        <span class="text-muted"> / {{ uploadFiles.length }} foto siap</span>
+                                        <span v-if="uploadFiles.some(f => f.converting)" class="ms-2 text-warning small">
+                                            <span class="spinner-border spinner-border-sm me-1"></span>Mengkonversi HEIC...
+                                        </span>
+                                    </div>
+
+                                    <div v-for="(uf, i) in uploadFiles" :key="uf.id" class="upload-file-item">
+                                        <!-- Thumbnail -->
+                                        <div class="upload-thumb-wrapper">
+                                            <div v-if="uf.converting" class="upload-thumb-loading">
+                                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                                <small class="text-muted mt-1">HEIC</small>
+                                            </div>
+                                            <img v-else-if="uf.url" :src="uf.url" class="upload-thumb" alt="preview" />
+                                            <div v-else class="upload-thumb-empty">
+                                                <i class="fas fa-exclamation-circle text-danger"></i>
+                                            </div>
+                                        </div>
+
+                                        <!-- Info + Keterangan -->
+                                        <div class="upload-file-info">
+                                            <div class="upload-file-name" :title="uf.displayName">{{ uf.displayName }}</div>
+                                            <div class="upload-file-size">{{ uf.sizeMB }} MB</div>
+                                            <textarea
+                                                class="form-control form-control-sm mt-1 upload-note-input"
+                                                v-model="uf.note"
+                                                rows="2"
+                                                placeholder="Keterangan foto (opsional)..."
+                                                style="resize: none"
+                                            ></textarea>
+                                        </div>
+
+                                        <!-- Tombol Hapus -->
+                                        <button @click="removeUploadFile(i)" class="upload-remove-btn" title="Hapus foto ini">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="cam-footer">
+                                <button type="button" class="cam-btn cam-btn-cancel" @click="closeCameraModal">
+                                    <i class="fas fa-times me-1"></i> Batal
+                                </button>
+                                <button
+                                    type="button"
+                                    class="cam-btn cam-btn-capture"
+                                    @click="saveUploadedFiles"
+                                    :disabled="uploadFiles.length === 0 || uploadFiles.some(f => f.converting)"
+                                >
+                                    <i class="fas fa-check me-2"></i>
+                                    Simpan
+                                    <span v-if="uploadFiles.filter(f => !f.converting).length > 0">
+                                        {{ uploadFiles.filter(f => !f.converting).length }}
+                                    </span>
+                                    Foto
+                                </button>
+                            </div>
+                        </template>
+
                     </div>
                 </div>
             </Transition>
         </Teleport>
 
         <!-- ===== BOOTSTRAP MODAL: PREVIEW FOTO ===== -->
-        <div
-            class="modal fade"
-            id="previewFotoModal"
-            tabindex="-1"
-            aria-hidden="true"
-        >
+        <div class="modal fade" id="previewFotoModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-xl">
                 <div class="modal-content border-0 bg-transparent shadow-none">
                     <div class="modal-body p-0 position-relative">
@@ -255,12 +295,7 @@
                         >
                             <i class="fas fa-times"></i>
                         </button>
-                        <img
-                            :src="previewUrl"
-                            class="w-100 rounded"
-                            style="object-fit: contain; max-height: 90vh"
-                            alt="Preview foto"
-                        />
+                        <img :src="previewUrl" class="w-100 rounded" style="object-fit: contain; max-height: 90vh" alt="Preview foto" />
                     </div>
                 </div>
             </div>
@@ -295,6 +330,11 @@ export default {
             isCameraVisible: false,
             previewUrl: null,
             previewModalInstance: null,
+            // tab state
+            activeTab: "langsung",
+            // upload state
+            uploadFiles: [],
+            isDragging: false,
         };
     },
     computed: {
@@ -312,7 +352,6 @@ export default {
     async mounted() {
         await this.loadDeviceList();
         this.addRow();
-
         this.$nextTick(() => {
             const previewEl = document.getElementById("previewFotoModal");
             if (previewEl) {
@@ -325,9 +364,13 @@ export default {
         this.tableRows.forEach((row) => {
             if (row.url) URL.revokeObjectURL(row.url);
         });
+        this.uploadFiles.forEach((f) => {
+            if (f.url) URL.revokeObjectURL(f.url);
+        });
         if (this.previewModalInstance) this.previewModalInstance.dispose();
     },
     methods: {
+        // ── Row management ──────────────────────────────────────────
         addRow() {
             this.tableRows.push({
                 id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
@@ -341,13 +384,13 @@ export default {
         removeRow(id) {
             const index = this.tableRows.findIndex((r) => r.id === id);
             if (index !== -1) {
-                if (this.tableRows[index].url) {
-                    URL.revokeObjectURL(this.tableRows[index].url);
-                }
+                if (this.tableRows[index].url) URL.revokeObjectURL(this.tableRows[index].url);
                 this.tableRows.splice(index, 1);
                 this.emitData();
             }
         },
+
+        // ── Camera ──────────────────────────────────────────────────
         async loadDeviceList() {
             try {
                 const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -363,15 +406,33 @@ export default {
         },
         async openCameraModal(rowId) {
             this.activeRowId = rowId;
+            this.activeTab = "langsung";
+            this.uploadFiles = [];
             this.isCameraVisible = true;
             document.body.style.overflow = "hidden";
             this.$nextTick(() => this.startCamera());
         },
         closeCameraModal() {
             this.stopCamera();
+            // Revoke URL upload yang belum disimpan
+            this.uploadFiles.forEach((f) => {
+                if (f.url) URL.revokeObjectURL(f.url);
+            });
+            this.uploadFiles = [];
+            this.isDragging = false;
             this.isCameraVisible = false;
             this.activeRowId = null;
             document.body.style.overflow = "";
+        },
+        switchTab(tab) {
+            if (tab === this.activeTab) return;
+            if (tab === "langsung") {
+                this.activeTab = "langsung";
+                this.$nextTick(() => this.startCamera());
+            } else {
+                this.stopCamera();
+                this.activeTab = "upload";
+            }
         },
         async switchCamera() {
             await this.startCamera();
@@ -393,6 +454,7 @@ export default {
                 if (window.bootstrap && window.bootstrap.Toast) {
                     const toastEl = document.createElement("div");
                     toastEl.className = "toast align-items-center text-bg-danger border-0 position-fixed bottom-0 end-0 m-3";
+                    toastEl.style.zIndex = "9999999";
                     toastEl.setAttribute("role", "alert");
                     toastEl.innerHTML = `<div class="d-flex"><div class="toast-body">Gagal menyalakan kamera. Pastikan izin kamera diberikan.</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
                     document.body.appendChild(toastEl);
@@ -435,6 +497,127 @@ export default {
                 this.closeCameraModal();
             }, "image/png");
         },
+
+        // ── Upload foto ─────────────────────────────────────────────
+        triggerFileInput() {
+            this.$refs.fileInput.click();
+        },
+        handleFileChange(event) {
+            const files = Array.from(event.target.files || []);
+            if (files.length) this.processFiles(files);
+            // Reset input agar bisa pilih file yang sama lagi
+            event.target.value = "";
+        },
+        handleDrop(event) {
+            this.isDragging = false;
+            const files = Array.from(event.dataTransfer.files || []).filter((f) =>
+                f.type.startsWith("image/") || /\.(heic|heif)$/i.test(f.name)
+            );
+            if (files.length) this.processFiles(files);
+        },
+        async processFiles(files) {
+            for (const file of files) {
+                const id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+                const entry = {
+                    id,
+                    file: null,
+                    url: null,
+                    displayName: file.name,
+                    sizeMB: (file.size / (1024 * 1024)).toFixed(2),
+                    note: "",
+                    converting: this.isHeicFile(file),
+                };
+                this.uploadFiles.push(entry);
+
+                // Proses konversi secara async (tidak block loop)
+                this.processOneFile(file, id);
+            }
+        },
+        async processOneFile(file, id) {
+            try {
+                const converted = await this.convertHeicIfNeeded(file);
+                const url = URL.createObjectURL(converted);
+                const idx = this.uploadFiles.findIndex((f) => f.id === id);
+                if (idx !== -1) {
+                    this.uploadFiles[idx].file = converted;
+                    this.uploadFiles[idx].url = url;
+                    this.uploadFiles[idx].sizeMB = (converted.size / (1024 * 1024)).toFixed(2);
+                    this.uploadFiles[idx].displayName = converted.name;
+                    this.uploadFiles[idx].converting = false;
+                }
+            } catch (err) {
+                console.error("Gagal memproses file:", err);
+                const idx = this.uploadFiles.findIndex((f) => f.id === id);
+                if (idx !== -1) this.uploadFiles[idx].converting = false;
+            }
+        },
+        isHeicFile(file) {
+            return (
+                /\.(heic|heif)$/i.test(file.name) ||
+                file.type === "image/heic" ||
+                file.type === "image/heif"
+            );
+        },
+        async convertHeicIfNeeded(file) {
+            if (!this.isHeicFile(file)) return file;
+            try {
+                const heic2any = (await import("heic2any")).default;
+                const result = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+                const blob = Array.isArray(result) ? result[0] : result;
+                const newName = file.name.replace(/\.(heic|heif)$/i, ".jpg");
+                return new File([blob], newName, { type: "image/jpeg" });
+            } catch (err) {
+                console.warn("Konversi HEIC gagal, menggunakan file asli:", err);
+                return file;
+            }
+        },
+        removeUploadFile(index) {
+            const removed = this.uploadFiles.splice(index, 1)[0];
+            if (removed && removed.url) URL.revokeObjectURL(removed.url);
+        },
+        saveUploadedFiles() {
+            const readyFiles = this.uploadFiles.filter((f) => !f.converting && f.url && f.file);
+            if (readyFiles.length === 0) return;
+
+            const activeIdx = this.tableRows.findIndex((r) => r.id === this.activeRowId);
+
+            // File pertama → isi baris aktif
+            if (activeIdx !== -1) {
+                const first = readyFiles[0];
+                if (this.tableRows[activeIdx].url) URL.revokeObjectURL(this.tableRows[activeIdx].url);
+                this.tableRows[activeIdx].url = first.url;
+                this.tableRows[activeIdx].file = first.file;
+                this.tableRows[activeIdx].fileName = first.displayName;
+                if (first.note) this.tableRows[activeIdx].note = first.note;
+            }
+
+            // File berikutnya → tambah baris baru
+            const startIdx = activeIdx !== -1 ? 1 : 0;
+            for (let i = startIdx; i < readyFiles.length; i++) {
+                const f = readyFiles[i];
+                this.tableRows.push({
+                    id: Date.now().toString() + Math.random().toString(36).substring(2, 5) + i,
+                    url: f.url,
+                    file: f.file,
+                    fileName: f.displayName,
+                    note: f.note || "",
+                });
+            }
+
+            // Bersihkan uploadFiles TANPA revoke (URL sudah dipindah ke tableRows)
+            this.uploadFiles = [];
+
+            this.emitData();
+
+            // Tutup modal tanpa revoke uploadFiles (sudah kosong)
+            this.stopCamera();
+            this.isDragging = false;
+            this.isCameraVisible = false;
+            this.activeRowId = null;
+            document.body.style.overflow = "";
+        },
+
+        // ── Preview ─────────────────────────────────────────────────
         openPreview(url) {
             this.previewUrl = url;
             if (this.previewModalInstance) this.previewModalInstance.show();
@@ -442,6 +625,8 @@ export default {
         closePreview() {
             if (this.previewModalInstance) this.previewModalInstance.hide();
         },
+
+        // ── Emit ────────────────────────────────────────────────────
         emitData() {
             const validPhotos = this.tableRows.filter((row) => row.url !== null);
             this.$emit("status-photo", validPhotos);
@@ -460,12 +645,8 @@ export default {
     border: 1px solid #eaeaea;
     padding: 20px;
 }
-
-/* ── Tombol tambah full-width di mobile ────────────── */
 @media (max-width: 575.98px) {
-    .btn-tambah {
-        width: 100%;
-    }
+    .btn-tambah { width: 100%; }
 }
 
 /* ── Preview foto di tabel desktop ────────────────── */
@@ -475,9 +656,7 @@ export default {
     object-fit: cover;
     transition: transform 0.15s ease;
 }
-.foto-preview:hover {
-    transform: scale(1.04);
-}
+.foto-preview:hover { transform: scale(1.04); }
 
 /* ── Empty foto box ────────────────────────────────── */
 .empty-foto {
@@ -490,56 +669,8 @@ export default {
 }
 
 /* ── Action buttons ────────────────────────────────── */
-.action-btn {
-    transition: all 0.18s ease-in-out;
-}
-.action-btn:hover {
-    transform: translateY(-2px);
-}
-
-/* ── Video container ───────────────────────────────── */
-.camera-video-container {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    max-height: 55vh;
-    background: #000;
-    border-radius: 12px;
-    overflow: hidden;
-}
-.camera-video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-.camera-loading-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.55);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 5;
-}
-
-/* ── Fullscreen kamera di mobile/tablet (< 992px) ───── */
-@media (max-width: 991.98px) {
-    .camera-video-container {
-        aspect-ratio: unset;
-        max-height: none;
-        flex: 1 1 auto;
-        min-height: 180px;
-        border-radius: 0;
-    }
-    .modal-fullscreen-lg-down .modal-body {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 10px;
-        padding: 10px !important;
-    }
-}
+.action-btn { transition: all 0.18s ease-in-out; }
+.action-btn:hover { transform: translateY(-2px); }
 
 /* ── Mobile card ───────────────────────────────────── */
 .mobile-card {
@@ -552,8 +683,7 @@ export default {
 }
 .mobile-card-no {
     position: absolute;
-    top: 14px;
-    left: 14px;
+    top: 14px; left: 14px;
     background: #f1f5f9;
     color: #475569;
     padding: 3px 10px;
@@ -604,37 +734,17 @@ export default {
     padding-top: 12px;
     border-top: 1px dashed #e2e8f0;
 }
-.mobile-aksi-row .btn {
-    flex: 1;
-    padding: 9px 0;
-    font-size: 0.88rem;
-}
-
-/* ── Tablet tweaks (576–991px) ─────────────────────── */
+.mobile-aksi-row .btn { flex: 1; padding: 9px 0; font-size: 0.88rem; }
 @media (min-width: 576px) and (max-width: 991.98px) {
-    .mobile-foto {
-        max-width: 420px;
-        height: 230px;
-    }
+    .mobile-foto { max-width: 420px; height: 230px; }
 }
 
 /* ════════════════════════════════════════════════════
-   CUSTOM CAMERA OVERLAY — z-index 999999
-   Menggantikan Bootstrap modal agar tidak konflik
-   dengan topbar Velzon atau bottom-nav mobile
+   CAMERA OVERLAY — z-index 999999
 ════════════════════════════════════════════════════ */
+.cam-fade-enter-active, .cam-fade-leave-active { transition: opacity 0.22s ease; }
+.cam-fade-enter-from, .cam-fade-leave-to { opacity: 0; }
 
-/* Transition */
-.cam-fade-enter-active,
-.cam-fade-leave-active {
-    transition: opacity 0.22s ease;
-}
-.cam-fade-enter-from,
-.cam-fade-leave-to {
-    opacity: 0;
-}
-
-/* Outer overlay — covers EVERYTHING */
 .cam-overlay {
     position: fixed;
     inset: 0;
@@ -642,23 +752,15 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Mobile: pure black, no backdrop visible */
     background: #000;
 }
-
-/* Backdrop layer (dimmed, only visible on desktop) */
-.cam-backdrop {
-    display: none; /* hidden on mobile */
-}
-
-/* Dialog card — fills full screen on mobile */
+.cam-backdrop { display: none; }
 .cam-dialog {
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
     background: #1a1a1a;
-    /* iPhone safe area */
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -674,161 +776,198 @@ export default {
     flex-shrink: 0;
     min-height: 52px;
 }
-.cam-header-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: #fff;
-}
+.cam-header-title { font-size: 15px; font-weight: 600; color: #fff; }
 .cam-close-btn {
-    width: 32px;
-    height: 32px;
+    width: 32px; height: 32px;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: #fff;
-    font-size: 15px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
     transition: background 0.15s;
 }
-.cam-close-btn:hover { background: rgba(255, 255, 255, 0.28); }
+.cam-close-btn:hover { background: rgba(255,255,255,0.28); }
+
+/* ── Tab Bar ── */
+.cam-tabs {
+    display: flex;
+    background: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+    flex-shrink: 0;
+}
+.cam-tab {
+    flex: 1;
+    padding: 11px 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+.cam-tab:hover { color: #405189; background: rgba(64,81,137,0.05); }
+.cam-tab-active { color: #405189; border-bottom-color: #405189; background: #fff; }
 
 /* Camera selector bar */
 .cam-selector-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    display: flex; align-items: center; gap: 10px;
     padding: 10px 14px;
     background: #fff;
     border-bottom: 1px solid #e9ecef;
     flex-shrink: 0;
 }
-.cam-selector-icon {
-    color: #405189;
-    font-size: 16px;
-    flex-shrink: 0;
-}
+.cam-selector-icon { color: #405189; font-size: 16px; flex-shrink: 0; }
 .cam-select {
-    flex: 1;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 14px;
-    background: #fff;
-    outline: none;
-    -webkit-appearance: none;
-    appearance: none;
+    flex: 1; border: 1px solid #dee2e6; border-radius: 8px;
+    padding: 8px 12px; font-size: 14px; background: #fff;
+    outline: none; -webkit-appearance: none; appearance: none;
 }
-.cam-select:focus {
-    border-color: #405189;
-    box-shadow: 0 0 0 2px rgba(64, 81, 137, 0.15);
-}
+.cam-select:focus { border-color: #405189; box-shadow: 0 0 0 2px rgba(64,81,137,0.15); }
 .cam-select:disabled { opacity: 0.6; }
 
-/* Video area — fills all remaining space */
+/* Video area */
 .cam-video-area {
-    flex: 1 1 auto;
-    position: relative;
-    background: #000;
-    overflow: hidden;
-    min-height: 0; /* important for flex-shrink */
+    flex: 1 1 auto; position: relative;
+    background: #000; overflow: hidden; min-height: 0;
 }
-.cam-video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-
-/* Loading overlay inside video */
+.cam-video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cam-loading {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    color: #fff;
-    z-index: 2;
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 10px; color: #fff; z-index: 2;
 }
 
-/* Footer action bar */
-.cam-footer {
+/* ── Upload area ── */
+.upload-area-wrapper {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 16px;
+    background: #f8f9fa;
+    min-height: 0;
+}
+.upload-dropzone {
+    border: 2px dashed #c7d2fe;
+    border-radius: 12px;
+    padding: 28px 20px;
+    text-align: center;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+.upload-dropzone:hover,
+.upload-dropzone-drag {
+    border-color: #405189;
+    background: #f0f4ff;
+}
+.upload-file-list { margin-top: 14px; }
+.upload-file-count {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+.upload-file-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    transition: box-shadow 0.15s;
+}
+.upload-file-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.upload-thumb-wrapper {
+    width: 72px; height: 72px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: #fff;
+}
+.upload-thumb { width: 100%; height: 100%; object-fit: cover; }
+.upload-thumb-loading {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+}
+.upload-thumb-empty { font-size: 22px; }
+.upload-file-info { flex: 1; min-width: 0; }
+.upload-file-name {
+    font-size: 12px; font-weight: 600; color: #1e293b;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 100%;
+}
+.upload-file-size { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+.upload-note-input {
+    font-size: 12px !important;
+    border-color: #e2e8f0 !important;
+}
+.upload-remove-btn {
     flex-shrink: 0;
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    margin-top: 2px;
+}
+.upload-remove-btn:hover { background: #dc2626; color: #fff; }
+
+/* Footer */
+.cam-footer {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; padding: 12px 16px;
+    background: #fff; flex-shrink: 0;
     border-top: 1px solid #e9ecef;
 }
 .cam-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 20px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: all 0.18s ease;
-    min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 10px 20px; border-radius: 10px;
+    font-size: 14px; font-weight: 600; border: none; cursor: pointer;
+    transition: all 0.18s ease; min-height: 44px;
 }
-.cam-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
+.cam-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .cam-btn-cancel {
-    background: #f1f3f5;
-    color: #495057;
-    border: 1px solid #dee2e6;
-    flex: 0 0 auto;
+    background: #f1f3f5; color: #495057;
+    border: 1px solid #dee2e6; flex: 0 0 auto;
 }
 .cam-btn-cancel:hover { background: #e9ecef; }
-.cam-btn-capture {
-    background: #405189;
-    color: #fff;
-    flex: 1;
-    max-width: 240px;
-}
+.cam-btn-capture { background: #405189; color: #fff; flex: 1; max-width: 240px; }
 .cam-btn-capture:hover:not(:disabled) { background: #344370; }
 
-/* Desktop (≥ 992px): fullscreen overlay, video 16:9 centered */
+/* Desktop ≥ 992px */
 @media (min-width: 992px) {
-    .cam-dialog {
-        padding: 0;
-    }
-    /* Video area: flex centering agar video tidak melar */
+    .cam-dialog { padding: 0; }
     .cam-video-area {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: flex; align-items: center; justify-content: center;
         background: #111;
     }
-    /* Video: pertahankan aspect ratio 16:9, isi tinggi tersedia */
     .cam-video {
-        height: 100%;
-        width: auto;
-        max-width: 100%;
-        aspect-ratio: 16 / 9;
-        object-fit: cover;
+        height: 100%; width: auto; max-width: 100%;
+        aspect-ratio: 16 / 9; object-fit: cover;
     }
 }
-
-/* ── Tablet (576–991px): fullscreen, slightly larger footer ── */
+/* Tablet 576–991px */
 @media (min-width: 576px) and (max-width: 991.98px) {
-    .cam-footer {
-        padding: 14px 20px;
-    }
-    .cam-btn {
-        min-height: 48px;
-        font-size: 15px;
-    }
+    .cam-footer { padding: 14px 20px; }
+    .cam-btn { min-height: 48px; font-size: 15px; }
 }
 </style>

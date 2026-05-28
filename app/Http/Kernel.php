@@ -74,5 +74,6 @@ class Kernel extends HttpKernel
         'menu_access' => \App\Http\Middleware\CheckUserMenuAccess::class,
         'role' => \App\Http\Middleware\RoleMiddleware::class,
         'permission' => \App\Http\Middleware\CheckPermission::class,
+        'log-viewer-key' => \App\Http\Middleware\LogViewerKeyAuth::class,
     ];
 }

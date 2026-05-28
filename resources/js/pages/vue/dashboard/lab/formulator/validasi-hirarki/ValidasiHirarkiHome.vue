@@ -79,6 +79,11 @@
                                         {{ isSelesaiSemua(item) ? 'Selesai' : hasDitolak(item) ? 'Ditolak' : 'Proses' }}
                                     </span>
                                 </div>
+                                <div class="vld-item-barang" v-if="item.Nama_Barang || item.Kode_Barang">
+                                    <i class="ri-price-tag-3-line me-1"></i>
+                                    <span class="vld-item-barang-name">{{ item.Nama_Barang || item.Kode_Barang }}</span>
+                                    <span v-if="item.Kode_Barang" class="vld-item-kode">{{ item.Kode_Barang }}</span>
+                                </div>
                                 <div class="vld-item-meta">
                                     <span class="vld-chip" :class="getChipClass(item.status_lock_view)">
                                         <i class="ri-lock-line"></i> Lock
@@ -158,6 +163,66 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Info Registrasi Sampel -->
+                        <div class="vld-reg-info" v-if="!loading.detail && (detailInfo.Nama_Barang || detailInfo.Kode_Barang || detailInfo.Catatan)">
+                            <div class="vld-reg-info-row">
+                                <div class="vld-reg-info-item">
+                                    <span class="vld-reg-lbl"><i class="ri-shopping-bag-line me-1"></i>Nama Barang</span>
+                                    <span class="vld-reg-val">{{ detailInfo.Nama_Barang || '—' }}</span>
+                                </div>
+                                <div class="vld-reg-info-item">
+                                    <span class="vld-reg-lbl"><i class="ri-price-tag-3-line me-1"></i>Kode Barang</span>
+                                    <span class="vld-reg-val fw-semibold text-primary">{{ detailInfo.Kode_Barang || '—' }}</span>
+                                </div>
+                                <div class="vld-reg-info-item" v-if="detailInfo.Catatan">
+                                    <span class="vld-reg-lbl"><i class="ri-sticky-note-line me-1"></i>Catatan</span>
+                                    <span class="vld-reg-val fst-italic text-muted">{{ detailInfo.Catatan }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Info Strip: Input Analyzer + Validator -->
+                    <div class="vld-audit-strip" v-if="loading.audit || auditLog.length > 0">
+                        <div v-if="loading.audit" class="vld-audit-strip-loading">
+                            <span class="spinner-border spinner-border-sm text-secondary"></span>
+                        </div>
+                        <template v-else>
+                            <!-- Input Analyzer section -->
+                            <span class="vld-audit-strip-lbl">
+                                <i class="ri-test-tube-line me-1"></i>Analyzer
+                            </span>
+                            <div class="vld-audit-strip-chips me-3">
+                                <span
+                                    v-for="(log, i) in inputAnalyzerLog"
+                                    :key="'ia-'+i"
+                                    class="vld-audit-chip vld-audit-chip--ok"
+                                >
+                                    <i class="ri-user-line me-1"></i>
+                                    {{ log.Nama_User || log.Id_User }}
+                                    <span class="vld-audit-chip-time">{{ log.Tanggal }}</span>
+                                </span>
+                                <span v-if="inputAnalyzerLog.length === 0" class="text-muted" style="font-size:11px;padding:2px 6px;">—</span>
+                            </div>
+                            <!-- Validator section -->
+                            <span class="vld-audit-strip-lbl">
+                                <i class="ri-user-follow-line me-1"></i>Validasi
+                            </span>
+                            <div class="vld-audit-strip-chips">
+                                <span
+                                    v-for="(log, i) in auditValidators"
+                                    :key="'vld-'+i"
+                                    class="vld-audit-chip"
+                                    :class="log.Sub_Aksi === 'SETUJU' ? 'vld-audit-chip--ok' : 'vld-audit-chip--no'"
+                                >
+                                    <i :class="log.Sub_Aksi === 'SETUJU' ? 'ri-checkbox-circle-line' : 'ri-close-circle-line'" class="me-1"></i>
+                                    {{ log.Nama_User || log.Id_User }}
+                                    <span class="vld-audit-chip-time">{{ log.Tanggal }}</span>
+                                </span>
+                                <span v-if="auditValidators.length === 0" class="text-muted" style="font-size:11px;padding:2px 6px;">Belum divalidasi</span>
+                            </div>
+                        </template>
                     </div>
 
                     <!-- Step tabs bar -->
@@ -591,7 +656,7 @@ export default {
             listData: [],
             searchQuery: "",
             pagination: { page: 1, limit: 12, totalPage: 0, totalData: 0 },
-            loading: { list: false, detail: false, action: false },
+            loading: { list: false, detail: false, action: false, audit: false },
 
             selectedItem: null,
             detailVisible: false,
@@ -599,12 +664,15 @@ export default {
 
             listKlasifikasi: [],
             detailValidasiData: [],
+            detailInfo: { Kode_Barang: null, Nama_Barang: null, Catatan: null },
             activeStep: 0,
             templateDataMap: {},
             acknowledgementChecked: false,
 
             formTolak: { alasan: "" },
             formBatal: { alasan: "" },
+
+            auditLog: [],
         };
     },
 
@@ -690,6 +758,14 @@ export default {
                 this.currentStepData.pending_analisa.length > 0 &&
                 !this.acknowledgementChecked
             );
+        },
+
+        inputAnalyzerLog() {
+            return this.auditLog.filter(l => l.Jenis_Aksi === 'INPUT_ANALYZER');
+        },
+
+        auditValidators() {
+            return this.auditLog.filter(l => l.Jenis_Aksi === 'VALIDASI_FORMULATOR');
         },
     },
 
@@ -790,8 +866,23 @@ export default {
             this.detailVisible = true;
             this.activeStep = 0;
             this.detailValidasiData = [];
+            this.detailInfo = { Kode_Barang: null, Nama_Barang: null, Catatan: null };
+            this.auditLog = [];
             this.acknowledgementChecked = false;
+            this.fetchAuditLog(item.No_Po_Sampel);
             await this.fetchDetail(item.No_Po_Sampel);
+        },
+
+        async fetchAuditLog(noSampel) {
+            this.loading.audit = true;
+            try {
+                const res = await axios.get(`/api/v1/log-aksi/by-sampel/${noSampel}`);
+                this.auditLog = res.data?.success ? res.data.result || [] : [];
+            } catch {
+                this.auditLog = [];
+            } finally {
+                this.loading.audit = false;
+            }
         },
 
         async fetchDetail(noSampel) {
@@ -800,6 +891,11 @@ export default {
                 const res = await axios.get(`/api/v1/validasi/pra-finalisasi/detail/by/${noSampel}`);
                 if (res.status === 200 && res.data?.result?.steps) {
                     this.detailValidasiData = res.data.result.steps;
+                    this.detailInfo = {
+                        Kode_Barang: res.data.result.Kode_Barang || null,
+                        Nama_Barang: res.data.result.Nama_Barang || null,
+                        Catatan:     res.data.result.Catatan     || null,
+                    };
 
                     const anlStep = this.detailValidasiData.find(s => s.Kode_Aktivitas_Lab === "ANL");
                     if (anlStep && anlStep.data_analisa) {
@@ -856,9 +952,8 @@ export default {
                 };
                 const res = await axios.post("/api/v1/validasi/pra-finalisasi/store-hirarki", payload);
                 if (res.status === 200) {
-                    Swal.fire({ icon: "success", title: "Berhasil", text: "Tahap berhasil disetujui.", timer: 1500, showConfirmButton: false });
-                    this.fetchDetail(this.selectedItem.No_Po_Sampel);
-                    this.fetchList(this.pagination.page);
+                    Swal.fire({ icon: "success", title: "Berhasil", text: "Tahap berhasil disetujui.", timer: 1500, showConfirmButton: false })
+                        .then(() => window.location.reload());
                 }
             } catch (e) {
                 Swal.fire("Gagal!", e.response?.data?.message || "Gagal menyetujui.", "error");
@@ -887,9 +982,8 @@ export default {
                 if (res.status === 200) {
                     const el = document.getElementById("offcanvasTolak");
                     if (el) bootstrap.Offcanvas.getInstance(el)?.hide();
-                    Swal.fire({ icon: "warning", title: "Ditolak", text: "Tahap berhasil ditolak.", timer: 1500, showConfirmButton: false });
-                    this.fetchDetail(this.selectedItem.No_Po_Sampel);
-                    this.fetchList(this.pagination.page);
+                    Swal.fire({ icon: "warning", title: "Ditolak", text: "Tahap berhasil ditolak.", timer: 1500, showConfirmButton: false })
+                        .then(() => window.location.reload());
                 }
             } catch (e) {
                 Swal.fire("Gagal!", e.response?.data?.message || "Gagal menolak.", "error");
@@ -909,11 +1003,7 @@ export default {
                     const el = document.getElementById("offcanvasBatal");
                     if (el) bootstrap.Offcanvas.getInstance(el)?.hide();
                     Swal.fire({ icon: "success", title: "Berhasil", text: "Sampel berhasil dibatalkan.", timer: 1500, showConfirmButton: false })
-                        .then(() => {
-                            this.selectedItem = null;
-                            this.detailVisible = false;
-                            this.fetchList(1);
-                        });
+                        .then(() => window.location.reload());
                 }
             } catch (e) {
                 Swal.fire("Gagal!", e.response?.data?.message || "Gagal membatalkan.", "error");
@@ -941,11 +1031,7 @@ export default {
                 });
                 if (res.status === 200) {
                     Swal.fire({ icon: "success", title: "Berhasil!", text: "Sampel berhasil di-finalisasi.", timer: 2000 })
-                        .then(() => {
-                            this.selectedItem = null;
-                            this.detailVisible = false;
-                            this.fetchList(1);
-                        });
+                        .then(() => window.location.reload());
                 }
             } catch (e) {
                 if (e.response?.status === 422) {
@@ -1171,6 +1257,34 @@ export default {
     flex: 1;
     min-width: 0;
 }
+.vld-item-barang {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 5px;
+    font-size: 11px;
+    color: #495057;
+    overflow: hidden;
+}
+.vld-item-barang i { color: #878a99; flex-shrink: 0; }
+.vld-item-barang-name {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+.vld-item-kode {
+    flex-shrink: 0;
+    font-size: 10px;
+    background: #eef0f9;
+    color: #405189;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
 .vld-item-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .vld-item-arrow { align-self: center; flex-shrink: 0; padding: 0 6px; color: #ced4da; font-size: 16px; }
 .vld-item--active .vld-item-arrow { color: #405189; }
@@ -1246,16 +1360,14 @@ export default {
 /* ── Sticky detail header ─────────────────────────────────────────────── */
 .vld-detail-header {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
+    flex-direction: column;
+    gap: 0;
     padding: 12px 16px;
     background: #fff;
     border-bottom: 1px solid #e9ebec;
     flex-shrink: 0;
-    flex-wrap: wrap;
 }
-.vld-dh-main { display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0; }
+.vld-dh-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; flex: 1; min-width: 0; }
 .vld-dh-icon {
     width: 38px; height: 38px;
     border-radius: 10px;
@@ -1270,6 +1382,40 @@ export default {
 .vld-dh-title { font-size: 14px; font-weight: 700; color: #1a1d23; line-height: 1.2; margin-bottom: 2px; }
 .vld-dh-sub { font-size: 11px; color: #878a99; margin-bottom: 6px; }
 .vld-dh-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* ── Info Registrasi Sampel ───────────────────────────────────────────── */
+.vld-reg-info {
+    width: 100%;
+    background: #f8f9fd;
+    border: 1px solid #e2e6f0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-top: 10px;
+}
+.vld-reg-info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 24px;
+}
+.vld-reg-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 120px;
+}
+.vld-reg-lbl {
+    font-size: 10px;
+    font-weight: 600;
+    color: #878a99;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.vld-reg-val {
+    font-size: 12px;
+    color: #1a1d23;
+    line-height: 1.4;
+    word-break: break-word;
+}
 
 /* ── Step tabs bar ────────────────────────────────────────────────────── */
 .vld-subpo-bar {
@@ -1421,6 +1567,41 @@ export default {
 .vld-chip--blue { background: #eef0f9; color: #405189; }
 .vld-chip--gray { background: #f0f2f5; color: #6c757d; }
 .vld-chip--orange { background: #fef3c7; color: #d97706; }
+/* ── Audit validators strip ─────────────────────────────────────────── */
+.vld-audit-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e9ebec;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+.vld-audit-strip-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+.vld-audit-strip-loading { display: flex; align-items: center; }
+.vld-audit-strip-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.vld-audit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.vld-audit-chip--ok { background: #d1fae5; color: #065f46; }
+.vld-audit-chip--no { background: #fee2e2; color: #991b1b; }
+.vld-audit-chip-time { font-size: 10px; opacity: 0.65; margin-left: 2px; }
+.vld-audit-chip-type { font-size: 9px; text-transform: uppercase; opacity: 0.75; margin-right: 2px; }
 
 /* ── Sticky action bar ────────────────────────────────────────────────── */
 .vld-action-bar {

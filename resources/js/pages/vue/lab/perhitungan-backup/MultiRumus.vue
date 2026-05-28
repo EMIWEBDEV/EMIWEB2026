@@ -1029,6 +1029,12 @@
                         <thead>
                             <tr>
                                 <th
+                                    v-if="plt_pembanding_list && plt_pembanding_list.length"
+                                    style="min-width:130px;background:#e0f2fe;color:#0369a1;white-space:nowrap;"
+                                >
+                                    <i class="fas fa-flask me-1"></i>Pembanding
+                                </th>
+                                <th
                                     v-for="param in selectedTemplating.parameter"
                                     :key="param.id_qc"
                                 >
@@ -1048,6 +1054,13 @@
 
                         <tbody>
                             <tr v-for="(row, rowIndex) in rows" :key="rowIndex">
+                                <td
+                                    v-if="plt_pembanding_list && plt_pembanding_list.length"
+                                    data-label="Pembanding"
+                                    style="background:#f0f9ff;border-left:3px solid #0ea5e9;white-space:nowrap;vertical-align:middle;"
+                                >
+                                    <span style="font-size:11px;font-weight:700;color:#0369a1;">{{ row.plt_nama_pembanding || '—' }}</span>
+                                </td>
                                 <td
                                     v-for="param in selectedTemplating.parameter"
                                     :key="param.id_qc"
@@ -2350,32 +2363,61 @@ export default {
 
         initializeRows() {
             this.rows = [];
-            this.addRow();
+            if (!this.selectedTemplating || !this.selectedTemplating.parameter) return;
+            if (this.plt_pembanding_list && this.plt_pembanding_list.length > 0) {
+                this.plt_pembanding_list.forEach((pb) => {
+                    this._createRow(pb.id_pembanding, pb.nama_pembanding);
+                });
+            } else {
+                this._createRow(null, null);
+            }
         },
-        addRow() {
-            const rowIndex = this.rows.length;
-            const pltPb =
-                this.plt_pembanding_list && this.plt_pembanding_list.length > 0
-                    ? this.plt_pembanding_list[rowIndex] || null
-                    : null;
+        _createRow(pltId, pltNama) {
             const newRow = {
                 inputValues: {},
                 formulaResults: {},
                 lockedInputs: {},
                 draftDetails: {},
-                plt_id_pembanding: pltPb ? pltPb.id_pembanding : null,
-                plt_nama_pembanding: pltPb ? pltPb.nama_pembanding : null,
+                plt_id_pembanding: pltId,
+                plt_nama_pembanding: pltNama,
             };
-
             this.selectedTemplating.parameter.forEach((param) => {
                 newRow.inputValues[param.id_qc] = null;
                 newRow.lockedInputs[param.id_qc] = false;
             });
-
             this.selectedTemplating.formula.forEach((formula) => {
                 newRow.formulaResults[formula.rumus] = 0;
             });
             this.rows.push(newRow);
+        },
+        async addRow() {
+            if (!this.selectedTemplating || !this.selectedTemplating.parameter) return;
+            if (this.plt_pembanding_list && this.plt_pembanding_list.length > 0) {
+                const inputOptions = {};
+                this.plt_pembanding_list.forEach((p, i) => {
+                    inputOptions[p.id_pembanding] = `${i + 1}. ${p.nama_pembanding}`;
+                });
+                const { value: selectedId, isConfirmed } = await Swal.fire({
+                    title: 'Pilih Produk Pembanding',
+                    text: 'Tambah baris ini untuk pembanding mana?',
+                    input: 'select',
+                    inputOptions,
+                    inputPlaceholder: '— Pilih pembanding —',
+                    showCancelButton: true,
+                    confirmButtonText: 'Tambah Baris',
+                    cancelButtonText: 'Batal',
+                    inputValidator: (value) => {
+                        if (!value) return 'Harap pilih pembanding terlebih dahulu.';
+                    },
+                });
+                if (!isConfirmed || !selectedId) return;
+                const pb = this.plt_pembanding_list.find(
+                    (p) => String(p.id_pembanding) === String(selectedId)
+                );
+                this._createRow(pb ? pb.id_pembanding : null, pb ? pb.nama_pembanding : null);
+            } else {
+                this._createRow(null, null);
+            }
         },
         unlockInput(rowIndex, id_qc) {
             this.isEditing = true;

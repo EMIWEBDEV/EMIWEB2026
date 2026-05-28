@@ -229,14 +229,23 @@ class FinalisasiLabProduksiTrialController extends Controller
                     'ja.Jenis_Analisa',
                     'ja.Kode_Analisa',
                     'ja.Kode_Aktivitas_Lab',
+                    'ja.Flag_Perhitungan',
                     'pb.Nama_Pembanding',
                     'pb.Kode_Barang_Pembanding'
                 )
                 ->where('us.No_Po_Sampel', $No_Po_Sampel)
                 ->whereNull('us.Status')
-                ->where('us.Flag_Selesai', 'Y')
-                ->where('us.Status_Keputusan_Sampel', 'terima')
                 ->where('po.Flag_Trial_Produksi', 'Y')
+                ->where(function ($q) {
+                    $q->where(function ($inner) {
+                        $inner->where('us.Flag_Selesai', 'Y')
+                              ->where('us.Status_Keputusan_Sampel', 'terima');
+                    })->orWhere('us.Flag_Final', 'Y');
+                })
+                ->where(function ($q) {
+                    $q->where('us.Flag_Resampling', '!=', 'Y')
+                      ->orWhereNull('us.Flag_Resampling');
+                })
                 ->orderByDesc('us.Tanggal')
                 ->get()
         )->map(function ($item) {
@@ -245,7 +254,7 @@ class FinalisasiLabProduksiTrialController extends Controller
             $item->is_plt = ($item->Kode_Aktivitas_Lab ?? null) === 'PLT';
             return $item;
         })->unique(function ($item) {
-            return $item->No_Po_Sampel . '-' . $item->Id_Jenis_Analisa;
+            return $item->No_Po_Sampel . '-' . $item->Id_Jenis_Analisa . '-' . ($item->Nama_Pembanding ?? '');
         })->values();
 
         return response()->json([
@@ -494,6 +503,35 @@ class FinalisasiLabProduksiTrialController extends Controller
                     ->update([
                         'Flag_Selesai' => 'Y'
                     ]);
+
+                $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
+                    'No_Sampel'  => $no_sampel,
+                    'No_Po'      => $getInformasiPo->No_Po       ?? '-',
+                    'No_Split_Po'=> $getInformasiPo->No_Split_Po ?? '-',
+                    'Kode_Barang'=> $getInformasiPo->Kode_Barang ?? null,
+                    'Flag_Trial' => 'Y',
+                    'Jenis_Aksi' => 'FINALISASI_TRIAL_PRODUKSI',
+                    'Sub_Aksi'   => 'CLOSE',
+                    'Id_User'    => Auth::user()->UserId,
+                    'Tanggal'    => $tanggalSqlServer,
+                    'Jam'        => $jamSqlServer,
+                ]);
+
+                $jaNameMap = DB::table('N_EMI_LAB_Jenis_Analisa')
+                    ->whereIn('id', $idJenisAnalisaList)
+                    ->pluck('Jenis_Analisa', 'id');
+                $detailRows = array_map(fn($jaId) => [
+                    'Id_Log_Aksi'        => $logId,
+                    'Id_Jenis_Analisa'   => $jaId,
+                    'Nama_Jenis_Analisa' => $jaNameMap[$jaId] ?? null,
+                    'Flag_Layak'         => null,
+                    'Tanggal'            => $tanggalSqlServer,
+                    'Jam'                => $jamSqlServer,
+                    'Id_User'            => Auth::user()->UserId,
+                ], $idJenisAnalisaList);
+                if (!empty($detailRows)) {
+                    DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert($detailRows);
+                }
             }
 
             DB::commit();
@@ -596,11 +634,11 @@ class FinalisasiLabProduksiTrialController extends Controller
                 ->where('ps.Flag_Trial_Produksi', 'Y')
                 ->where('ja.Kode_Role', 'LAB')
                 ->where('ja.Kode_Aktivitas_Lab', 'ANL')
-                ->where('us.Status_Keputusan_Sampel', 'terima')
+                ->where(fn($q) => $q->where('us.Status_Keputusan_Sampel', 'terima')
+                    ->orWhereNull('us.Status_Keputusan_Sampel'))
                 ->whereNull('us.Flag_Selesai')
                 ->whereNull('us.Status')
                 ->whereNull('us.Flag_Resampling')
-                ->whereNotIn('ja.Kode_Analisa', $kodeDikecualikan)
                 ->select('us.No_Po_Sampel', 'ja.Jenis_Analisa')
                 ->get()
                 ->groupBy('No_Po_Sampel');
@@ -723,6 +761,32 @@ class FinalisasiLabProduksiTrialController extends Controller
                             'Id_User' => $userId,
                         ]
                     );
+
+                $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
+                    'No_Sampel'  => $no_sampel,
+                    'No_Po'      => $infoPo->No_Po       ?? '-',
+                    'No_Split_Po'=> $infoPo->No_Split_Po ?? '-',
+                    'Kode_Barang'=> $infoPo->Kode_Barang ?? null,
+                    'Flag_Trial' => 'Y',
+                    'Jenis_Aksi' => 'FINALISASI_TRIAL_PRODUKSI',
+                    'Sub_Aksi'   => 'CLOSE',
+                    'Id_User'    => $userId,
+                    'Tanggal'    => $tanggalSqlServer,
+                    'Jam'        => $jamSqlServer,
+                ]);
+
+                $detailRows = array_map(fn($jaId) => [
+                    'Id_Log_Aksi'        => $logId,
+                    'Id_Jenis_Analisa'   => $jaId,
+                    'Nama_Jenis_Analisa' => $masterAnalisa[$jaId] ?? null,
+                    'Flag_Layak'         => null,
+                    'Tanggal'            => $tanggalSqlServer,
+                    'Jam'                => $jamSqlServer,
+                    'Id_User'            => $userId,
+                ], $idJenisAnalisaList);
+                if (!empty($detailRows)) {
+                    DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert($detailRows);
+                }
 
                 $poSampelUpdateCases[] = $no_sampel;
                 $berhasil[]            = $no_sampel;

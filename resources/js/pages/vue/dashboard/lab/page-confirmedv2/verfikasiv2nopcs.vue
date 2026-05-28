@@ -213,6 +213,12 @@
                                     <thead class="table-light">
                                         <tr>
                                             <th>No</th>
+                                            <th
+                                                v-if="pltPembandingList && pltPembandingList.length"
+                                                style="min-width:130px;background:#e0f2fe;color:#0369a1;white-space:nowrap;"
+                                            >
+                                                <i class="fas fa-flask me-1"></i>Pembanding
+                                            </th>
                                             <th>No Transaksi</th>
                                             <th>No Sampel</th>
                                             <th>No PO</th>
@@ -247,6 +253,13 @@
                                         >
                                             <td>
                                                 {{ rowIndex + 1 }}
+                                            </td>
+                                            <td
+                                                v-if="pltPembandingList && pltPembandingList.length"
+                                                data-label="Pembanding"
+                                                style="background:#f0f9ff;border-left:3px solid #0ea5e9;white-space:nowrap;vertical-align:middle;"
+                                            >
+                                                <span style="font-size:11px;font-weight:700;color:#0369a1;">{{ row.Nama_Pembanding || '—' }}</span>
                                             </td>
                                             <td>
                                                 {{ row.No_Faktur }}
@@ -295,6 +308,7 @@
                                             <td
                                                 :colspan="
                                                     7 +
+                                                    (pltPembandingList && pltPembandingList.length ? 1 : 0) +
                                                     (template.parameter
                                                         ? template.parameter
                                                               .length
@@ -1281,6 +1295,7 @@ export default {
                         Tanggal: firstItemInGroup.Tanggal_Pengujian || "-",
                         Tanggal_Registrasi:
                             firstItemInGroup.Tanggal_Registrasi || "-",
+                        Nama_Pembanding: firstItemInGroup.Nama_Pembanding || null,
                         parameters: parameterResults,
                         results: finalResults,
                         Range_Awal: firstItemInGroup.Range_Awal,

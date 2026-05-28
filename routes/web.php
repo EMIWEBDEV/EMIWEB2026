@@ -27,11 +27,13 @@ use App\Http\Controllers\SubMenuController;
 use App\Http\Controllers\PalatabilitasController;
 use App\Http\Controllers\UjiSampelController;
 use App\Http\Controllers\UjiValidasiFinalController;
+use App\Http\Controllers\MonitoringAnalisa\MonitoringAnalisaController;
 
 Route::get('/', [AuthController::class, 'form_login'])->name('login.form')->middleware('guest', 'autotrack');
 
 Route::post('/proses_login', [AuthController::class, 'proses_login'])->name('proses_login')->middleware('guest', 'web');
 Route::get('/logout-clear', [AuthController::class, 'logoutclear']);
+
 
 Route::get('/checking', function (\Illuminate\Http\Request $request) {
     $key = $request->query('key');
@@ -221,6 +223,12 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get   ('/api/v1/palatabilitas/hasil',                [PalatabilitasController::class, 'getHasil']);
     Route::get   ('/lab/palatabilitas/{no_po_sampel}',       [PalatabilitasController::class, 'viewPalatabilitasManagement'])->middleware('autotrack');
     // ── End Palatabilitas ─────────────────────────────────────────────────────
+
+    // ── Monitoring Analisa ────────────────────────────────────────────────────
+    Route::get('/lab/monitoring-analisa', [MonitoringAnalisaController::class, 'index'])->middleware('autotrack');
+    Route::get('/api/v1/monitoring-analisa', [MonitoringAnalisaController::class, 'getMonitoringData']);
+    Route::get('/api/v1/monitoring-analisa/detail', [MonitoringAnalisaController::class, 'getMonitoringDetail']);
+    // ── End Monitoring Analisa ────────────────────────────────────────────────
     Route::get('/fetch/lab/{id_mesin}/{id_analisa}/parameter-perhitungan', [UjiSampelController::class, 'getParameterAndPerhitungan']);
     Route::get('/fetch/lab/lama/{id_analisa}/parameter-perhitungan-old', [UjiSampelController::class, 'getParameterAndPerhitunganOld']);
     Route::get('/api/v1/{no_PO_Multiqr}/multi-print/{id_jenis_analisa}', [UjiSampelController::class, 'getPoSampelMultiQrDetail']);
@@ -320,6 +328,7 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::post('/api/v1/hasil-analisa-close/finalisasi/{no_sampel}', [UjiValidasiFinalController::class, 'store']);
     Route::post('/api/v1/hasil-analisa-close/finalisasi/bulk/closingberkala', [UjiValidasiFinalController::class, 'storeBulk']);
     Route::get('/api/v1/hasil-analisa/produk-rilis-current', [UjiValidasiFinalController::class, 'getDataCurrentHasilFinalValidasi']);
+    Route::get('/api/v1/log-aksi/by-sampel/{no_sampel}', [UjiValidasiFinalController::class, 'getAuditLogBySampel']);
     Route::get('/api/v1/po-done/close-by-produksi', [QuisyController::class, 'getDataCurrentPoYangDiClose']);
     Route::post('/api/v1/quisy-pembatalan/pelepasan-po-close/{no_po}', [QuisyController::class, 'BukaKembaliPoYangSudahDiClose']);
 

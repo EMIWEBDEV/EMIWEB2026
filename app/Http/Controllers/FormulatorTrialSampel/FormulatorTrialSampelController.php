@@ -7289,15 +7289,19 @@ class FormulatorTrialSampelController extends Controller
         foreach ($request->analyses as $analisis) {
             $analysis = (object) $analisis;
 
-    
+            $poInfoLog = DB::table('N_LIMS_PO_Sampel')
+                ->where('No_Sampel', $analysis->No_Po_Sampel)
+                ->select('No_Po', 'No_Split_Po', 'Kode_Barang', 'Flag_Trial_Produksi')
+                ->first();
+
             if ($analysis->Flag_Multi_QrCode === 'Y') {
                 $adaTidakLayak = DB::table('N_EMI_LIMS_Uji_Sampel')
                         ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
                         ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
                         ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
-                        ->whereNull('Status') 
+                        ->whereNull('Status')
                         ->whereNull('Flag_Resampling')
-                        ->where('Flag_Layak', 'T') 
+                        ->where('Flag_Layak', 'T')
                         ->exists();
 
                     $statusKelayakan = $adaTidakLayak ? 'T' : 'Y';
@@ -7327,6 +7331,40 @@ class FormulatorTrialSampelController extends Controller
                             'Id_User' => $userId
                         ];
                         DB::table('N_EMI_LIMS_Hasil_Uji_Validasi_Detail_Final')->insert($payloadUjiFinalDetail);
+
+                        $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
+                            ->where('No_Sampel', $analysis->No_Po_Sampel)
+                            ->where('Jenis_Aksi', 'VALIDASI_FORMULATOR')
+                            ->where('Sub_Aksi', 'SETUJU')
+                            ->first();
+                        if ($existingHeader) {
+                            $logId = $existingHeader->Id_Log_Aksi;
+                        } else {
+                            $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
+                                'No_Sampel'   => $analysis->No_Po_Sampel,
+                                'No_Po'       => $poInfoLog->No_Po       ?? '-',
+                                'No_Split_Po' => $poInfoLog->No_Split_Po ?? '-',
+                                'Kode_Barang' => $poInfoLog->Kode_Barang ?? null,
+                                'Flag_Trial'  => $poInfoLog->Flag_Trial_Produksi ?? null,
+                                'Jenis_Aksi'  => 'VALIDASI_FORMULATOR',
+                                'Sub_Aksi'    => 'SETUJU',
+                                'Id_User'     => $userId,
+                                'Tanggal'     => $tanggalSqlServer,
+                                'Jam'         => $jamSqlServer,
+                            ]);
+                        }
+
+                        $jaName = DB::table('N_EMI_LAB_Jenis_Analisa')->where('id', $analysis->Id_Jenis_Analisa)->value('Jenis_Analisa');
+                        DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert([
+                            'Id_Log_Aksi'        => $logId,
+                            'Id_Jenis_Analisa'   => $analysis->Id_Jenis_Analisa,
+                            'Nama_Jenis_Analisa' => $jaName,
+                            'Flag_Layak'         => $statusKelayakan,
+                            'Tanggal'            => $tanggalSqlServer,
+                            'Jam'                => $jamSqlServer,
+                            'Id_User'            => $userId,
+                        ]);
+
                         DB::commit();
                         return ResponseHelper::success(null, "Data berhasil diupdate dan status penyelesaian telah diperiksa.", 200);
                     } catch (\Exception $e) {
@@ -7343,8 +7381,8 @@ class FormulatorTrialSampelController extends Controller
                         ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
                         ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
                         ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
-                        ->whereNull('Status') 
-                        ->where('Flag_Layak', 'T') 
+                        ->whereNull('Status')
+                        ->where('Flag_Layak', 'T')
                         ->exists();
 
                     $statusKelayakan = $adaTidakLayak ? 'T' : 'Y';
@@ -7373,6 +7411,40 @@ class FormulatorTrialSampelController extends Controller
                         ];
 
                         DB::table('N_EMI_LIMS_Hasil_Uji_Validasi_Detail_Final')->insert($payloadUjiFinalDetail);
+
+                        $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
+                            ->where('No_Sampel', $analysis->No_Po_Sampel)
+                            ->where('Jenis_Aksi', 'VALIDASI_FORMULATOR')
+                            ->where('Sub_Aksi', 'SETUJU')
+                            ->first();
+                        if ($existingHeader) {
+                            $logId = $existingHeader->Id_Log_Aksi;
+                        } else {
+                            $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
+                                'No_Sampel'   => $analysis->No_Po_Sampel,
+                                'No_Po'       => $poInfoLog->No_Po       ?? '-',
+                                'No_Split_Po' => $poInfoLog->No_Split_Po ?? '-',
+                                'Kode_Barang' => $poInfoLog->Kode_Barang ?? null,
+                                'Flag_Trial'  => $poInfoLog->Flag_Trial_Produksi ?? null,
+                                'Jenis_Aksi'  => 'VALIDASI_FORMULATOR',
+                                'Sub_Aksi'    => 'SETUJU',
+                                'Id_User'     => $userId,
+                                'Tanggal'     => $tanggalSqlServer,
+                                'Jam'         => $jamSqlServer,
+                            ]);
+                        }
+
+                        $jaName = DB::table('N_EMI_LAB_Jenis_Analisa')->where('id', $analysis->Id_Jenis_Analisa)->value('Jenis_Analisa');
+                        DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert([
+                            'Id_Log_Aksi'        => $logId,
+                            'Id_Jenis_Analisa'   => $analysis->Id_Jenis_Analisa,
+                            'Nama_Jenis_Analisa' => $jaName,
+                            'Flag_Layak'         => $statusKelayakan,
+                            'Tanggal'            => $tanggalSqlServer,
+                            'Jam'                => $jamSqlServer,
+                            'Id_User'            => $userId,
+                        ]);
+
                         DB::commit();
                         return ResponseHelper::success(null, "Data berhasil diupdate dan status penyelesaian telah diperiksa.", 200);
                     } catch (\Exception $e) {
@@ -10397,7 +10469,7 @@ class FormulatorTrialSampelController extends Controller
         $permissionKonten = $checkedAkses['permission_konten'] ?? [];
         
         $allowedAnalisaIds = [];
-        if (isset($permissionKonten['Finalisasi Trial']) && is_array($permissionKonten['Validasi Hasil Analisa'])) {
+        if (isset($permissionKonten['Finalisasi Trial']) && is_array($permissionKonten['Finalisasi Trial'])) {
                 foreach ($permissionKonten['Finalisasi Trial'] as $akses) {
                     if (isset($akses['flag']) && $akses['flag'] === 'Y' && isset($akses['id_jenis_analisa'])) {
                         $allowedAnalisaIds[] = $akses['id_jenis_analisa'];
@@ -11865,7 +11937,29 @@ class FormulatorTrialSampelController extends Controller
 
         if (!$berkas) abort(404);
 
-        return Storage::disk('gcs')->response($berkas->File_Path);
+        $ext = strtolower(pathinfo($berkas->File_Path, PATHINFO_EXTENSION));
+        $mimeMap = [
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png'  => 'image/png',
+            'gif'  => 'image/gif',
+            'webp' => 'image/webp',
+            'heic' => 'image/heic',
+            'heif' => 'image/heif',
+        ];
+        $mimeType = $mimeMap[$ext] ?? 'image/jpeg';
+
+        $stream = Storage::disk('gcs')->readStream($berkas->File_Path);
+
+        return response()->stream(function () use ($stream) {
+            if (is_resource($stream)) {
+                fpassthru($stream);
+                fclose($stream);
+            }
+        }, 200, [
+            'Content-Type'  => $mimeType,
+            'Cache-Control' => 'private, max-age=300',
+        ]);
     }
 
     public function getVerifikasiHasilAnalisaPerhitunganBySingleQrV2($id_jenis_analisa, $no_po_sampel)
@@ -14912,6 +15006,11 @@ class FormulatorTrialSampelController extends Controller
         $noPoList = $decodedAnalyses->pluck('No_Po_Sampel')->unique()->values()->toArray();
         $rawJaIds = $decodedAnalyses->pluck('_raw_id_jenis_analisa')->unique()->values()->toArray();
 
+        $jenisAnalisaNameMap = DB::table('N_EMI_LAB_Jenis_Analisa')
+            ->whereIn('id', $rawJaIds)
+            ->select('id', 'Jenis_Analisa')
+            ->get()->keyBy('id');
+
         $tahapanMap = DB::table('N_EMI_LIMS_Uji_Sampel')
             ->whereIn('No_Po_Sampel', $noPoList)
             ->whereIn('Id_Jenis_Analisa', $rawJaIds)
@@ -14919,8 +15018,14 @@ class FormulatorTrialSampelController extends Controller
             ->groupBy('No_Po_Sampel', 'Id_Jenis_Analisa')
             ->get()->keyBy(fn($r) => $r->No_Po_Sampel . '|' . $r->Id_Jenis_Analisa);
 
+        $poInfoMap = DB::table('N_LIMS_PO_Sampel')
+            ->whereIn('No_Sampel', $noPoList)
+            ->select('No_Sampel', 'No_Po', 'No_Split_Po', 'Kode_Barang', 'Flag_Trial_Produksi')
+            ->get()->keyBy('No_Sampel');
+
         $results            = [];
         $finalDetailInserts = [];
+        $logDetailByNoPo    = [];
 
         DB::beginTransaction();
         try {
@@ -14978,11 +15083,58 @@ class FormulatorTrialSampelController extends Controller
                     'Id_User'          => $userId,
                 ];
 
+                // Kumpulkan detail analisa per sampel untuk log detail
+                $logDetailByNoPo[$noPo][] = [
+                    'Id_Jenis_Analisa'   => $rawJaId,
+                    'Nama_Jenis_Analisa' => $jenisAnalisaNameMap->get($rawJaId)?->Jenis_Analisa ?? null,
+                    'Flag_Layak'         => $statusKelayakan,
+                    'Tanggal'            => $tanggalSqlServer,
+                    'Jam'                => $jamSqlServer,
+                    'Id_User'            => $userId,
+                ];
+
                 $results[] = ['No_Po_Sampel' => $noPo, 'success' => true];
             }
 
             if (!empty($finalDetailInserts)) {
                 DB::table('N_EMI_LIMS_Hasil_Uji_Validasi_Detail_Final')->insert($finalDetailInserts);
+            }
+
+            // Log validasi: satu header per unique sampel + detail per analisa
+            $processedNoPosLog = collect($results)->pluck('No_Po_Sampel')->unique()->values()->toArray();
+            foreach ($processedNoPosLog as $logNoPo) {
+                $poInfo = $poInfoMap->get($logNoPo);
+                if ($poInfo) {
+                    $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
+                        ->where('No_Sampel', $logNoPo)
+                        ->where('Jenis_Aksi', 'VALIDASI_FORMULATOR')
+                        ->where('Sub_Aksi', 'SETUJU')
+                        ->first();
+                    if ($existingHeader) {
+                        $logId = $existingHeader->Id_Log_Aksi;
+                    } else {
+                        $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
+                            'No_Sampel'   => $logNoPo,
+                            'No_Po'       => $poInfo->No_Po       ?? '-',
+                            'No_Split_Po' => $poInfo->No_Split_Po ?? '-',
+                            'Kode_Barang' => $poInfo->Kode_Barang ?? null,
+                            'Flag_Trial'  => $poInfo->Flag_Trial_Produksi ?? null,
+                            'Jenis_Aksi'  => 'VALIDASI_FORMULATOR',
+                            'Sub_Aksi'    => 'SETUJU',
+                            'Id_User'     => $userId,
+                            'Tanggal'     => $tanggalSqlServer,
+                            'Jam'         => $jamSqlServer,
+                        ]);
+                    }
+
+                    $detailRows = array_map(
+                        fn($d) => array_merge($d, ['Id_Log_Aksi' => $logId]),
+                        $logDetailByNoPo[$logNoPo] ?? []
+                    );
+                    if (!empty($detailRows)) {
+                        DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert($detailRows);
+                    }
+                }
             }
 
             DB::commit();

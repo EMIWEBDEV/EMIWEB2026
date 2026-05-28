@@ -1045,6 +1045,12 @@
                         <thead>
                             <tr>
                                 <th
+                                    v-if="plt_pembanding_list && plt_pembanding_list.length"
+                                    style="min-width:130px;background:#e0f2fe;color:#0369a1;white-space:nowrap;"
+                                >
+                                    <i class="fas fa-flask me-1"></i>Pembanding
+                                </th>
+                                <th
                                     v-for="param in selectedTemplating.parameter"
                                     :key="param.id_qc"
                                 >
@@ -1064,6 +1070,13 @@
 
                         <tbody>
                             <tr v-for="(row, rowIndex) in rows" :key="rowIndex">
+                                <td
+                                    v-if="plt_pembanding_list && plt_pembanding_list.length"
+                                    data-label="Pembanding"
+                                    style="background:#f0f9ff;border-left:3px solid #0ea5e9;white-space:nowrap;vertical-align:middle;"
+                                >
+                                    <span style="font-size:11px;font-weight:700;color:#0369a1;">{{ row.plt_nama_pembanding || '—' }}</span>
+                                </td>
                                 <td
                                     v-for="param in selectedTemplating.parameter"
                                     :key="param.id_qc"
@@ -2361,25 +2374,71 @@ export default {
 
         initializeRows() {
             this.rows = [];
-            this.addRow();
+            if (!this.selectedTemplating || !this.selectedTemplating.parameter) return;
+            if (this.plt_pembanding_list && this.plt_pembanding_list.length > 0) {
+                if (this.plt_id_pembanding_default) {
+                    const pb = this.plt_pembanding_list.find(
+                        (p) => String(p.id_pembanding) === String(this.plt_id_pembanding_default)
+                    );
+                    this._createRow(
+                        pb ? pb.id_pembanding : this.plt_id_pembanding_default,
+                        pb ? pb.nama_pembanding : null
+                    );
+                } else {
+                    this.plt_pembanding_list.forEach((pb) => {
+                        this._createRow(pb.id_pembanding, pb.nama_pembanding);
+                    });
+                }
+            } else {
+                this._createRow(null, null);
+            }
         },
-        addRow() {
+        _createRow(pltId, pltNama) {
             const newRow = {
                 inputValues: {},
                 formulaResults: {},
                 lockedInputs: {},
                 draftDetails: {},
+                plt_id_pembanding: pltId,
+                plt_nama_pembanding: pltNama,
             };
-
             this.selectedTemplating.parameter.forEach((param) => {
                 newRow.inputValues[param.id_qc] = null;
                 newRow.lockedInputs[param.id_qc] = false;
             });
-
             this.selectedTemplating.formula.forEach((formula) => {
                 newRow.formulaResults[formula.rumus] = 0;
             });
             this.rows.push(newRow);
+        },
+        async addRow() {
+            if (!this.selectedTemplating || !this.selectedTemplating.parameter) return;
+            if (this.plt_pembanding_list && this.plt_pembanding_list.length > 0) {
+                const inputOptions = {};
+                this.plt_pembanding_list.forEach((p, i) => {
+                    inputOptions[p.id_pembanding] = `${i + 1}. ${p.nama_pembanding}`;
+                });
+                const { value: selectedId, isConfirmed } = await Swal.fire({
+                    title: 'Pilih Produk Pembanding',
+                    text: 'Tambah baris ini untuk pembanding mana?',
+                    input: 'select',
+                    inputOptions,
+                    inputPlaceholder: '— Pilih pembanding —',
+                    showCancelButton: true,
+                    confirmButtonText: 'Tambah Baris',
+                    cancelButtonText: 'Batal',
+                    inputValidator: (value) => {
+                        if (!value) return 'Harap pilih pembanding terlebih dahulu.';
+                    },
+                });
+                if (!isConfirmed || !selectedId) return;
+                const pb = this.plt_pembanding_list.find(
+                    (p) => String(p.id_pembanding) === String(selectedId)
+                );
+                this._createRow(pb ? pb.id_pembanding : null, pb ? pb.nama_pembanding : null);
+            } else {
+                this._createRow(null, null);
+            }
         },
         unlockInput(rowIndex, id_qc) {
             this.isEditing = true;
@@ -2601,7 +2660,7 @@ export default {
                             id_mesin: this.Id_Mesin,
                             Tahapan_Ke: this.Tahapan_Ke,
                             Id_Resampling: this.Id_Resampling,
-                            Id_Pembanding: this.plt_selected_pembanding || null,
+                            Id_Pembanding: row.plt_id_pembanding || null,
                             plt_session_id: this.plt_session_id || null,
                         };
 
@@ -2686,7 +2745,7 @@ export default {
                             id_mesin: this.Id_Mesin,
                             Tahapan_Ke: this.Tahapan_Ke,
                             Id_Resampling: this.Id_Resampling,
-                            Id_Pembanding: this.plt_selected_pembanding || null,
+                            Id_Pembanding: row.plt_id_pembanding || null,
                             plt_session_id: this.plt_session_id || null,
                         };
 
