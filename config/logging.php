@@ -102,6 +102,12 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => 30,
         ],
+        'export_job' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/export_job.log'),
+            'level'  => 'debug',
+            'days'   => 14,
+        ],
         'AuthController' => [
             'driver' => 'daily',
             'path' => storage_path('logs/AuthController.log'),

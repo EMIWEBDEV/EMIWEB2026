@@ -20,6 +20,18 @@
     <!-- Mobile Experience -->
     <link href="{{ URL::asset('assets/css/mobile.css') }}" rel="stylesheet" />
     <meta name="theme-color" content="#405189">
+    <!-- iOS dynamic viewport height polyfill -->
+    <script>
+    (function(){
+        function setVh(){
+            var vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', vh + 'px');
+        }
+        setVh();
+        window.addEventListener('resize', setVh);
+        window.addEventListener('orientationchange', function(){ setTimeout(setVh, 200); });
+    })();
+    </script>
 
 </head>
 

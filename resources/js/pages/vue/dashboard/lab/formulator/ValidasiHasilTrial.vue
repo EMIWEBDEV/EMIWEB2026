@@ -218,7 +218,7 @@
                         </button>
                         <button
                             class="btn btn-sm fw-semibold"
-                            style="background:#0ea5e9;color:#fff;border:none;"
+                            style="background:#405189;color:#fff;border:none;"
                             @click="openBulkModal"
                         >
                             <i class="ri-refresh-line me-1"></i>Resampling
@@ -735,151 +735,11 @@
                                 </div>
                             </div>
 
-                            <!-- Section: Photos -->
-                            <div
-                                v-if="
-                                    informasiData &&
-                                    informasiData.sesi_foto === 'Y'
-                                "
-                                class="vld-section"
-                            >
-                                <div
-                                    class="vld-section-hd"
-                                    @click="sections.foto = !sections.foto"
-                                    style="cursor: pointer"
-                                >
-                                    <span
-                                        ><i
-                                            class="ri-camera-line me-2 text-primary"
-                                        ></i
-                                        >Dokumentasi Foto</span
-                                    >
-                                    <i
-                                        :class="
-                                            sections.foto
-                                                ? 'ri-arrow-up-s-line'
-                                                : 'ri-arrow-down-s-line'
-                                        "
-                                        class="text-muted"
-                                    ></i>
-                                </div>
-                                <div
-                                    v-if="sections.foto"
-                                    class="vld-section-body"
-                                >
-                                    <template
-                                        v-for="(row, ri) in detailData"
-                                        :key="'fp-' + ri"
-                                    >
-                                        <div
-                                            v-if="
-                                                row.foto_analisa &&
-                                                row.foto_analisa.length > 0
-                                            "
-                                            class="mb-3"
-                                        >
-                                            <p
-                                                class="text-muted mb-2"
-                                                style="font-size: 11px"
-                                            >
-                                                <i
-                                                    class="ri-barcode-line me-1"
-                                                ></i
-                                                >{{ row.No_Faktur }}
-                                            </p>
-                                            <div class="row g-2">
-                                                <div
-                                                    v-for="foto in row.foto_analisa"
-                                                    :key="foto.Berkas_Key"
-                                                    class="col-6 col-md-4 col-xl-3"
-                                                >
-                                                    <div
-                                                        class="border rounded overflow-hidden"
-                                                    >
-                                                        <div
-                                                            v-if="
-                                                                !fotoBlobUrls[
-                                                                    foto
-                                                                        .Berkas_Key
-                                                                ]
-                                                            "
-                                                            class="d-flex align-items-center justify-content-center bg-light"
-                                                            style="
-                                                                height: 100px;
-                                                            "
-                                                        >
-                                                            <div
-                                                                class="spinner-grow spinner-grow-sm text-primary"
-                                                            ></div>
-                                                        </div>
-                                                        <el-image
-                                                            v-else
-                                                            class="w-100"
-                                                            style="
-                                                                height: 100px;
-                                                                display: block;
-                                                            "
-                                                            :src="
-                                                                fotoBlobUrls[
-                                                                    foto
-                                                                        .Berkas_Key
-                                                                ]
-                                                            "
-                                                            :preview-src-list="
-                                                                row.foto_analisa
-                                                                    .map(
-                                                                        (f) =>
-                                                                            fotoBlobUrls[
-                                                                                f
-                                                                                    .Berkas_Key
-                                                                            ]
-                                                                    )
-                                                                    .filter(
-                                                                        Boolean
-                                                                    )
-                                                            "
-                                                            :initial-index="
-                                                                row.foto_analisa.findIndex(
-                                                                    (f) =>
-                                                                        f.Berkas_Key ===
-                                                                        foto.Berkas_Key
-                                                                )
-                                                            "
-                                                            fit="cover"
-                                                            hide-on-click-modal
-                                                            @contextmenu.prevent
-                                                            @dragstart.prevent
-                                                        >
-                                                            <template #error>
-                                                                <div
-                                                                    class="d-flex align-items-center justify-content-center bg-light text-muted w-100"
-                                                                    style="
-                                                                        height: 100px;
-                                                                    "
-                                                                >
-                                                                    <i
-                                                                        class="ri-image-line fs-4"
-                                                                    ></i>
-                                                                </div>
-                                                            </template>
-                                                        </el-image>
-                                                        <p
-                                                            class="text-center text-muted mb-0 py-1"
-                                                            style="
-                                                                font-size: 10px;
-                                                            "
-                                                        >
-                                                            {{
-                                                                foto.Keterangan ||
-                                                                "—"
-                                                            }}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
+                            <!-- Foto strip -->
+                            <div v-if="allFotos().length > 0" class="vld-foto-strip mt-3">
+                                <button class="vld-foto-btn" @click="openFotoModal">
+                                    <i class="ri-image-2-line me-1"></i>Lihat Foto ({{ allFotos().length }})
+                                </button>
                             </div>
 
                             <!-- Section: Timeline -->
@@ -1268,17 +1128,47 @@
             </div>
         </div>
     </div>
+
+    <!-- LIGHTBOX -->
+    <div v-if="lightbox.show" class="vld-lb" @click="lightbox.show=false">
+        <button class="vld-lb-close" @click.stop="lightbox.show=false"><i class="ri-close-line"></i></button>
+        <div class="vld-lb-inner" @click.stop>
+            <img :src="lightbox.url" class="vld-lb-img" />
+            <div v-if="lightbox.keterangan" class="vld-lb-caption">{{ lightbox.keterangan }}</div>
+        </div>
+    </div>
+
+    <!-- FOTO MODAL - Polaroid Grid -->
+    <div v-if="vldFotoModal.show" class="vld-foto-pol-backdrop" @click.self="vldFotoModal.show=false">
+        <div class="vld-foto-pol-modal">
+            <div class="vld-foto-pol-hdr">
+                <span><i class="ri-image-2-line me-2"></i>Foto Analisa <span class="text-muted" style="font-size:.75rem;">({{ vldFotoModal.photos.length }} foto)</span></span>
+                <button @click="vldFotoModal.show=false"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="vld-foto-pol-body">
+                <div v-if="vldFotoModal.photos.length===0" class="vld-foto-pol-empty"><i class="ri-image-line fs-1 text-muted"></i><p class="text-muted small mt-2">Tidak ada foto</p></div>
+                <div v-else class="vld-foto-pol-grid">
+                    <div v-for="(photo,pi) in vldFotoModal.photos" :key="pi" class="vld-foto-polaroid" @click="lightbox={show:true,url:photo.url,keterangan:photo.keterangan}">
+                        <div class="vld-foto-polaroid-img-wrap">
+                            <img :src="photo.url" class="vld-foto-polaroid-img" :alt="photo.keterangan||'Foto '+(pi+1)" />
+                            <div class="vld-foto-pol-overlay"><i class="ri-zoom-in-line"></i></div>
+                        </div>
+                        <div class="vld-foto-polaroid-caption">{{ photo.keterangan || '—' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script>
 import ApexChart from "vue3-apexcharts";
-import { ElImage } from "element-plus";
 import axios from "axios";
 import vSelect from "vue-select";
 import { debounce } from "lodash";
 
 export default {
-    components: { apexchart: ApexChart, ElImage, vSelect },
+    components: { apexchart: ApexChart, vSelect },
 
     data() {
         return {
@@ -1316,6 +1206,8 @@ export default {
             hasStandardConfiguration: true,
             template: { parameter: [], formula: [] },
             fotoBlobUrls: {},
+            vldFotoModal: { show: false, photos: [] },
+            lightbox: { show: false, url: '', keterangan: '' },
 
             sections: { chart: true, foto: true, timeline: false },
 
@@ -1728,23 +1620,41 @@ export default {
         },
 
         async fetchBlobPhotos() {
-            if (this.informasiData?.sesi_foto !== "Y") return;
             const allKeys = this.detailData.flatMap((item) =>
                 (item.foto_analisa || []).map((f) => f.Berkas_Key)
-            );
+            ).filter(Boolean);
             if (!allKeys.length) return;
-            const tokenRes = await axios.post(
-                "/api/v1/formulator/hasil-uji/berkas/foto/token/bulk",
-                { keys: allKeys }
-            );
-            const tokenMap = tokenRes.data;
-            for (const key of allKeys) {
-                const res = await axios.get(
-                    `/api/v1/formulator/berkas/stream/foto-uji/${key}?token=${tokenMap[key]}`,
-                    { responseType: "blob" }
+            try {
+                const tokenRes = await axios.post(
+                    "/api/v1/formulator/hasil-uji/berkas/foto/token/bulk",
+                    { keys: allKeys }
                 );
-                this.fotoBlobUrls[key] = URL.createObjectURL(res.data);
-            }
+                const tokenMap = tokenRes.data || {};
+                await Promise.all(allKeys.map(async key => {
+                    try {
+                        const res = await axios.get(
+                            `/api/v1/formulator/berkas/stream/foto-uji/${key}?token=${tokenMap[key]}`,
+                            { responseType: "blob" }
+                        );
+                        this.fotoBlobUrls[key] = URL.createObjectURL(res.data);
+                    } catch {}
+                }));
+            } catch {}
+        },
+
+        allFotos() {
+            return this.detailData.flatMap(row =>
+                (row.foto_analisa || []).map(f => ({
+                    url: this.fotoBlobUrls[f.Berkas_Key] || '',
+                    keterangan: f.Keterangan || f.keterangan || ''
+                }))
+            ).filter(p => p.url);
+        },
+
+        openFotoModal() {
+            const photos = this.allFotos();
+            if (!photos.length) return;
+            this.vldFotoModal = { show: true, photos };
         },
 
         revokeBlobUrls() {
@@ -2757,7 +2667,7 @@ export default {
     padding: 7px 10px;
 }
 .vld-row--avg {
-    background: #fffbeb !important;
+    background: #eef2ff !important;
 }
 
 .vld-code {
@@ -2963,16 +2873,42 @@ export default {
     width: 17px;
     height: 17px;
     cursor: pointer;
-    accent-color: #d97706;
+    accent-color: #405189;
     flex-shrink: 0;
 }
 .vld-checkall-count {
     font-size: 11px;
     font-weight: 600;
-    color: #3b82f6;
-    background: #eff6ff;
+    color: #405189;
+    background: #eef2ff;
     border-radius: 20px;
     padding: 2px 8px;
     white-space: nowrap;
 }
+
+/* ── Foto strip & Polaroid modal ─────────────────────────────────────── */
+.vld-foto-strip { padding: 6px 0 0; }
+.vld-foto-btn { display:inline-flex; align-items:center; padding:4px 11px; border:1px solid #c7d2fe; border-radius:5px; background:#eef2ff; color:#405189; font-size:.76rem; font-weight:600; cursor:pointer; }
+.vld-foto-pol-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:1060; display:flex; align-items:center; justify-content:center; padding:14px; backdrop-filter:blur(2px); }
+.vld-foto-pol-modal { background:#fff; border-radius:12px; width:100%; max-width:760px; box-shadow:0 20px 50px rgba(0,0,0,.25); overflow:hidden; }
+.vld-foto-pol-hdr { display:flex; align-items:center; justify-content:space-between; padding:13px 18px; background:linear-gradient(135deg,#2e3a64,#405189); color:#fff; font-weight:600; font-size:.88rem; }
+.vld-foto-pol-hdr button { border:none; background:rgba(255,255,255,.2); color:#fff; border-radius:5px; padding:3px 8px; cursor:pointer; font-size:.9rem; }
+.vld-foto-pol-body { max-height:72vh; overflow-y:auto; padding:16px; }
+.vld-foto-pol-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:120px; }
+.vld-foto-pol-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+@media(max-width:560px){.vld-foto-pol-grid{grid-template-columns:repeat(2,1fr);}}
+.vld-foto-polaroid { background:#fff; border-radius:3px; padding:10px 10px 0; box-shadow:0 3px 10px rgba(0,0,0,.18),0 1px 3px rgba(0,0,0,.1); transition:transform .2s,box-shadow .2s; cursor:pointer; }
+.vld-foto-polaroid:hover { transform:scale(1.04) rotate(-0.5deg); box-shadow:0 8px 24px rgba(0,0,0,.22); }
+.vld-foto-polaroid-img-wrap { width:100%; aspect-ratio:1/1; overflow:hidden; background:#f0f2f5; border-radius:1px; position:relative; }
+.vld-foto-polaroid-img { width:100%; height:100%; object-fit:cover; display:block; }
+.vld-foto-pol-overlay { position:absolute; inset:0; background:rgba(64,81,137,.35); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .18s; color:#fff; font-size:1.4rem; }
+.vld-foto-polaroid:hover .vld-foto-pol-overlay { opacity:1; }
+.vld-foto-polaroid-caption { font-size:.72rem; text-align:center; padding:8px 4px 10px; color:#475569; font-weight:500; line-height:1.3; min-height:34px; display:flex; align-items:center; justify-content:center; }
+/* LIGHTBOX */
+.vld-lb { position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:1090; display:flex; align-items:center; justify-content:center; padding:20px; cursor:zoom-out; }
+.vld-lb-close { position:absolute; top:16px; right:16px; border:none; background:rgba(255,255,255,.15); color:#fff; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; cursor:pointer; transition:background .15s; }
+.vld-lb-close:hover { background:rgba(255,255,255,.3); }
+.vld-lb-inner { display:flex; flex-direction:column; align-items:center; max-width:90vw; max-height:90vh; cursor:default; }
+.vld-lb-img { max-width:100%; max-height:80vh; object-fit:contain; border-radius:4px; box-shadow:0 8px 40px rgba(0,0,0,.6); }
+.vld-lb-caption { margin-top:12px; color:#e2e8f0; font-size:.82rem; font-weight:500; text-align:center; max-width:500px; }
 </style>

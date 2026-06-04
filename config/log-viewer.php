@@ -97,6 +97,7 @@ return [
 
     'middleware' => [
         'web',
+        'log-viewer-key',
         // \Opcodes\LogViewer\Http\Middleware\AuthorizeLogViewer::class,
     ],
 

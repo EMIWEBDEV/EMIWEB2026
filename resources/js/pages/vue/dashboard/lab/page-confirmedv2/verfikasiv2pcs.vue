@@ -40,39 +40,164 @@
                             </div>
                         </div>
                         <div v-else-if="listData.length > 0">
-                            <!-- PLT Palatabilitas Banner -->
+                            <!-- PLT Palatabilitas — Enterprise Display -->
                             <div
-                                v-if="pltItem"
-                                class="alert border-0 shadow-sm mb-4 p-0 overflow-hidden"
-                                style="border-radius: 10px;"
+                                v-if="
+                                    pltPembandingList &&
+                                    pltPembandingList.length > 0
+                                "
+                                class="card border-0 shadow-sm mb-4"
+                                style="border-radius: 10px; overflow: hidden"
                             >
-                                <div class="d-flex align-items-stretch">
-                                    <div
-                                        class="d-flex align-items-center justify-content-center px-4"
-                                        style="background: linear-gradient(135deg, #0ea5e9, #0284c7); min-width: 64px;"
-                                    >
-                                        <i class="fas fa-flask fa-2x text-white"></i>
-                                    </div>
-                                    <div class="flex-grow-1 py-3 px-4" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd);">
-                                        <div class="d-flex align-items-center flex-wrap gap-3">
-                                            <div>
-                                                <div class="text-uppercase fw-bold mb-1" style="font-size: 0.7rem; letter-spacing: 1px; color: #0369a1;">
-                                                    <i class="fas fa-tag me-1"></i>Uji Palatabilitas — Produk Pembanding
-                                                </div>
-                                                <div class="fw-bold text-dark" style="font-size: 1rem;">
-                                                    {{ pltItem.Nama_Pembanding || '-' }}
-                                                </div>
-                                            </div>
-                                            <div class="ms-auto">
-                                                <span class="badge px-3 py-2 rounded-pill" style="background: #0284c7; font-size: 0.82rem; letter-spacing: 0.5px;">
-                                                    <i class="fas fa-barcode me-1"></i>{{ pltItem.Kode_Barang_Pembanding || '-' }}
-                                                </span>
-                                            </div>
+                                <div
+                                    class="d-flex align-items-center px-4 py-3"
+                                    style="
+                                        background: linear-gradient(
+                                            135deg,
+                                            #405189,
+                                            #2e3a64
+                                        );
+                                    "
+                                >
+                                    <i
+                                        class="fas fa-flask fa-lg text-white me-3"
+                                    ></i>
+                                    <div class="text-white">
+                                        <div
+                                            class="fw-bold"
+                                            style="
+                                                font-size: 0.95rem;
+                                                letter-spacing: 0.3px;
+                                            "
+                                        >
+                                            Uji Palatabilitas
                                         </div>
+                                        <div
+                                            style="
+                                                font-size: 0.73rem;
+                                                opacity: 0.8;
+                                                margin-top: 1px;
+                                            "
+                                        >
+                                            Daftar Produk Pembanding
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="badge ms-auto px-3 py-2 rounded-pill"
+                                        style="
+                                            background: rgba(
+                                                255,
+                                                255,
+                                                255,
+                                                0.18
+                                            );
+                                            font-size: 0.78rem;
+                                            color: #fff;
+                                            letter-spacing: 0.3px;
+                                        "
+                                    >
+                                        <i class="fas fa-layer-group me-1"></i
+                                        >{{ pltPembandingList.length }} Produk
+                                    </span>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table
+                                            class="table table-hover align-middle mb-0"
+                                            style="font-size: 0.875rem"
+                                        >
+                                            <thead>
+                                                <tr style="background: #f4f6fb">
+                                                    <th
+                                                        class="px-4 py-2 text-uppercase text-muted fw-semibold border-0"
+                                                        style="
+                                                            font-size: 0.7rem;
+                                                            letter-spacing: 0.8px;
+                                                            width: 50px;
+                                                        "
+                                                    >
+                                                        #
+                                                    </th>
+                                                    <th
+                                                        class="px-4 py-2 text-uppercase text-muted fw-semibold border-0"
+                                                        style="
+                                                            font-size: 0.7rem;
+                                                            letter-spacing: 0.8px;
+                                                        "
+                                                    >
+                                                        Nama Produk Pembanding
+                                                    </th>
+                                                    <th
+                                                        class="px-4 py-2 text-uppercase text-muted fw-semibold border-0"
+                                                        style="
+                                                            font-size: 0.7rem;
+                                                            letter-spacing: 0.8px;
+                                                        "
+                                                    >
+                                                        Kode Barang
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr
+                                                    v-for="(
+                                                        pb, idx
+                                                    ) in pltPembandingList"
+                                                    :key="idx"
+                                                >
+                                                    <td class="px-4 py-3">
+                                                        <span
+                                                            class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold"
+                                                            style="
+                                                                width: 26px;
+                                                                height: 26px;
+                                                                font-size: 0.7rem;
+                                                                background: #405189;
+                                                                color: #fff;
+                                                            "
+                                                            >{{ idx + 1 }}</span
+                                                        >
+                                                    </td>
+                                                    <td
+                                                        class="px-4 py-3 fw-semibold text-dark"
+                                                    >
+                                                        {{ pb.nama }}
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <span
+                                                            v-if="pb.kode"
+                                                            class="badge rounded-pill"
+                                                            style="
+                                                                background: rgba(
+                                                                    64,
+                                                                    81,
+                                                                    137,
+                                                                    0.1
+                                                                );
+                                                                color: #405189;
+                                                                font-size: 0.78rem;
+                                                                padding: 5px
+                                                                    12px;
+                                                            "
+                                                        >
+                                                            <i
+                                                                class="fas fa-barcode me-1"
+                                                            ></i
+                                                            >{{ pb.kode }}
+                                                        </span>
+                                                        <span
+                                                            v-else
+                                                            class="text-muted fst-italic small"
+                                                            >—</span
+                                                        >
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
-                            <!-- End PLT Banner -->
+                            <!-- End PLT Section -->
                             <div class="row mb-3">
                                 <div class="col-xl-12">
                                     <div class="card h-100">
@@ -199,6 +324,12 @@
                                     <thead class="table-light">
                                         <tr>
                                             <th>No</th>
+                                            <th
+                                                v-if="pltPembandingList && pltPembandingList.length"
+                                                style="min-width:130px;background:#e0f2fe;color:#0369a1;white-space:nowrap;"
+                                            >
+                                                <i class="fas fa-flask me-1"></i>Pembanding
+                                            </th>
                                             <th>No Transaksi</th>
                                             <th>No Sampel</th>
                                             <th>No PO</th>
@@ -246,6 +377,13 @@
                                         >
                                             <td>
                                                 {{ rowIndex + 1 }}
+                                            </td>
+                                            <td
+                                                v-if="pltPembandingList && pltPembandingList.length"
+                                                data-label="Pembanding"
+                                                style="background:#f0f9ff;border-left:3px solid #0ea5e9;white-space:nowrap;vertical-align:middle;"
+                                            >
+                                                <span style="font-size:11px;font-weight:700;color:#0369a1;">{{ row.Nama_Pembanding || '—' }}</span>
                                             </td>
                                             <td>
                                                 {{ row.No_Faktur }}
@@ -307,6 +445,7 @@
                                             <td
                                                 :colspan="
                                                     7 +
+                                                    (pltPembandingList && pltPembandingList.length ? 1 : 0) +
                                                     (template.parameter
                                                         ? template.parameter
                                                               .length
@@ -673,6 +812,7 @@ export default {
             dataTracking: [],
             formulaAverages: [],
             fotoBlobUrls: {},
+            pltPembandingList: [],
             template: {
                 parameter: [],
                 formula: [],
@@ -692,9 +832,6 @@ export default {
         };
     },
     computed: {
-        pltItem() {
-            return this.listData?.find((item) => item.is_plt && item.Nama_Pembanding) || null;
-        },
         timelineChartSeries() {
             if (!this.listData || this.listData.length === 0) {
                 return [];
@@ -1245,6 +1382,7 @@ export default {
                         Tanggal: firstItemInGroup.Tanggal_Pengujian || "-",
                         Tanggal_Registrasi:
                             firstItemInGroup.Tanggal_Registrasi || "-",
+                        Nama_Pembanding: firstItemInGroup.Nama_Pembanding || null,
                         parameters: parameterResults,
                         results: finalResults,
                         Range_Awal: firstItemInGroup.Range_Awal,
@@ -1369,8 +1507,12 @@ export default {
                         formula: [],
                     };
 
+                    const rawSampel = response.data.result.sampel;
+                    this.pltPembandingList =
+                        response.data.result.informasi?.plt_pembanding || [];
+
                     const { data, formulaAverages } = this.processItems(
-                        response.data.result.sampel,
+                        rawSampel,
                         this.template
                     );
 

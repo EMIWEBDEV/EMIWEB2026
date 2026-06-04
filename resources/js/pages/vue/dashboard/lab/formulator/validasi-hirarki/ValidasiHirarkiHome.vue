@@ -79,6 +79,11 @@
                                         {{ isSelesaiSemua(item) ? 'Selesai' : hasDitolak(item) ? 'Ditolak' : 'Proses' }}
                                     </span>
                                 </div>
+                                <div class="vld-item-barang" v-if="item.Nama_Barang || item.Kode_Barang">
+                                    <i class="ri-price-tag-3-line me-1"></i>
+                                    <span class="vld-item-barang-name">{{ item.Nama_Barang || item.Kode_Barang }}</span>
+                                    <span v-if="item.Kode_Barang" class="vld-item-kode">{{ item.Kode_Barang }}</span>
+                                </div>
                                 <div class="vld-item-meta">
                                     <span class="vld-chip" :class="getChipClass(item.status_lock_view)">
                                         <i class="ri-lock-line"></i> Lock
@@ -158,6 +163,66 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Info Registrasi Sampel -->
+                        <div class="vld-reg-info" v-if="!loading.detail && (detailInfo.Nama_Barang || detailInfo.Kode_Barang || detailInfo.Catatan)">
+                            <div class="vld-reg-info-row">
+                                <div class="vld-reg-info-item">
+                                    <span class="vld-reg-lbl"><i class="ri-shopping-bag-line me-1"></i>Nama Barang</span>
+                                    <span class="vld-reg-val">{{ detailInfo.Nama_Barang || '—' }}</span>
+                                </div>
+                                <div class="vld-reg-info-item">
+                                    <span class="vld-reg-lbl"><i class="ri-price-tag-3-line me-1"></i>Kode Barang</span>
+                                    <span class="vld-reg-val fw-semibold text-primary">{{ detailInfo.Kode_Barang || '—' }}</span>
+                                </div>
+                                <div class="vld-reg-info-item" v-if="detailInfo.Catatan">
+                                    <span class="vld-reg-lbl"><i class="ri-sticky-note-line me-1"></i>Catatan</span>
+                                    <span class="vld-reg-val fst-italic text-muted">{{ detailInfo.Catatan }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Info Strip: Input Analyzer + Validator -->
+                    <div class="vld-audit-strip" v-if="loading.audit || auditLog.length > 0">
+                        <div v-if="loading.audit" class="vld-audit-strip-loading">
+                            <span class="spinner-border spinner-border-sm text-secondary"></span>
+                        </div>
+                        <template v-else>
+                            <!-- Input Analyzer section -->
+                            <span class="vld-audit-strip-lbl">
+                                <i class="ri-test-tube-line me-1"></i>Analyzer
+                            </span>
+                            <div class="vld-audit-strip-chips me-3">
+                                <span
+                                    v-for="(log, i) in inputAnalyzerLog"
+                                    :key="'ia-'+i"
+                                    class="vld-audit-chip vld-audit-chip--ok"
+                                >
+                                    <i class="ri-user-line me-1"></i>
+                                    {{ log.Nama_User || log.Id_User }}
+                                    <span class="vld-audit-chip-time">{{ log.Tanggal }}</span>
+                                </span>
+                                <span v-if="inputAnalyzerLog.length === 0" class="text-muted" style="font-size:11px;padding:2px 6px;">—</span>
+                            </div>
+                            <!-- Validator section -->
+                            <span class="vld-audit-strip-lbl">
+                                <i class="ri-user-follow-line me-1"></i>Validasi
+                            </span>
+                            <div class="vld-audit-strip-chips">
+                                <span
+                                    v-for="(log, i) in auditValidators"
+                                    :key="'vld-'+i"
+                                    class="vld-audit-chip"
+                                    :class="log.Sub_Aksi === 'SETUJU' ? 'vld-audit-chip--ok' : 'vld-audit-chip--no'"
+                                >
+                                    <i :class="log.Sub_Aksi === 'SETUJU' ? 'ri-checkbox-circle-line' : 'ri-close-circle-line'" class="me-1"></i>
+                                    {{ log.Nama_User || log.Id_User }}
+                                    <span class="vld-audit-chip-time">{{ log.Tanggal }}</span>
+                                </span>
+                                <span v-if="auditValidators.length === 0" class="text-muted" style="font-size:11px;padding:2px 6px;">Belum divalidasi</span>
+                            </div>
+                        </template>
                     </div>
 
                     <!-- Step tabs bar -->
@@ -312,8 +377,8 @@
                                                         </td>
                                                         <td>
                                                             <template v-if="item.Flag_Foto === 'Y'">
-                                                                <button v-if="item.File_Url" @click="lihatFoto(item.File_Url)" class="btn btn-sm btn-outline-info rounded-pill px-2">
-                                                                    <i class="ri-image-line me-1"></i>Lihat
+                                                                <button v-if="item.foto_list && item.foto_list.length > 0" @click="lihatFoto(item.foto_list)" class="btn btn-sm btn-outline-info rounded-pill px-2">
+                                                                    <i class="ri-image-line me-1"></i>Lihat ({{ item.foto_list.length }})
                                                                 </button>
                                                                 <span v-else class="text-danger small fst-italic">Belum</span>
                                                             </template>
@@ -374,8 +439,8 @@
                                                         </td>
                                                         <td>
                                                             <template v-if="item.Flag_Foto === 'Y'">
-                                                                <button v-if="item.File_Url" @click="lihatFoto(item.File_Url)" class="btn btn-sm btn-outline-info rounded-pill px-2">
-                                                                    <i class="ri-image-line me-1"></i>Lihat
+                                                                <button v-if="item.foto_list && item.foto_list.length > 0" @click="lihatFoto(item.foto_list)" class="btn btn-sm btn-outline-info rounded-pill px-2">
+                                                                    <i class="ri-image-line me-1"></i>Lihat ({{ item.foto_list.length }})
                                                                 </button>
                                                                 <span v-else class="text-danger small fst-italic">Belum</span>
                                                             </template>
@@ -579,6 +644,44 @@
             </div>
         </div>
     </div>
+
+    <!-- LIGHTBOX -->
+    <div v-if="lightbox.show" class="vld-lightbox" @click="lightbox.show=false">
+        <button class="vld-lightbox-close" @click.stop="lightbox.show=false"><i class="ri-close-line"></i></button>
+        <div class="vld-lightbox-inner" @click.stop>
+            <img :src="lightbox.url" class="vld-lightbox-img" />
+            <div v-if="lightbox.keterangan" class="vld-lightbox-caption">{{ lightbox.keterangan }}</div>
+        </div>
+    </div>
+
+    <!-- FOTO MODAL - Polaroid Grid -->
+    <div v-if="fotoModal.show" class="vld-foto-backdrop" @click.self="fotoModal.show = false">
+        <div class="vld-foto-modal vld-foto-modal--wide">
+            <div class="vld-foto-modal-hdr">
+                <span><i class="ri-image-2-line me-2"></i>Foto Analisa <span class="text-muted" style="font-size:.75rem;">({{ fotoModal.photos.length }} foto)</span></span>
+                <button @click="fotoModal.show = false"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="vld-foto-modal-body vld-foto-grid-wrap">
+                <div v-if="fotoModal.loading" class="vld-foto-loading">
+                    <span class="spinner-border spinner-border-sm me-2 text-primary"></span>
+                    <span class="text-muted small">Memuat foto...</span>
+                </div>
+                <div v-else-if="fotoModal.photos.length === 0" class="vld-foto-empty">
+                    <i class="ri-image-line fs-1 text-muted"></i>
+                    <p class="text-muted small mt-2">Tidak ada foto tersedia</p>
+                </div>
+                <div v-else class="vld-foto-grid">
+                    <div v-for="(photo, pi) in fotoModal.photos" :key="pi" class="vld-polaroid" @click="lightbox={show:true,url:photo.url,keterangan:photo.keterangan}">
+                        <div class="vld-polaroid-img-wrap">
+                            <img :src="photo.url" class="vld-polaroid-img" :alt="photo.keterangan||'Foto '+(pi+1)" />
+                            <div class="vld-polaroid-overlay"><i class="ri-zoom-in-line"></i></div>
+                        </div>
+                        <div class="vld-polaroid-caption">{{ photo.keterangan || '—' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script>
@@ -591,7 +694,7 @@ export default {
             listData: [],
             searchQuery: "",
             pagination: { page: 1, limit: 12, totalPage: 0, totalData: 0 },
-            loading: { list: false, detail: false, action: false },
+            loading: { list: false, detail: false, action: false, audit: false },
 
             selectedItem: null,
             detailVisible: false,
@@ -599,12 +702,18 @@ export default {
 
             listKlasifikasi: [],
             detailValidasiData: [],
+            detailInfo: { Kode_Barang: null, Nama_Barang: null, Catatan: null },
             activeStep: 0,
             templateDataMap: {},
             acknowledgementChecked: false,
 
             formTolak: { alasan: "" },
             formBatal: { alasan: "" },
+
+            auditLog: [],
+            blobUrlCache: {},
+            fotoModal: { show: false, photos: [], loading: false },
+            lightbox: { show: false, url: '', keterangan: '' },
         };
     },
 
@@ -620,10 +729,14 @@ export default {
         },
 
         currentStepData() {
-            if (!this.detailValidasiData.length || !this.listKlasifikasi.length) return null;
+            if (!this.detailValidasiData.length) return null;
+            if (!this.listKlasifikasi.length) {
+                // Fallback: show by index when klasifikasi list not yet loaded
+                return this.detailValidasiData[this.activeStep] || this.detailValidasiData[0] || null;
+            }
             const idx = Math.min(this.activeStep, this.listKlasifikasi.length - 1);
             const kode = this.listKlasifikasi[idx].Kode_Aktivitas_Lab;
-            return this.detailValidasiData.find(s => s.Kode_Aktivitas_Lab === kode) || null;
+            return this.detailValidasiData.find(s => s.Kode_Aktivitas_Lab === kode) || this.detailValidasiData[0] || null;
         },
 
         groupedANLData() {
@@ -690,6 +803,14 @@ export default {
                 this.currentStepData.pending_analisa.length > 0 &&
                 !this.acknowledgementChecked
             );
+        },
+
+        inputAnalyzerLog() {
+            return this.auditLog.filter(l => l.Jenis_Aksi === 'INPUT_ANALYZER');
+        },
+
+        auditValidators() {
+            return this.auditLog.filter(l => l.Jenis_Aksi === 'VALIDASI_FORMULATOR');
         },
     },
 
@@ -790,8 +911,23 @@ export default {
             this.detailVisible = true;
             this.activeStep = 0;
             this.detailValidasiData = [];
+            this.detailInfo = { Kode_Barang: null, Nama_Barang: null, Catatan: null };
+            this.auditLog = [];
             this.acknowledgementChecked = false;
+            this.fetchAuditLog(item.No_Po_Sampel);
             await this.fetchDetail(item.No_Po_Sampel);
+        },
+
+        async fetchAuditLog(noSampel) {
+            this.loading.audit = true;
+            try {
+                const res = await axios.get(`/api/v1/log-aksi/by-sampel/${noSampel}`);
+                this.auditLog = res.data?.success ? res.data.result || [] : [];
+            } catch {
+                this.auditLog = [];
+            } finally {
+                this.loading.audit = false;
+            }
         },
 
         async fetchDetail(noSampel) {
@@ -800,6 +936,11 @@ export default {
                 const res = await axios.get(`/api/v1/validasi/pra-finalisasi/detail/by/${noSampel}`);
                 if (res.status === 200 && res.data?.result?.steps) {
                     this.detailValidasiData = res.data.result.steps;
+                    this.detailInfo = {
+                        Kode_Barang: res.data.result.Kode_Barang || null,
+                        Nama_Barang: res.data.result.Nama_Barang || null,
+                        Catatan:     res.data.result.Catatan     || null,
+                    };
 
                     const anlStep = this.detailValidasiData.find(s => s.Kode_Aktivitas_Lab === "ANL");
                     if (anlStep && anlStep.data_analisa) {
@@ -856,9 +997,8 @@ export default {
                 };
                 const res = await axios.post("/api/v1/validasi/pra-finalisasi/store-hirarki", payload);
                 if (res.status === 200) {
-                    Swal.fire({ icon: "success", title: "Berhasil", text: "Tahap berhasil disetujui.", timer: 1500, showConfirmButton: false });
-                    this.fetchDetail(this.selectedItem.No_Po_Sampel);
-                    this.fetchList(this.pagination.page);
+                    Swal.fire({ icon: "success", title: "Berhasil", text: "Tahap berhasil disetujui.", timer: 1500, showConfirmButton: false })
+                        .then(() => window.location.reload());
                 }
             } catch (e) {
                 Swal.fire("Gagal!", e.response?.data?.message || "Gagal menyetujui.", "error");
@@ -887,9 +1027,8 @@ export default {
                 if (res.status === 200) {
                     const el = document.getElementById("offcanvasTolak");
                     if (el) bootstrap.Offcanvas.getInstance(el)?.hide();
-                    Swal.fire({ icon: "warning", title: "Ditolak", text: "Tahap berhasil ditolak.", timer: 1500, showConfirmButton: false });
-                    this.fetchDetail(this.selectedItem.No_Po_Sampel);
-                    this.fetchList(this.pagination.page);
+                    Swal.fire({ icon: "warning", title: "Ditolak", text: "Tahap berhasil ditolak.", timer: 1500, showConfirmButton: false })
+                        .then(() => window.location.reload());
                 }
             } catch (e) {
                 Swal.fire("Gagal!", e.response?.data?.message || "Gagal menolak.", "error");
@@ -909,11 +1048,7 @@ export default {
                     const el = document.getElementById("offcanvasBatal");
                     if (el) bootstrap.Offcanvas.getInstance(el)?.hide();
                     Swal.fire({ icon: "success", title: "Berhasil", text: "Sampel berhasil dibatalkan.", timer: 1500, showConfirmButton: false })
-                        .then(() => {
-                            this.selectedItem = null;
-                            this.detailVisible = false;
-                            this.fetchList(1);
-                        });
+                        .then(() => window.location.reload());
                 }
             } catch (e) {
                 Swal.fire("Gagal!", e.response?.data?.message || "Gagal membatalkan.", "error");
@@ -941,11 +1076,7 @@ export default {
                 });
                 if (res.status === 200) {
                     Swal.fire({ icon: "success", title: "Berhasil!", text: "Sampel berhasil di-finalisasi.", timer: 2000 })
-                        .then(() => {
-                            this.selectedItem = null;
-                            this.detailVisible = false;
-                            this.fetchList(1);
-                        });
+                        .then(() => window.location.reload());
                 }
             } catch (e) {
                 if (e.response?.status === 422) {
@@ -963,8 +1094,30 @@ export default {
             }
         },
 
-        lihatFoto(url) {
-            if (url) window.open(url, "_blank", "noopener,noreferrer");
+        async lihatFoto(fotoList) {
+            if (!fotoList || fotoList.length === 0) return;
+            this.fotoModal = { show: true, photos: [], loading: true };
+            try {
+                const keysToFetch = fotoList.map(f => f.Berkas_Key).filter(k => k && !this.blobUrlCache[k]);
+                if (keysToFetch.length > 0) {
+                    const tokenRes = await axios.post('/api/v1/formulator/hasil-uji/berkas/foto/token/bulk', { keys: keysToFetch });
+                    const tokenMap = tokenRes.data || {};
+                    await Promise.all(keysToFetch.map(async k => {
+                        try {
+                            const res = await axios.get(`/api/v1/formulator/berkas/stream/foto-uji/${k}?token=${tokenMap[k]}`, { responseType: 'blob' });
+                            this.blobUrlCache[k] = URL.createObjectURL(res.data);
+                        } catch {}
+                    }));
+                }
+                const photos = fotoList.map(f => ({
+                    url: this.blobUrlCache[f.Berkas_Key] || '',
+                    keterangan: f.keterangan || f.Keterangan || ''
+                })).filter(p => p.url);
+                this.fotoModal = { show: true, loading: false, photos };
+            } catch (e) {
+                console.error('lihatFoto error:', e);
+                this.fotoModal = { show: true, loading: false, photos: [] };
+            }
         },
 
         formatTanggal(s) {
@@ -1171,6 +1324,34 @@ export default {
     flex: 1;
     min-width: 0;
 }
+.vld-item-barang {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 5px;
+    font-size: 11px;
+    color: #495057;
+    overflow: hidden;
+}
+.vld-item-barang i { color: #878a99; flex-shrink: 0; }
+.vld-item-barang-name {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+.vld-item-kode {
+    flex-shrink: 0;
+    font-size: 10px;
+    background: #eef0f9;
+    color: #405189;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
 .vld-item-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .vld-item-arrow { align-self: center; flex-shrink: 0; padding: 0 6px; color: #ced4da; font-size: 16px; }
 .vld-item--active .vld-item-arrow { color: #405189; }
@@ -1246,16 +1427,14 @@ export default {
 /* ── Sticky detail header ─────────────────────────────────────────────── */
 .vld-detail-header {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
+    flex-direction: column;
+    gap: 0;
     padding: 12px 16px;
     background: #fff;
     border-bottom: 1px solid #e9ebec;
     flex-shrink: 0;
-    flex-wrap: wrap;
 }
-.vld-dh-main { display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0; }
+.vld-dh-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; flex: 1; min-width: 0; }
 .vld-dh-icon {
     width: 38px; height: 38px;
     border-radius: 10px;
@@ -1270,6 +1449,40 @@ export default {
 .vld-dh-title { font-size: 14px; font-weight: 700; color: #1a1d23; line-height: 1.2; margin-bottom: 2px; }
 .vld-dh-sub { font-size: 11px; color: #878a99; margin-bottom: 6px; }
 .vld-dh-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* ── Info Registrasi Sampel ───────────────────────────────────────────── */
+.vld-reg-info {
+    width: 100%;
+    background: #f8f9fd;
+    border: 1px solid #e2e6f0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-top: 10px;
+}
+.vld-reg-info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 24px;
+}
+.vld-reg-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 120px;
+}
+.vld-reg-lbl {
+    font-size: 10px;
+    font-weight: 600;
+    color: #878a99;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.vld-reg-val {
+    font-size: 12px;
+    color: #1a1d23;
+    line-height: 1.4;
+    word-break: break-word;
+}
 
 /* ── Step tabs bar ────────────────────────────────────────────────────── */
 .vld-subpo-bar {
@@ -1421,6 +1634,41 @@ export default {
 .vld-chip--blue { background: #eef0f9; color: #405189; }
 .vld-chip--gray { background: #f0f2f5; color: #6c757d; }
 .vld-chip--orange { background: #fef3c7; color: #d97706; }
+/* ── Audit validators strip ─────────────────────────────────────────── */
+.vld-audit-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e9ebec;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+.vld-audit-strip-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+.vld-audit-strip-loading { display: flex; align-items: center; }
+.vld-audit-strip-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.vld-audit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.vld-audit-chip--ok { background: #d1fae5; color: #065f46; }
+.vld-audit-chip--no { background: #fee2e2; color: #991b1b; }
+.vld-audit-chip-time { font-size: 10px; opacity: 0.65; margin-left: 2px; }
+.vld-audit-chip-type { font-size: 9px; text-transform: uppercase; opacity: 0.75; margin-right: 2px; }
 
 /* ── Sticky action bar ────────────────────────────────────────────────── */
 .vld-action-bar {
@@ -1465,4 +1713,45 @@ export default {
     .vld-mini-stats { flex-direction: row; }
     .vld-ms-item { min-width: calc(50% - 4px); }
 }
+
+/* ── Foto Modal - Polaroid ────────────────────────────────────────────── */
+.vld-foto-backdrop {
+    position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 1060;
+    display: flex; align-items: center; justify-content: center; padding: 14px;
+    backdrop-filter: blur(2px);
+}
+.vld-foto-modal {
+    background: #fff; border-radius: 12px; width: 100%; max-width: 500px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25); overflow: hidden;
+}
+.vld-foto-modal--wide { max-width: 760px; }
+.vld-foto-modal-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 18px; background: linear-gradient(135deg,#2e3a64,#405189);
+    color: #fff; font-weight: 600; font-size: .88rem;
+}
+.vld-foto-modal-hdr button {
+    border: none; background: rgba(255,255,255,.2); color: #fff;
+    border-radius: 5px; padding: 3px 8px; cursor: pointer; font-size: .9rem;
+}
+.vld-foto-modal-body { padding: 18px; }
+.vld-foto-grid-wrap { max-height: 72vh; overflow-y: auto; padding: 16px; }
+.vld-foto-loading { display: flex; align-items: center; justify-content: center; min-height: 120px; }
+.vld-foto-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 120px; }
+.vld-foto-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+@media(max-width:560px){.vld-foto-grid{grid-template-columns:repeat(2,1fr);}}
+.vld-polaroid { background:#fff; border-radius:3px; padding:10px 10px 0; box-shadow:0 3px 10px rgba(0,0,0,.18),0 1px 3px rgba(0,0,0,.1); transition:transform .2s,box-shadow .2s; cursor:pointer; }
+.vld-polaroid:hover { transform:scale(1.04) rotate(-0.5deg); box-shadow:0 8px 24px rgba(0,0,0,.22); }
+.vld-polaroid-img-wrap { width:100%; aspect-ratio:1/1; overflow:hidden; background:#f0f2f5; border-radius:1px; position:relative; }
+.vld-polaroid-img { width:100%; height:100%; object-fit:cover; display:block; }
+.vld-polaroid-overlay { position:absolute; inset:0; background:rgba(64,81,137,.35); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .18s; color:#fff; font-size:1.4rem; }
+.vld-polaroid:hover .vld-polaroid-overlay { opacity:1; }
+.vld-polaroid-caption { font-size:.72rem; text-align:center; padding:8px 4px 10px; color:#475569; font-weight:500; line-height:1.3; min-height:34px; display:flex; align-items:center; justify-content:center; }
+/* LIGHTBOX */
+.vld-lightbox { position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:1080; display:flex; align-items:center; justify-content:center; padding:20px; cursor:zoom-out; }
+.vld-lightbox-close { position:absolute; top:16px; right:16px; border:none; background:rgba(255,255,255,.15); color:#fff; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; cursor:pointer; transition:background .15s; }
+.vld-lightbox-close:hover { background:rgba(255,255,255,.3); }
+.vld-lightbox-inner { display:flex; flex-direction:column; align-items:center; max-width:90vw; max-height:90vh; cursor:default; }
+.vld-lightbox-img { max-width:100%; max-height:80vh; object-fit:contain; border-radius:4px; box-shadow:0 8px 40px rgba(0,0,0,.6); }
+.vld-lightbox-caption { margin-top:12px; color:#e2e8f0; font-size:.82rem; font-weight:500; text-align:center; max-width:500px; }
 </style>

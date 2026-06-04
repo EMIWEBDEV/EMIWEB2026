@@ -27,11 +27,13 @@ use App\Http\Controllers\SubMenuController;
 use App\Http\Controllers\PalatabilitasController;
 use App\Http\Controllers\UjiSampelController;
 use App\Http\Controllers\UjiValidasiFinalController;
+use App\Http\Controllers\MonitoringAnalisa\MonitoringAnalisaController;
 
 Route::get('/', [AuthController::class, 'form_login'])->name('login.form')->middleware('guest', 'autotrack');
 
 Route::post('/proses_login', [AuthController::class, 'proses_login'])->name('proses_login')->middleware('guest', 'web');
 Route::get('/logout-clear', [AuthController::class, 'logoutclear']);
+
 
 Route::get('/checking', function (\Illuminate\Http\Request $request) {
     $key = $request->query('key');
@@ -198,6 +200,8 @@ Route::middleware(['auth', 'web'])->group(function () {
 
     Route::get('/api/v1/lab/validasi-akhir-close/uji-sampel/{no_sampel}', [UjiSampelController::class, 'validasiHasilAkhirDariValidasiAwalJenisAnalisaV1']);
     Route::get('/api/v1/lab/hasil-analisa/uji-sampel', [UjiSampelController::class, 'getDataHasilAnalisaSelesai']);
+    Route::get('/api/v1/lab/hasil-analisa/per-produk/semua', [UjiSampelController::class, 'getDataHasilAnalisaSelesaiPerProduk']);
+    Route::get('/api/v1/lab/hasil-analisa/per-produk/detail-jenis/{no_po_sampel}', [UjiSampelController::class, 'getDataJenisAnalisaBySampel']);
     Route::get('/api/v1/lab/hasil-analisa/{id_jenis_analisa}', [UjiSampelController::class, 'getDataHasilAnalisaSelesaiByJenisAnalisa']);
     Route::get('/api/v1/lab/hasil-analisa/sub/{id_jenis_analisa}/{no_po_sampel}', [UjiSampelController::class, 'getDataHasilAnalisaSubPoByJenisAnalisa']);
     Route::get('/api/v1/lab/confirmed-selesai/uji-sampel/by/{id_analisa}', [UjiSampelController::class, 'getDataConfirmedSelesaiByJenisAnalisa']);
@@ -214,11 +218,19 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get   ('/api/v1/palatabilitas/sementara',         [PalatabilitasController::class, 'getSementara']);
     Route::post  ('/api/v1/palatabilitas/sementara',         [PalatabilitasController::class, 'saveSementara']);
     Route::delete('/api/v1/palatabilitas/sementara/{id}',    [PalatabilitasController::class, 'deleteSementara']);
-    Route::post  ('/api/v1/palatabilitas/finalisasi',        [PalatabilitasController::class, 'finalisasi']);
-    Route::get   ('/api/v1/palatabilitas/kelengkapan',       [PalatabilitasController::class, 'getKelengkapan']);
-    Route::get   ('/api/v1/palatabilitas/hasil',             [PalatabilitasController::class, 'getHasil']);
+    Route::post  ('/api/v1/palatabilitas/finalisasi',           [PalatabilitasController::class, 'finalisasi']);
+    Route::get   ('/api/v1/palatabilitas/resampling-pending',  [PalatabilitasController::class, 'getResamplingPending']);
+    Route::post  ('/api/v1/palatabilitas/finalisasi-resampling',[PalatabilitasController::class, 'finalisasiResampling']);
+    Route::get   ('/api/v1/palatabilitas/kelengkapan',          [PalatabilitasController::class, 'getKelengkapan']);
+    Route::get   ('/api/v1/palatabilitas/hasil',                [PalatabilitasController::class, 'getHasil']);
     Route::get   ('/lab/palatabilitas/{no_po_sampel}',       [PalatabilitasController::class, 'viewPalatabilitasManagement'])->middleware('autotrack');
     // ── End Palatabilitas ─────────────────────────────────────────────────────
+
+    // ── Monitoring Analisa ────────────────────────────────────────────────────
+    Route::get('/lab/monitoring-analisa', [MonitoringAnalisaController::class, 'index'])->middleware('autotrack');
+    Route::get('/api/v1/monitoring-analisa', [MonitoringAnalisaController::class, 'getMonitoringData']);
+    Route::get('/api/v1/monitoring-analisa/detail', [MonitoringAnalisaController::class, 'getMonitoringDetail']);
+    // ── End Monitoring Analisa ────────────────────────────────────────────────
     Route::get('/fetch/lab/{id_mesin}/{id_analisa}/parameter-perhitungan', [UjiSampelController::class, 'getParameterAndPerhitungan']);
     Route::get('/fetch/lab/lama/{id_analisa}/parameter-perhitungan-old', [UjiSampelController::class, 'getParameterAndPerhitunganOld']);
     Route::get('/api/v1/{no_PO_Multiqr}/multi-print/{id_jenis_analisa}', [UjiSampelController::class, 'getPoSampelMultiQrDetail']);
@@ -318,6 +330,7 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::post('/api/v1/hasil-analisa-close/finalisasi/{no_sampel}', [UjiValidasiFinalController::class, 'store']);
     Route::post('/api/v1/hasil-analisa-close/finalisasi/bulk/closingberkala', [UjiValidasiFinalController::class, 'storeBulk']);
     Route::get('/api/v1/hasil-analisa/produk-rilis-current', [UjiValidasiFinalController::class, 'getDataCurrentHasilFinalValidasi']);
+    Route::get('/api/v1/log-aksi/by-sampel/{no_sampel}', [UjiValidasiFinalController::class, 'getAuditLogBySampel']);
     Route::get('/api/v1/po-done/close-by-produksi', [QuisyController::class, 'getDataCurrentPoYangDiClose']);
     Route::post('/api/v1/quisy-pembatalan/pelepasan-po-close/{no_po}', [QuisyController::class, 'BukaKembaliPoYangSudahDiClose']);
 
@@ -410,6 +423,60 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::put("/pengajuan-uji-buka-sampel/update/{Id_Pengajuan_Buka_Ulang}", [PengajuanBukaUlangUjiSampelController::class, 'update']);
     Route::get("/progress-sistem/uji-analisa", [ProgressAnalisaSampelController::class, 'index'])->middleware('autotrack', 'permission:Status_Data_Analisa,VIEW');
     Route::get("/api/v1/progress-sistem/uji-analisa/current", [ProgressAnalisaSampelController::class, 'getDataCurrent'])->middleware('permission:Status_Data_Analisa,VIEW');
+});
+
+Route::post('/api/v1/export-sampel-job', [UjiSampelController::class, 'dispatchExportJob']);
+Route::get('/api/v1/export-status/{trackId}', [UjiSampelController::class, 'checkExportStatus']);
+Route::get('/api/v1/export-download/{trackId}', [UjiSampelController::class, 'downloadExport']);
+Route::delete('/api/v1/export-file/{trackId}', [UjiSampelController::class, 'deleteExportFile']);
+
+// ── Cloud Tasks Handler ────────────────────────────────────────────────────
+// Package stackkit/laravel-google-cloud-tasks-queue SUDAH auto-register route
+// di path CLOUD_TASKS_URI (lihat CloudTasksServiceProvider::registerRoutes()).
+// TIDAK perlu register manual di sini.
+//
+// Yang wajib diset di Cloud Run env:
+//   CLOUD_TASKS_URI = api/cloudtasks/handle
+//   CLOUD_TASKS_HANDLER_URL = https://emi-lab-web-595840247695.asia-southeast1.run.app/api/cloudtasks/handle
+// ─────────────────────────────────────────────────────────────────────────
+
+// Diagnostik: cek konfigurasi queue & Cloud Tasks dari browser
+Route::get('/api/v1/export-diagnostics', function () {
+    $queueConn  = config('queue.default');
+    $handlerUrl = config('queue.connections.cloudtasks.handler', '-');
+    $ctUri      = config('cloud-tasks.uri', 'handle-task');
+    $project    = config('queue.connections.cloudtasks.project', '-');
+    $queue      = config('queue.connections.cloudtasks.queue', '-');
+
+    $handlerPath = parse_url($handlerUrl, PHP_URL_PATH);
+    $uriMatch    = $handlerPath === '/' . ltrim($ctUri, '/');
+
+    // Route yang auto-registered oleh package di path CLOUD_TASKS_URI
+    $registeredRoutes = collect(\Illuminate\Support\Facades\Route::getRoutes())
+        ->filter(fn($r) => str_contains($r->uri(), 'cloudtasks') || str_contains($r->uri(), 'handle-task'))
+        ->map(fn($r) => ['method' => implode('|', $r->methods()), 'uri' => $r->uri()])
+        ->values();
+
+    $ctRouteRegistered = $registeredRoutes->contains(fn($r) => $r['uri'] === ltrim($ctUri, '/'));
+
+    return response()->json([
+        'status'                 => ($uriMatch && $ctRouteRegistered) ? '✅ Config OK' : '❌ Ada masalah',
+        'uri_match'              => $uriMatch,
+        'ct_route_registered'    => $ctRouteRegistered,
+        'action_required'        => $uriMatch ? null : 'Set CLOUD_TASKS_URI=' . ltrim($handlerPath, '/') . ' di Cloud Run',
+        'queue_connection'       => $queueConn,
+        'cloud_tasks_uri'        => $ctUri,
+        'handler_url'            => $handlerUrl,
+        'handler_path'           => $handlerPath,
+        'registered_ct_routes'   => $registeredRoutes,
+        'route_cached'           => file_exists(base_path('bootstrap/cache/routes-v7.php')),
+        'config_cached'          => file_exists(base_path('bootstrap/cache/config.php')),
+        'project'                => $project,
+        'queue'                  => $queue,
+        'app_env'                => app()->environment(),
+        'app_url'                => config('app.url'),
+        'php_version'            => PHP_VERSION,
+    ]);
 });
 
 require base_path('routes/FormulatorRegistrasi/FormulatorRegistrasiWeb.php');

@@ -107,18 +107,27 @@
                     <!-- Items -->
                     <div v-else>
                         <!-- Check All Bar -->
-                        <div class="vld-checkall-bar" v-if="listData.length > 0">
+                        <div
+                            class="vld-checkall-bar"
+                            v-if="listData.length > 0"
+                        >
                             <label class="vld-checkall-label">
                                 <input
                                     type="checkbox"
                                     class="vld-checkall-cb"
                                     :checked="allCurrentPageChecked"
-                                    :indeterminate.prop="someCurrentPageChecked && !allCurrentPageChecked"
+                                    :indeterminate.prop="
+                                        someCurrentPageChecked &&
+                                        !allCurrentPageChecked
+                                    "
                                     @change="toggleCheckAll"
                                 />
                                 <span>Pilih Semua</span>
                             </label>
-                            <span v-if="selectedItems.length > 0" class="vld-checkall-count">
+                            <span
+                                v-if="selectedItems.length > 0"
+                                class="vld-checkall-count"
+                            >
                                 {{ selectedItems.length }} item dipilih
                             </span>
                         </div>
@@ -407,6 +416,30 @@
                         </div>
                     </div>
 
+                    <!-- Input Analyzer Strip -->
+                    <div class="vld-audit-strip" v-if="loading.audit || auditLog.length > 0">
+                        <span class="vld-audit-strip-lbl">
+                            <i class="ri-test-tube-line me-1"></i>Input Analyzer
+                        </span>
+                        <div v-if="loading.audit" class="vld-audit-strip-loading">
+                            <span class="spinner-border spinner-border-sm text-secondary"></span>
+                        </div>
+                        <div v-else class="vld-audit-strip-chips">
+                            <span
+                                v-for="(log, i) in auditValidators"
+                                :key="i"
+                                class="vld-audit-chip vld-audit-chip--ok"
+                            >
+                                <i class="ri-user-line me-1"></i>
+                                {{ log.Nama_User || log.Id_User }}
+                                <span class="vld-audit-chip-time">{{ log.Tanggal }}</span>
+                            </span>
+                            <span v-if="auditValidators.length === 0" class="text-muted" style="font-size:11px;padding:2px 6px;">
+                                Data analis belum tersedia
+                            </span>
+                        </div>
+                    </div>
+
                     <!-- Sub-PO selector (Multi QR only) -->
                     <div
                         v-if="selectedItem.Flag_Multi_QrCode === 'Y'"
@@ -522,7 +555,10 @@
                                 </div>
                                 <div
                                     class="vld-ms-item vld-ms-item--info"
-                                    v-if="formulaAverages.length > 0"
+                                    v-if="
+                                        formulaAverages.length > 0 &&
+                                        !informasiData?.is_plt
+                                    "
                                 >
                                     <span class="vld-ms-val">{{
                                         formulaAverages[0]
@@ -566,6 +602,73 @@
                                 </div>
                             </div>
 
+                            <div
+                                v-if="
+                                    informasiData?.is_plt &&
+                                    informasiData?.plt_pembanding_nama
+                                "
+                                class="d-flex align-items-center justify-content-between p-3 mb-3 rounded shadow-sm"
+                                style="
+                                    background-color: #f3f6f9;
+                                    border-left: 4px solid #405189 !important;
+                                "
+                            >
+                                <div class="d-flex align-items-center gap-3">
+                                    <div
+                                        class="d-flex align-items-center justify-content-center bg-white rounded shadow-sm"
+                                        style="
+                                            width: 42px;
+                                            height: 42px;
+                                            color: #405189;
+                                        "
+                                    >
+                                        <i
+                                            class="ri-test-tube-line"
+                                            style="font-size: 1.5rem"
+                                        ></i>
+                                    </div>
+
+                                    <div>
+                                        <h6
+                                            class="mb-1 fw-bold"
+                                            style="
+                                                color: #212529;
+                                                font-size: 0.95rem;
+                                            "
+                                        >
+                                            Referensi Uji Palatabilitas
+                                        </h6>
+                                        <p
+                                            class="text-muted mb-0"
+                                            style="font-size: 0.8rem"
+                                        >
+                                            Data sampel ini dianalisa dengan
+                                            membandingkannya terhadap produk
+                                            standar.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="text-end">
+                                    <span
+                                        class="d-block text-muted fw-bold mb-1"
+                                        style="
+                                            font-size: 0.65rem;
+                                            text-transform: uppercase;
+                                            letter-spacing: 0.5px;
+                                        "
+                                    >
+                                        Produk Pembanding
+                                    </span>
+                                    <span
+                                        class="badge border border-primary text-primary bg-white px-3 py-2"
+                                        style="font-size: 0.85rem"
+                                    >
+                                        {{ informasiData.plt_pembanding_nama }}
+                                    </span>
+                                </div>
+                            </div>
+
                             <!-- Section: Data Table -->
                             <div class="vld-section">
                                 <div class="vld-section-hd">
@@ -592,6 +695,12 @@
                                                         style="width: 36px"
                                                     >
                                                         #
+                                                    </th>
+                                                    <th
+                                                        v-if="informasiData && informasiData.is_plt"
+                                                        style="min-width:130px;background:#e0f2fe;color:#0369a1;white-space:nowrap;"
+                                                    >
+                                                        <i class="fas fa-flask me-1"></i>Pembanding
                                                     </th>
                                                     <th>No Transaksi</th>
                                                     <th>No Sampel</th>
@@ -648,6 +757,13 @@
                                                         class="text-center fw-semibold"
                                                     >
                                                         {{ ri + 1 }}
+                                                    </td>
+                                                    <td
+                                                        v-if="informasiData && informasiData.is_plt"
+                                                        data-label="Pembanding"
+                                                        style="background:#f0f9ff;border-left:3px solid #0ea5e9;white-space:nowrap;vertical-align:middle;"
+                                                    >
+                                                        <span style="font-size:11px;font-weight:700;color:#0369a1;">{{ row.Nama_Pembanding || '—' }}</span>
                                                     </td>
                                                     <td>{{ row.No_Faktur }}</td>
                                                     <td>
@@ -726,6 +842,7 @@
                                                     <td
                                                         :colspan="
                                                             7 +
+                                                            (informasiData && informasiData.is_plt ? 1 : 0) +
                                                             (template.parameter
                                                                 ? template
                                                                       .parameter
@@ -1501,7 +1618,11 @@ export default {
         return {
             listData: [],
             searchQuery: "",
-            filters: { tanggal: { mulai: "", selesai: "" }, qrcode: "", status: "" },
+            filters: {
+                tanggal: { mulai: "", selesai: "" },
+                qrcode: "",
+                status: "",
+            },
             pagination: { page: 1, limit: 12, totalPage: 0, totalData: 0 },
             loading: {
                 list: false,
@@ -1512,6 +1633,7 @@ export default {
                 reanalisisOptions: false,
                 bulkSubPo: false,
                 bulkSubmit: false,
+                audit: false,
             },
 
             selectedItem: null,
@@ -1533,6 +1655,8 @@ export default {
             hasStandardConfiguration: true,
             template: { parameter: [], formula: [] },
             fotoBlobUrls: {},
+
+            auditLog: [],
 
             sections: { chart: true, foto: true, timeline: false },
 
@@ -1697,6 +1821,10 @@ export default {
                 grid: { padding: { top: 0 } },
             };
         },
+
+        auditValidators() {
+            return this.auditLog.filter(l => l.Jenis_Aksi === 'INPUT_ANALYZER');
+        },
     },
 
     methods: {
@@ -1751,7 +1879,11 @@ export default {
         },
         resetFiltersAndFetch() {
             this.searchQuery = "";
-            this.filters = { tanggal: { mulai: "", selesai: "" }, qrcode: "", status: "" };
+            this.filters = {
+                tanggal: { mulai: "", selesai: "" },
+                qrcode: "",
+                status: "",
+            };
             this.fetchList(1);
         },
 
@@ -1759,13 +1891,16 @@ export default {
             if (this.allCurrentPageChecked) {
                 this.listData.forEach((item) => {
                     const idx = this.selectedItems.findIndex(
-                        (s) => s.No_Po_Sampel === item.No_Po_Sampel && s.Id_Jenis_Analisa === item.Id_Jenis_Analisa
+                        (s) =>
+                            s.No_Po_Sampel === item.No_Po_Sampel &&
+                            s.Id_Jenis_Analisa === item.Id_Jenis_Analisa
                     );
                     if (idx >= 0) this.selectedItems.splice(idx, 1);
                 });
             } else {
                 this.listData.forEach((item) => {
-                    if (!this.isSelectedBulk(item)) this.selectedItems.push(item);
+                    if (!this.isSelectedBulk(item))
+                        this.selectedItems.push(item);
                 });
             }
         },
@@ -1776,6 +1911,7 @@ export default {
             this.subPoList = [];
             this.clearDetail();
             this.detailVisible = true;
+            this.fetchAuditLog(item.No_Po_Sampel);
             if (item.Flag_Multi_QrCode === "Y") {
                 await this.fetchSubPoList(
                     item.No_Po_Sampel,
@@ -1795,7 +1931,20 @@ export default {
             this.informasiData = null;
             this.hasStandardConfiguration = true;
             this.template = { parameter: [], formula: [] };
+            this.auditLog = [];
             this.revokeBlobUrls();
+        },
+
+        async fetchAuditLog(noSampel) {
+            this.loading.audit = true;
+            try {
+                const res = await axios.get(`/api/v1/log-aksi/by-sampel/${noSampel}`);
+                this.auditLog = res.data?.success ? res.data.result || [] : [];
+            } catch {
+                this.auditLog = [];
+            } finally {
+                this.loading.audit = false;
+            }
         },
 
         async fetchSubPoList(noPo, idJenisAnalisa) {
@@ -1907,6 +2056,7 @@ export default {
                     Flag_Multi_QrCode: first.Flag_Multi_QrCode,
                     Tanggal: first.Tanggal_Pengujian || "—",
                     Tanggal_Registrasi: first.Tanggal_Registrasi || "—",
+                    Nama_Pembanding: first.Nama_Pembanding || null,
                     parameters: Array.isArray(first.parameter)
                         ? first.parameter.map((p) => p.Hasil_Analisa ?? "—")
                         : [],
@@ -2000,11 +2150,7 @@ export default {
                         title: "Berhasil!",
                         text: "Data analisa berhasil dikonfirmasi.",
                         timer: 2000,
-                    }).then(() => {
-                        this.selectedItem = null;
-                        this.clearDetail();
-                        this.fetchList(this.pagination.page);
-                    });
+                    }).then(() => window.location.reload());
                 } else throw new Error(res.data.message || "Gagal menyimpan.");
             } catch (e) {
                 Swal.fire(
@@ -2207,10 +2353,7 @@ export default {
                         text: res.data.message,
                         timer: 2000,
                         showConfirmButton: false,
-                    }).then(() => {
-                        this.selectedItems = [];
-                        this.fetchList(this.pagination.page);
-                    });
+                    }).then(() => window.location.reload());
                 } else throw new Error(res.data.message || "Gagal");
             } catch (e) {
                 Swal.fire(
@@ -2248,10 +2391,7 @@ export default {
                         text: res.data.message,
                         timer: 2000,
                         showConfirmButton: false,
-                    }).then(() => {
-                        this.selectedItems = [];
-                        this.fetchList(this.pagination.page);
-                    });
+                    }).then(() => window.location.reload());
                 } else throw new Error(res.data.message || "Gagal");
             } catch (e) {
                 Swal.fire(
@@ -3242,5 +3382,43 @@ export default {
     border-radius: 20px;
     padding: 2px 8px;
     white-space: nowrap;
+}
+/* ── Audit validators strip ─────────────────────────────────────────── */
+.vld-audit-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e9ebec;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+.vld-audit-strip-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+.vld-audit-strip-loading { display: flex; align-items: center; }
+.vld-audit-strip-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.vld-audit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.vld-audit-chip--ok { background: #d1fae5; color: #065f46; }
+.vld-audit-chip--no { background: #fee2e2; color: #991b1b; }
+.vld-audit-chip-time {
+    font-size: 10px;
+    opacity: 0.65;
+    margin-left: 2px;
 }
 </style>

@@ -1,6 +1,6 @@
   <div class="modal fade" id="gantiPasswordModal{{ Session::get('user.id') }}" tabindex="-1"
       aria-labelledby="exampleModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
           <div class="modal-content">
               <div class="modal-header bg-light p-3">
                   <h5 class="modal-title" id="exampleModalLabel">Ganti Password</h5>
@@ -35,24 +35,31 @@
   </div>
 
   <div class="modal fade zoomIn" id="logoutModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
           <div class="modal-content">
-              <div class="modal-header">
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+              <div class="modal-header border-0 pb-0">
+                  <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"
                       id="btn-close"></button>
               </div>
-              <div class="modal-body">
+              <div class="modal-body pt-0">
                   <form id="logout-form" action="{{ url('/logout') }}" method="POST">
                       @csrf
-                      <div class="mt-2 text-center">
-                          <img src="{{ URL::asset('assets/images/goodbye2.gif') }}" style="width:auto;height:100%">
-                          <div class="mt-4 pt-2 fs-15 mx-4 mx-sm-5">
-                              <h4>Ingin Logout ?</h4>
+                      <div class="text-center">
+                          <img src="{{ URL::asset('assets/images/goodbye2.gif') }}"
+                               style="width:100%;max-width:200px;height:auto;border-radius:12px;"
+                               alt="Goodbye">
+                          <div class="mt-3 mb-1">
+                              <h5 class="fw-bold mb-1">Ingin Logout?</h5>
+                              <p class="text-muted small mb-0">Sesi Anda akan diakhiri.</p>
                           </div>
                       </div>
-                      <div class="d-flex gap-2 justify-content-center mt-4 mb-2">
-                          <a type="button" class="btn w-sm btn-light" data-bs-dismiss="modal">Tidak</a>
-                          <button type="submit" class="btn w-sm btn-danger ">Ya !</button>
+                      <div class="d-flex gap-2 justify-content-center mt-4 mb-1">
+                          <button type="button" class="btn btn-light flex-fill" data-bs-dismiss="modal">
+                              <i class="bx bx-x me-1"></i> Tidak
+                          </button>
+                          <button type="submit" class="btn btn-danger flex-fill">
+                              <i class="bx bx-power-off me-1"></i> Ya, Logout
+                          </button>
                       </div>
                   </form>
               </div>
@@ -62,7 +69,7 @@
 
 
   <div class="modal fade" id="gantiPin{{ Session::get('user.id') }}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
           <div class="modal-header bg-light p-3">
               <h5 class="modal-title" id="exampleModalLabel">Ganti PIN</h5>

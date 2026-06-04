@@ -181,6 +181,102 @@ class UjiValidasiFinalController extends Controller
         }
     }
 
+    public function getAuditLogBySampel($no_sampel)
+    {
+        try {
+            $logs = DB::table('N_EMI_LAB_Log_Aksi as la')
+                ->leftJoin('N_EMI_LAB_Users as u', 'la.Id_User', '=', 'u.UserId')
+                ->where('la.No_Sampel', $no_sampel)
+                ->select('la.*', 'u.Nama as Nama_User')
+                ->orderBy('la.Tanggal', 'asc')
+                ->orderBy('la.Jam', 'asc')
+                ->get();
+
+            // Load detail records untuk setiap log entry dan attach ke masing-masing
+            if ($logs->isNotEmpty()) {
+                $logIds = $logs->pluck('Id_Log_Aksi')->filter()->values()->toArray();
+                if (!empty($logIds)) {
+                    $detailsByLogId = DB::table('N_EMI_LAB_Log_Aksi_Detail')
+                        ->whereIn('Id_Log_Aksi', $logIds)
+                        ->select('Id_Log_Aksi', 'Id_Jenis_Analisa', 'Nama_Jenis_Analisa', 'Flag_Layak', 'Tanggal', 'Jam', 'Id_User')
+                        ->get()
+                        ->groupBy('Id_Log_Aksi');
+
+                    $logs = $logs->map(function ($log) use ($detailsByLogId) {
+                        $log->details = $detailsByLogId->get($log->Id_Log_Aksi, collect())->values()->toArray();
+                        return $log;
+                    });
+                }
+            }
+
+            // Input analyzer — earliest lab entry; fall back to formulator table
+            $inputEntry = DB::table('N_EMI_LAB_Uji_Sampel as us')
+                ->leftJoin('N_EMI_LAB_Users as u', 'us.Id_User', '=', 'u.UserId')
+                ->where('us.No_Po_Sampel', $no_sampel)
+                ->whereNull('us.Flag_Resampling')
+                ->whereNull('us.Status')
+                ->orderBy('us.Tanggal', 'asc')
+                ->orderBy('us.Jam', 'asc')
+                ->select('us.Id_User', 'us.Tanggal', 'us.Jam', 'u.Nama as Nama_User')
+                ->first();
+
+            if (!$inputEntry) {
+                $inputEntry = DB::table('N_EMI_LIMS_Uji_Sampel as us')
+                    ->leftJoin('N_EMI_LAB_Users as u', 'us.Id_User', '=', 'u.UserId')
+                    ->where('us.No_Po_Sampel', $no_sampel)
+                    ->whereNull('us.Status')
+                    ->whereNull('us.Flag_Resampling')
+                    ->orderBy('us.Tanggal', 'asc')
+                    ->orderBy('us.Jam', 'asc')
+                    ->select('us.Id_User', 'us.Tanggal', 'us.Jam', 'u.Nama as Nama_User')
+                    ->first();
+            }
+
+            // Hitung jumlah analisa yang diinput untuk INPUT_ANALYZER
+            $inputAnalisaCount = DB::table('N_EMI_LAB_Uji_Sampel')
+                ->where('No_Po_Sampel', $no_sampel)
+                ->whereNull('Flag_Resampling')
+                ->whereNull('Status')
+                ->distinct()
+                ->count('Id_Jenis_Analisa');
+
+            if ($inputAnalisaCount === 0) {
+                $inputAnalisaCount = DB::table('N_EMI_LIMS_Uji_Sampel')
+                    ->where('No_Po_Sampel', $no_sampel)
+                    ->whereNull('Status')
+                    ->whereNull('Flag_Resampling')
+                    ->distinct()
+                    ->count('Id_Jenis_Analisa');
+            }
+
+            $result = $logs->toArray();
+
+            if ($inputEntry) {
+                array_unshift($result, (object) [
+                    'No_Sampel'   => $no_sampel,
+                    'Jenis_Aksi'  => 'INPUT_ANALYZER',
+                    'Sub_Aksi'    => null,
+                    'Keterangan'  => null,
+                    'Id_User'     => $inputEntry->Id_User,
+                    'Nama_User'   => $inputEntry->Nama_User,
+                    'Tanggal'     => $inputEntry->Tanggal,
+                    'Jam'         => $inputEntry->Jam,
+                    'details'     => [],
+                    'analisa_count' => $inputAnalisaCount,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'status'  => 200,
+                'result'  => $result,
+            ], 200);
+        } catch (\Exception $e) {
+            Log::channel('UjiValidasiFinalController')->error(__METHOD__ . ': ' . $e->getMessage());
+            return response()->json(['success' => false, 'status' => 500, 'message' => 'Terjadi Kesalahan'], 500);
+        }
+    }
+
     public function store($no_sampel)
     {
         DB::beginTransaction();
@@ -275,7 +371,10 @@ class UjiValidasiFinalController extends Controller
             $checkedJumlahStandarMutu = DB::table('N_EMI_LAB_Barang_Analisa as ba')
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'ba.Id_Jenis_Analisa', '=', 'ja.id')
                 ->select('ba.Id_Jenis_Analisa')
+                ->where('ja.Kode_Role', 'LAB')
                 ->where('ba.Kode_Role', 'LAB')
+                ->where('ba.Flag_Aktif', 'Y')
+                ->where('ja.Kode_Aktivitas_Lab', 'ANL')
                 ->where('ba.Kode_Barang', $getInformasiPo->Kode_Barang)
                 ->where('ba.Id_Master_Mesin', $getInformasiPo->Id_Mesin)
                 ->whereNotIn('ja.Kode_Analisa', $kodeDikecualikan)
@@ -286,6 +385,10 @@ class UjiValidasiFinalController extends Controller
             $checkedJumlahAnalisa = DB::table('N_EMI_LAB_Uji_Sampel as us')
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
                 ->where('us.No_Po_Sampel', $no_sampel)
+                ->where('ja.Kode_Role', 'LAB')
+                ->where('ja.Kode_Aktivitas_Lab', 'ANL')
+                ->whereNull('us.Flag_Resampling')
+                ->where('us.Status_Keputusan_Sampel', 'terima')
                 ->whereNotIn('ja.Kode_Analisa', $kodeDikecualikan)
                 ->pluck('us.Id_Jenis_Analisa')
                 ->toArray();
@@ -297,7 +400,7 @@ class UjiValidasiFinalController extends Controller
                 $detailKurang = DB::table('N_EMI_LAB_Jenis_Analisa')
                     ->whereIn('id', $analisaKurang)
                     ->pluck('Jenis_Analisa');
-                
+
                 return response()->json([
                     'success' => false,
                     'status' => 422,
@@ -309,12 +412,15 @@ class UjiValidasiFinalController extends Controller
                 ], 422);
             }
 
-            // Cek kalau ada Flag_Selesai masih null
+            // Cek kalau ada Flag_Selesai masih null (hanya analisa LAB non-PLT non-opsional)
             $belumSelesai = DB::table('N_EMI_LAB_Uji_Sampel as us')
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
                 ->where('us.No_Po_Sampel', $no_sampel)
+                ->where('ja.Kode_Role', 'LAB')
+                ->where('ja.Kode_Aktivitas_Lab', 'ANL')
                 ->where('us.Status_Keputusan_Sampel', 'terima')
                 ->whereNull('us.Flag_Selesai')
+                ->whereNull('us.Flag_Resampling')
                 ->whereNotIn('ja.Kode_Analisa', $kodeDikecualikan)
                 ->pluck('ja.Jenis_Analisa');
 
@@ -392,6 +498,19 @@ class UjiValidasiFinalController extends Controller
                     ->update([
                         'Flag_Selesai' => 'Y'
                     ]);
+
+                DB::table('N_EMI_LAB_Log_Aksi')->insert([
+                    'No_Sampel'  => $no_sampel,
+                    'No_Po'      => $getInformasiPo->No_Po       ?? '-',
+                    'No_Split_Po'=> $getInformasiPo->No_Split_Po ?? '-',
+                    'Kode_Barang'=> $getInformasiPo->Kode_Barang ?? null,
+                    'Flag_Trial' => null,
+                    'Jenis_Aksi' => 'FINALISASI_PRODUKSI',
+                    'Sub_Aksi'   => 'CLOSE',
+                    'Id_User'    => Auth::user()->UserId,
+                    'Tanggal'    => $tanggalSqlServer,
+                    'Jam'        => $jamSqlServer,
+                ]);
             }
 
             DB::commit();
@@ -442,7 +561,7 @@ class UjiValidasiFinalController extends Controller
                 ->pluck('Jenis_Analisa', 'id')
                 ->toArray();
 
-            // 🚀 FILTER UTAMA: Hanya ambil PO yang Flag_Trial_Produksi-nya NULL
+        
             $poSampels = DB::table('N_EMI_LAB_PO_Sampel')
                 ->whereIn('No_Sampel', $no_sampel_list)
                 ->whereNull('Flag_Trial_Produksi') 
@@ -464,7 +583,10 @@ class UjiValidasiFinalController extends Controller
 
             $stdMutuGrouped = DB::table('N_EMI_LAB_Barang_Analisa as ba')
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'ba.Id_Jenis_Analisa', '=', 'ja.id')
+                ->where('ja.Kode_Role', 'LAB')
                 ->where('ba.Kode_Role', 'LAB')
+                ->where('ba.Flag_Aktif', 'Y')
+                ->where('ja.Kode_Aktivitas_Lab', 'ANL')
                 ->whereIn('ba.Kode_Barang', $kodes)
                 ->whereIn('ba.Id_Master_Mesin', $mesins)
                 ->whereNotIn('ja.Kode_Analisa', $kodeDikecualikan)
@@ -477,6 +599,10 @@ class UjiValidasiFinalController extends Controller
             $ujiAnalisaGrouped = DB::table('N_EMI_LAB_Uji_Sampel as us')
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
                 ->whereIn('us.No_Po_Sampel', $no_sampel_list)
+                ->where('ja.Kode_Role', 'LAB')
+                ->where('ja.Kode_Aktivitas_Lab', 'ANL')
+                ->whereNull('us.Flag_Resampling')
+                ->where('us.Status_Keputusan_Sampel', 'terima')
                 ->whereNotIn('ja.Kode_Analisa', $kodeDikecualikan)
                 ->select('us.No_Po_Sampel', 'us.Id_Jenis_Analisa')
                 ->get()
@@ -485,8 +611,11 @@ class UjiValidasiFinalController extends Controller
             $belumSelesaiGrouped = DB::table('N_EMI_LAB_Uji_Sampel as us')
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
                 ->whereIn('us.No_Po_Sampel', $no_sampel_list)
+                ->where('ja.Kode_Role', 'LAB')
+                ->where('ja.Kode_Aktivitas_Lab', 'ANL')
                 ->where('us.Status_Keputusan_Sampel', 'terima')
                 ->whereNull('us.Flag_Selesai')
+                ->whereNull('us.Flag_Resampling')
                 ->whereNotIn('ja.Kode_Analisa', $kodeDikecualikan)
                 ->select('us.No_Po_Sampel', 'ja.Jenis_Analisa')
                 ->get()
@@ -503,9 +632,6 @@ class UjiValidasiFinalController extends Controller
                 ->select('No_Sampel', 'Id_Jenis_Analisa')
                 ->get()
                 ->groupBy('No_Sampel');
-
-            // CATATAN: Pengecekan existingFinals secara manual telah saya HAPUS 
-            // karena fungsinya sudah digantikan secara otomatis oleh updateOrInsert.
 
             $poSampelUpdateCases = [];
             $berhasil = [];
@@ -610,6 +736,19 @@ class UjiValidasiFinalController extends Controller
                                 'Id_User'     => $userId
                             ]
                         );
+
+                    DB::table('N_EMI_LAB_Log_Aksi')->insert([
+                        'No_Sampel'  => $no_sampel,
+                        'No_Po'      => $infoPo->No_Po       ?? '-',
+                        'No_Split_Po'=> $infoPo->No_Split_Po ?? '-',
+                        'Kode_Barang'=> $infoPo->Kode_Barang ?? null,
+                        'Flag_Trial' => null,
+                        'Jenis_Aksi' => 'FINALISASI_PRODUKSI',
+                        'Sub_Aksi'   => 'CLOSE',
+                        'Id_User'    => $userId,
+                        'Tanggal'    => $tanggalSqlServer,
+                        'Jam'        => $jamSqlServer,
+                    ]);
 
                     $poSampelUpdateCases[] = $no_sampel;
                     $berhasil[] = $no_sampel;

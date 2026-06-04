@@ -13,5 +13,7 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         'proses_login',
+        'handle-task',           // Cloud Tasks handler (CLOUD_TASKS_URI default)
+        'api/cloudtasks/handle', // Cloud Tasks handler (alternatif path)
     ];
 }

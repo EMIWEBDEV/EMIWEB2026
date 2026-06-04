@@ -51,8 +51,13 @@ class FormulatorValidasiHirarkiController extends Controller
                 ->join('N_EMI_LAB_Jenis_Analisa as A', 'U.Id_Jenis_Analisa', '=', 'A.id')
                 ->join('N_EMI_LIMS_Klasifikasi_Aktivitas_Lab as B', 'A.Kode_Aktivitas_Lab', '=', 'B.Kode_Aktivitas_Lab')
                 ->leftJoin('N_EMI_LIMS_Uji_Pra_Final as UPF', 'U.No_Po_Sampel', '=', 'UPF.No_Sampel')
+                ->leftJoin('N_LIMS_PO_Sampel as PS', 'U.No_Po_Sampel', '=', 'PS.No_Sampel')
+                ->leftJoin(DB::raw('(SELECT Kode_Barang, MAX(Nama) as Nama_Barang FROM N_EMI_View_Barang GROUP BY Kode_Barang) as VB'), 'PS.Kode_Barang', '=', 'VB.Kode_Barang')
                 ->select(
                     'U.No_Po_Sampel',
+                    DB::raw('MAX(PS.Kode_Barang) as Kode_Barang'),
+                    DB::raw('MAX(VB.Nama_Barang) as Nama_Barang'),
+                    DB::raw('MAX(CAST(PS.Keterangan AS NVARCHAR(MAX))) as Catatan'),
                     DB::raw("
                         CASE 
                             WHEN SUM(CASE WHEN U.Flag_Approval IS NOT NULL THEN 1 ELSE 0 END) > 0 THEN 1 
@@ -345,11 +350,22 @@ class FormulatorValidasiHirarkiController extends Controller
 
             $sampel = DB::table('N_LIMS_PO_Sampel')
                 ->where('No_Sampel', $no_po_sampel)
-                ->select('Kode_Barang', 'Id_Mesin as Id_Master_Mesin')
+                ->select('Kode_Barang', 'Id_Mesin as Id_Master_Mesin', 'Keterangan as Catatan')
                 ->first();
 
-            $kodeBarang = $sampel->Kode_Barang ?? null;
-            $idMasterMesin = $sampel->Id_Master_Mesin ?? null;
+            $kodeBarang     = $sampel->Kode_Barang ?? null;
+            $idMasterMesin  = $sampel->Id_Master_Mesin ?? null;
+            $catatanSampel  = $sampel->Catatan ?? null;
+
+            $namaBarang = null;
+            if ($kodeBarang) {
+                $barangRow = DB::table('N_EMI_View_Barang')
+                    ->where('Kode_Barang', $kodeBarang)
+                    ->select(DB::raw('MAX(Nama) as Nama_Barang'))
+                    ->groupBy('Kode_Barang')
+                    ->first();
+                $namaBarang = $barangRow->Nama_Barang ?? null;
+            }
 
             $masterAnalisa = collect();
             if ($kodeBarang && $idMasterMesin) {
@@ -456,27 +472,17 @@ class FormulatorValidasiHirarkiController extends Controller
 
                             $item->foto_list = [];
                             if ($item->Flag_Foto === 'Y' && $filesGlobal->isNotEmpty()) {
-                                
-                                // PERBAIKAN DI SINI: Filter file hanya yang sesuai dengan No_Faktur item saat ini
                                 $itemFiles = $filesGlobal->where('No_Faktur', $item->No_Faktur);
-                                
                                 foreach ($itemFiles as $file) {
-                                    try {
-                                        if (!empty($file->File_Path)) {
-                                            $url = Storage::disk('gcs')->temporaryUrl(
-                                                $file->File_Path,
-                                                now()->addMinutes(120)
-                                            );
-                                            $item->foto_list[] = [
-                                                'url' => $url,
-                                                'keterangan' => $file->Keterangan ?? 'Dokumen Uji Lab'
-                                            ];
-                                        }
-                                    } catch (\Exception $e) {
+                                    if (!empty($file->Berkas_Key)) {
+                                        $item->foto_list[] = [
+                                            'Berkas_Key' => $file->Berkas_Key,
+                                            'keterangan' => $file->Keterangan ?? 'Dokumen Uji Lab'
+                                        ];
                                     }
                                 }
                             }
-                            $item->File_Url = count($item->foto_list) > 0 ? $item->foto_list[0]['url'] : null;
+                            $item->File_Url = null;
 
                             $hasilStr = (string)$item->Hasil;
                             $cleanHasil = $hasilStr;
@@ -589,7 +595,10 @@ class FormulatorValidasiHirarkiController extends Controller
                 'message' => 'Detail Data Ditemukan',
                 'result' => [
                     'No_Po_Sampel' => $no_po_sampel,
-                    'steps' => $groupedData
+                    'Kode_Barang'  => $kodeBarang,
+                    'Nama_Barang'  => $namaBarang,
+                    'Catatan'      => $catatanSampel,
+                    'steps'        => $groupedData
                 ]
             ]);
 
@@ -725,6 +734,11 @@ class FormulatorValidasiHirarkiController extends Controller
             $kodeAktivitas = $request->Kode_Aktivitas_Lab;
             $isTolak = $request->Status_Action === 'tolak';
 
+            $poInfoValidasi = DB::table('N_LIMS_PO_Sampel')
+                ->where('No_Sampel', $noPo)
+                ->select('No_Po', 'No_Split_Po', 'Kode_Barang')
+                ->first();
+
             foreach ($request->Items as $item) {
                 $noSub = $item['No_Fak_Sub_Po'] ?? null;
 
@@ -747,7 +761,7 @@ class FormulatorValidasiHirarkiController extends Controller
                 $alasanKeterangan = $isTolak ? $request->Alasan : 'Disetujui otomatis oleh sistem';
 
                 DB::table('N_EMI_LIMS_Uji_Sampel_Keterangan_Status')->insert([
-                    'Kode_Perusahaan' => '001', 
+                    'Kode_Perusahaan' => '001',
                     'No_Sampel' => $noSub ?? $noPo,
                     'Status_Keterangan' => $statusKeterangan,
                     'Alasan' => $alasanKeterangan,
@@ -755,6 +769,43 @@ class FormulatorValidasiHirarkiController extends Controller
                     'Jam' => now()->format('H:i:s'),
                     'Id_User' => $pengguna->UserId
                 ]);
+            }
+
+            $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
+                'No_Sampel'  => $noPo,
+                'No_Po'      => $poInfoValidasi->No_Po      ?? '-',
+                'No_Split_Po'=> $poInfoValidasi->No_Split_Po ?? '-',
+                'Kode_Barang'=> $poInfoValidasi->Kode_Barang ?? null,
+                'Flag_Trial' => null,
+                'Jenis_Aksi' => 'VALIDASI_FORMULATOR',
+                'Sub_Aksi'   => $isTolak ? 'TOLAK' : 'SETUJU',
+                'Keterangan' => $isTolak ? $request->Alasan : null,
+                'Id_User'    => $pengguna->UserId,
+                'Tanggal'    => now()->format('Y-m-d'),
+                'Jam'        => now()->format('H:i:s'),
+            ]);
+
+            $analisaValidasi = DB::table('N_EMI_LIMS_Uji_Sampel as U')
+                ->join('N_EMI_LAB_Jenis_Analisa as A', 'U.Id_Jenis_Analisa', '=', 'A.id')
+                ->where('U.No_Po_Sampel', $noPo)
+                ->where('A.Kode_Aktivitas_Lab', $kodeAktivitas)
+                ->whereNull('U.Flag_Resampling')
+                ->whereNull('U.Status')
+                ->select('U.Id_Jenis_Analisa', 'A.Jenis_Analisa')
+                ->distinct()
+                ->get();
+            if ($analisaValidasi->isNotEmpty()) {
+                DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert(
+                    $analisaValidasi->map(fn($a) => [
+                        'Id_Log_Aksi'        => $logId,
+                        'Id_Jenis_Analisa'   => $a->Id_Jenis_Analisa,
+                        'Nama_Jenis_Analisa' => $a->Jenis_Analisa,
+                        'Flag_Layak'         => null,
+                        'Tanggal'            => now()->format('Y-m-d'),
+                        'Jam'                => now()->format('H:i:s'),
+                        'Id_User'            => $pengguna->UserId,
+                    ])->toArray()
+                );
             }
 
             DB::commit();
@@ -804,6 +855,46 @@ class FormulatorValidasiHirarkiController extends Controller
                 'Jam' => now()->format('H:i:s'),
                 'Id_User' => $pengguna->UserId
             ]);
+
+            $poInfoCancel = DB::table('N_LIMS_PO_Sampel')
+                ->where('No_Sampel', $noPo)
+                ->select('No_Po', 'No_Split_Po', 'Kode_Barang')
+                ->first();
+
+            $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
+                'No_Sampel'  => $noPo,
+                'No_Po'      => $poInfoCancel->No_Po       ?? '-',
+                'No_Split_Po'=> $poInfoCancel->No_Split_Po ?? '-',
+                'Kode_Barang'=> $poInfoCancel->Kode_Barang ?? null,
+                'Flag_Trial' => null,
+                'Jenis_Aksi' => 'PRAFINALISASI_FORMULATOR',
+                'Sub_Aksi'   => 'TOLAK',
+                'Keterangan' => $request->Alasan,
+                'Id_User'    => $pengguna->UserId,
+                'Tanggal'    => now()->format('Y-m-d'),
+                'Jam'        => now()->format('H:i:s'),
+            ]);
+
+            $analisaPraFinal = DB::table('N_EMI_LIMS_Uji_Sampel as U')
+                ->join('N_EMI_LAB_Jenis_Analisa as A', 'U.Id_Jenis_Analisa', '=', 'A.id')
+                ->where('U.No_Po_Sampel', $noPo)
+                ->whereNull('U.Flag_Resampling')
+                ->select('U.Id_Jenis_Analisa', 'A.Jenis_Analisa')
+                ->distinct()
+                ->get();
+            if ($analisaPraFinal->isNotEmpty()) {
+                DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert(
+                    $analisaPraFinal->map(fn($a) => [
+                        'Id_Log_Aksi'        => $logId,
+                        'Id_Jenis_Analisa'   => $a->Id_Jenis_Analisa,
+                        'Nama_Jenis_Analisa' => $a->Jenis_Analisa,
+                        'Flag_Layak'         => null,
+                        'Tanggal'            => now()->format('Y-m-d'),
+                        'Jam'                => now()->format('H:i:s'),
+                        'Id_User'            => $pengguna->UserId,
+                    ])->toArray()
+                );
+            }
 
             DB::commit();
             return ResponseHelper::success($noPo, "Sampel Berhasil Dibatalkan", 200);
@@ -904,6 +995,40 @@ class FormulatorValidasiHirarkiController extends Controller
                 'Jam' => now()->format('H:i:s'),
                 'Id_User' => $pengguna->UserId
             ]);
+
+            $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
+                'No_Sampel'  => $noPo,
+                'No_Po'      => $getInformasiPo->No_Po       ?? '-',
+                'No_Split_Po'=> $getInformasiPo->No_Split_Po ?? '-',
+                'Kode_Barang'=> $getInformasiPo->Kode_Barang ?? null,
+                'Flag_Trial' => null,
+                'Jenis_Aksi' => 'PRAFINALISASI_FORMULATOR',
+                'Sub_Aksi'   => 'SETUJU',
+                'Id_User'    => $pengguna->UserId,
+                'Tanggal'    => now()->format('Y-m-d'),
+                'Jam'        => now()->format('H:i:s'),
+            ]);
+
+            $analisaPraFinal = DB::table('N_EMI_LIMS_Uji_Sampel as U')
+                ->join('N_EMI_LAB_Jenis_Analisa as A', 'U.Id_Jenis_Analisa', '=', 'A.id')
+                ->where('U.No_Po_Sampel', $noPo)
+                ->whereNull('U.Flag_Resampling')
+                ->select('U.Id_Jenis_Analisa', 'A.Jenis_Analisa')
+                ->distinct()
+                ->get();
+            if ($analisaPraFinal->isNotEmpty()) {
+                DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert(
+                    $analisaPraFinal->map(fn($a) => [
+                        'Id_Log_Aksi'        => $logId,
+                        'Id_Jenis_Analisa'   => $a->Id_Jenis_Analisa,
+                        'Nama_Jenis_Analisa' => $a->Jenis_Analisa,
+                        'Flag_Layak'         => null,
+                        'Tanggal'            => now()->format('Y-m-d'),
+                        'Jam'                => now()->format('H:i:s'),
+                        'Id_User'            => $pengguna->UserId,
+                    ])->toArray()
+                );
+            }
 
             DB::commit();
             return ResponseHelper::success(null, "Sampel Berhasil Di-Finalisasi", 200);

@@ -1,1774 +1,621 @@
 <template>
-    <div class="container-fluid px-0 data-uji-container">
-        <div class="card shadow-sm border-0 w-100 main-card">
-            <div class="card-body">
-                <!-- Header Section -->
-                <div class="mb-4 text-center text-md-start section-header">
-                    <div class="d-flex align-items-center mb-3 header-content">
-                        <i
-                            class="fas fa-vial text-primary me-3 fa-2x header-icon"
-                        ></i>
-                        <div>
-                            <h1 class="h2 fw-bold text-primary mb-1 main-title">
-                                Kumpulan Data Uji Analisis
-                            </h1>
-                            <p class="text-muted mb-0 subtitle">
-                                <i class="fas fa-building me-1"></i>
-                                Koleksi lengkap data uji laboratorium PT. Evo
-                                Manufacturing Indonesia
-                            </p>
-                        </div>
+    <div class="fin-root">
+        <div class="fin-topbar">
+            <div class="fin-topbar-left">
+                <div class="fin-topbar-icon-wrap"><i class="ri-shield-star-line"></i></div>
+                <div><span class="fin-topbar-title">Finalisasi Formulator</span><span class="fin-topbar-sub">Close sampel trial & rekam hasil validasi formulator</span></div>
+            </div>
+            <div class="fin-topbar-right">
+                <div v-if="pagination.total > 0" class="fin-stat-badge"><span class="fin-stat-num">{{ pagination.total }}</span><span class="fin-stat-lbl">Menunggu</span></div>
+                <span class="fin-status-chip"><i class="ri-shield-star-line me-1"></i>Siap Finalisasi</span>
+            </div>
+        </div>
+
+        <div class="fin-body">
+            <!-- LEFT -->
+            <div class="fin-left" :class="{'fin-hidden-mobile':detailVisible&&isMobile}">
+                <div class="fin-filter-bar">
+                    <div class="fin-search-wrap"><i class="ri-search-line fin-search-icon"></i><input type="text" class="fin-search-input" placeholder="Cari No. Sampel, PO, Barang..." v-model="searchQuery" @input="debounceFetch" /><button v-if="searchQuery" class="fin-search-x" @click="searchQuery='';fetchList()"><i class="ri-close-line"></i></button></div>
+                    <div class="fin-filter-row">
+                        <input type="date" class="fin-date-input" v-model="filters.startDate" @change="fetchList()" /><span class="fin-sep">—</span>
+                        <input type="date" class="fin-date-input" v-model="filters.endDate" @change="fetchList()" />
+                        <select class="fin-select" v-model="filters.qrType" @change="fetchList()"><option value="">Semua QR</option><option value="Y">Multi QR</option><option value="T">Single QR</option></select>
+                        <button class="fin-btn-reset" @click="resetFilters" title="Reset"><i class="ri-filter-off-line"></i></button>
                     </div>
-                    <div class="divider bg-primary opacity-25 my-3"></div>
                 </div>
-
-                <div class="col-12 mt-3 content-area">
-                    <div class="row mb-3">
-                        <div class="col-lg-12 mb-3">
-                            <label class="form-label">Tanggal</label>
-                            <div
-                                class="date-picker-wrapper"
-                                style="min-width: 240px"
-                            >
-                                <el-date-picker
-                                    v-model="dateRange"
-                                    type="daterange"
-                                    range-separator="-"
-                                    start-placeholder="Mulai"
-                                    end-placeholder="Akhir"
-                                    format="DD MMM YYYY"
-                                    value-format="YYYY-MM-DD"
-                                    :size="'large'"
-                                    @change="handleFilterChange"
-                                    class="w-100 shadow-sm"
-                                />
-                            </div>
-                        </div>
-                        <div class="col-lg-6">
-                            <label class="form-label">Jenis QrCode</label>
-                            <div
-                                class="select-picker-wrapper"
-                                style="min-width: 180px"
-                            >
-                                <el-select
-                                    v-model="filterQr"
-                                    placeholder="Tipe QR Code"
-                                    size="large"
-                                    clearable
-                                    @change="handleFilterChange"
-                                    class="w-100 shadow-sm"
-                                >
-                                    <el-option label="Multi QR" value="Y" />
-                                    <el-option label="Single QR" value="T" />
-                                </el-select>
-                            </div>
-                        </div>
-                        <div class="col-lg-6">
-                            <label class="form-label">Pencarian Global</label>
-                            <div
-                                class="search-wrapper position-relative flex-grow-1"
-                            >
-                                <span class="search-icon">
-                                    <i class="fas fa-search text-muted"></i>
-                                </span>
-                                <input
-                                    type="text"
-                                    class="form-control ps-5 rounded-3 shadow-sm border-0 custom-search h-100"
-                                    placeholder="Cari PO, Sampel, atau Barang..."
-                                    v-model="search"
-                                    @input="handleSearch"
-                                />
-                                <button
-                                    v-if="search"
-                                    @click="clearSearch"
-                                    class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-decoration-none text-muted pe-3"
-                                >
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
+                <div class="fin-list">
+                    <div v-if="loading.list" class="p-3"><div v-for="i in 5" :key="i" class="fin-skeleton mb-2"></div></div>
+                    <div v-else-if="listData.length===0" class="fin-empty-list"><i class="ri-inbox-2-line"></i><p>Tidak ada data siap finalisasi</p><button class="btn btn-sm fin-btn-form" @click="resetFilters"><i class="ri-refresh-line me-1"></i>Reset</button></div>
+                    <div v-else>
+                        <div v-for="(item,idx) in listData" :key="idx" class="fin-item-wrap">
+                            <button @click="selectItem(item)" class="fin-item" :class="{'fin-item--active':isActive(item)}">
+                                <div class="fin-item-accent" :class="{'fin-item-accent--active':isActive(item)}"></div>
+                                <div class="fin-item-body">
+                                    <div class="fin-item-top"><span class="fin-item-title">{{ item.No_Po_Sampel }}</span><span class="fin-badge fin-badge--form">Formulator</span></div>
+                                    <div class="fin-item-sub" v-if="item.Nama_Barang">{{ item.Kode_Barang }} — {{ item.Nama_Barang }}</div>
+                                    <div class="fin-item-meta">
+                                        <span class="fin-chip fin-chip--blue"><i class="ri-file-list-3-line"></i>{{ item.No_Po }}</span>
+                                        <span class="fin-chip" :class="item.Flag_Multi_QrCode==='Y'?'fin-chip--blue':'fin-chip--gray'"><i class="ri-qr-code-line"></i>{{ item.Flag_Multi_QrCode==='Y'?'Multi':'Single' }}</span>
+                                        <span class="fin-chip fin-chip--gray" v-if="item.Tanggal"><i class="ri-calendar-line"></i>{{ formatDate(item.Tanggal) }}</span>
+                                    </div>
+                                </div>
+                                <i class="ri-arrow-right-s-line fin-item-arrow"></i>
+                            </button>
                         </div>
                     </div>
-                    <hr />
-                    <ListSkeleton :page="5" v-if="loading.loadingListData" />
+                </div>
+                <div class="fin-list-footer" v-if="pagination.totalPage>1">
+                    <span class="fin-page-info">{{ listData.length }} / {{ pagination.total }}</span>
+                    <div class="fin-page-btns"><button class="fin-page-btn" :disabled="pagination.page===1" @click="changePage(pagination.page-1)"><i class="ri-arrow-left-s-line"></i></button><span class="fin-page-current">{{ pagination.page }} / {{ pagination.totalPage }}</span><button class="fin-page-btn" :disabled="pagination.page===pagination.totalPage" @click="changePage(pagination.page+1)"><i class="ri-arrow-right-s-line"></i></button></div>
+                </div>
+            </div>
 
-                    <div v-else>
-                        <div v-if="listData.length" class="row g-3">
-                            <div
-                                class="col-12"
-                                v-for="(item, index) in listData"
-                                :key="index"
-                            >
-                                <div
-                                    class="card border-0 shadow-sm rounded-4 overflow-hidden hover-card"
-                                >
-                                    <div class="card-body p-0">
-                                        <div class="d-flex align-items-stretch">
-                                            <div
-                                                class="status-strip bg-primary"
-                                            ></div>
-
-                                            <div class="p-3 p-md-4 w-100">
-                                                <div
-                                                    class="d-flex flex-column flex-lg-row gap-3 justify-content-between"
-                                                >
-                                                    <div
-                                                        class="d-flex flex-column gap-3 flex-grow-1"
-                                                    >
-                                                        <div
-                                                            class="d-flex align-items-center flex-wrap gap-2"
-                                                        >
-                                                            <span
-                                                                class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10 rounded-pill px-3 py-2"
-                                                            >
-                                                                <i
-                                                                    class="fas fa-file-invoice me-1"
-                                                                ></i>
-                                                                {{ item.No_Po }}
-                                                            </span>
-                                                            <span
-                                                                class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-10 rounded-pill px-3 py-2"
-                                                            >
-                                                                <i
-                                                                    class="fas fa-code-branch me-1"
-                                                                ></i>
-                                                                {{
-                                                                    item.No_Split_Po
-                                                                }}
-                                                            </span>
-                                                            <span
-                                                                v-if="
-                                                                    item.Flag_Multi_QrCode ===
-                                                                    'Y'
-                                                                "
-                                                                class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-10 rounded-pill px-2 py-2"
-                                                            >
-                                                                Multi QR
-                                                            </span>
-                                                        </div>
-
-                                                        <div
-                                                            class="d-flex align-items-start gap-3"
-                                                        >
-                                                            <div
-                                                                class="icon-box bg-light rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 mt-1"
-                                                            >
-                                                                <i
-                                                                    class="fas fa-box-open text-dark fa-lg"
-                                                                ></i>
-                                                            </div>
-                                                            <div>
-                                                                <h6
-                                                                    class="fw-bold text-dark mb-1 fs-5"
-                                                                >
-                                                                    {{
-                                                                        item.Nama_Barang
-                                                                    }}
-                                                                </h6>
-                                                                <div
-                                                                    class="d-flex align-items-center gap-3 text-muted small mt-2"
-                                                                >
-                                                                    <div
-                                                                        class="d-flex align-items-center gap-1 bg-light px-2 py-1 rounded"
-                                                                    >
-                                                                        <i
-                                                                            class="fas fa-barcode"
-                                                                        ></i>
-                                                                        <span
-                                                                            class="fw-semibold text-dark"
-                                                                        >
-                                                                            {{
-                                                                                item.No_Po_Sampel
-                                                                            }}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div
-                                                                        class="d-flex align-items-center gap-1 bg-light px-2 py-1 rounded"
-                                                                    >
-                                                                        <i
-                                                                            class="fas fa-tag"
-                                                                        ></i>
-                                                                        <span>{{
-                                                                            item.Kode_Barang
-                                                                        }}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
+            <!-- RIGHT -->
+            <div class="fin-right" :class="{'fin-hidden-mobile':!detailVisible&&isMobile}">
+                <div v-if="isMobile&&detailVisible" class="fin-mobile-back"><button class="btn btn-sm btn-soft-secondary" @click="detailVisible=false"><i class="ri-arrow-left-line me-1"></i>Daftar</button></div>
+                <div v-if="!selectedItem" class="fin-detail-empty"><div class="fin-detail-empty-inner"><div class="fin-empty-icon-wrap"><i class="ri-shield-star-line"></i></div><h6>Pilih sampel formulator untuk difinalisasi</h6><p>Tampilkan detail analisa, info validator, dan lakukan finalisasi.</p></div></div>
+                <template v-else>
+                    <div class="fin-detail-header">
+                        <div class="fin-dh-main">
+                            <div class="fin-dh-icon"><i class="ri-shield-star-line"></i></div>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fin-dh-title">{{ selectedItem.Nama_Barang || selectedItem.Kode_Barang }}</div>
+                                <div class="fin-dh-sampel">{{ selectedItem.No_Po_Sampel }}</div>
+                                <div class="fin-dh-badges">
+                                    <span class="fin-badge fin-badge--primary"><i class="ri-receipt-line me-1"></i>{{ selectedItem.No_Po }}</span>
+                                    <span class="fin-badge fin-badge--gray"><i class="ri-git-branch-line me-1"></i>{{ selectedItem.No_Split_Po }}</span>
+                                    <span class="fin-badge" :class="selectedItem.Flag_Multi_QrCode==='Y'?'fin-badge--primary':'fin-badge--gray'"><i class="ri-qr-code-line me-1"></i>{{ selectedItem.Flag_Multi_QrCode==='Y'?'Multi QR':'Single QR' }}</span>
+                                    <span class="fin-badge fin-badge--form"><i class="ri-shield-star-line me-1"></i>Formulator</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="fin-kpi-row" v-if="detailData.length>0">
+                            <div class="fin-kpi"><span class="fin-kpi-num">{{ detailData.length }}</span><span class="fin-kpi-lbl">Total</span></div>
+                            <div class="fin-kpi fin-kpi--success"><span class="fin-kpi-num">{{ detailData.filter(d=>d.Flag_Layak!=='T').length }}</span><span class="fin-kpi-lbl">Lolos</span></div>
+                            <div class="fin-kpi fin-kpi--danger"><span class="fin-kpi-num">{{ detailData.filter(d=>d.Flag_Layak==='T').length }}</span><span class="fin-kpi-lbl">Tidak Lolos</span></div>
+                        </div>
+                    </div>
+                    <div class="fin-tabs">
+                        <button class="fin-tab" :class="{'fin-tab--active':activeTab==='analisa'}" @click="activeTab='analisa'"><i class="ri-flask-line me-1"></i>Detail Analisa</button>
+                        <button class="fin-tab" :class="{'fin-tab--active':activeTab==='timeline'}" @click="activeTab='timeline';ensureTimeline()"><i class="ri-timeline-view me-1"></i>Timeline<span v-if="auditLog.length>0" class="fin-tab-count">{{ auditLog.length }}</span></button>
+                    </div>
+                    <div class="fin-detail-body">
+                        <div v-if="loading.detail" class="fin-loading-state"><div class="spinner-border" style="color:#405189"></div><p class="mt-3 text-muted small">Memuat data analisa formulator...</p></div>
+                        <template v-else-if="activeTab==='analisa'">
+                            <div v-if="detailData.length===0" class="fin-loading-state"><i class="ri-inbox-2-line fs-1 text-muted"></i><p class="text-muted small mt-2">Tidak ada data analisa</p></div>
+                            <div v-else>
+                                <div v-for="section in detailSections" :key="section.group" class="fin-section">
+                                    <button class="fin-section-hdr" @click="toggleSection(section.group)">
+                                        <div class="fin-section-hdr-left"><div class="fin-section-icon" :style="{background:section.bg}"><i :class="section.icon"></i></div><div><span class="fin-section-title">{{ section.label }}</span><span class="fin-section-sub">{{ section.items.length }} jenis analisa</span></div></div>
+                                        <div class="fin-section-hdr-right">
+                                            <span v-if="section.failCount>0" class="fin-badge fin-badge--danger"><i class="ri-close-circle-line me-1"></i>{{ section.failCount }} TL</span>
+                                            <span v-else class="fin-badge fin-badge--success"><i class="ri-checkbox-circle-line me-1"></i>Semua Lolos</span>
+                                            <i class="fin-chevron ri-arrow-up-s-line" :class="{'collapsed':!isSectionOpen(section.group)}"></i>
+                                        </div>
+                                    </button>
+                                    <div v-show="isSectionOpen(section.group)" class="fin-section-body">
+                                        <div v-for="analisa in section.items" :key="analisa.key" class="fin-analisa-panel">
+                                            <button class="fin-analisa-hdr" :class="analisa.Flag_Layak==='T'?'fin-analisa-hdr--danger':'fin-analisa-hdr--success'" @click="toggleAnalisa(analisa)">
+                                                <div class="fin-analisa-hdr-left">
+                                                    <div class="fin-analisa-hdr-dot" :class="analisa.Flag_Layak==='T'?'dot--danger':'dot--success'"></div>
+                                                    <div><span class="fin-analisa-hdr-title">{{ analisa.Jenis_Analisa }}</span><div class="fin-analisa-hdr-meta"><span class="fin-chip fin-chip--gray" style="font-size:.64rem;">{{ analisa.Kode_Analisa }}</span><span v-if="analisa.is_plt&&analisa.Nama_Pembanding" class="fin-chip fin-chip--cyan" style="font-size:.64rem;"><i class="ri-flask-line"></i>{{ analisa.Nama_Pembanding }}</span><span v-if="analisa.Flag_Perhitungan==='Y'" class="fin-chip fin-chip--purple" style="font-size:.64rem;"><i class="ri-calculator-line"></i>Perhitungan</span></div></div>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                                    <span class="fin-badge" :class="analisa.Flag_Layak==='T'?'fin-badge--danger':'fin-badge--success'"><i :class="analisa.Flag_Layak==='T'?'ri-close-circle-line':'ri-checkbox-circle-line'" class="me-1"></i>{{ analisa.Flag_Layak==='T'?'Tidak Lolos':'Lolos' }}</span>
+                                                    <i class="fin-chevron ri-arrow-up-s-line" :class="{'collapsed':!isAnalisaOpen(analisa.key)}"></i>
+                                                </div>
+                                            </button>
+                                            <div v-show="isAnalisaOpen(analisa.key)" class="fin-analisa-table-wrap">
+                                                <div v-if="loadingTable[analisa.key]" class="fin-table-loading"><span class="spinner-border spinner-border-sm me-2" style="color:#405189"></span><span class="text-muted small">Memuat data...</span></div>
+                                                <div v-else-if="!tableRows[analisa.key]||tableRows[analisa.key].length===0" class="text-center py-3 text-muted small"><i class="ri-inbox-2-line me-1"></i>Tidak ada data</div>
+                                                <div v-else>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm table-bordered align-middle mb-0 fin-data-table">
+                                                            <thead><tr>
+                                                                <th class="text-center fin-th-no">#</th>
+                                                                <th>No Transaksi</th><th>No Sampel</th><th>No PO</th><th>No Split Po</th>
+                                                                <th v-if="selectedItem.Flag_Multi_QrCode==='Y'">No Sub Sampel</th>
+                                                                <th>Tanggal</th>
+                                                                <template v-if="hasTemplateData(analisa.key)">
+                                                                    <th v-for="param in getTemplate(analisa.key).parameter" :key="param.id_qc">{{ param.nama_parameter }}<small v-if="param.satuan" class="d-block fw-normal opacity-75" style="font-size:.7em;">{{ param.satuan }}</small></th>
+                                                                    <th v-for="f in getTemplate(analisa.key).formula" :key="f.id||f.nama_kolom" class="fin-th-formula">{{ f.nama_kolom }}</th>
+                                                                </template>
+                                                                <th v-else>Hasil</th>
+                                                            </tr></thead>
+                                                            <tbody>
+                                                                <tr v-for="(row,ri) in tableRows[analisa.key]" :key="ri" :class="row.Flag_Layak==='T'?'fin-row--danger':'fin-row--success'">
+                                                                    <td class="text-center fw-semibold fin-td-no">{{ ri+1 }}</td>
+                                                                    <td class="fin-td-mono">{{ row.No_Faktur||'-' }}</td><td class="fin-td-mono">{{ row.No_Po_Sampel||'-' }}</td>
+                                                                    <td>{{ row.No_Po||'-' }}</td><td>{{ row.No_Split_Po||'-' }}</td>
+                                                                    <td v-if="selectedItem.Flag_Multi_QrCode==='Y'">{{ row.No_Fak_Sub_Po||'-' }}</td>
+                                                                    <td>{{ formatDate(row.Tanggal) }}</td>
+                                                                    <template v-if="hasTemplateData(analisa.key)">
+                                                                        <td v-for="(val,pi) in (row.parameters||[])" :key="pi">{{ val }}</td>
+                                                                        <template v-if="getTemplate(analisa.key).formula?.length>0">
+                                                                            <td v-for="(res,fi) in (row.results||[])" :key="fi" class="fin-td-formula fw-semibold">{{ res?.value??'-' }}</td>
+                                                                        </template>
+                                                                    </template>
+                                                                    <td v-else class="fw-semibold">{{ row.Hasil_Akhir_Analisa??'-' }}</td>
+                                                                </tr>
+                                                                <tr v-if="analisa.Flag_Perhitungan==='Y'&&getTemplate(analisa.key).formula?.length>0&&(tableAverages[analisa.key]||[]).length>0" class="fin-row--rata">
+                                                                    <td :colspan="getBaseColCount(analisa)" class="text-end pe-3 fw-bold fst-italic text-secondary">Rata-Rata</td>
+                                                                    <td v-for="(avg,ai) in (tableAverages[analisa.key]||[])" :key="ai" class="fin-td-formula fw-bold">{{ avg }}</td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
                                                     </div>
-
-                                                    <div
-                                                        class="d-flex flex-column justify-content-between align-items-lg-end border-top border-lg-0 pt-3 pt-lg-0 gap-3"
-                                                    >
-                                                        <div
-                                                            class="text-muted small d-flex align-items-center gap-2"
-                                                        >
-                                                            <i
-                                                                class="far fa-calendar-alt"
-                                                            ></i>
-                                                            {{
-                                                                formatTanggal(
-                                                                    item.Tanggal
-                                                                )
-                                                            }}
-                                                            <span
-                                                                class="vr"
-                                                            ></span>
-                                                            <i
-                                                                class="far fa-clock"
-                                                            ></i>
-                                                            {{ item.Jam }}
-                                                        </div>
-
-                                                        <div class="d-flex">
-                                                            <a
-                                                                :href="`/finalisasi/formulator/hasil-uji-trial/by/${item.No_Po_Sampel}/${item.No_Split_Po}`"
-                                                                class="btn btn-outline-primary rounded-pill px-4 btn-sm fw-semibold"
-                                                            >
-                                                                Detail
-                                                                <i
-                                                                    class="fas fa-arrow-right"
-                                                                ></i>
-                                                            </a>
-                                                        </div>
-                                                    </div>
+                                                    <div v-if="tableHasFotos(analisa.key)" class="fin-foto-strip"><button class="fin-foto-btn" @click="openFotoModal(analisa.key)"><i class="ri-image-2-line me-1"></i>Lihat Foto ({{ fotoCount(analisa.key) }})</button></div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div v-else class="text-center py-5">
-                            <div class="d-flex justify-content-center mb-3">
-                                <DotLottieVue
-                                    style="height: 200px; width: 200px"
-                                    autoplay
-                                    loop
-                                    src="/animation/empty.lottie"
-                                />
+                        </template>
+                        <template v-else-if="activeTab==='timeline'">
+                            <div v-if="loading.timeline" class="fin-loading-state"><div class="spinner-border spinner-border-sm" style="color:#405189"></div><p class="text-muted small mt-2">Memuat...</p></div>
+                            <div v-else-if="auditLog.length===0" class="fin-loading-state"><i class="ri-history-line fs-1 text-muted"></i><p class="text-muted small mt-2">Belum ada riwayat aktivitas</p></div>
+                            <div v-else class="fin-vtl">
+                                <div class="fin-vtl-hdr"><i class="ri-history-line me-2"></i>Riwayat Proses Sampel</div>
+                                <div class="fin-vtl-steps">
+                                    <div v-for="(log,li) in auditLog" :key="li" class="fin-vtl-step" :class="getStepClass(log)">
+                                        <div class="fin-vtl-indicator"><div class="fin-vtl-dot"><i :class="getStepIcon(log)"></i></div><div v-if="li<auditLog.length-1" class="fin-vtl-line"></div></div>
+                                        <div class="fin-vtl-body">
+                                            <div class="fin-vtl-row1"><span class="fin-vtl-badge" :class="getStepBadgeClass(log)">{{ formatAksi(log.Jenis_Aksi) }}</span><span v-if="log.Sub_Aksi" class="fin-vtl-sub" :class="log.Sub_Aksi==='TOLAK'?'text-danger':'text-success'">{{ log.Sub_Aksi }}</span></div>
+                                            <div class="fin-vtl-meta"><span><i class="ri-user-3-line me-1"></i>{{ log.Nama_User||log.Id_User }}</span><span><i class="ri-time-line me-1"></i>{{ formatDate(log.Tanggal) }}<template v-if="log.Jam"> · {{ log.Jam.substring(0,5) }}</template></span></div>
+                                            <div v-if="log.details&&log.details.length" class="fin-vtl-details"><div class="fin-vtl-details-hdr"><i class="ri-microscope-line me-1"></i>{{ log.details.length }} analisa</div><div v-for="d in log.details" :key="d.Id_Jenis_Analisa" class="fin-vtl-detail-row"><i class="ri-arrow-right-s-line text-muted"></i>{{ d.Nama_Jenis_Analisa }}<span v-if="d.Tanggal" class="text-muted ms-1" style="font-size:.65rem;"> · {{ formatDate(d.Tanggal) }}</span></div></div>
+                                            <div v-if="log.Keterangan" class="fin-vtl-note"><i class="ri-chat-3-line me-1"></i>{{ log.Keterangan }}</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <h5 class="text-muted mb-2 fw-bold">
-                                Data Tidak Ditemukan
-                            </h5>
-                            <button
-                                v-if="search || dateRange || filterQr"
-                                @click="resetFilter"
-                                class="btn btn-primary rounded-pill px-4 mt-2"
-                            >
-                                Reset Filter
+                        </template>
+                    </div>
+                    <div class="fin-action-footer">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="fin-action-info flex-grow-1">
+                                <span v-if="detailData.filter(d=>d.Flag_Layak==='T').length>0" class="fin-action-warn"><i class="ri-alert-line me-1"></i>{{ detailData.filter(d=>d.Flag_Layak==='T').length }} analisa tidak lolos — status TIDAK OK</span>
+                                <span v-else class="fin-action-ok"><i class="ri-checkbox-circle-line me-1"></i>Semua analisa lolos uji</span>
+                            </div>
+                            <button class="btn fw-semibold px-4 fin-btn-form" @click="confirmSingle" :disabled="loading.submitting">
+                                <span v-if="loading.submitting" class="spinner-border spinner-border-sm me-2"></span><i v-else class="ri-shield-star-line me-1"></i>Finalisasi Sampel
                             </button>
                         </div>
+                    </div>
+                </template>
+            </div>
+        </div>
 
-                        <div
-                            v-if="listData.length > 0"
-                            class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top"
-                        >
-                            <span class="text-muted small">
-                                <b>{{ pagination.from }}</b
-                                >-<b>{{ pagination.to }}</b> dari
-                                <b>{{ pagination.total }}</b>
-                            </span>
-                            <nav>
-                                <ul class="pagination pagination-sm mb-0 gap-1">
-                                    <li
-                                        class="page-item"
-                                        :class="{
-                                            disabled:
-                                                pagination.current_page === 1,
-                                        }"
-                                    >
-                                        <button
-                                            class="page-link rounded-2 border-0"
-                                            @click="
-                                                changePage(
-                                                    pagination.current_page - 1
-                                                )
-                                            "
-                                        >
-                                            <i class="fas fa-chevron-left"></i>
-                                        </button>
-                                    </li>
-                                    <li
-                                        v-for="page in visiblePages"
-                                        :key="page"
-                                        class="page-item"
-                                        :class="{
-                                            active:
-                                                pagination.current_page ===
-                                                page,
-                                        }"
-                                    >
-                                        <button
-                                            class="page-link rounded-2 border-0 shadow-none"
-                                            @click="changePage(page)"
-                                        >
-                                            {{ page }}
-                                        </button>
-                                    </li>
-                                    <li
-                                        class="page-item"
-                                        :class="{
-                                            disabled:
-                                                pagination.current_page ===
-                                                pagination.last_page,
-                                        }"
-                                    >
-                                        <button
-                                            class="page-link rounded-2 border-0"
-                                            @click="
-                                                changePage(
-                                                    pagination.current_page + 1
-                                                )
-                                            "
-                                        >
-                                            <i class="fas fa-chevron-right"></i>
-                                        </button>
-                                    </li>
-                                </ul>
-                            </nav>
+        <!-- CONFIRM MODAL -->
+        <div v-if="modal.show" class="fin-modal-backdrop" @click.self="modal.show=false">
+            <div class="fin-modal">
+                <div class="fin-modal-hdr fin-modal-hdr--form"><i class="ri-shield-star-line me-2 fs-5"></i><div><div class="fin-modal-title">Konfirmasi Finalisasi Formulator</div><div class="fin-modal-sub">Sampel akan dikunci secara permanen</div></div><button class="fin-modal-close" @click="modal.show=false"><i class="ri-close-line"></i></button></div>
+                <div class="fin-modal-body" v-if="selectedItem">
+                    <div class="fin-confirm-row"><span class="fin-confirm-lbl">Sampel</span><code class="fin-confirm-val">{{ selectedItem.No_Po_Sampel }}</code></div>
+                    <div class="fin-confirm-row"><span class="fin-confirm-lbl">Barang</span><span class="fin-confirm-val">{{ selectedItem.Nama_Barang }}</span></div>
+                    <div class="fin-confirm-row"><span class="fin-confirm-lbl">No. PO</span><span class="fin-confirm-val">{{ selectedItem.No_Po }}</span></div>
+                    <div v-if="auditSummary.validators.length>0" class="fin-confirm-row"><span class="fin-confirm-lbl">Validator</span><span class="fin-confirm-val">{{ auditSummary.validators.map(v=>v.name).join(', ') }}</span></div>
+                    <div v-if="detailData.filter(d=>d.Flag_Layak==='T').length>0" class="fin-modal-warn"><i class="ri-alert-line me-2"></i>{{ detailData.filter(d=>d.Flag_Layak==='T').length }} analisa tidak lolos. Status akhir TIDAK OK.</div>
+                </div>
+                <div class="fin-modal-ftr"><button class="btn btn-light" @click="modal.show=false">Batal</button><button class="btn fw-semibold fin-btn-form" @click="submitFinalisasi" :disabled="loading.submitting"><span v-if="loading.submitting" class="spinner-border spinner-border-sm me-2"></span><i v-else class="ri-shield-star-line me-1"></i>Konfirmasi & Finalisasi</button></div>
+            </div>
+        </div>
+
+        <!-- FOTO MODAL + LIGHTBOX via teleport — same structure as monitoring -->
+        <teleport to="body">
+            <transition name="fin-foto-fade">
+                <div v-if="fotoModal.show" class="fin-foto-overlay" @click.self="fotoModal.show=false">
+                    <div class="fin-foto-modal">
+                        <div class="fin-foto-modal-hdr">
+                            <div><i class="ri-image-2-line me-2"></i><strong>Foto Analisa</strong><span class="fin-foto-modal-sub ms-2">{{ fotoModal.photos.length }} foto</span></div>
+                            <button class="fin-foto-modal-close" @click="fotoModal.show=false"><i class="ri-close-line"></i></button>
+                        </div>
+                        <div class="fin-foto-modal-body">
+                            <div v-if="fotoModal.loading" class="fin-foto-loading"><div class="spinner-border spinner-border-sm me-2" style="color:#405189;"></div><span class="text-muted small">Memuat foto...</span></div>
+                            <div v-else-if="fotoModal.photos.length===0" class="fin-foto-empty"><i class="ri-image-line fs-1 text-muted"></i><p class="text-muted small mt-2">Tidak ada foto tersedia</p></div>
+                            <div v-else class="fin-foto-grid">
+                                <div v-for="(photo,pi) in fotoModal.photos" :key="pi" class="fin-polaroid" @click="lightbox={show:true,url:photo.url,keterangan:photo.keterangan}">
+                                    <div class="fin-polaroid-img-wrap"><img :src="photo.url" class="fin-polaroid-img" :alt="photo.keterangan||'Foto '+(pi+1)" /><div class="fin-polaroid-overlay"><i class="ri-zoom-in-line"></i></div></div>
+                                    <div class="fin-polaroid-caption">{{ photo.keterangan || '—' }}</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </transition>
+            <transition name="fin-foto-fade">
+                <div v-if="lightbox.show" class="fin-lightbox" @click="lightbox.show=false">
+                    <button class="fin-lightbox-close" @click.stop="lightbox.show=false"><i class="ri-close-line"></i></button>
+                    <div class="fin-lightbox-inner" @click.stop>
+                        <img :src="lightbox.url" class="fin-lightbox-img" />
+                        <div v-if="lightbox.keterangan" class="fin-lightbox-caption">{{ lightbox.keterangan }}</div>
+                    </div>
+                </div>
+            </transition>
+        </teleport>
     </div>
 </template>
 
 <script>
-import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
 import axios from "axios";
-import ListSkeleton from "@/pages/vue/ui/ListSkeleton.vue";
-import { ElDatePicker, ElSelect, ElOption } from "element-plus";
-
 export default {
-    components: {
-        ListSkeleton,
-        DotLottieVue,
-        ElDatePicker,
-        ElSelect,
-        ElOption,
-    },
     data() {
         return {
-            listData: [],
-            search: "",
-            dateRange: [],
-            filterQr: "", // Variable untuk filter QR
-            searchTimeout: null,
-            pagination: {
-                current_page: 1,
-                last_page: 1,
-                total: 0,
-                per_page: 10,
-                from: 0,
-                to: 0,
-            },
-            loading: { loadingListData: false },
+            listData:[],selectedItem:null,detailData:[],auditLog:[],
+            auditSummary:{validators:[],prafinalisasi:[]},
+            activeTab:"analisa",searchQuery:"",searchTimeout:null,
+            filters:{startDate:"",endDate:"",qrType:""},
+            pagination:{page:1,totalPage:1,total:0,limit:10},
+            loading:{list:false,detail:false,timeline:false,submitting:false,foto:false},
+            isMobile:false,detailVisible:false,
+            modal:{show:false},
+            openSections:[],openAnalisas:[],
+            loadingTable:{},templates:{},tableRows:{},tableAverages:{},tableRawFotos:{},
+            blobUrlCache:{},
+            fotoModal:{show:false,photos:[],loading:false},
+            lightbox:{show:false,url:'',keterangan:''},
         };
     },
     computed: {
-        visiblePages() {
-            let pages = [];
-            let start = Math.max(1, this.pagination.current_page - 2);
-            let end = Math.min(
-                this.pagination.last_page,
-                this.pagination.current_page + 2
-            );
-            for (let i = start; i <= end; i++) pages.push(i);
-            return pages;
+        detailSections(){
+            const gDef={ANL:{label:'Analisa Lab',icon:'ri-flask-line',bg:'linear-gradient(135deg,#405189,#2e3a64)'},PLT:{label:'Palatabilitas',icon:'ri-heart-pulse-line',bg:'linear-gradient(135deg,#0ab39c,#0891b2)'},LCKV:{label:'Look View',icon:'ri-eye-line',bg:'linear-gradient(135deg,#7c3aed,#5b21b6)'}};
+            const order={ANL:1,PLT:2,LCKV:3};
+            const grouped={};
+            this.detailData.forEach(item=>{
+                const g=item.Kode_Aktivitas_Lab||'ANL';
+                if(!grouped[g]){const d=gDef[g]||{label:g,icon:'ri-flask-line',bg:'linear-gradient(135deg,#405189,#2e3a64)'};grouped[g]={...d,group:g,items:[],failCount:0};}
+                const key=`${item.Id_Jenis_Analisa}_${item.Nama_Pembanding||''}`;
+                if(!grouped[g].items.find(i=>i.key===key))grouped[g].items.push({...item,key});
+                if(item.Flag_Layak==='T')grouped[g].failCount++;
+            });
+            return Object.values(grouped).sort((a,b)=>(order[a.group]||99)-(order[b.group]||99));
         },
     },
     methods: {
-        handleSearch() {
-            clearTimeout(this.searchTimeout);
-            this.searchTimeout = setTimeout(() => {
-                this.pagination.current_page = 1;
-                this.fetchData();
-            }, 500);
+        isSectionOpen(group){return this.openSections.includes(group);},
+        isAnalisaOpen(key){return this.openAnalisas.includes(key);},
+        toggleSection(group){const idx=this.openSections.indexOf(group);if(idx>-1)this.openSections.splice(idx,1);else this.openSections.push(group);},
+        toggleAnalisa(analisa){const key=analisa.key;const idx=this.openAnalisas.indexOf(key);if(idx>-1){this.openAnalisas.splice(idx,1);return;}this.openAnalisas.push(key);if(!this.tableRows[key]&&!this.loadingTable[key])this.fetchAnalisaTable(analisa);},
+        debounceFetch(){clearTimeout(this.searchTimeout);this.searchTimeout=setTimeout(()=>{this.pagination.page=1;this.fetchList();},400);},
+        async fetchList(){
+            this.loading.list=true;
+            try{
+                const params={page:this.pagination.page,limit:this.pagination.limit,search:this.searchQuery,qr_type:this.filters.qrType};
+                if(this.filters.startDate)params.start_date=this.filters.startDate;
+                if(this.filters.endDate)params.end_date=this.filters.endDate;
+                const res=await axios.get("/api/v1/formualtor/finalisasi/hasil-uji-trial/current",{params});
+                if(res.data?.success){this.listData=res.data.result?.data||res.data.result||[];const meta=res.data.pagination||res.data.result?.pagination||{};this.pagination={page:meta.current_page||meta.page||1,totalPage:meta.total_pages||meta.totalPage||1,total:meta.total||meta.totalData||0,limit:meta.per_page||meta.limit||10};}
+                else this.listData=[];
+            }catch{this.listData=[];}finally{this.loading.list=false;}
         },
-        handleFilterChange() {
-            this.pagination.current_page = 1;
-            this.fetchData();
+        async selectItem(item){
+            this.selectedItem=item;this.activeTab="analisa";this.auditLog=[];this.auditSummary={validators:[],prafinalisasi:[]};this.detailVisible=true;
+            this.openSections=[];this.openAnalisas=[];this.templates={};this.tableRows={};this.tableAverages={};this.tableRawFotos={};
+            await Promise.all([this.fetchDetail(item.No_Po_Sampel),this.fetchAuditLog(item.No_Po_Sampel)]);
+            this.openSections=this.detailSections.map(s=>s.group);
+            const allItems=this.detailSections.flatMap(s=>s.items);
+            this.openAnalisas=allItems.map(a=>a.key);
+            allItems.forEach(a=>this.fetchAnalisaTable(a));
         },
-        clearSearch() {
-            this.search = "";
-            this.handleSearch();
+        async fetchDetail(noSampel){this.loading.detail=true;this.detailData=[];try{const res=await axios.get(`/api/v1/finalisasi/formulator/detail-analisa/${noSampel}`);this.detailData=res.data?.result||[];}catch{this.detailData=[];}finally{this.loading.detail=false;}},
+        async fetchAuditLog(noSampel){
+            this.loading.timeline=true;
+            try{const res=await axios.get(`/api/v1/log-aksi/by-sampel/${noSampel}`);this.auditLog=res.data?.result||[];this.buildAuditSummary();}
+            catch{this.auditLog=[];}finally{this.loading.timeline=false;}
         },
-        resetFilter() {
-            this.search = "";
-            this.dateRange = [];
-            this.filterQr = ""; // Reset filter QR
-            this.pagination.current_page = 1;
-            this.fetchData();
+        buildAuditSummary(){
+            const validators=this.auditLog.filter(l=>l.Jenis_Aksi==='VALIDASI_FORMULATOR'&&l.Sub_Aksi==='SETUJU').map(l=>({name:l.Nama_User||l.Id_User,tanggal:this.formatDate(l.Tanggal)}));
+            const prafinalisasi=this.auditLog.filter(l=>l.Jenis_Aksi==='PRAFINALISASI_FORMULATOR').map(l=>({name:l.Nama_User||l.Id_User,sub:l.Sub_Aksi,tanggal:this.formatDate(l.Tanggal)}));
+            this.auditSummary={validators,prafinalisasi};
         },
-        changePage(page) {
-            if (page >= 1 && page <= this.pagination.last_page) {
-                this.pagination.current_page = page;
-                this.fetchData();
-                window.scrollTo({ top: 0, behavior: "smooth" });
-            }
+        ensureTimeline(){if(this.auditLog.length===0&&this.selectedItem)this.fetchAuditLog(this.selectedItem.No_Po_Sampel);},
+        async fetchAnalisaTable(analisa){
+            const key=analisa.key;const idJA=analisa.Id_Jenis_Analisa;const noSampel=this.selectedItem.No_Po_Sampel;
+            this.loadingTable={...this.loadingTable,[key]:true};
+            try{
+                // Formulator uses different API endpoints
+                const [dataRes,templateRes]=await Promise.all([
+                    axios.get(`/api/v1/formulator-final-keputusan/detail/${idJA}/single-qrcode/${noSampel}/final`).catch(()=>null),
+                    axios.get(`/api/v1/formulator/uji-trial/${idJA}/parameter-perhitungan-old`).catch(()=>null),
+                ]);
+                const template=templateRes?.data?.result||{parameter:[],formula:[]};
+                const sampel=dataRes?.data?.result?.sampel||[];
+                const {data,formulaAverages}=this.processItems(sampel,template);
+                this.templates={...this.templates,[key]:template};
+                this.tableRows={...this.tableRows,[key]:data};
+                this.tableAverages={...this.tableAverages,[key]:formulaAverages};
+                const fotos=[];data.forEach(row=>(row.foto_analisa||[]).forEach(f=>fotos.push(f)));
+                if(fotos.length)this.tableRawFotos={...this.tableRawFotos,[key]:fotos};
+            }catch(err){console.error(err);this.tableRows={...this.tableRows,[key]:[]};}
+            finally{this.loadingTable={...this.loadingTable,[key]:false};}
         },
-        async fetchData() {
-            this.loading.loadingListData = true;
-            try {
-                const params = {
-                    page: this.pagination.current_page,
-                    limit: this.pagination.per_page,
-                    search: this.search,
-                    qr_type: this.filterQr,
-                };
-
-                if (this.dateRange && this.dateRange.length === 2) {
-                    params.start_date = this.dateRange[0];
-                    params.end_date = this.dateRange[1];
-                }
-
-                const response = await axios.get(
-                    "/api/v1/formualtor/finalisasi/hasil-uji-trial/current",
-                    { params }
-                );
-
-                if (response.status === 200 && response.data?.success) {
-                    this.listData = response.data.result;
-                    const meta = response.data.pagination;
-                    this.pagination = {
-                        current_page: meta.current_page,
-                        last_page: meta.total_pages,
-                        total: meta.total,
-                        per_page: meta.per_page,
-                        from: meta.from,
-                        to: meta.to,
-                    };
-                } else {
-                    this.listData = [];
-                }
-            } catch (error) {
-                this.listData = [];
-            } finally {
-                this.loading.loadingListData = false;
-            }
-        },
-        formatTanggal(tanggalString) {
-            if (!tanggalString) return "-";
-            return new Date(tanggalString).toLocaleDateString("id-ID", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
+        processItems(items,template){
+            if(!Array.isArray(items)||items.length===0)return{data:[],formulaAverages:[]};
+            const tplParams=template?.parameter?.length||0;
+            const tplFormula=template?.formula?.length||0;
+            if(!(tplParams>0||tplFormula>0)){return{data:items.map(item=>({No_Po:item.No_Po||'-',No_Split_Po:item.No_Split_Po||'-',No_Faktur:item.No_Faktur||'-',Flag_Layak:item.Flag_Layak||'-',No_Po_Sampel:item.No_Po_Sampel||'-',No_Fak_Sub_Po:item.No_Fak_Sub_Po||'-',Tanggal:item.Tanggal_Pengujian||'-',Nama_Pembanding:item.Nama_Pembanding||null,Hasil_Akhir_Analisa:this.formatHasil(item.Hasil_Akhir_Analisa),parameters:[],results:[],foto_analisa:item.foto_analisa||[]})),formulaAverages:[]};}
+            const grouped=items.reduce((acc,item)=>{const k=item.No_Faktur;if(!acc[k])acc[k]=[];acc[k].push(item);return acc;},{});
+            const processedData=Object.values(grouped).map(group=>{
+                const first=group[0];
+                const detailParams=Array.isArray(first.parameter)?first.parameter:[];
+                let parameterResults,finalResults;
+                if(detailParams.length>0){parameterResults=detailParams.map(p=>this.formatHasil(p.Hasil_Analisa));finalResults=tplFormula>0?group.map(item=>({value:this.formatHasil(item.Hasil_Akhir_Analisa),Flag_Layak:item.Flag_Layak,pembulatan:item.Pembulatan??4})):[];}
+                else if(group.length>1&&tplParams>0&&tplFormula===0){parameterResults=group.map(item=>this.formatHasil(item.Hasil_Akhir_Analisa));finalResults=[];}
+                else{parameterResults=[];finalResults=group.map(item=>({value:this.formatHasil(item.Hasil_Akhir_Analisa),Flag_Layak:item.Flag_Layak,pembulatan:item.Pembulatan??4}));}
+                return{No_Po:first.No_Po||'-',No_Split_Po:first.No_Split_Po||'-',No_Faktur:first.No_Faktur||'-',Flag_Layak:first.Flag_Layak||'-',No_Po_Sampel:first.No_Po_Sampel||'-',No_Fak_Sub_Po:first.No_Fak_Sub_Po||'-',Tanggal:first.Tanggal_Pengujian||'-',Nama_Pembanding:first.Nama_Pembanding||null,Hasil_Akhir_Analisa:this.formatHasil(first.Hasil_Akhir_Analisa),parameters:parameterResults,results:finalResults,foto_analisa:first.foto_analisa||[]};
             });
+            const formulaAverages=[];
+            for(let i=0;i<tplFormula;i++){let total=0,count=0,dp=4;processedData.forEach(row=>{const r=row.results[i];if(r&&r.value!=='-'){const v=parseFloat(r.value);if(!isNaN(v)){total+=v;count++;if(r.pembulatan)dp=parseInt(r.pembulatan,10);}}});formulaAverages.push(count>0?(total/count).toFixed(dp):'-');}
+            return{data:processedData,formulaAverages};
         },
+        formatHasil(val){if(val===null||val===undefined)return'-';const s=String(val).trim();if(!s||s==='null'||s==='undefined')return'-';if(/^-?\d+\.0+$/.test(s))return String(Math.trunc(parseFloat(s)));return s;},
+        hasTemplateData(key){const t=this.templates[key];return t&&((t.parameter?.length||0)>0||(t.formula?.length||0)>0);},
+        getTemplate(key){return this.templates[key]||{parameter:[],formula:[]};},
+        getBaseColCount(analisa){let c=6;if(this.selectedItem?.Flag_Multi_QrCode==='Y')c++;return c+(this.getTemplate(analisa.key).parameter?.length||0);},
+        tableHasFotos(key){return(this.tableRawFotos[key]||[]).length>0;},
+        fotoCount(key){return(this.tableRawFotos[key]||[]).length;},
+        async openFotoModal(key){
+            const fotos=this.tableRawFotos[key]||[];
+            if(!fotos.length)return;
+            this.fotoModal={show:true,photos:[],loading:true};
+            try{
+                const keysToFetch=fotos.map(f=>f.Berkas_Key).filter(k=>k&&!this.blobUrlCache[k]);
+                if(keysToFetch.length>0){
+                    const tokenRes=await axios.post('/api/v1/formulator/hasil-uji/berkas/foto/token/bulk',{keys:keysToFetch});
+                    const tokenMap=tokenRes.data||{};
+                    await Promise.all(keysToFetch.map(async k=>{
+                        try{
+                            const res=await axios.get(`/api/v1/formulator/berkas/stream/foto-uji/${k}?token=${tokenMap[k]}`,{responseType:'blob'});
+                            this.blobUrlCache[k]=URL.createObjectURL(res.data);
+                        }catch{}
+                    }));
+                }
+                this.fotoModal={show:true,loading:false,photos:fotos.map(f=>({url:this.blobUrlCache[f.Berkas_Key]||'',keterangan:f.Keterangan||f.keterangan||''})).filter(p=>p.url)};
+            }catch(e){
+                console.error('openFotoModal error:',e);
+                this.fotoModal={show:true,loading:false,photos:[]};
+            }
+        },
+        isActive(item){return this.selectedItem?.No_Po_Sampel===item.No_Po_Sampel;},
+        changePage(p){if(p>=1&&p<=this.pagination.totalPage){this.pagination.page=p;this.fetchList();}},
+        resetFilters(){this.searchQuery="";this.filters={startDate:"",endDate:"",qrType:""};this.pagination.page=1;this.fetchList();},
+        confirmSingle(){this.modal.show=true;},
+        async submitFinalisasi(){
+            this.loading.submitting=true;
+            try{
+                const res=await axios.post(`/api/v1/finalisasi/formulator/hasil-uji-trial/${this.selectedItem.No_Po_Sampel}`);
+                if(res.data?.success){this.showToast("success","Sampel formulator berhasil difinalisasi");this.selectedItem=null;this.detailData=[];this.auditLog=[];this.detailVisible=false;this.fetchList();}
+                else this.showToast("error",res.data?.message||"Gagal finalisasi");
+                this.modal.show=false;
+            }catch(e){this.showToast("error",e.response?.data?.message||"Terjadi kesalahan");}
+            finally{this.loading.submitting=false;}
+        },
+        showToast(type,msg){const el=document.createElement("div");el.className=`fin-toast fin-toast--${type==='success'?'success':'error'}`;el.innerHTML=`<i class="${type==='success'?'ri-checkbox-circle-line':'ri-close-circle-line'} me-2"></i>${msg}`;document.body.appendChild(el);setTimeout(()=>el.remove(),3500);},
+        formatDate(d){if(!d)return"-";return new Date(d).toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"});},
+        formatAksi(aksi){const map={INPUT_ANALYZER:"Input Analyzer",VALIDASI_PRODUKSI:"Validasi Produksi",VALIDASI_TRIAL_PRODUKSI:"Validasi Trial",FINALISASI_PRODUKSI:"Finalisasi Produksi",FINALISASI_TRIAL_PRODUKSI:"Finalisasi Trial",VALIDASI_FORMULATOR:"Validasi Formulator",PRAFINALISASI_FORMULATOR:"Pra-Finalisasi",FINALISASI_FORMULATOR:"Finalisasi Formulator"};return map[aksi]||aksi;},
+        getStepClass(log){if(log.Sub_Aksi==='TOLAK')return'vtl-rejected';if(log.Jenis_Aksi==='FINALISASI_FORMULATOR')return'vtl-final';if(log.Jenis_Aksi==='PRAFINALISASI_FORMULATOR')return'vtl-prafinal';return'vtl-done';},
+        getStepIcon(log){if(log.Sub_Aksi==='TOLAK')return'ri-close-line';if(log.Jenis_Aksi==='INPUT_ANALYZER')return'ri-test-tube-line';if(log.Jenis_Aksi==='FINALISASI_FORMULATOR')return'ri-shield-star-line';if(log.Jenis_Aksi==='PRAFINALISASI_FORMULATOR')return'ri-check-double-line';return'ri-check-line';},
+        getStepBadgeClass(log){if(log.Sub_Aksi==='TOLAK')return'vtl-badge--danger';if(log.Jenis_Aksi==='INPUT_ANALYZER')return'vtl-badge--info';if(log.Jenis_Aksi==='FINALISASI_FORMULATOR')return'vtl-badge--final';if(log.Jenis_Aksi==='PRAFINALISASI_FORMULATOR')return'vtl-badge--primary';return'vtl-badge--success';},
+        checkMobile(){this.isMobile=window.innerWidth<768;},
     },
-    mounted() {
-        this.fetchData();
-    },
+    mounted(){this.checkMobile();window.addEventListener("resize",this.checkMobile);this.fetchList();},
+    beforeUnmount(){window.removeEventListener("resize",this.checkMobile);},
 };
 </script>
 
 <style scoped>
-.skeleton {
-    animation: pulse 1.5s infinite;
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 37%, #f0f0f0 63%);
-    background-size: 400% 100%;
-    border-radius: 4px;
-}
-
-@keyframes pulse {
-    0% {
-        background-position: 100% 50%;
-    }
-    100% {
-        background-position: 0 50%;
-    }
-}
-
-.skeleton-line {
-    height: 20px;
-    margin-bottom: 10px;
-}
-
-.skeleton-btn {
-    height: 40px;
-    width: 100%;
-    margin-bottom: 15px;
-}
-
-.skeleton-table-cell {
-    height: 25px;
-    margin: 5px 0;
-}
-
-/* Container Styles */
-.data-uji-container {
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.main-card {
-    border-radius: 12px;
-    overflow: hidden;
-    background-color: #ffffff;
-}
-
-.section-header {
-    padding: 0 1.5rem;
-}
-
-.header-content {
-    padding-top: 1rem;
-}
-
-.header-icon {
-    transition: transform 0.3s ease;
-}
-
-.header-icon:hover {
-    transform: scale(1.1);
-}
-
-.main-title {
-    font-size: 1.75rem;
-    letter-spacing: -0.5px;
-}
-
-.subtitle {
-    font-size: 0.95rem;
-    opacity: 0.85;
-}
-
-.divider {
-    height: 1px;
-    background: linear-gradient(
-        90deg,
-        rgba(13, 110, 253, 0.1) 0%,
-        rgba(13, 110, 253, 0.5) 50%,
-        rgba(13, 110, 253, 0.1) 100%
-    );
-}
-
-/* Accordion Styles */
-.custom-accordion {
-    --bs-accordion-border-width: 0;
-}
-
-.accordion-item-custom {
-    transition: all 0.3s ease;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.accordion-item-custom:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    border-color: rgba(13, 110, 253, 0.2);
-}
-
-.accordion-btn {
-    background-color: #ffffff;
-    box-shadow: none;
-}
-
-.accordion-btn:not(.collapsed) {
-    background-color: rgba(13, 110, 253, 0.05);
-    color: #0d6efd;
-}
-
-.accordion-btn:focus {
-    box-shadow: none;
-    border-color: rgba(13, 110, 253, 0.2);
-}
-
-.icon-wrapper {
-    transition: all 0.3s ease;
-}
-
-.accordion-btn:hover .icon-wrapper {
-    background-color: rgba(13, 110, 253, 0.15);
-}
-
-.analysis-icon {
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.info-text {
-    min-width: 0;
-}
-
-.badge-container {
-    flex-wrap: wrap;
-}
-
-.code-badge {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 180px;
-    display: inline-flex;
-    align-items: center;
-}
-
-.date-badge {
-    display: inline-flex;
-    align-items: center;
-}
-
-.analysis-name {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-}
-
-.action-buttons {
-    flex-shrink: 0;
-}
-
-.confirm-btn {
-    transition: all 0.2s ease;
-    min-width: 110px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.confirm-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(25, 135, 84, 0.2);
-}
-
-.menu-btn {
-    width: 32px;
-    height: 32px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-}
-
-.menu-btn:hover {
-    background-color: rgba(108, 117, 125, 0.1);
-}
-
-/* Accordion Body Styles */
-.inner-accordion-body {
-    background-color: #f9fafb;
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.loading-spinner {
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-/* Tab Styles */
-.result-tabs {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.nav-tabs-custom .nav-link {
-    border: none;
-    padding: 0.75rem 1.5rem;
-    color: #6c757d;
-    font-weight: 500;
-    border-bottom: 3px solid transparent;
-    transition: all 0.2s ease;
-    position: relative;
-    margin-bottom: -1px;
-}
-
-.nav-tabs-custom .nav-link.active {
-    color: #0d6efd;
-    border-bottom-color: #0d6efd;
-    background-color: transparent;
-}
-
-.nav-tabs-custom .nav-link:hover:not(.active) {
-    color: #495057;
-    border-bottom-color: rgba(13, 110, 253, 0.2);
-}
-
-/* Nested Accordion Styles */
-.nested-accordion-item {
-    background-color: #ffffff;
-    border-radius: 8px !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    margin-bottom: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.nested-accordion-btn {
-    border-radius: 8px !important;
-    padding: 0.75rem 1.25rem;
-}
-
-.nested-accordion-btn:not(.collapsed) {
-    background-color: rgba(13, 110, 253, 0.05);
-    color: #0d6efd;
-}
-
-.nested-accordion-body {
-    padding: 1.25rem;
-    border-radius: 0 0 8px 8px;
-}
-
-/* Detail Card Styles */
-.detail-card {
-    background-color: transparent;
-}
-
-.detail-header {
-    border-radius: 8px 8px 0 0 !important;
-}
-
-.detail-title {
-    font-size: 1.1rem;
-    display: flex;
-    align-items: center;
-}
-
-.time-value {
-    font-size: 0.85em;
-}
-
-/* Action Buttons */
-.action-buttons-bottom {
-    animation: fadeInUp 0.3s ease;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.complete-btn {
-    transition: all 0.3s ease;
-    min-width: 180px;
-}
-
-.complete-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.25);
-}
-
-/* Empty State Styles */
-.empty-state {
-    animation: fadeIn 0.5s ease;
-}
-
-.empty-title {
-    font-size: 1.25rem;
-    font-weight: 500;
-}
-
-.empty-message {
-    max-width: 400px;
-    margin: 0 auto;
-}
-
-.empty-action {
-    transition: all 0.3s ease;
-    padding: 0.5rem 1.5rem;
-}
-
-.empty-action:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25);
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-    .header-content {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .header-icon {
-        margin-bottom: 1rem;
-    }
-
-    .accordion-content {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .action-buttons {
-        margin-top: 1rem;
-        width: 100%;
-        justify-content: flex-end;
-    }
-
-    .detail-col {
-        width: 100%;
-    }
-
-    .detail-row {
-        flex-direction: column;
-    }
-}
-
-@media (max-width: 576px) {
-    .main-title {
-        font-size: 1.5rem;
-    }
-
-    .nav-tabs-custom .nav-link {
-        padding: 0.5rem 1rem;
-        font-size: 0.9rem;
-    }
-
-    .complete-btn {
-        width: 100%;
-    }
-}
-</style>
-
-<style>
-.informasi-penting {
-    margin: 1.5rem 0;
-    animation: fadeIn 0.5s ease;
-}
-
-.info-container {
-    background-color: rgba(13, 110, 253, 0.08);
-    border-left: 4px solid #0d6efd;
-    border-radius: 0 8px 8px 0;
-    padding: 1.25rem;
-    display: flex;
-    align-items: flex-start;
-    transition: all 0.3s ease;
-}
-
-.info-container:hover {
-    background-color: rgba(13, 110, 253, 0.12);
-    transform: translateX(3px);
-}
-
-.info-icon {
-    color: #0d6efd;
-    font-size: 1.5rem;
-    margin-right: 1rem;
-    margin-top: 0.2rem;
-}
-
-.info-content {
-    flex: 1;
-}
-
-.info-title {
-    color: #0d6efd;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-}
-
-.info-text {
-    color: #495057;
-    line-height: 1.7;
-    margin-bottom: 0.75rem;
-}
-
-.info-footer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(13, 110, 253, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
-    }
-}
-
-@media (max-width: 768px) {
-    .info-container {
-        flex-direction: column;
-    }
-
-    .info-icon {
-        margin-bottom: 0.5rem;
-    }
-}
-
-.badge {
-    transition: all 0.2s ease;
-}
-
-.badge:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-</style>
-
-<style>
-:root {
-    --warna-primer: #4361ee;
-    --warna-sekunder: #3f37c9;
-    --warna-sukses: #4cc9f0;
-    --warna-info: #4895ef;
-    --warna-peringatan: #f72585;
-    --warna-bahaya: #b5179e;
-    --warna-latar: #f8f9fa;
-    --warna-gelap: #212529;
-    --warna-teks-primer: #2b2d42;
-    --warna-teks-sekunder: #8d99ae;
-    --radius-border: 12px;
-    --bayangan: 0 10px 30px rgba(0, 0, 0, 0.08);
-    --transisi: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.header-kalkulator {
-    text-align: center;
-    margin-bottom: 1rem;
-    padding-bottom: 1.5rem;
-}
-
-.judul-kalkulator {
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: #3f5189;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-}
-
-.deskripsi-kalkulator {
-    font-size: 1.1rem;
-    color: #35477b;
-    max-width: 700px;
-    margin: 0 auto;
-}
-
-.isi-dokumentasi {
-    margin-bottom: 1rem;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-/* Base Styles */
-.calculation-container {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    font-family: "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    color: #333;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 1rem;
-}
-
-/* Section Headers */
-.section-header {
-    margin-bottom: 1.5rem;
-}
-
-.section-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.section-badge i {
-    margin-right: 0.5rem;
-}
-
-.formula-badge {
-    background-color: rgba(13, 110, 253, 0.1);
-    color: #0d6efd;
-    border-left: 4px solid #0d6efd;
-}
-
-.result-badge {
-    background-color: rgba(25, 135, 84, 0.1);
-    color: #198754;
-    border-left: 4px solid #198754;
-}
-
-.section-description {
-    font-size: 0.9rem;
-    color: #6c757d;
-    margin-left: 0.25rem;
-}
-
-/* Parameter Table */
-.parameter-table-container {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    overflow: hidden;
-}
-
-.responsive-table-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.parameter-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 600px;
-}
-
-.parameter-table th {
-    background-color: #f8f9fa;
-    padding: 0.75rem 1rem;
-    text-align: left;
-    font-weight: 600;
-    color: #495057;
-    border-bottom: 2px solid #e9ecef;
-}
-
-.parameter-table td {
-    padding: 1rem;
-    vertical-align: middle;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.parameter-index {
-    font-weight: 500;
-    color: #6c757d;
-    width: 50px;
-}
-
-.parameter-name {
-    font-weight: 500;
-    min-width: 200px;
-}
-
-.parameter-unit {
-    color: #6c757d;
-    font-size: 0.85em;
-    margin-left: 0.25rem;
-}
-
-.parameter-input-cell {
-    min-width: 200px;
-}
-
-.input-group {
-    display: flex;
-    align-items: stretch;
-}
-
-.parameter-input {
-    flex: 1;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #ced4da;
-    border-radius: 4px 0 0 4px;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.parameter-input:focus {
-    border-color: #86b7fe;
-    outline: 0;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-.unit-display {
-    background-color: #e9ecef;
-    border: 1px solid #ced4da;
-    border-left: 0;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0 4px 4px 0;
-    color: #495057;
-}
-
-/* Results Section */
-.results-container {
-    display: grid;
-    gap: 1rem;
-}
-
-.result-card {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    padding: 1.25rem;
-    border-left: 4px solid #198754;
-}
-
-.result-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.result-title {
-    font-weight: 600;
-    color: #212529;
-    display: flex;
-    align-items: center;
-}
-
-.result-title i {
-    color: #198754;
-    margin-right: 0.5rem;
-    font-size: 1.1rem;
-}
-
-.result-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #198754;
-    background-color: rgba(25, 135, 84, 0.1);
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    min-width: 80px;
-    text-align: center;
-}
-
-.result-notes {
-    background-color: #f8f9fa;
-    border-radius: 6px;
-    padding: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.notes-header {
-    display: flex;
-    align-items: center;
-    font-size: 0.85rem;
-    color: #6c757d;
-    margin-bottom: 0.25rem;
-}
-
-.notes-header i {
-    margin-right: 0.5rem;
-}
-
-.notes-content {
-    font-size: 0.9rem;
-    color: #495057;
-    line-height: 1.5;
-}
-
-.result-footer {
-    display: flex;
-    justify-content: flex-end;
-}
-
-.calculation-method {
-    font-size: 0.8rem;
-    color: #6c757d;
-}
-
-.method-label {
-    font-weight: 500;
-    margin-right: 0.25rem;
-}
-
-/* Highlight Effect */
-.parameter-row.highlighted {
-    background-color: rgba(13, 110, 253, 0.05);
-    transition: background-color 0.3s ease;
-}
-
-/* Responsive Layout */
-@media (min-width: 992px) {
-    .calculation-container {
-        grid-template-columns: 1fr 1fr;
-    }
-}
-
-@media (min-width: 1200px) {
-    .calculation-container {
-        grid-template-columns: 2fr 1fr;
-    }
-}
-
-/* Animation */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.result-card {
-    animation: fadeIn 0.3s ease-out forwards;
-}
-
-/* Print Styles */
-@media print {
-    .calculation-container {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .parameter-table-container,
-    .result-card {
-        box-shadow: none;
-        border: 1px solid #ddd;
-    }
-}
-
-/* animasi skeleton */
-@keyframes pulseSkeleton {
-    0% {
-        background-color: #e0e0e0;
-    }
-    50% {
-        background-color: #f0f0f0;
-    }
-    100% {
-        background-color: #e0e0e0;
-    }
-}
-
-.skeleton {
-    animation: pulseSkeleton 1.5s infinite;
-    border-radius: 8px;
-}
-.skeleton-image {
-    width: 100%;
-    height: 200px;
-    margin-bottom: 16px;
-}
-
-.analysis-container {
-    background: rgba(255, 255, 255, 0.98);
-    border-radius: 20px;
-    padding: 28px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.analysis-container:hover {
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
-}
-
-.section-title {
-    font-weight: 800;
-    font-size: 1.25rem;
-    position: relative;
-    padding-bottom: 16px;
-    margin-bottom: 24px;
-    color: #495057; /* Updated to use #495057 */
-    letter-spacing: -0.5px;
-}
-
-.section-title::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 80px;
-    height: 5px;
-    background: #495057;
-    border-radius: 5px;
-    box-shadow: 0 2px 8px rgba(19, 24, 50, 0.3);
-}
-
-.text-gradient {
-    background: #495057;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-
-/* Base Styles */
-.cleaning-system-container {
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f8fafc;
-    min-height: 100vh;
-    color: #334155;
-}
-
-.system-header {
-    background: linear-gradient(135deg, #456290 0%, #25335e 100%);
-    color: white;
-    padding: 1.5rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.header-content {
-    flex: 1;
-}
-
-.system-title {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin: 0;
-    color: white;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.system-subtitle {
-    font-size: 1rem;
-    opacity: 0.9;
-    margin: 0.25rem 0 0;
-    font-weight: 400;
-}
-
-.header-actions {
-    display: flex;
-    gap: 1rem;
-}
-
-.btn-help {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-help:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.content-wrapper {
-    max-width: 100%;
-    margin: 2rem auto;
-    padding: 0 2rem;
-}
-
-/* Panel Styles */
-.search-panel,
-.details-panel,
-.template-panel,
-.form-panel {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    margin-bottom: 1.5rem;
-    overflow: hidden;
-}
-
-.panel-header {
-    padding: 1.25rem 1.5rem;
-    background-color: #f1f5f9;
-    border-bottom: 1px solid #e2e8f0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.panel-header.with-tabs {
-    border-bottom: none;
-}
-
-.panel-header h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.panel-body {
-    padding: 1.5rem;
-}
-
-/* Search Form */
-.search-form {
-    max-width: 600px;
-}
-
-.form-label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #475569;
-}
-
-.input-with-button {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.form-input {
-    flex: 1;
-    padding: 0.75rem 1rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 1rem;
-    transition: all 0.2s ease;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
-}
-
-.btn-search {
-    background-color: #3b82f6;
-    color: white;
-    border: none;
-    padding: 0 1.5rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-search:hover {
-    background-color: #2563eb;
-}
-
-/* Detail Grid */
-.detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.detail-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.detail-label {
-    font-weight: 500;
-    color: #64748b;
-}
-
-.detail-value {
-    font-weight: 500;
-    color: #1e293b;
-}
-
-.detail-value.highlight {
-    color: #3b82f6;
-    font-weight: 600;
-}
-
-.status-badge {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.badge.active {
-    background-color: #d1fae5;
-    color: #065f46;
-}
-
-.badge.priority {
-    background-color: #3eb1df;
-    color: #ffffff;
-}
-
-/* Notes Section */
-.notes-section {
-    background-color: #f8fafc;
-    border-radius: 8px;
-    padding: 1rem;
-    margin-top: 1.5rem;
-    border-left: 4px solid #60a5fa;
-}
-
-.notes-header {
-    margin-bottom: 0.5rem;
-}
-
-.notes-label {
-    font-weight: 600;
-    color: #475569;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.notes-content {
-    color: #475569;
-    line-height: 1.5;
-}
-
-/* Form Panels */
-.form-panel .panel-header {
-    background-color: #f8fafc;
-}
-
-.btn-add {
-    background-color: #10b981;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-add:hover {
-    background-color: #059669;
-}
-
-.btn-add-param {
-    background-color: #f59e0b;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-    margin-right: 0.5rem;
-}
-
-.btn-add-param:hover {
-    background-color: #d97706;
-}
-
-/* Multi Table */
-.multi-table {
-    overflow-x: auto;
-}
-
-.multi-table table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-}
-
-.multi-table th {
-    background-color: #f1f5f9;
-    color: #475569;
-    font-weight: 600;
-    padding: 0.75rem 1rem;
-    text-align: left;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.multi-table td {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: middle;
-}
-
-.multi-table input {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-}
-
-.multi-table input:focus {
-    outline: none;
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
-}
-
-.multi-table td.actions {
-    text-align: center;
-}
-/* Form Actions */
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid #f1f5f9;
-}
-
-.btn-submit {
-    background-color: #3b82f6;
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-submit:hover {
-    background-color: #2563eb;
-}
-
-.btn-save {
-    background-color: #8b5cf6;
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-save:hover {
-    background-color: #7c3aed;
-}
-
-.modern-form {
-    font-family: "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-
-    margin: 0 auto;
-}
-
-.sample-info-card {
-    background: #f8f9ff;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 24px;
-    display: flex;
-    gap: 32px;
-    border: 1px solid #e0e7ff;
-}
-
-.info-item {
-    display: flex;
-    align-items: center;
-}
-
-.info-label {
-    font-weight: 500;
-    color: #4b5563;
-    margin-right: 8px;
-}
-
-.info-value {
-    font-weight: 600;
-    color: #1e293b;
-}
-
-/* Modern Table Styles */
-.analysis-table-container {
-    overflow-x: auto;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-}
-
-.modern-analysis-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-}
-
-/* Search Bar */
-.search-wrapper .search-icon {
-    position: absolute;
-    left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 10;
-}
-.custom-search {
-    height: 48px;
-    background-color: #f8f9fa;
-    transition: all 0.3s ease;
-}
-.custom-search:focus {
-    background-color: #fff;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
-}
-
-/* Card Styling */
-.hover-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border: 1px solid rgba(0, 0, 0, 0.02);
-}
-.hover-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.08) !important;
-}
-.status-strip {
-    width: 5px;
-    min-height: 100%;
-}
-.icon-box {
-    width: 50px;
-    height: 50px;
-}
-
-/* Pagination Custom */
-.page-link {
-    color: #6c757d;
-    min-width: 32px;
-    text-align: center;
-    margin: 0 2px;
-}
-.page-item.active .page-link {
-    background-color: #0d6efd;
-    color: white;
-}
-.page-item.disabled .page-link {
-    background-color: transparent;
-    opacity: 0.5;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .status-strip {
-        width: 100%;
-        height: 4px;
-        position: absolute;
-        top: 0;
-    }
-}
+.fin-root{display:flex;flex-direction:column;height:100vh;overflow:hidden;background:#f0f2f5;font-family:'Segoe UI',system-ui,sans-serif;}
+/* TOP BAR - Velzon primary */
+.fin-topbar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:54px;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0;gap:12px;}
+.fin-topbar-left{display:flex;align-items:center;gap:10px;}
+.fin-topbar-icon-wrap{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#2e3a64,#405189);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.95rem;flex-shrink:0;}
+.fin-topbar-title{font-weight:700;font-size:.9rem;color:#0f172a;display:block;line-height:1.2;}
+.fin-topbar-sub{font-size:.68rem;color:#94a3b8;display:block;}
+.fin-topbar-right{display:flex;align-items:center;gap:8px;}
+.fin-stat-badge{display:flex;flex-direction:column;align-items:center;background:#eef2ff;border:1px solid #c7d2fe;border-radius:7px;padding:3px 9px;}
+.fin-stat-num{font-weight:700;font-size:1rem;color:#405189;line-height:1;}
+.fin-stat-lbl{font-size:.58rem;color:#818cf8;text-transform:uppercase;letter-spacing:.4px;}
+.fin-status-chip{display:inline-flex;align-items:center;padding:4px 11px;border-radius:20px;font-size:.73rem;font-weight:600;background:#eef2ff;color:#405189;border:1px solid #c7d2fe;}
+.fin-body{display:flex;flex:1;overflow:hidden;}
+.fin-left{width:340px;min-width:280px;display:flex;flex-direction:column;border-right:1px solid #e2e8f0;background:#fff;overflow:hidden;}
+.fin-filter-bar{padding:10px 12px;border-bottom:1px solid #eef2ff;flex-shrink:0;}
+.fin-search-wrap{position:relative;margin-bottom:7px;}
+.fin-search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.82rem;}
+.fin-search-input{width:100%;padding:7px 28px;border:1px solid #e2e8f0;border-radius:7px;font-size:.8rem;outline:none;background:#f8fafc;}
+.fin-search-input:focus{border-color:#818cf8;box-shadow:0 0 0 3px rgba(129,140,248,.1);background:#fff;}
+.fin-search-x{position:absolute;right:7px;top:50%;transform:translateY(-50%);border:none;background:none;color:#94a3b8;cursor:pointer;font-size:.82rem;padding:0;}
+.fin-filter-row{display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
+.fin-date-input{flex:1;min-width:98px;padding:4px 7px;border:1px solid #e2e8f0;border-radius:5px;font-size:.76rem;}
+.fin-sep{color:#94a3b8;font-size:.8rem;flex-shrink:0;}
+.fin-select{flex:1;min-width:86px;padding:4px 7px;border:1px solid #e2e8f0;border-radius:5px;font-size:.76rem;}
+.fin-btn-reset{padding:4px 9px;border:1px solid #fecaca;border-radius:5px;background:#fff;color:#ef4444;cursor:pointer;font-size:.78rem;}
+.fin-list{flex:1;overflow-y:auto;}
+.fin-skeleton{height:66px;background:linear-gradient(90deg,#eef2ff 25%,#c7d2fe 37%,#eef2ff 63%);background-size:400% 100%;border-radius:7px;animation:vz-pulse 1.4s infinite;}
+@keyframes vz-pulse{0%{background-position:100% 50%}100%{background-position:0 50%}}
+.fin-empty-list{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;color:#94a3b8;gap:8px;text-align:center;}
+.fin-empty-list i{font-size:1.8rem;}
+.fin-empty-list p{font-size:.8rem;margin:0;}
+.fin-item-wrap{border-bottom:1px solid #eef2ff;}
+.fin-item{width:100%;display:flex;align-items:center;border:none;background:none;cursor:pointer;padding:9px 12px;text-align:left;position:relative;transition:background .12s;}
+.fin-item:hover{background:#f8fafc;}
+.fin-item--active{background:#eef2ff !important;}
+.fin-item-accent{width:3px;height:100%;position:absolute;left:0;top:0;background:transparent;}
+.fin-item-accent--active{background:#405189;}
+.fin-item-body{flex:1;overflow:hidden;}
+.fin-item-top{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:2px;}
+.fin-item-title{font-weight:700;font-size:.8rem;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fin-item-sub{font-size:.69rem;color:#64748b;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fin-item-meta{display:flex;gap:3px;flex-wrap:wrap;}
+.fin-item-arrow{color:#cbd5e1;font-size:.95rem;flex-shrink:0;}
+.fin-chip{display:inline-flex;align-items:center;gap:2px;padding:1px 6px;border-radius:3px;font-size:.64rem;font-weight:600;}
+.fin-chip i{font-size:.66rem;}
+.fin-chip--blue{background:#eef2ff;color:#6366f1;}
+.fin-chip--gray{background:#f1f5f9;color:#64748b;}
+.fin-chip--cyan{background:#ecfeff;color:#0891b2;}
+.fin-chip--purple{background:#eef2ff;color:#405189;}
+.fin-badge{display:inline-flex;align-items:center;padding:1px 7px;border-radius:4px;font-size:.68rem;font-weight:600;white-space:nowrap;}
+.fin-badge i{font-size:.68rem;}
+.fin-badge--primary{background:rgba(64,81,137,.1);color:#405189;}
+.fin-badge--form{background:rgba(64,81,137,.1);color:#405189;}
+.fin-badge--success{background:rgba(10,179,156,.1);color:#0ab39c;border:1px solid rgba(10,179,156,.2);}
+.fin-badge--danger{background:rgba(240,101,72,.1);color:#f06548;border:1px solid rgba(240,101,72,.2);}
+.fin-badge--gray{background:#f1f5f9;color:#475569;}
+.fin-btn-form{background:#405189;color:#fff;border:none;border-radius:6px;padding:5px 14px;}
+.fin-btn-form:hover{background:#2e3a64;color:#fff;}
+.fin-list-footer{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-top:1px solid #e2e8f0;background:#fff;flex-shrink:0;}
+.fin-page-info{font-size:.72rem;color:#94a3b8;}
+.fin-page-btns{display:flex;align-items:center;gap:5px;}
+.fin-page-btn{width:26px;height:26px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem;}
+.fin-page-btn:disabled{opacity:.4;cursor:not-allowed;}
+.fin-page-current{font-size:.75rem;color:#475569;font-weight:600;}
+.fin-right{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#f0f2f5;}
+.fin-detail-empty{flex:1;display:flex;align-items:center;justify-content:center;}
+.fin-detail-empty-inner{text-align:center;color:#94a3b8;max-width:250px;}
+.fin-empty-icon-wrap{width:60px;height:60px;border-radius:50%;background:rgba(64,81,137,.1);color:#405189;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.6rem;}
+.fin-detail-empty-inner h6{color:#475569;font-weight:600;margin-bottom:6px;}
+.fin-detail-empty-inner p{font-size:.8rem;margin:0;}
+.fin-detail-header{padding:13px 16px;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0;}
+.fin-dh-main{display:flex;align-items:flex-start;gap:10px;margin-bottom:9px;}
+.fin-dh-icon{width:38px;height:38px;border-radius:9px;background:linear-gradient(135deg,#2e3a64,#405189);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+.fin-dh-title{font-weight:700;font-size:.9rem;color:#0f172a;}
+.fin-dh-sampel{font-size:.72rem;color:#64748b;margin:1px 0 5px;font-family:monospace;}
+.fin-dh-badges{display:flex;gap:3px;flex-wrap:wrap;}
+.fin-kpi-row{display:flex;gap:7px;}
+.fin-kpi{flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:6px 9px;display:flex;flex-direction:column;align-items:center;}
+.fin-kpi--success{background:rgba(10,179,156,.06);border-color:rgba(10,179,156,.25);}
+.fin-kpi--danger{background:rgba(240,101,72,.06);border-color:rgba(240,101,72,.25);}
+.fin-kpi-num{font-weight:700;font-size:1.2rem;color:#0f172a;line-height:1;}
+.fin-kpi--success .fin-kpi-num{color:#0ab39c;}
+.fin-kpi--danger .fin-kpi-num{color:#f06548;}
+.fin-kpi-lbl{font-size:.62rem;color:#94a3b8;margin-top:2px;text-transform:uppercase;letter-spacing:.3px;}
+.fin-tabs{display:flex;border-bottom:1px solid #e2e8f0;background:#fff;flex-shrink:0;padding:0 14px;}
+.fin-tab{padding:9px 14px;border:none;background:none;font-size:.8rem;font-weight:500;color:#94a3b8;cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;gap:4px;transition:.12s;}
+.fin-tab--active{color:#405189;border-bottom-color:#405189;font-weight:600;}
+.fin-tab-count{background:#405189;color:#fff;border-radius:10px;padding:1px 6px;font-size:.6rem;font-weight:700;}
+.fin-detail-body{flex:1;overflow-y:auto;padding:10px 12px;}
+.fin-loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:130px;gap:7px;}
+.fin-section{background:#fff;border-radius:9px;margin-bottom:7px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #eef2ff;}
+.fin-section-hdr{width:100%;display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:none;border:none;cursor:pointer;transition:background .12s;gap:8px;}
+.fin-section-hdr:hover{background:#f8fafc;}
+.fin-section-hdr-left{display:flex;align-items:center;gap:9px;}
+.fin-section-icon{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.85rem;flex-shrink:0;}
+.fin-section-title{font-weight:700;font-size:.83rem;color:#0f172a;display:block;text-align:left;}
+.fin-section-sub{font-size:.65rem;color:#94a3b8;display:block;text-align:left;}
+.fin-section-hdr-right{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.fin-chevron{font-size:1.05rem;color:#94a3b8;transition:transform .2s;}
+.fin-chevron.collapsed{transform:rotate(180deg);}
+.fin-section-body{border-top:1px solid #eef2ff;}
+.fin-analisa-panel{border-bottom:1px solid #eef2ff;}
+.fin-analisa-panel:last-child{border-bottom:none;}
+.fin-analisa-hdr{width:100%;display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:none;border:none;cursor:pointer;transition:background .12s;gap:8px;}
+.fin-analisa-hdr:hover{background:#f8fafc;}
+.fin-analisa-hdr--success{border-left:3px solid #0ab39c;}
+.fin-analisa-hdr--danger{border-left:3px solid #f06548;}
+.fin-analisa-hdr-left{display:flex;align-items:flex-start;gap:9px;flex:1;min-width:0;text-align:left;}
+.fin-analisa-hdr-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.dot--success{background:#0ab39c;}
+.dot--danger{background:#f06548;}
+.fin-analisa-hdr-title{font-weight:600;font-size:.82rem;color:#0f172a;display:block;}
+.fin-analisa-hdr-meta{display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;}
+.fin-analisa-table-wrap{padding-bottom:10px;background:#f8fafc;}
+.fin-table-loading{display:flex;align-items:center;padding:14px 16px;}
+/* TABLE - Velzon-aligned (same across all variants) */
+.fin-data-table{font-size:.77rem;}
+.fin-data-table thead th{background:#405189;color:#fff;font-weight:600;font-size:.7rem;white-space:nowrap;padding:7px 9px;border-color:#2e3a64;}
+.fin-data-table td{padding:5px 9px;vertical-align:middle;border-color:#e9ecf0;}
+.fin-th-no{width:32px;}
+.fin-th-plt{background:#0891b2 !important;color:#fff !important;}
+.fin-th-formula{background:#3a4d86 !important;color:#c7d2fe !important;}
+.fin-td-no{width:32px;color:#64748b;}
+.fin-td-plt{background:rgba(8,145,178,.05);border-left:3px solid #0891b2 !important;}
+.fin-td-formula{background:rgba(64,81,137,.04);}
+.fin-td-mono{font-family:monospace;font-size:.74rem;}
+.fin-pembanding{font-weight:700;font-size:.74rem;color:#0369a1;}
+.fin-row--success{background:rgba(10,179,156,.06);}
+.fin-row--success td{border-color:rgba(10,179,156,.15) !important;}
+.fin-row--danger{background:rgba(240,101,72,.06);}
+.fin-row--danger td{border-color:rgba(240,101,72,.15) !important;}
+.fin-row--rata{background:rgba(64,81,137,.04);}
+.fin-row--rata td{border-color:rgba(64,81,137,.15) !important;}
+.fin-foto-strip{padding:7px 14px 0;}
+.fin-foto-btn{display:inline-flex;align-items:center;padding:4px 11px;border:1px solid #c7d2fe;border-radius:5px;background:#eef2ff;color:#405189;font-size:.76rem;font-weight:600;cursor:pointer;}
+/* TIMELINE - Velzon primary */
+.fin-vtl{padding:2px;}
+.fin-vtl-hdr{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;padding:0 2px 10px;display:flex;align-items:center;}
+.fin-vtl-steps{display:flex;flex-direction:column;}
+.fin-vtl-step{display:flex;gap:10px;}
+.fin-vtl-indicator{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:30px;}
+.fin-vtl-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.82rem;flex-shrink:0;border:2px solid;}
+.vtl-done .fin-vtl-dot{background:rgba(10,179,156,.1);border-color:#0ab39c;color:#0ab39c;}
+.vtl-rejected .fin-vtl-dot{background:rgba(240,101,72,.1);border-color:#f06548;color:#f06548;}
+.vtl-final .fin-vtl-dot{background:rgba(64,81,137,.1);border-color:#405189;color:#405189;}
+.vtl-prafinal .fin-vtl-dot{background:rgba(64,81,137,.1);border-color:#405189;color:#405189;}
+.fin-vtl-line{width:2px;flex:1;min-height:10px;background:#e2e8f0;margin:2px 0;}
+.vtl-done .fin-vtl-line{background:#0ab39c;}
+.fin-vtl-body{padding-bottom:18px;flex:1;min-width:0;}
+.fin-vtl-row1{display:flex;align-items:center;gap:7px;margin-bottom:3px;flex-wrap:wrap;}
+.fin-vtl-badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:4px;font-size:.7rem;font-weight:700;}
+.vtl-badge--success{background:rgba(10,179,156,.1);color:#0ab39c;}
+.vtl-badge--danger{background:rgba(240,101,72,.1);color:#f06548;}
+.vtl-badge--primary{background:rgba(64,81,137,.1);color:#405189;}
+.vtl-badge--final{background:rgba(64,81,137,.1);color:#405189;}
+.vtl-badge--info{background:#ecfeff;color:#0e7490;}
+.fin-vtl-sub{font-size:.68rem;font-weight:700;}
+.fin-vtl-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:.73rem;color:#64748b;margin-bottom:3px;}
+.fin-vtl-details{font-size:.7rem;color:#64748b;background:#eef2ff;border-radius:5px;padding:5px 9px;margin-top:3px;}
+.fin-vtl-details-hdr{font-weight:600;color:#475569;margin-bottom:2px;}
+.fin-vtl-detail-row{display:flex;align-items:flex-start;gap:2px;line-height:1.6;}
+.fin-vtl-note{font-size:.72rem;color:#64748b;margin-top:3px;font-style:italic;padding:3px 7px;background:#eef2ff;border-left:2px solid #c7d2fe;}
+.fin-action-footer{padding:11px 16px;background:#fff;border-top:1px solid #e2e8f0;flex-shrink:0;}
+.fin-action-info{font-size:.78rem;}
+.fin-action-warn{color:#b45309;font-weight:500;}
+.fin-action-ok{color:#0ab39c;font-weight:500;}
+.fin-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:1050;display:flex;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(2px);}
+.fin-modal{background:#fff;border-radius:12px;width:100%;max-width:460px;box-shadow:0 20px 50px rgba(0,0,0,.22);overflow:hidden;}
+.fin-modal--wide{max-width:600px;}
+.fin-foto-overlay{position:fixed;inset:0;background:rgba(0,0,0,.68);z-index:9990;display:flex;align-items:center;justify-content:center;}
+.fin-foto-modal{background:#fff;border-radius:14px;width:min(98vw,1160px);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.fin-foto-modal-hdr{padding:14px 18px;background:linear-gradient(135deg,#1e293b,#334155);color:#fff;display:flex;align-items:center;justify-content:space-between;font-size:.88rem;flex-shrink:0;}
+.fin-foto-modal-sub{color:rgba(255,255,255,.75);font-size:.78rem;}
+.fin-foto-modal-close{background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:7px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.fin-foto-modal-body{overflow-y:auto;padding:22px;flex:1;}
+.fin-foto-fade-enter-active,.fin-foto-fade-leave-active{transition:opacity .2s;}
+.fin-foto-fade-enter-from,.fin-foto-fade-leave-to{opacity:0;}
+.fin-foto-loading{display:flex;align-items:center;justify-content:center;min-height:120px;}
+.fin-foto-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:120px;}
+.fin-foto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+@media(max-width:700px){.fin-foto-grid{grid-template-columns:repeat(2,1fr);}}
+.fin-polaroid{background:#fff;border-radius:3px;padding:10px 10px 0;box-shadow:0 3px 10px rgba(0,0,0,.18),0 1px 3px rgba(0,0,0,.1);transition:transform .2s,box-shadow .2s;cursor:pointer;}
+.fin-polaroid:hover{transform:scale(1.04) rotate(-0.5deg);box-shadow:0 8px 24px rgba(0,0,0,.22);}
+.fin-polaroid-img-wrap{width:100%;aspect-ratio:1/1;overflow:hidden;background:#f0f2f5;border-radius:1px;position:relative;}
+.fin-polaroid-img{width:100%;height:100%;object-fit:cover;display:block;}
+.fin-polaroid-overlay{position:absolute;inset:0;background:rgba(64,81,137,.35);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .18s;color:#fff;font-size:1.4rem;}
+.fin-polaroid:hover .fin-polaroid-overlay{opacity:1;}
+.fin-polaroid-caption{font-size:.84rem;font-weight:700;text-align:center;padding:10px 8px 13px;color:#1e293b;line-height:1.45;word-break:break-word;border-top:2px solid #e8ecf4;margin-top:1px;background:#fff;}
+/* LIGHTBOX */
+.fin-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1080;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;}
+.fin-lightbox-close{position:absolute;top:16px;right:16px;border:none;background:rgba(255,255,255,.15);color:#fff;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer;transition:background .15s;}
+.fin-lightbox-close:hover{background:rgba(255,255,255,.3);}
+.fin-lightbox-inner{display:flex;flex-direction:column;align-items:center;max-width:90vw;max-height:90vh;cursor:default;}
+.fin-lightbox-img{max-width:100%;max-height:80vh;object-fit:contain;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,.6);}
+.fin-lightbox-caption{margin-top:14px;background:rgba(255,255,255,.12);color:#fff;font-size:.92rem;font-weight:600;text-align:center;max-width:600px;padding:8px 20px;border-radius:8px;word-break:break-word;}
+.fin-modal-hdr{display:flex;align-items:center;gap:10px;padding:14px 18px;color:#fff;}
+.fin-modal-hdr--form{background:linear-gradient(135deg,#2e3a64,#405189);}
+.fin-modal-hdr--neutral{background:linear-gradient(135deg,#1e293b,#334155);}
+.fin-modal-title{font-weight:700;font-size:.92rem;}
+.fin-modal-sub{font-size:.7rem;opacity:.85;}
+.fin-modal-close{margin-left:auto;border:none;background:rgba(255,255,255,.2);color:#fff;border-radius:5px;padding:3px 7px;cursor:pointer;}
+.fin-modal-body{padding:18px;}
+.fin-confirm-row{display:flex;gap:10px;margin-bottom:7px;align-items:flex-start;}
+.fin-confirm-lbl{font-size:.74rem;color:#64748b;min-width:86px;flex-shrink:0;padding-top:1px;}
+.fin-confirm-val{font-size:.82rem;font-weight:600;color:#0f172a;}
+.fin-modal-warn{padding:9px 12px;border-radius:7px;font-size:.8rem;margin-top:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;}
+.fin-modal-ftr{display:flex;justify-content:flex-end;gap:9px;padding:11px 18px;background:#eef2ff;border-top:1px solid #e2e8f0;}
+.fin-hidden-mobile{display:none !important;}
+@media(min-width:768px){.fin-hidden-mobile{display:flex !important;}}
+.fin-mobile-back{padding:9px 12px;border-bottom:1px solid #e2e8f0;flex-shrink:0;background:#fff;}
+.fin-toast{position:fixed;bottom:18px;right:18px;padding:11px 16px;border-radius:9px;color:#fff;font-size:.82rem;z-index:9999;display:flex;align-items:center;animation:vz-slide-in .3s ease;box-shadow:0 4px 14px rgba(0,0,0,.16);}
+.fin-toast--success{background:#0ab39c;}
+.fin-toast--error{background:#f06548;}
+@keyframes vz-slide-in{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
 </style>

@@ -36,6 +36,7 @@
         "element-plus": "^2.13.1",
         "express": "^5.1.0",
         "hashids": "^2.3.0",
+        "heic2any": "^0.0.4",
         "image-to-base64": "^2.2.0",
         "jquery": "^3.6.4",
         "lodash": "^4.17.21",

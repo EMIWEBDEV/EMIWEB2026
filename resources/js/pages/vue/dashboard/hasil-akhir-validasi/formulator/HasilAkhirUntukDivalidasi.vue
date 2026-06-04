@@ -20,6 +20,44 @@
                     </div>
                 </div>
 
+                <!-- Riwayat Proses — LIMS Timeline -->
+                <div class="lims-timeline mb-4">
+                    <div class="lims-tl-title"><i class="ri-time-line me-1"></i>Riwayat Proses</div>
+                    <div v-if="loading.audit" class="lims-tl-loading">
+                        <span class="spinner-border spinner-border-sm text-secondary me-2"></span>
+                        <span class="text-muted" style="font-size:12px;">Memuat riwayat...</span>
+                    </div>
+                    <div v-else class="lims-tl-steps">
+                        <div
+                            v-for="(step, i) in timelineSteps"
+                            :key="i"
+                            class="lims-tl-step"
+                            :class="{ 'tl-done': step.log && step.log.Sub_Aksi !== 'TOLAK', 'tl-rejected': step.log && step.log.Sub_Aksi === 'TOLAK', 'tl-pending': !step.log }"
+                        >
+                            <div class="lims-tl-indicator">
+                                <div class="lims-tl-dot">
+                                    <i :class="step.log ? (step.log.Sub_Aksi === 'TOLAK' ? 'ri-close-line' : (step.jenis_aksi === 'INPUT_ANALYZER' ? 'ri-test-tube-line' : 'ri-check-line')) : step.icon"></i>
+                                </div>
+                                <div v-if="i < timelineSteps.length - 1" class="lims-tl-line"></div>
+                            </div>
+                            <div class="lims-tl-body">
+                                <div class="lims-tl-label">{{ step.label }}</div>
+                                <template v-if="step.log">
+                                    <div class="lims-tl-actor">{{ step.log.Nama_User || step.log.Id_User }}</div>
+                                    <div class="lims-tl-time">{{ formatStepDate(step.log.Tanggal) }} · {{ step.log.Jam }}</div>
+                                    <template v-if="step.log.details && step.log.details.length > 0">
+                                        <div class="lims-tl-analisa"><i class="ri-microscope-line me-1"></i><strong>{{ step.log.details.length }} analisa</strong></div>
+                                        <div v-for="d in step.log.details" :key="d.Id_Jenis_Analisa" class="lims-tl-detail-row">{{ d.Nama_Jenis_Analisa }}<span v-if="d.Tanggal" class="lims-tl-detail-time"> · {{ formatStepDate(d.Tanggal) }} {{ d.Jam ? d.Jam.substring(0,5) : '' }}</span></div>
+                                    </template>
+                                    <div v-else-if="step.log.analisa_count > 0" class="lims-tl-analisa"><i class="ri-microscope-line me-1"></i>{{ step.log.analisa_count }} analisa</div>
+                                    <span v-if="step.log.Sub_Aksi" class="lims-tl-badge" :class="step.log.Sub_Aksi === 'SETUJU' ? 'badge-ok' : 'badge-no'">{{ step.log.Sub_Aksi }}</span>
+                                </template>
+                                <div v-else class="lims-tl-pending">Menunggu...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="col-12 mt-3 content-area">
                     <div class="card-body">
                         <div
@@ -378,7 +416,9 @@ export default {
                 listData: false,
                 saveToDatabase: false,
                 reanalisisAnalisa: false,
+                audit: false,
             },
+            auditLog: [],
             NoUjiSampelSebelumnya: null,
             selectedOptionReanalisis: null,
             form: {
@@ -406,8 +446,29 @@ export default {
                 },
             ];
         },
+
+        timelineSteps() {
+            const defs = [
+                { label: 'Input Analyzer',  jenis_aksi: 'INPUT_ANALYZER',              icon: 'ri-test-tube-line' },
+                { label: 'Validasi',         jenis_aksi: 'VALIDASI_FORMULATOR',         icon: 'ri-user-follow-line' },
+                { label: 'Pra-Finalisasi',   jenis_aksi: 'PRAFINALISASI_FORMULATOR',    icon: 'ri-git-merge-line' },
+                { label: 'Finalisasi',       jenis_aksi: 'FINALISASI_FORMULATOR',       icon: 'ri-checkbox-circle-line' },
+            ];
+            return defs.map(d => ({
+                ...d,
+                log: this.auditLog.find(l => l.Jenis_Aksi === d.jenis_aksi) || null,
+            }));
+        },
     },
     methods: {
+        formatStepDate(dateStr) {
+            if (!dateStr) return '-';
+            const d = new Date(dateStr);
+            if (isNaN(d)) return dateStr;
+            const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+            return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+        },
+
         async fetchBlobPhotos() {
             if (this.informasiData?.sesi_foto !== "Y") return;
 
@@ -724,6 +785,17 @@ export default {
                 this.loading.loadingListData = false;
             }
         },
+        async fetchAuditLog(noSampel) {
+            this.loading.audit = true;
+            try {
+                const res = await axios.get(`/api/v1/log-aksi/by-sampel/${noSampel}`);
+                this.auditLog = res.data?.success ? res.data.result || [] : [];
+            } catch {
+                this.auditLog = [];
+            } finally {
+                this.loading.audit = false;
+            }
+        },
         formatTanggal(tanggalString) {
             const date = new Date(tanggalString);
             const options = { day: "2-digit", month: "short", year: "numeric" };
@@ -736,6 +808,7 @@ export default {
     },
     mounted() {
         this.fetchHasilAnalisaByJenisAnalisa();
+        if (this.No_Sampel) this.fetchAuditLog(this.No_Sampel);
     },
 };
 </script>
@@ -772,6 +845,31 @@ export default {
     height: 25px;
     margin: 5px 0;
 }
+
+/* ── LIMS Process Timeline ────────────────────────────────────────── */
+.lims-timeline { background: #f8f9fc; border: 1px solid #e9ecef; border-radius: 10px; padding: 14px 18px; }
+.lims-tl-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #6c757d; margin-bottom: 14px; }
+.lims-tl-loading { display: flex; align-items: center; padding: 4px 0; }
+.lims-tl-steps { display: flex; flex-direction: column; }
+.lims-tl-step { display: flex; gap: 12px; }
+.lims-tl-indicator { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+.lims-tl-dot { width: 30px; height: 30px; border-radius: 50%; background: #e9ecef; border: 2px solid #dee2e6; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #adb5bd; flex-shrink: 0; }
+.tl-done .lims-tl-dot { background: #d1fae5; border-color: #10b981; color: #059669; }
+.tl-rejected .lims-tl-dot { background: #fee2e2; border-color: #ef4444; color: #dc2626; }
+.lims-tl-line { width: 2px; flex: 1; min-height: 8px; background: #dee2e6; margin: 3px 0; }
+.tl-done .lims-tl-line { background: #10b981; }
+.lims-tl-body { padding-bottom: 16px; flex: 1; min-width: 0; }
+.lims-tl-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: #495057; line-height: 1.8; }
+.tl-pending .lims-tl-label { color: #adb5bd; }
+.lims-tl-actor { font-size: 13px; font-weight: 600; color: #212529; }
+.lims-tl-time { font-size: 11px; color: #6c757d; margin-top: 1px; }
+.lims-tl-analisa { font-size: 10px; color: #6b7280; margin-top: 2px; }
+.lims-tl-detail-row { font-size: 9px; color: #6b7280; padding-left: 14px; line-height: 1.6; }
+.lims-tl-detail-time { color: #9ca3af; }
+.lims-tl-pending { font-size: 12px; color: #adb5bd; font-style: italic; }
+.lims-tl-badge { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 1px 7px; border-radius: 4px; margin-top: 4px; letter-spacing: 0.3px; }
+.lims-tl-badge.badge-ok { background: #d1fae5; color: #065f46; }
+.lims-tl-badge.badge-no { background: #fee2e2; color: #991b1b; }
 
 /* Container Styles */
 .data-uji-container {

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Vinkla\Hashids\Facades\Hashids;
 
 class FormulatorFinalisasiController extends Controller
 {
@@ -180,6 +181,46 @@ class FormulatorFinalisasiController extends Controller
         }
     }
 
+    public function getDetailAnalisaFinalisasi($no_sampel)
+    {
+        try {
+            $result = DB::table('N_EMI_LIMS_Uji_Sampel as us')
+                ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
+                ->select(
+                    'us.*',
+                    'ja.Jenis_Analisa',
+                    'ja.Kode_Analisa',
+                    'ja.Kode_Aktivitas_Lab',
+                    'ja.Flag_Perhitungan'
+                )
+                ->where('us.No_Po_Sampel', $no_sampel)
+                ->whereNull('us.Status')
+                ->where(function ($q) {
+                    $q->where(function ($inner) {
+                        $inner->where('us.Flag_Selesai', 'Y')
+                              ->where('us.Status_Keputusan_Sampel', 'terima');
+                    })->orWhere('us.Flag_Final', 'Y');
+                })
+                ->where(function ($q) {
+                    $q->where('us.Flag_Resampling', '!=', 'Y')->orWhereNull('us.Flag_Resampling');
+                })
+                ->orderByDesc('us.Tanggal')
+                ->get()
+                ->map(function ($item) {
+                    $item->Id_Jenis_Analisa = Hashids::connection('custom')->encode($item->Id_Jenis_Analisa);
+                    $item->is_plt = ($item->Kode_Aktivitas_Lab ?? null) === 'PLT';
+                    return $item;
+                })
+                ->unique(fn($i) => $i->No_Po_Sampel . '-' . $i->Id_Jenis_Analisa)
+                ->values();
+
+            return response()->json(['success' => true, 'status' => 200, 'result' => $result], 200);
+        } catch (\Exception $e) {
+            Log::channel('FormulatorFinalisasiController')->error(__METHOD__ . ': ' . $e->getMessage());
+            return response()->json(['success' => false, 'status' => 500, 'message' => 'Terjadi Kesalahan'], 500);
+        }
+    }
+
     public function store($no_sampel)
     {
         DB::beginTransaction();
@@ -313,6 +354,41 @@ class FormulatorFinalisasiController extends Controller
                     ->update([
                         'Flag_Selesai' => 'Y'
                     ]);
+
+                $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
+                    'No_Sampel'  => $no_sampel,
+                    'No_Po'      => $getInformasiPo->No_Po       ?? '-',
+                    'No_Split_Po'=> $getInformasiPo->No_Split_Po ?? '-',
+                    'Kode_Barang'=> $getInformasiPo->Kode_Barang ?? null,
+                    'Flag_Trial' => 'Y',
+                    'Jenis_Aksi' => 'FINALISASI_FORMULATOR',
+                    'Sub_Aksi'   => 'CLOSE',
+                    'Id_User'    => Auth::user()->UserId,
+                    'Tanggal'    => $tanggalSqlServer,
+                    'Jam'        => $jamSqlServer,
+                ]);
+
+                $analisaFinalisasi = DB::table('N_EMI_LIMS_Uji_Sampel as us')
+                    ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
+                    ->where('us.No_Po_Sampel', $no_sampel)
+                    ->whereNull('us.Status')
+                    ->whereNull('us.Flag_Resampling')
+                    ->select('us.Id_Jenis_Analisa', 'ja.Jenis_Analisa')
+                    ->distinct()
+                    ->get();
+                if ($analisaFinalisasi->isNotEmpty()) {
+                    DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert(
+                        $analisaFinalisasi->map(fn($a) => [
+                            'Id_Log_Aksi'        => $logId,
+                            'Id_Jenis_Analisa'   => $a->Id_Jenis_Analisa,
+                            'Nama_Jenis_Analisa' => $a->Jenis_Analisa,
+                            'Flag_Layak'         => null,
+                            'Tanggal'            => $tanggalSqlServer,
+                            'Jam'                => $jamSqlServer,
+                            'Id_User'            => Auth::user()->UserId,
+                        ])->toArray()
+                    );
+                }
 
             DB::commit();
             return response()->json([

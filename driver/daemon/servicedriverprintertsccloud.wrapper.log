@@ -1,0 +1,60 @@
+2026-03-30 13:44:28 - Starting C:\Program Files\nodejs\node.exe  --harmony --max_old_space_size=4096 C:\DRIVER-EMI-LAB\node_modules\node-windows\lib\wrapper.js --file C:\DRIVER-EMI-LAB\driver-printer-cloud.js --scriptoptions= --log "Service Driver Printer Tsc Cloud wrapper" --grow 0.25 --wait 1 --maxrestarts 3 --abortonerror n --stopparentfirst undefined
+2026-03-30 13:44:28 - Started 6872
+2026-03-30 15:22:02 - Starting C:\Program Files\nodejs\node.exe  --harmony --max_old_space_size=4096 C:\DRIVER-EMI-LAB\node_modules\node-windows\lib\wrapper.js --file C:\DRIVER-EMI-LAB\driver-printer-cloud.js --scriptoptions= --log "Service Driver Printer Tsc Cloud wrapper" --grow 0.25 --wait 1 --maxrestarts 3 --abortonerror n --stopparentfirst undefined
+2026-03-30 15:22:02 - Started 5432
+2026-03-31 09:58:37 - Starting C:\Program Files\nodejs\node.exe  --harmony --max_old_space_size=4096 C:\DRIVER-EMI-LAB\node_modules\node-windows\lib\wrapper.js --file C:\DRIVER-EMI-LAB\driver-printer-cloud.js --scriptoptions= --log "Service Driver Printer Tsc Cloud wrapper" --grow 0.25 --wait 1 --maxrestarts 3 --abortonerror n --stopparentfirst undefined
+2026-03-31 09:58:37 - Started 5572
+2026-03-31 10:37:54 - Starting C:\Program Files\nodejs\node.exe  --harmony --max_old_space_size=4096 C:\DRIVER-EMI-LAB\node_modules\node-windows\lib\wrapper.js --file C:\DRIVER-EMI-LAB\driver-printer-cloud.js --scriptoptions= --log "Service Driver Printer Tsc Cloud wrapper" --grow 0.25 --wait 1 --maxrestarts 3 --abortonerror n --stopparentfirst undefined
+2026-03-31 10:37:54 - Started 5624
+2026-04-01 01:20:29 - Stopping servicedriverprintertsccloud.exe
+2026-04-01 01:20:29 - ProcessKill 5624
+2026-04-01 01:20:30 - Shutdown exception
+Message:A system shutdown is in progress.
+
+Stacktrace:   at System.Runtime.InteropServices.Marshal.ThrowExceptionForHRInternal(Int32 errorCode, IntPtr errorInfo)
+   at System.Management.ManagementScope.InitializeGuts(Object o)
+   at System.Management.ManagementScope.Initialize()
+   at System.Management.ManagementObjectSearcher.Initialize()
+   at System.Management.ManagementObjectSearcher.Get()
+   at winsw.WrapperService.GetChildPids(Int32 pid)
+   at winsw.WrapperService.StopProcessAndChildren(Int32 pid)
+   at winsw.WrapperService.StopIt()
+   at winsw.WrapperService.OnShutdown()
+2026-04-01 01:20:57 - Starting C:\Program Files\nodejs\node.exe  --harmony --max_old_space_size=4096 C:\DRIVER-EMI-LAB\node_modules\node-windows\lib\wrapper.js --file C:\DRIVER-EMI-LAB\driver-printer-cloud.js --scriptoptions= --log "Service Driver Printer Tsc Cloud wrapper" --grow 0.25 --wait 1 --maxrestarts 3 --abortonerror n --stopparentfirst undefined
+2026-04-01 01:20:57 - Started 5548
+2026-04-03 09:30:46 - Starting C:\Program Files\nodejs\node.exe  --harmony --max_old_space_size=4096 C:\DRIVER-EMI-LAB\node_modules\node-windows\lib\wrapper.js --file C:\DRIVER-EMI-LAB\driver-printer-cloud.js --scriptoptions= --log "Service Driver Printer Tsc Cloud wrapper" --grow 0.25 --wait 1 --maxrestarts 3 --abortonerror n --stopparentfirst undefined
+2026-04-03 09:30:46 - Started 5472
+2026-04-03 16:19:05 - Starting C:\Program Files\nodejs\node.exe  --harmony --max_old_space_size=4096 C:\DRIVER-EMI-LAB\node_modules\node-windows\lib\wrapper.js --file C:\DRIVER-EMI-LAB\driver-printer-cloud.js --scriptoptions= --log "Service Driver Printer Tsc Cloud wrapper" --grow 0.25 --wait 1 --maxrestarts 3 --abortonerror n --stopparentfirst undefined
+2026-04-03 16:19:05 - Started 5448
+2026-04-05 02:21:17 - Stopping servicedriverprintertsccloud.exe
+2026-04-05 02:21:17 - ProcessKill 5448
+2026-04-05 02:21:17 - Shutdown exception
+Message:A system shutdown is in progress.
+
+Stacktrace:   at System.Runtime.InteropServices.Marshal.ThrowExceptionForHRInternal(Int32 errorCode, IntPtr errorInfo)
+   at System.Management.ManagementScope.InitializeGuts(Object o)
+   at System.Management.ManagementScope.Initialize()
+   at System.Management.ManagementObjectSearcher.Initialize()
+   at System.Management.ManagementObjectSearcher.Get()
+   at winsw.WrapperService.GetChildPids(Int32 pid)
+   at winsw.WrapperService.StopProcessAndChildren(Int32 pid)
+   at winsw.WrapperService.StopIt()
+   at winsw.WrapperService.OnShutdown()
+2026-04-05 02:21:42 - Starting C:\Program Files\nodejs\node.exe  --harmony --max_old_space_size=4096 C:\DRIVER-EMI-LAB\node_modules\node-windows\lib\wrapper.js --file C:\DRIVER-EMI-LAB\driver-printer-cloud.js --scriptoptions= --log "Service Driver Printer Tsc Cloud wrapper" --grow 0.25 --wait 1 --maxrestarts 3 --abortonerror n --stopparentfirst undefined
+2026-04-05 02:21:42 - Started 5532
+2026-04-05 02:41:04 - Stopping servicedriverprintertsccloud.exe
+2026-04-05 02:41:04 - ProcessKill 5532
+2026-04-05 02:41:04 - Shutdown exception
+Message:A system shutdown is in progress.
+
+Stacktrace:   at System.Runtime.InteropServices.Marshal.ThrowExceptionForHRInternal(Int32 errorCode, IntPtr errorInfo)
+   at System.Management.ManagementScope.InitializeGuts(Object o)
+   at System.Management.ManagementScope.Initialize()
+   at System.Management.ManagementObjectSearcher.Initialize()
+   at System.Management.ManagementObjectSearcher.Get()
+   at winsw.WrapperService.GetChildPids(Int32 pid)
+   at winsw.WrapperService.StopProcessAndChildren(Int32 pid)
+   at winsw.WrapperService.StopIt()
+   at winsw.WrapperService.OnShutdown()
+2026-04-05 02:41:24 - Starting C:\Program Files\nodejs\node.exe  --harmony --max_old_space_size=4096 C:\DRIVER-EMI-LAB\node_modules\node-windows\lib\wrapper.js --file C:\DRIVER-EMI-LAB\driver-printer-cloud.js --scriptoptions= --log "Service Driver Printer Tsc Cloud wrapper" --grow 0.25 --wait 1 --maxrestarts 3 --abortonerror n --stopparentfirst undefined
+2026-04-05 02:41:24 - Started 5452

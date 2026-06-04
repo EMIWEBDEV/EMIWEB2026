@@ -1,1048 +1,1003 @@
 <template>
-    <div class="container-fluid px-0 hasil-analisa-page">
-
-        <!-- ===== PRINT MODAL ===== -->
-        <div class="modal fade" id="printModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content border-0 shadow">
-                    <div class="modal-header" style="background:#405189">
-                        <h5 class="modal-title text-white">
-                            <i class="fas fa-file-export me-2"></i>Buat Laporan Analisa
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white" @click="closePrintModal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <!-- Step indicator -->
-                        <div class="steps-progress mb-4">
-                            <div class="step" :class="{ active: currentStep >= 1, done: currentStep > 1 }">
-                                <div class="step-number"><i v-if="currentStep > 1" class="fas fa-check"></i><span v-else>1</span></div>
-                                <div class="step-label">Pilih Jenis Analisa</div>
-                            </div>
-                            <div class="step" :class="{ active: currentStep >= 2, done: currentStep > 2 }">
-                                <div class="step-number"><i v-if="currentStep > 2" class="fas fa-check"></i><span v-else>2</span></div>
-                                <div class="step-label">Atur Periode</div>
-                            </div>
-                            <div class="step" :class="{ active: currentStep >= 3 }">
-                                <div class="step-number">3</div>
-                                <div class="step-label">Preview & Cetak</div>
-                            </div>
-                        </div>
-
-                        <!-- Step 1 -->
-                        <div v-show="currentStep === 1">
-                            <h6 class="fw-semibold mb-3"><i class="fas fa-filter me-2 text-primary"></i>Pilih Jenis Analisa</h6>
-                            <div class="analysis-selector">
-                                <div v-for="item in listDataJenisAnalisa" :key="item.id"
-                                     class="analysis-option"
-                                     :class="{ selected: selectedAnalysis.includes(item.id) }"
-                                     @click="toggleAnalysisSelection(item)">
-                                    <div class="option-icon"><i class="fas fa-flask"></i></div>
-                                    <div class="option-details">
-                                        <span class="badge bg-primary-subtle text-primary mb-1">{{ item.Kode_Analisa }}</span>
-                                        <h6 class="mb-0">{{ item.Jenis_Analisa }}</h6>
-                                    </div>
-                                    <div class="option-check"><i class="fas fa-check"></i></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Step 2 -->
-                        <div v-show="currentStep === 2">
-                            <h6 class="fw-semibold mb-3"><i class="far fa-calendar-alt me-2 text-primary"></i>Atur Periode Laporan</h6>
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label small">Dari Tanggal</label>
-                                    <input type="date" class="form-control" v-model="startDate" :max="endDate || today" />
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small">Sampai Tanggal</label>
-                                    <input type="date" class="form-control" v-model="endDate" :min="startDate" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Step 3 -->
-                        <div v-show="currentStep === 3">
-                            <h6 class="fw-semibold mb-3"><i class="fas fa-eye me-2 text-primary"></i>Ringkasan Laporan</h6>
-                            <div class="alert alert-warning small">
-                                <i class="fas fa-exclamation-triangle me-1"></i>
-                                Format <strong>Excel</strong> masih dalam pengembangan. Disarankan gunakan <strong>PDF</strong>.
-                            </div>
-                            <div class="card border">
-                                <div class="card-body">
-                                    <div class="summary-item">
-                                        <span>Jenis Analisa</span>
-                                        <strong>{{ selectedAnalysisNames || "-" }}</strong>
-                                    </div>
-                                    <div class="summary-item">
-                                        <span>Periode</span>
-                                        <strong>{{ formattedStartDate }} — {{ formattedEndDate }}</strong>
-                                    </div>
-                                    <div class="summary-item">
-                                        <span>Mesin</span>
-                                        <v-select style="flex:1" v-if="listDataMesin.length" v-model="selectedListMesin"
-                                                  :options="listDataMesin" label="name" placeholder="--- Pilih Mesin ---" />
-                                    </div>
-                                    <div class="summary-item">
-                                        <span>Jenis Cetakan</span>
-                                        <select class="form-select form-select-sm flex-1" v-model="selectedJenisPrint">
-                                            <option value="">Pilih Jenis Cetakan</option>
-                                            <option value="ringkas">Cetak Ringkas (Hasil Akhir)</option>
-                                            <option v-if="showPszOption" value="psz">Final Report Particle Size</option>
-                                            <option value="detail">Cetak Detail (Per Analisa)</option>
-                                        </select>
-                                    </div>
-                                    <div class="summary-item">
-                                        <span>Format</span>
-                                        <div class="d-flex gap-3">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" value="excel" v-model="exportFormat" id="fExcel" />
-                                                <label class="form-check-label" for="fExcel"><i class="far fa-file-excel text-success me-1"></i>Excel</label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" value="pdf" v-model="exportFormat" id="fPdf" />
-                                                <label class="form-check-label" for="fPdf"><i class="far fa-file-pdf text-danger me-1"></i>PDF</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div v-if="isPszReportSelected" class="alert alert-warning mt-3 small">
-                                <strong>Peringatan!</strong> Laporan ini hanya mencetak data Particle Size (PSZ).
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" v-model="pszConfirmation" id="pszCheck" />
-                                    <label class="form-check-label fw-semibold" for="pszCheck">Saya mengerti dan setuju.</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" @click="prevStep" :disabled="currentStep === 1">
-                            <i class="fas fa-arrow-left me-1"></i> Kembali
-                        </button>
-                        <button type="button" class="btn btn-primary" @click="nextStep" v-if="currentStep < 3">
-                            Lanjut <i class="fas fa-arrow-right ms-1"></i>
-                        </button>
-                        <button type="button" class="btn btn-success" @click="generateReport"
-                                v-if="currentStep === 3" :disabled="isGenerateButtonDisabled">
-                            <i class="fas fa-file-export me-1"></i>
-                            {{ isGenerateButtonDisabled ? "Centang persetujuan dulu" : "Generate Laporan" }}
-                        </button>
-                    </div>
+    <div class="ha-root">
+        <!-- ══════════ TOP BAR ══════════ -->
+        <div class="ha-topbar">
+            <div class="ha-topbar-left">
+                <div class="ha-topbar-icon"><i class="ri-flask-line"></i></div>
+                <div>
+                    <span class="ha-topbar-title">Hasil Analisa Lab</span>
+                    <span class="ha-topbar-sub">Kumpulan data hasil pengujian laboratorium</span>
                 </div>
+            </div>
+            <div class="ha-topbar-right">
+                <!-- Switch Mode -->
+                <div class="ha-mode-switch">
+                    <button class="ha-mode-btn" :class="{ 'ha-mode-btn--active': viewMode === 'per-prd' }" @click="setMode('per-prd')">
+                        <i class="ri-archive-line me-1"></i>Per PO
+                    </button>
+                    <button class="ha-mode-btn" :class="{ 'ha-mode-btn--active': viewMode === 'per-analisa' }" @click="setMode('per-analisa')">
+                        <i class="ri-flask-line me-1"></i>Per Analisa
+                    </button>
+                </div>
+                <!-- Stats -->
+                <div class="ha-stat-badge" v-if="pagination.totalData > 0">
+                    <span class="ha-stat-num">{{ pagination.totalData }}</span>
+                    <span class="ha-stat-lbl">Sampel</span>
+                </div>
+                <!-- Per Analisa: jenis aktif chip -->
+                <div v-if="viewMode === 'per-analisa' && selectedJenis" class="ha-topbar-jenis">
+                    <i :class="getAktivitasIcon(selectedJenis.Kode_Aktivitas_Lab)" class="me-1" style="color:#405189;"></i>
+                    <span class="ha-topbar-jenis-name">{{ selectedJenis.Jenis_Analisa }}</span>
+                </div>
+                <span v-else-if="viewMode === 'per-analisa'" class="ha-topbar-hint">Pilih jenis analisa di panel kiri</span>
             </div>
         </div>
-        <!-- ===== END PRINT MODAL ===== -->
 
-        <div class="card shadow-sm border-0 w-100 page-card">
-            <!-- Page header -->
-            <div class="page-header px-4 py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="page-icon">
-                        <i class="fas fa-vial"></i>
-                    </div>
-                    <div>
-                        <h5 class="fw-bold mb-0">Hasil Analisa</h5>
-                        <p class="text-muted small mb-0">Koleksi data analisis laboratorium PT. Evo Manufacturing Indonesia</p>
-                    </div>
-                </div>
-                <button @click="togglePrintModal" class="btn btn-primary btn-sm d-flex align-items-center gap-2">
-                    <i class="fas fa-file-export"></i>
-                    <span>Buat Laporan</span>
-                </button>
-            </div>
+        <!-- ══════════ BODY ══════════ -->
+        <div class="ha-body">
+            <!-- ──────── LEFT PANEL ──────── -->
+            <div class="ha-left" :class="{ 'ha-hidden-mobile': detailVisible && isMobile }">
 
-            <!-- Split layout -->
-            <div class="row g-0 split-layout">
-                <!-- ===== LEFT SIDEBAR: Jenis Analisa ===== -->
-                <div class="col-lg-3 col-md-4 sidebar-col border-end">
-                    <div class="sidebar-head px-3 py-2 border-bottom">
-                        <span class="text-uppercase small fw-semibold text-muted" style="letter-spacing:.05em">Jenis Analisa</span>
+                <!-- ── Mode: Per Analisa → jenis analisa selector (compact horizontal chips) ── -->
+                <div v-if="viewMode === 'per-analisa'" class="ha-analisa-selector">
+                    <div class="ha-analisa-selector-hdr">
+                        <span class="ha-analisa-selector-title"><i class="ri-flask-line me-1"></i>Pilih Jenis Analisa</span>
+                        <div class="ha-analisa-search-wrap">
+                            <i class="ri-search-line ha-analisa-search-icon"></i>
+                            <input type="text" class="ha-analisa-search" placeholder="Cari..." v-model="jenisSearch" />
+                        </div>
                     </div>
-
-                    <div v-if="loading.loadingListData" class="p-3">
-                        <div v-for="n in 5" :key="n" class="skeleton-item mb-2"></div>
-                    </div>
-
-                    <div v-else-if="listData.length" class="sidebar-list">
-                        <a v-for="(item, index) in listData" :key="index"
-                           href="#"
-                           @click.prevent="selectJenisAnalisa(item)"
-                           class="sidebar-item"
-                           :class="{ active: selectedItem && selectedItem.Id_Jenis_Analisa === item.Id_Jenis_Analisa }">
-                            <div class="sidebar-item-icon">
-                                <i class="fas fa-flask"></i>
-                            </div>
-                            <div class="sidebar-item-body">
-                                <span class="sidebar-kode">{{ item.Kode_Analisa }}</span>
-                                <span class="sidebar-name">{{ item.Jenis_Analisa }}</span>
-                            </div>
-                            <i class="fas fa-chevron-right sidebar-chevron"></i>
-                        </a>
-                    </div>
-
-                    <div v-else class="p-4 text-center text-muted small">
-                        <i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>
-                        Tidak ada data
+                    <div v-if="loading.jenis" class="ha-analisa-loading"><span class="spinner-border spinner-border-sm text-muted me-1"></span><span class="text-muted small">Memuat...</span></div>
+                    <div v-else class="ha-analisa-chips">
+                        <button v-for="j in filteredJenisList" :key="j.Id_Jenis_Analisa"
+                            class="ha-analisa-chip" :class="[selectedJenisId===j.Id_Jenis_Analisa?'ha-analisa-chip--active':'', 'ha-analisa-chip--'+getAktivitasKey(j.Kode_Aktivitas_Lab)]"
+                            @click="selectJenis(j)" :title="j.Jenis_Analisa">
+                            <i :class="getAktivitasIcon(j.Kode_Aktivitas_Lab)" style="font-size:.7rem;"></i>
+                            <span>{{ j.Kode_Analisa }}</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- ===== RIGHT PANEL: Detail ===== -->
-                <div class="col-lg-9 col-md-8 detail-col">
-                    <!-- Prompt: belum pilih -->
-                    <div v-if="!selectedItem" class="empty-prompt d-flex flex-column align-items-center justify-content-center">
-                        <DotLottieVue style="height:180px;width:180px" autoplay loop src="/animation/empty.lottie" />
-                        <h6 class="text-muted fw-semibold mt-2 mb-1">Pilih jenis analisa</h6>
-                        <p class="text-muted small mb-0">Klik salah satu jenis analisa di panel kiri untuk melihat data</p>
+                <!-- ── Filter bar (shared) ── -->
+                <div class="ha-filter-bar">
+                    <div class="ha-search-wrap">
+                        <i class="ri-search-line ha-search-icon"></i>
+                        <input type="text" class="ha-search-input" :placeholder="viewMode==='per-prd'?'Cari No. Sampel, PO, Barang, Mesin...':'Cari No. PO, Batch, Mesin...'"
+                            v-model="searchQuery" @input="debounceFetch" />
+                        <button v-if="searchQuery" class="ha-search-x" @click="searchQuery='';fetchSamples()"><i class="ri-close-line"></i></button>
                     </div>
+                    <div class="ha-filter-row">
+                        <input type="date" class="ha-date-input" v-model="filters.startDate" @change="fetchSamples()" />
+                        <span class="ha-sep">—</span>
+                        <input type="date" class="ha-date-input" v-model="filters.endDate" @change="fetchSamples()" />
+                    </div>
+                    <div class="ha-filter-row ha-filter-row--inline">
+                        <select class="ha-select" v-model="filters.qrcode" @change="fetchSamples()">
+                            <option value="">Semua QR</option>
+                            <option value="multi">Multi QR</option>
+                            <option value="single">Single QR</option>
+                        </select>
+                        <select class="ha-select" v-model="filters.status" @change="fetchSamples()">
+                            <option value="terima">Diterima</option>
+                            <option value="">Semua Status</option>
+                            <option value="tolak">Ditolak</option>
+                        </select>
+                        <select class="ha-select" v-model="filters.tipeProduksi" @change="fetchSamples()">
+                            <option value="">Semua Tipe</option>
+                            <option value="trial">Trial</option>
+                            <option value="produksi">Produksi</option>
+                        </select>
+                        <button class="ha-btn-reset" @click="resetFilters" title="Reset"><i class="ri-filter-off-line"></i></button>
+                    </div>
+                </div>
 
-                    <!-- Data panel -->
-                    <div v-else class="detail-panel-content">
+                <!-- ── Per Analisa: require jenis selection ── -->
+                <div v-if="viewMode === 'per-analisa' && !selectedJenisId" class="ha-left-empty">
+                    <i class="ri-flask-line"></i>
+                    <p>Pilih jenis analisa di atas</p>
+                </div>
 
-                        <!-- ── Sub-header with stats ── -->
-                        <div class="detail-subheader px-4 py-3 border-bottom">
-                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="detail-icon">
-                                        <i class="fas fa-flask"></i>
+                <!-- ── Sample list ── -->
+                <template v-else>
+                    <div class="ha-list">
+                        <div v-if="loading.list" class="p-3"><div v-for="i in 5" :key="i" class="ha-skeleton mb-2"></div></div>
+                        <div v-else-if="sampleList.length === 0" class="ha-empty-list">
+                            <i class="ri-inbox-2-line"></i>
+                            <p>Tidak ada data sampel</p>
+                            <button class="btn btn-sm btn-outline-primary mt-2" @click="resetFilters"><i class="ri-refresh-line me-1"></i>Reset</button>
+                        </div>
+                        <div v-else>
+                            <button v-for="item in sampleList" :key="getItemKey(item)"
+                                class="ha-item" :class="{ 'ha-item--active': isActive(item) }"
+                                @click="selectSample(item)">
+                                <div class="ha-item-accent"></div>
+                                <div class="ha-item-body">
+                                    <div class="ha-item-top">
+                                        <span class="ha-item-title">{{ getNoSampel(item) }}</span>
+                                        <div class="d-flex gap-1 flex-shrink-0">
+                                            <!-- Per Analisa: show jenis analisa badge -->
+                                            <span v-if="viewMode==='per-analisa' && selectedJenis" class="ha-item-analisa-badge" :class="'ha-akv--'+getAktivitasKey(selectedJenis.Kode_Aktivitas_Lab)">
+                                                <i :class="getAktivitasIcon(selectedJenis.Kode_Aktivitas_Lab)" style="font-size:.6rem;"></i>
+                                                {{ selectedJenis.Kode_Analisa }}
+                                            </span>
+                                            <!-- Per PRD: show total analisa badge -->
+                                            <span v-if="viewMode==='per-prd'" class="ha-item-count-badge">
+                                                {{ item.Total_Analisa }} analisa
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <h6 class="mb-0 fw-bold">{{ selectedItem.Jenis_Analisa }}</h6>
-                                            <span class="badge-kode">{{ selectedItem.Kode_Analisa }}</span>
-                                        </div>
-                                        <div class="d-flex align-items-center gap-3 mt-1">
-                                            <span class="stat-chip">
-                                                <i class="fas fa-layer-group me-1"></i>
-                                                <strong>{{ pagination.totalData }}</strong> sampel
-                                            </span>
-                                            <span v-if="hasActiveFilter" class="stat-chip stat-chip-active">
-                                                <i class="fas fa-filter me-1"></i>Filter aktif
-                                            </span>
-                                        </div>
+                                    <div class="ha-item-sub" v-if="getNamaBarang(item)">{{ getNamaBarang(item) }}</div>
+                                    <div class="ha-item-meta">
+                                        <span class="ha-chip ha-chip--blue" v-if="getNoPoItem(item)">
+                                            <i class="ri-file-list-3-line"></i>{{ getNoPoItem(item) }}
+                                        </span>
+                                        <span class="ha-chip" :class="getMultiFlag(item) === 'Y' ? 'ha-chip--blue' : 'ha-chip--gray'">
+                                            <i class="ri-qr-code-line"></i>{{ getMultiFlag(item) === 'Y' ? 'Multi' : 'Single' }}
+                                        </span>
+                                        <span class="ha-chip" :class="getTipeProduksi(item).includes('Trial') ? 'ha-chip--orange' : 'ha-chip--green'">
+                                            {{ getTipeProduksi(item).includes('Trial') ? 'Trial' : 'Produksi' }}
+                                        </span>
+                                        <span class="ha-chip ha-chip--gray" v-if="getNamaMesin(item)">
+                                            <i class="ri-settings-3-line"></i>{{ getNamaMesin(item) }}
+                                        </span>
+                                    </div>
+                                    <div class="ha-item-date" v-if="getTanggal(item)">
+                                        <i class="ri-calendar-check-line me-1"></i>{{ formatDate(getTanggal(item)) }}
+                                        <span v-if="getJam(item)" class="ms-1">{{ getJam(item).substring(0,5) }}</span>
                                     </div>
                                 </div>
-                                <button v-if="hasActiveFilter" @click="resetFilters" class="btn-reset-filter">
-                                    <i class="fas fa-times me-1"></i>Reset Filter
+                                <i class="ri-arrow-right-s-line ha-item-arrow"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ── Pagination ── -->
+                    <div class="ha-list-footer">
+                        <span class="ha-page-info">
+                            {{ sampleList.length > 0
+                                ? ((pagination.page-1)*pagination.limit+1) + '–' + ((pagination.page-1)*pagination.limit+sampleList.length)
+                                : 0 }}
+                            dari {{ pagination.totalData }}
+                        </span>
+                        <div class="ha-page-btns" v-if="pagination.totalPage > 1">
+                            <button class="ha-page-btn" :disabled="pagination.page===1" @click="changePage(1)" title="Pertama"><i class="ri-skip-back-line"></i></button>
+                            <button class="ha-page-btn" :disabled="pagination.page===1" @click="changePage(pagination.page-1)"><i class="ri-arrow-left-s-line"></i></button>
+                            <span class="ha-page-current">{{ pagination.page }}/{{ pagination.totalPage }}</span>
+                            <button class="ha-page-btn" :disabled="pagination.page===pagination.totalPage" @click="changePage(pagination.page+1)"><i class="ri-arrow-right-s-line"></i></button>
+                            <button class="ha-page-btn" :disabled="pagination.page===pagination.totalPage" @click="changePage(pagination.totalPage)" title="Terakhir"><i class="ri-skip-forward-line"></i></button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- ──────── RIGHT PANEL ──────── -->
+            <div class="ha-right" :class="{ 'ha-hidden-mobile': !detailVisible && isMobile }">
+                <div v-if="isMobile && detailVisible" class="ha-mobile-back">
+                    <button class="btn btn-sm btn-soft-secondary" @click="detailVisible=false"><i class="ri-arrow-left-line me-1"></i>Daftar</button>
+                </div>
+
+                <!-- Empty state -->
+                <div v-if="!selectedSample" class="ha-detail-empty">
+                    <div class="ha-detail-empty-inner">
+                        <div class="ha-empty-icon-wrap"><i class="ri-flask-line"></i></div>
+                        <h6>Pilih sampel untuk melihat hasil analisa</h6>
+                        <p v-if="viewMode==='per-analisa' && !selectedJenisId">Pilih jenis analisa dulu, lalu klik sampel.</p>
+                        <p v-else>Klik sampel di daftar kiri.</p>
+                    </div>
+                </div>
+
+                <template v-else>
+                    <!-- ── HEADER ── -->
+                    <div class="ha-detail-header">
+                        <div class="ha-dh-main">
+                            <div class="ha-dh-icon"><i class="ri-flask-line"></i></div>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="ha-dh-title">{{ getDetailNamaBarang() }}</div>
+                                <div class="ha-dh-sampel">{{ getDetailNoSampel() }}</div>
+                                <div class="ha-dh-badges">
+                                    <span class="ha-badge ha-badge--blue" v-if="getDetailNoPo()"><i class="ri-receipt-line me-1"></i>{{ getDetailNoPo() }}</span>
+                                    <span class="ha-badge ha-badge--gray" v-if="getDetailNoSplitPo()"><i class="ri-git-branch-line me-1"></i>{{ getDetailNoSplitPo() }}</span>
+                                    <span class="ha-badge" :class="getMultiFlag(selectedSample)==='Y'?'ha-badge--blue':'ha-badge--gray'">
+                                        <i class="ri-qr-code-line me-1"></i>{{ getMultiFlag(selectedSample)==='Y'?'Multi QR':'Single QR' }}
+                                    </span>
+                                    <span class="ha-badge" :class="getTipeProduksi(selectedSample).includes('Trial')?'ha-badge--orange':'ha-badge--success'">
+                                        <i :class="getTipeProduksi(selectedSample).includes('Trial')?'ri-test-tube-line':'ri-industry-line'" class="me-1"></i>
+                                        {{ getTipeProduksi(selectedSample) }}
+                                    </span>
+                                    <!-- Per Analisa: show jenis analisa badge in header -->
+                                    <span v-if="viewMode==='per-analisa'&&selectedJenis" class="ha-badge" :class="'ha-badge--akv-'+getAktivitasKey(selectedJenis.Kode_Aktivitas_Lab)">
+                                        <i :class="getAktivitasIcon(selectedJenis.Kode_Aktivitas_Lab)" class="me-1"></i>{{ selectedJenis.Jenis_Analisa }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PLT banner -->
+                        <div v-if="informasiData?.is_plt && informasiData?.plt_pembanding?.length" class="ha-plt-banner">
+                            <div class="ha-plt-icon"><i class="ri-heart-pulse-line"></i></div>
+                            <div>
+                                <div class="ha-plt-title">Uji Palatabilitas — Produk Pembanding</div>
+                                <div class="ha-plt-chips">
+                                    <span v-for="(pb,i) in informasiData.plt_pembanding" :key="i" class="ha-plt-chip"><i class="ri-flask-line me-1"></i>{{ pb?.nama||pb }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Multi QR sub-sample pills (Per Analisa mode) -->
+                        <div v-if="viewMode==='per-analisa' && getMultiFlag(selectedSample)==='Y'" class="ha-sub-bar">
+                            <span class="ha-sub-label"><i class="ri-qr-code-line me-1"></i>Sub Sampel:</span>
+                            <div v-if="loading.sub" class="ha-sub-loading"><span class="spinner-border spinner-border-sm text-primary me-1"></span><span class="text-muted small">Memuat...</span></div>
+                            <div v-else class="ha-sub-pills">
+                                <button v-for="sub in subSamples" :key="sub.No_Fak_Sub_Po"
+                                    class="ha-sub-pill" :class="{'ha-sub-pill--active':selectedSub===sub.No_Fak_Sub_Po}"
+                                    @click="selectSub(sub.No_Fak_Sub_Po)">
+                                    <i class="ri-qr-code-line me-1"></i>{{ sub.No_Fak_Sub_Po }}
                                 </button>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- ── Compact filter bar ── -->
-                        <div class="filter-bar px-4 py-2 border-bottom">
-                            <div class="filter-row">
-                                <!-- Search -->
-                                <div class="filter-search">
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-transparent border-end-0">
-                                            <i class="fas fa-search text-muted"></i>
-                                        </span>
-                                        <input type="text" class="form-control border-start-0 ps-0"
-                                               placeholder="Cari No. PO, Batch, Mesin..."
-                                               v-model="searchQuery" />
-                                    </div>
-                                </div>
+                    <!-- ── TABS ── -->
+                    <div class="ha-tabs">
+                        <button class="ha-tab" :class="{'ha-tab--active':activeTab==='analisa'}" @click="activeTab='analisa'">
+                            <i class="ri-flask-line me-1"></i>Hasil Analisa
+                        </button>
+                        <button class="ha-tab" :class="{'ha-tab--active':activeTab==='timeline'}" @click="activeTab='timeline';loadTimeline()">
+                            <i class="ri-timeline-view me-1"></i>Timeline
+                            <span v-if="auditLog.length>0" class="ha-tab-count">{{ auditLog.length }}</span>
+                        </button>
+                    </div>
 
-                                <!-- Date range -->
-                                <div class="filter-date-group">
-                                    <div class="filter-date-wrapper">
-                                        <i class="fas fa-calendar-alt text-muted filter-date-icon"></i>
-                                        <input type="date" class="form-control form-control-sm filter-date-input"
-                                               v-model="filters.tanggal.mulai" title="Dari tanggal" />
-                                        <span class="filter-date-sep">—</span>
-                                        <input type="date" class="form-control form-control-sm filter-date-input"
-                                               v-model="filters.tanggal.selesai" title="Sampai tanggal" />
-                                    </div>
-                                </div>
+                    <!-- ── DETAIL BODY ── -->
+                    <div class="ha-detail-body">
 
-                                <!-- QRCode -->
-                                <div class="filter-select-wrap">
-                                    <i class="fas fa-qrcode filter-select-icon text-muted"></i>
-                                    <v-select :options="filterOptions.qrcode"
-                                              placeholder="QR Code"
-                                              v-model="filters.qrcode"
-                                              :clearable="true"
-                                              class="vs-compact" />
-                                </div>
-
-                                <!-- Status -->
-                                <div class="filter-select-wrap">
-                                    <i class="fas fa-circle-check filter-select-icon text-muted"></i>
-                                    <v-select :options="filterOptions.status"
-                                              placeholder="Status"
-                                              v-model="filters.status"
-                                              :clearable="true"
-                                              class="vs-compact" />
-                                </div>
-
-                                <!-- Tipe Produksi -->
-                                <div class="filter-select-wrap">
-                                    <i class="fas fa-industry filter-select-icon text-muted"></i>
-                                    <v-select :options="filterOptions.tipeProduksi"
-                                              placeholder="Produksi"
-                                              v-model="filters.tipeProduksi"
-                                              :clearable="true"
-                                              class="vs-compact" />
-                                </div>
-                            </div>
-
-                            <!-- Active filter chips -->
-                            <div v-if="hasActiveFilter" class="filter-chips">
-                                <span v-if="searchQuery" class="filter-chip">
-                                    <i class="fas fa-search me-1"></i>{{ searchQuery }}
-                                    <button @click="searchQuery = ''" class="chip-remove">&times;</button>
-                                </span>
-                                <span v-if="filters.tanggal.mulai || filters.tanggal.selesai" class="filter-chip">
-                                    <i class="fas fa-calendar me-1"></i>
-                                    {{ filters.tanggal.mulai || '…' }} — {{ filters.tanggal.selesai || '…' }}
-                                    <button @click="filters.tanggal.mulai = ''; filters.tanggal.selesai = ''" class="chip-remove">&times;</button>
-                                </span>
-                                <span v-if="filters.qrcode" class="filter-chip">
-                                    <i class="fas fa-qrcode me-1"></i>{{ filters.qrcode.label }}
-                                    <button @click="filters.qrcode = null" class="chip-remove">&times;</button>
-                                </span>
-                                <span v-if="filters.status" class="filter-chip">
-                                    <i class="fas fa-circle-check me-1"></i>{{ filters.status.label }}
-                                    <button @click="filters.status = null" class="chip-remove">&times;</button>
-                                </span>
-                                <span v-if="filters.tipeProduksi" class="filter-chip"
-                                      :class="filters.tipeProduksi.value === 'trial' ? 'chip-warning' : 'chip-success'">
-                                    <i class="fas fa-industry me-1"></i>{{ filters.tipeProduksi.label }}
-                                    <button @click="filters.tipeProduksi = null" class="chip-remove">&times;</button>
-                                </span>
-                            </div>
+                        <!-- LOADING -->
+                        <div v-if="loading.detail" class="ha-loading-state">
+                            <div class="spinner-border text-primary"></div>
+                            <p class="mt-3 text-muted small">Memuat data analisa...</p>
                         </div>
 
-                        <!-- List loading -->
-                        <div v-if="loading.loadingDetail" class="p-4">
-                            <div v-for="n in 5" :key="n" class="skeleton-card mb-3"></div>
+                        <!-- PER PRD: waiting for jenis analisa list load -->
+                        <div v-else-if="viewMode==='per-prd' && activeTab==='analisa' && jenisPerPrd.length===0" class="ha-loading-state">
+                            <i class="ri-inbox-2-line fs-1 text-muted"></i>
+                            <p class="text-muted small mt-2">Tidak ada data hasil analisa untuk sampel ini</p>
                         </div>
 
-                        <!-- List data -->
-                        <div v-else-if="Object.keys(listDetail).length" class="detail-list px-4 py-3">
-                            <a v-for="[kode, item] in Object.entries(listDetail)" :key="kode"
-                               :href="`/lab/hasil-analisa/${selectedItem.Id_Jenis_Analisa}/${kode}/${item.flag_multi}`"
-                               class="data-card">
-                                <!-- Card header row -->
-                                <div class="dc-header">
-                                    <div class="dc-icon">
-                                        <i class="fas fa-vial"></i>
-                                    </div>
-                                    <div class="dc-title">
-                                        <div class="dc-name">{{ item.nama_barang }}</div>
-                                        <div class="dc-sub d-flex align-items-center gap-1 flex-wrap mt-1">
-                                            <small class="text-muted">{{ kode }}</small>
+                        <!-- PER ANALISA: waiting for sub-sample selection -->
+                        <div v-else-if="viewMode==='per-analisa' && getMultiFlag(selectedSample)==='Y' && !selectedSub" class="ha-loading-state">
+                            <i class="ri-qr-code-line fs-1 text-muted"></i>
+                            <p class="text-muted small mt-2">Pilih sub sampel di atas</p>
+                        </div>
 
-                                            <span v-if="item.flag_multi === 'Y'" class="badge bg-primary-subtle text-primary badge-sm">
-                                                <i class="fas fa-clone me-1"></i>Multi QRCode
-                                            </span>
-                                            <span v-else class="badge bg-secondary-subtle text-secondary badge-sm">
-                                                <i class="fas fa-qrcode me-1"></i>Single QRCode
-                                            </span>
+                        <!-- ════ ANALISA TAB ════ -->
+                        <template v-else-if="activeTab==='analisa'">
 
-                                            <!-- Tipe Produksi badge -->
-                                            <span v-if="item.tipe_produksi === 'Trial Produksi'"
-                                                  class="badge bg-warning-subtle text-warning badge-sm">
-                                                <i class="fas fa-flask me-1"></i>Trial Produksi
-                                            </span>
-                                            <span v-else class="badge bg-success-subtle text-success badge-sm">
-                                                <i class="fas fa-industry me-1"></i>Produksi
-                                            </span>
+                            <!-- ═══ PER PRD: sections per group ═══ -->
+                            <template v-if="viewMode==='per-prd'">
+                                <div v-for="section in detailSections" :key="section.group" class="ha-section">
+                                    <button class="ha-section-hdr" @click="toggleSection(section.group)">
+                                        <div class="ha-section-hdr-l">
+                                            <div class="ha-section-icon" :style="{background:section.bg}"><i :class="section.icon"></i></div>
+                                            <div>
+                                                <span class="ha-section-title">{{ section.label }}</span>
+                                                <span class="ha-section-sub">{{ section.items.length }} jenis analisa</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div v-if="item.status_keputusan" class="dc-status"
-                                         :class="{
-                                             'status-terima': item.status_keputusan.toLowerCase() === 'terima',
-                                             'status-tolak':  item.status_keputusan.toLowerCase() === 'tolak',
-                                             'status-batal':  item.status_keputusan.toLowerCase() === 'dibatalkan',
-                                         }">
-                                        <i class="fas"
-                                           :class="{
-                                               'fa-check-circle':  item.status_keputusan.toLowerCase() === 'terima',
-                                               'fa-times-circle':  item.status_keputusan.toLowerCase() === 'tolak',
-                                               'fa-ban':           item.status_keputusan.toLowerCase() === 'dibatalkan',
-                                           }"></i>
-                                        <span>{{ item.status_keputusan }}</span>
-                                    </div>
-                                </div>
-
-                                <!-- Card detail grid -->
-                                <div class="dc-details">
-                                    <div class="dc-detail-item">
-                                        <i class="fas fa-cogs"></i>
-                                        <div>
-                                            <div class="dc-detail-label">Mesin</div>
-                                            <div class="dc-detail-value">{{ item.nama_mesin || "-" }}</div>
+                                        <div class="d-flex align-items-center gap-7 flex-shrink-0">
+                                            <span v-if="section.failCount>0" class="ha-badge ha-badge--danger"><i class="ri-close-circle-line me-1"></i>{{ section.failCount }} TL</span>
+                                            <span v-else class="ha-badge ha-badge--success"><i class="ri-checkbox-circle-line me-1"></i>Lolos</span>
+                                            <i class="ha-chevron ri-arrow-up-s-line" :class="{'collapsed':!isSectionOpen(section.group)}"></i>
                                         </div>
-                                    </div>
-                                    <div class="dc-detail-item">
-                                        <i class="fas fa-receipt"></i>
-                                        <div>
-                                            <div class="dc-detail-label">No. PO / Split</div>
-                                            <div class="dc-detail-value">
-                                                {{ item.no_po || "-" }}<span v-if="item.no_split_po"> / {{ item.no_split_po }}</span>
+                                    </button>
+                                    <div v-show="isSectionOpen(section.group)" class="ha-section-body">
+                                        <div v-for="analisa in section.items" :key="analisa.key" class="ha-analisa-panel">
+                                            <button class="ha-analisa-hdr" :class="analisa.Flag_Layak==='T'?'ha-analisa-hdr--danger':'ha-analisa-hdr--success'" @click="toggleAnalisa(analisa)">
+                                                <div class="ha-analisa-hdr-l">
+                                                    <div class="ha-analisa-dot" :class="analisa.Flag_Layak==='T'?'dot--danger':'dot--success'"></div>
+                                                    <div>
+                                                        <span class="ha-analisa-hdr-title">{{ analisa.Jenis_Analisa }}</span>
+                                                        <div class="ha-analisa-hdr-meta">
+                                                            <span class="ha-chip ha-chip--gray" style="font-size:.62rem;">{{ analisa.Kode_Analisa }}</span>
+                                                            <span v-if="analisa.is_plt&&analisa.Nama_Pembanding" class="ha-chip ha-chip--cyan" style="font-size:.62rem;"><i class="ri-flask-line"></i>{{ analisa.Nama_Pembanding }}</span>
+                                                            <span v-if="analisa.Flag_Perhitungan==='Y'" class="ha-chip ha-chip--purple" style="font-size:.62rem;"><i class="ri-calculator-line"></i>Perhitungan</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                                    <span class="ha-badge" :class="analisa.Flag_Layak==='T'?'ha-badge--danger':'ha-badge--success'"><i :class="analisa.Flag_Layak==='T'?'ri-close-circle-line':'ri-checkbox-circle-line'" class="me-1"></i>{{ analisa.Flag_Layak==='T'?'Tidak Lolos':'Lolos' }}</span>
+                                                    <i class="ha-chevron ri-arrow-up-s-line" :class="{'collapsed':!isAnalisaOpen(analisa.key)}"></i>
+                                                </div>
+                                            </button>
+                                            <div v-show="isAnalisaOpen(analisa.key)" class="ha-analisa-table-wrap">
+                                                <div v-if="loadingTable[analisa.key]" class="ha-table-loading"><span class="spinner-border spinner-border-sm text-primary me-2"></span><span class="text-muted small">Memuat...</span></div>
+                                                <div v-else-if="!tableByKey[analisa.key]||tableByKey[analisa.key].length===0" class="text-center py-3 text-muted small"><i class="ri-inbox-2-line me-1"></i>Tidak ada data</div>
+                                                <div v-else>
+                                                    <div v-if="templateByKey[analisa.key]?.is_sop" class="ha-sop-bar mx-3 mt-2">
+                                                        <i class="ri-bar-chart-line me-1"></i><span class="ha-sop-label">Range SOP:</span>
+                                                        <span class="ha-sop-val">{{ templateByKey[analisa.key].Range_Awal }} — {{ templateByKey[analisa.key].Range_Akhir }}</span>
+                                                    </div>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm table-bordered align-middle mb-0 ha-data-table">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th class="text-center ha-th-no">#</th>
+                                                                    <th v-if="analisa.is_plt" class="ha-th-plt"><i class="ri-flask-line me-1"></i>Pembanding</th>
+                                                                    <th>No Transaksi</th><th>No Sampel</th><th>No PO</th><th>No Split Po</th>
+                                                                    <th v-if="getMultiFlag(selectedSample)==='Y'">No Sub Sampel</th>
+                                                                    <th>Tanggal</th>
+                                                                    <template v-if="hasTemplateKey(analisa.key)">
+                                                                        <th v-for="param in getTemplateKey(analisa.key).parameter" :key="param.id_qc">
+                                                                            {{ param.nama_parameter }}<small v-if="param.satuan" class="d-block fw-normal opacity-75" style="font-size:.7em;">{{ param.satuan }}</small>
+                                                                        </th>
+                                                                        <th v-for="f in getTemplateKey(analisa.key).formula" :key="f.id||f.nama_kolom" class="ha-th-formula">{{ f.nama_kolom }}</th>
+                                                                    </template>
+                                                                    <th v-else>Hasil</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <tr v-for="(row,ri) in tableByKey[analisa.key]" :key="ri" :class="getRowClass(row)">
+                                                                    <td class="text-center fw-semibold ha-td-no">{{ ri+1 }}</td>
+                                                                    <td v-if="analisa.is_plt" class="ha-td-plt"><span class="ha-pembanding">{{ row.Nama_Pembanding||'—' }}</span></td>
+                                                                    <td class="ha-td-mono">{{ row.No_Faktur||'-' }}</td>
+                                                                    <td class="ha-td-mono">{{ row.No_Po_Sampel||'-' }}</td>
+                                                                    <td>{{ row.No_Po||'-' }}</td><td>{{ row.No_Split_Po||'-' }}</td>
+                                                                    <td v-if="getMultiFlag(selectedSample)==='Y'">{{ row.No_Fak_Sub_Po||'-' }}</td>
+                                                                    <td>{{ formatDate(row.Tanggal) }}</td>
+                                                                    <template v-if="hasTemplateKey(analisa.key)">
+                                                                        <td v-for="(val,pi) in (row.parameters||[])" :key="pi">{{ val }}</td>
+                                                                        <template v-if="getTemplateKey(analisa.key).formula?.length>0">
+                                                                            <td v-for="(res,fi) in (row.results||[])" :key="fi" class="ha-td-formula fw-semibold">{{ res?.value??'-' }}</td>
+                                                                        </template>
+                                                                    </template>
+                                                                    <td v-else class="fw-semibold">{{ row.Hasil_Akhir_Analisa??'-' }}</td>
+                                                                </tr>
+                                                                <tr v-if="(analisa.Flag_Perhitungan==='Y'||tableByKey[analisa.key][0]?.Flag_Perhitungan==='Y') && getTemplateKey(analisa.key).formula?.length>0 && (avgByKey[analisa.key]||[]).length>0" class="ha-row--rata">
+                                                                    <td :colspan="getBaseColCount(analisa)" class="text-end pe-3 fw-bold fst-italic text-secondary">Rata-Rata</td>
+                                                                    <td v-for="(avg,ai) in (avgByKey[analisa.key]||[])" :key="ai" class="ha-td-formula fw-bold">{{ avg }}</td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="dc-detail-item">
-                                        <i class="fas fa-hashtag"></i>
-                                        <div>
-                                            <div class="dc-detail-label">No. Batch</div>
-                                            <div class="dc-detail-value">{{ item.no_batch || "-" }}</div>
-                                        </div>
-                                    </div>
-                                    <div class="dc-detail-item">
-                                        <i class="fas fa-calendar-plus"></i>
-                                        <div>
-                                            <div class="dc-detail-label">Tgl Registrasi</div>
-                                            <div class="dc-detail-value">{{ formatDateTime(item.tanggal_pengajuan, item.jam_pengajuan) }}</div>
-                                        </div>
-                                    </div>
-                                    <div class="dc-detail-item">
-                                        <i class="fas fa-calendar-check"></i>
-                                        <div>
-                                            <div class="dc-detail-label">Tgl Pengujian</div>
-                                            <div class="dc-detail-value">{{ formatDateTime(item.tanggal_pengujian, item.jam_pengujian) }}</div>
-                                        </div>
-                                    </div>
                                 </div>
-                            </a>
+                            </template>
 
-                            <!-- Pagination -->
-                            <div class="row align-items-center mt-3" v-if="pagination.totalData > 0">
-                                <div class="col-sm text-muted small">
-                                    Menampilkan <strong>{{ Object.keys(listDetail).length }}</strong> dari <strong>{{ pagination.totalData }}</strong> data
+                            <!-- ═══ PER ANALISA: single table ═══ -->
+                            <template v-else>
+                                <div v-if="tableRows.length===0" class="ha-loading-state">
+                                    <i class="ri-inbox-2-line fs-1 text-muted"></i>
+                                    <p class="text-muted small mt-2">Tidak ada data hasil analisa</p>
                                 </div>
-                                <div class="col-sm-auto mt-2 mt-sm-0">
-                                    <ul class="pagination pagination-sm pagination-separated justify-content-center mb-0">
-                                        <li class="page-item" :class="{ disabled: pagination.page === 1 }">
-                                            <a href="#" class="page-link" @click.prevent="prevPage">←</a>
-                                        </li>
-                                        <li class="page-item" v-for="page in visiblePages" :key="page"
-                                            :class="{ active: page === pagination.page }">
-                                            <a href="#" class="page-link" @click.prevent="changePage(page)">{{ page }}</a>
-                                        </li>
-                                        <li class="page-item" :class="{ disabled: pagination.page === pagination.totalPage }">
-                                            <a href="#" class="page-link" @click.prevent="nextPage">→</a>
-                                        </li>
-                                    </ul>
+                                <div v-else>
+                                    <div v-if="informasiData?.is_sop" class="ha-sop-bar">
+                                        <i class="ri-bar-chart-line me-1 text-primary"></i>
+                                        <span class="ha-sop-label">Range SOP:</span>
+                                        <span class="ha-sop-val">{{ informasiData.Range_Awal }} — {{ informasiData.Range_Akhir }}</span>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered align-middle mb-0 ha-data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="text-center ha-th-no">#</th>
+                                                    <th v-if="informasiData?.is_plt" class="ha-th-plt"><i class="ri-flask-line me-1"></i>Pembanding</th>
+                                                    <th>No Transaksi</th><th>No Sampel</th><th>No PO</th><th>No Split Po</th>
+                                                    <th v-if="getMultiFlag(selectedSample)==='Y'">No Sub Sampel</th>
+                                                    <th>Tanggal</th>
+                                                    <template v-if="hasTemplate">
+                                                        <th v-for="param in template.parameter" :key="param.id_qc">
+                                                            {{ param.nama_parameter }}<small v-if="param.satuan" class="d-block fw-normal opacity-75" style="font-size:.7em;">{{ param.satuan }}</small>
+                                                        </th>
+                                                        <th v-for="f in template.formula" :key="f.id||f.nama_kolom" class="ha-th-formula">{{ f.nama_kolom }}</th>
+                                                    </template>
+                                                    <th v-else>Hasil</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="(row,ri) in tableRows" :key="ri" :class="getRowClass(row)">
+                                                    <td class="text-center fw-semibold ha-td-no">{{ ri+1 }}</td>
+                                                    <td v-if="informasiData?.is_plt" class="ha-td-plt"><span class="ha-pembanding">{{ row.Nama_Pembanding||'—' }}</span></td>
+                                                    <td class="ha-td-mono">{{ row.No_Faktur||'-' }}</td>
+                                                    <td class="ha-td-mono">{{ row.No_Po_Sampel||'-' }}</td>
+                                                    <td>{{ row.No_Po||'-' }}</td><td>{{ row.No_Split_Po||'-' }}</td>
+                                                    <td v-if="getMultiFlag(selectedSample)==='Y'">{{ row.No_Fak_Sub_Po||'-' }}</td>
+                                                    <td>{{ formatDate(row.Tanggal) }}</td>
+                                                    <template v-if="hasTemplate">
+                                                        <td v-for="(val,pi) in (row.parameters||[])" :key="pi">{{ val }}</td>
+                                                        <template v-if="template.formula?.length>0">
+                                                            <td v-for="(res,fi) in (row.results||[])" :key="fi" class="ha-td-formula fw-semibold">{{ res?.value??'-' }}</td>
+                                                        </template>
+                                                    </template>
+                                                    <td v-else class="fw-semibold">{{ row.Hasil_Akhir_Analisa??'-' }}</td>
+                                                </tr>
+                                                <tr v-if="(informasiData?.Flag_Perhitungan==='Y'||tableRows[0]?.Flag_Perhitungan==='Y') && template.formula?.length>0 && formulaAverages.length>0" class="ha-row--rata">
+                                                    <td :colspan="getBaseColCountSingle()" class="text-end pe-3 fw-bold fst-italic text-secondary">Rata-Rata</td>
+                                                    <td v-for="(avg,ai) in formulaAverages" :key="ai" class="ha-td-formula fw-bold">{{ avg }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </template>
+                        </template>
+
+                        <!-- ════ TIMELINE TAB ════ -->
+                        <template v-else-if="activeTab==='timeline'">
+                            <div v-if="loading.timeline" class="ha-loading-state"><div class="spinner-border spinner-border-sm text-primary"></div><p class="text-muted small mt-2">Memuat...</p></div>
+                            <div v-else-if="auditLog.length===0" class="ha-loading-state"><i class="ri-history-line fs-1 text-muted"></i><p class="text-muted small mt-2">Belum ada riwayat</p></div>
+                            <div v-else class="ha-vtl">
+                                <div class="ha-vtl-hdr"><i class="ri-history-line me-2"></i>Riwayat Proses Sampel</div>
+                                <div class="ha-vtl-steps">
+                                    <div v-for="(log,li) in auditLog" :key="li" class="ha-vtl-step" :class="getStepClass(log)">
+                                        <div class="ha-vtl-indicator">
+                                            <div class="ha-vtl-dot"><i :class="getStepIcon(log)"></i></div>
+                                            <div v-if="li<auditLog.length-1" class="ha-vtl-line"></div>
+                                        </div>
+                                        <div class="ha-vtl-body">
+                                            <div class="ha-vtl-row1">
+                                                <span class="ha-vtl-badge" :class="getStepBadgeClass(log)">{{ formatAksi(log.Jenis_Aksi) }}</span>
+                                                <span v-if="log.Sub_Aksi" class="ha-vtl-sub" :class="log.Sub_Aksi==='TOLAK'?'text-danger':'text-success'">{{ log.Sub_Aksi }}</span>
+                                            </div>
+                                            <div class="ha-vtl-meta">
+                                                <span><i class="ri-user-3-line me-1"></i>{{ log.Nama_User||log.Id_User }}</span>
+                                                <span><i class="ri-time-line me-1"></i>{{ formatDate(log.Tanggal) }}<template v-if="log.Jam"> · {{ log.Jam.substring(0,5) }}</template></span>
+                                            </div>
+                                            <div v-if="log.details&&log.details.length" class="ha-vtl-details">
+                                                <div class="ha-vtl-details-hdr"><i class="ri-microscope-line me-1"></i>{{ log.details.length }} analisa</div>
+                                                <div v-for="d in log.details" :key="d.Id_Jenis_Analisa" class="ha-vtl-detail-row">
+                                                    <i class="ri-arrow-right-s-line text-muted"></i>{{ d.Nama_Jenis_Analisa }}<span v-if="d.Tanggal" class="text-muted ms-1" style="font-size:.65rem;"> · {{ formatDate(d.Tanggal) }}</span>
+                                                </div>
+                                            </div>
+                                            <div v-if="log.Keterangan" class="ha-vtl-note"><i class="ri-chat-3-line me-1"></i>{{ log.Keterangan }}</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Empty state -->
-                        <div v-else class="d-flex flex-column align-items-center justify-content-center py-5 px-4">
-                            <DotLottieVue style="height:160px;width:160px" autoplay loop src="/animation/empty.lottie" />
-                            <h6 class="text-muted fw-semibold mt-2 mb-1">Tidak ada data</h6>
-                            <p class="text-muted small mb-0">Tidak ada data sesuai filter yang dipilih.</p>
-                        </div>
+                        </template>
                     </div>
-                </div>
+                </template>
             </div>
         </div>
     </div>
 </template>
 
 <script>
-import { DotLottieVue } from "@lottiefiles/dotlottie-vue";
 import axios from "axios";
-import { debounce } from "lodash";
-import vSelect from "vue-select";
-
 export default {
-    components: { DotLottieVue, vSelect },
-
     props: {
-        selected_id: { type: String, default: null },
+        selected_id:          { type: [String, Number], default: null },
+        initial_no_po_sampel: { type: String, default: null },
+        initial_flag_multi:   { type: String, default: null },
+        initial_no_sub:       { type: String, default: null },
     },
-
     data() {
         return {
-            // Sidebar
-            listData: [],
-            selectedItem: null,
+            // View mode
+            viewMode: 'per-prd', // 'per-prd' | 'per-analisa'
 
-            // Detail
-            listDetail: {},
+            // Jenis Analisa (for Per Analisa mode)
+            jenisAnalisaList: [],
+            selectedJenisId: "",
+            selectedJenis: null,
+            jenisSearch: "",
+            loading: { jenis: false, list: false, detail: false, sub: false, timeline: false },
+
+            // Sample list
+            sampleList: [],
+            selectedSample: null,
+            pagination: { page: 1, limit: 20, totalPage: 1, totalData: 0 },
             searchQuery: "",
-            filters: {
-                tanggal: { mulai: "", selesai: "" },
-                qrcode: null,
-                status: { label: "Diterima", value: "terima" },
-                tipeProduksi: null,
-            },
-            filterOptions: {
-                qrcode: [
-                    { label: "Multi QRCode",   value: "multi" },
-                    { label: "Single QRCode",  value: "single" },
-                ],
-                status: [
-                    { label: "Semua Status", value: null },
-                    { label: "Diterima",     value: "terima" },
-                    { label: "Ditolak",      value: "tolak" },
-                    { label: "Dibatalkan",   value: "dibatalkan" },
-                ],
-                tipeProduksi: [
-                    { label: "Produksi",       value: "produksi" },
-                    { label: "Trial Produksi", value: "trial" },
-                ],
-            },
-            pagination: { page: 1, limit: 10, totalPage: 0, totalData: 0 },
+            searchTimeout: null,
+            filters: { startDate: "", endDate: "", qrcode: "", status: "terima", tipeProduksi: "" },
 
-            loading: { loadingListData: false, loadingDetail: false, loadingListDataMesin: false },
+            // Sub-samples (multi QR, Per Analisa mode)
+            subSamples: [],
+            selectedSub: null,
 
-            // Print modal
-            printModal: null,
-            currentStep: 1,
-            listDataJenisAnalisa: [],
-            listDataMesin: [],
-            selectedAnalysis: [],
-            selectedIsPerhitungan: [],
-            selectedJenisPrint: "",
-            selectedListMesin: null,
-            startDate: "",
-            endDate: "",
-            exportFormat: "pdf",
-            pszConfirmation: false,
+            // Per PRD: jenis analisa list per sample + per-analisa table data
+            jenisPerPrd: [],
+            openSections: [],
+            openAnalisas: [],
+            loadingTable: {},
+            templateByKey: {},
+            tableByKey: {},
+            avgByKey: {},
+
+            // Per Analisa: single table
+            template: { parameter: [], formula: [] },
+            tableRows: [],
+            formulaAverages: [],
+            informasiData: null,
+
+            // UI
+            activeTab: "analisa",
+            auditLog: [],
+            isMobile: false,
+            detailVisible: false,
         };
     },
-
     computed: {
-        today() { return new Date().toISOString().split("T")[0]; },
-        formattedStartDate() { return this.startDate ? new Date(this.startDate).toLocaleDateString("id-ID") : "-"; },
-        formattedEndDate()   { return this.endDate   ? new Date(this.endDate).toLocaleDateString("id-ID")   : "-"; },
-        selectedAnalysisNames() {
-            return (this.listDataJenisAnalisa || [])
-                .filter(i => (this.selectedAnalysis || []).includes(i.id))
-                .map(i => i.Jenis_Analisa).join(", ");
+        hasTemplate() { return (this.template.parameter?.length||0)>0||(this.template.formula?.length||0)>0; },
+        filteredJenisList() {
+            if (!this.jenisSearch.trim()) return this.jenisAnalisaList;
+            const q = this.jenisSearch.toLowerCase();
+            return this.jenisAnalisaList.filter(j => j.Jenis_Analisa?.toLowerCase().includes(q) || j.Kode_Analisa?.toLowerCase().includes(q));
         },
-        showPszOption() {
-            if (!this.selectedAnalysis.length) return false;
-            return this.listDataJenisAnalisa
-                .filter(i => this.selectedAnalysis.includes(i.id))
-                .some(i => i.Kode_Analisa && i.Kode_Analisa.includes("PSZ"));
-        },
-        isPszReportSelected() { return this.selectedJenisPrint === "psz"; },
-        isGenerateButtonDisabled() { return this.isPszReportSelected && !this.pszConfirmation; },
-        hasActiveFilter() {
-            return !!(
-                this.searchQuery ||
-                this.filters.tanggal.mulai ||
-                this.filters.tanggal.selesai ||
-                this.filters.qrcode ||
-                (this.filters.status && this.filters.status.value !== null) ||
-                this.filters.tipeProduksi
-            );
-        },
-        visiblePages() {
-            const total   = this.pagination.totalPage;
-            const current = this.pagination.page;
-            let start = Math.max(1, current - 2);
-            let end   = Math.min(total, current + 2);
-            if (end - start < 4) {
-                if (start === 1) end = Math.min(5, total);
-                else             start = Math.max(1, end - 4);
-            }
-            const pages = [];
-            for (let i = start; i <= end; i++) pages.push(i);
-            return pages;
-        },
-    },
-
-    watch: {
-        searchQuery() { this.debouncedFetchDetail(); },
-        filters: {
-            handler() { this.debouncedFetchDetail(); },
-            deep: true,
-        },
-        selectedJenisPrint(val) {
-            if (val !== "psz") this.pszConfirmation = false;
-        },
-    },
-
-    methods: {
-        // ── Sidebar ──────────────────────────────────────────────
-        async fetchHasilAnalisa() {
-            this.loading.loadingListData = true;
-            try {
-                const res = await axios.get("/api/v1/lab/hasil-analisa/uji-sampel");
-                if (res.status === 200 && Array.isArray(res.data?.result)) {
-                    this.listData = res.data.result;
-                    if (this.selected_id) {
-                        const found = this.listData.find(i => i.Id_Jenis_Analisa === this.selected_id);
-                        if (found) this.selectJenisAnalisa(found);
-                    }
-                }
-            } catch (e) {
-                this.listData = [];
-            } finally {
-                this.loading.loadingListData = false;
-            }
-        },
-
-        selectJenisAnalisa(item) {
-            if (this.selectedItem?.Id_Jenis_Analisa === item.Id_Jenis_Analisa) return;
-            this.selectedItem = item;
-            this.listDetail   = {};
-            this.pagination   = { ...this.pagination, page: 1, totalPage: 0, totalData: 0 };
-            this.searchQuery  = "";
-            this.filters      = { tanggal: { mulai: "", selesai: "" }, qrcode: null, status: { label: "Diterima", value: "terima" }, tipeProduksi: null };
-            this.fetchDetail(1);
-        },
-
-        // ── Detail ───────────────────────────────────────────────
-        async fetchDetail(page = 1) {
-            if (!this.selectedItem) return;
-            this.loading.loadingDetail = true;
-            try {
-                const params = {
-                    page,
-                    q:             this.searchQuery,
-                    limit:         this.pagination.limit,
-                    qrcode:        this.filters.qrcode        ? this.filters.qrcode.value        : null,
-                    status:        this.filters.status        ? this.filters.status.value        : null,
-                    tipe_produksi: this.filters.tipeProduksi  ? this.filters.tipeProduksi.value  : null,
-                };
-                if (this.filters.tanggal.mulai && this.filters.tanggal.selesai) {
-                    params.tanggal_mulai    = this.filters.tanggal.mulai;
-                    params.tanggal_selesai  = this.filters.tanggal.selesai;
-                }
-                const res = await axios.get(`/api/v1/lab/hasil-analisa/${this.selectedItem.Id_Jenis_Analisa}`, { params });
-                if (res.status === 200 && res.data?.result) {
-                    this.listDetail  = res.data.result.data_sampel;
-                    this.pagination  = { ...this.pagination, ...res.data.result.pagination };
-                } else {
-                    this.listDetail  = {};
-                    this.pagination.totalData = 0;
-                }
-            } catch (e) {
-                this.listDetail = {};
-                this.pagination.totalData = 0;
-            } finally {
-                this.loading.loadingDetail = false;
-            }
-        },
-
-        resetFilters() {
-            this.searchQuery = "";
-            this.filters = {
-                tanggal: { mulai: "", selesai: "" },
-                qrcode: null,
-                status: null,
-                tipeProduksi: null,
+        detailSections() {
+            const gDef = {
+                ANL:  { label:'Analisa Lab',  icon:'ri-flask-line',       bg:'linear-gradient(135deg,#405189,#2e3a64)' },
+                PLT:  { label:'Palatabilitas', icon:'ri-heart-pulse-line', bg:'linear-gradient(135deg,#0ab39c,#0891b2)' },
+                LCKV: { label:'Look View',     icon:'ri-eye-line',          bg:'linear-gradient(135deg,#7c3aed,#5b21b6)' },
             };
+            const order = { ANL:1, PLT:2, LCKV:3 };
+            const grouped = {};
+            this.jenisPerPrd.forEach(item => {
+                const g = item.Kode_Aktivitas_Lab || 'ANL';
+                if (!grouped[g]) { const d = gDef[g]||{label:g,icon:'ri-flask-line',bg:'linear-gradient(135deg,#405189,#2e3a64)'}; grouped[g]={...d,group:g,items:[],failCount:0}; }
+                const key = `${item.Id_Jenis_Analisa}_${item.Nama_Pembanding||''}`;
+                if (!grouped[g].items.find(i=>i.key===key)) grouped[g].items.push({...item,key});
+                if (item.Flag_Layak==='T') grouped[g].failCount++;
+            });
+            return Object.values(grouped).sort((a,b)=>(order[a.group]||99)-(order[b.group]||99));
         },
-
-        debouncedFetchDetail: debounce(function () {
-            this.pagination.page = 1;
-            this.fetchDetail(1);
-        }, 500),
-
-        nextPage() { if (this.pagination.page < this.pagination.totalPage) this.fetchDetail(this.pagination.page + 1); },
-        prevPage() { if (this.pagination.page > 1)                         this.fetchDetail(this.pagination.page - 1); },
-        changePage(p) { if (p !== this.pagination.page) this.fetchDetail(p); },
-
-        formatDateTime(dateStr, timeStr) {
-            if (!dateStr || !timeStr) return "-";
-            const date = new Date(`${dateStr.split(" ")[0]}T${timeStr}`);
-            return new Intl.DateTimeFormat("id-ID", {
-                day: "2-digit", month: "short", year: "numeric",
-                hour: "2-digit", minute: "2-digit", hour12: false,
-            }).format(date).replace(".", ":");
-        },
-
-        // ── Print modal ──────────────────────────────────────────
-        async fetchJenisAnalisa() {
-            try {
-                const res = await axios.get("/jenis-analisa-current/for-select");
-                this.listDataJenisAnalisa = res.data?.result ?? [];
-            } catch { this.listDataJenisAnalisa = []; }
-        },
-        async fetchListMesin() {
-            try {
-                const res = await axios.get("/api/v1/lab/mesin/export-hasil-analisa");
-                const opts = (res.data?.result ?? []).map(i => ({ value: i.Id_Master_Mesin, name: i.Nama_Mesin }));
-                this.listDataMesin = [{ value: "all", name: "Semua Mesin" }, ...opts];
-            } catch { this.listDataMesin = [{ value: "all", name: "Semua Mesin" }]; }
-        },
-
-        togglePrintModal() {
-            if (!this.printModal) {
-                this.printModal = new bootstrap.Modal(document.getElementById("printModal"));
-            }
-            this.currentStep         = parseInt(sessionStorage.getItem("printStep") || "1");
-            this.selectedAnalysis    = JSON.parse(sessionStorage.getItem("printSelectedAnalysis")    || "[]");
-            this.selectedIsPerhitungan = JSON.parse(sessionStorage.getItem("printSelectedIsPerhitungan") || "[]");
-            this.startDate           = sessionStorage.getItem("printStartDate")   || "";
-            this.endDate             = sessionStorage.getItem("printEndDate")     || "";
-            this.exportFormat        = sessionStorage.getItem("printExportFormat") || "pdf";
-            this.selectedJenisPrint  = sessionStorage.getItem("printJenisCetak")  || "";
-            this.printModal.show();
-        },
-        closePrintModal() {
-            this.printModal.hide();
-            ["printStep","printSelectedAnalysis","printSelectedIsPerhitungan","printStartDate","printEndDate","printExportFormat","printJenisCetak"]
-                .forEach(k => sessionStorage.removeItem(k));
-            this.currentStep = 1; this.selectedAnalysis = []; this.selectedIsPerhitungan = [];
-            this.startDate = ""; this.endDate = ""; this.exportFormat = "pdf"; this.selectedJenisPrint = "";
-        },
-        nextStep() {
-            if (this.currentStep === 1 && !this.selectedAnalysis.length) {
-                return Swal.fire("Peringatan", "Pilih minimal satu jenis analisa.", "warning");
-            }
-            if (this.currentStep === 2 && (!this.startDate || !this.endDate)) {
-                return Swal.fire("Peringatan", "Isi periode tanggal lengkap.", "warning");
-            }
-            if (this.currentStep === 3 && !this.selectedJenisPrint) {
-                return Swal.fire("Peringatan", "Pilih jenis cetakan.", "warning");
-            }
-            this.currentStep++;
-        },
-        prevStep() { this.currentStep--; },
-        toggleAnalysisSelection(item) {
-            const idx = this.selectedAnalysis.indexOf(item.id);
-            if (idx > -1) {
-                this.selectedAnalysis.splice(idx, 1);
-                this.selectedIsPerhitungan.splice(idx, 1);
+    },
+    methods: {
+        // ─── Mode switching ──────────────────────────────────────────
+        setMode(mode) {
+            if (this.viewMode === mode) return;
+            this.viewMode = mode;
+            this.selectedSample = null;
+            this.sampleList = [];
+            this.pagination = { page: 1, limit: 20, totalPage: 1, totalData: 0 };
+            this.searchQuery = "";
+            this.filters = { startDate:"", endDate:"", qrcode:"", status:"terima", tipeProduksi:"" };
+            this.resetDetail();
+            if (mode === 'per-analisa') {
+                if (this.jenisAnalisaList.length === 0) this.fetchJenisAnalisa();
+                this.selectedJenisId = "";
+                this.selectedJenis = null;
             } else {
-                this.selectedAnalysis.push(item.id);
-                this.selectedIsPerhitungan.push(item.Flag_Perhitungan);
+                this.fetchSamples();
             }
         },
 
-        async generateReport() {
-            Swal.fire({ title: "Mohon Tunggu", html: "Laporan sedang diproses...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        // ─── Jenis Analisa (Per Analisa mode) ───────────────────────
+        async fetchJenisAnalisa() {
+            this.loading.jenis = true;
+            try { const res = await axios.get("/api/v1/lab/hasil-analisa/uji-sampel"); this.jenisAnalisaList = res.data?.result||[]; }
+            catch { this.jenisAnalisaList=[]; } finally { this.loading.jenis=false; }
+        },
+        async selectJenis(jenis) {
+            if (this.selectedJenisId === jenis.Id_Jenis_Analisa) return;
+            this.selectedJenisId = jenis.Id_Jenis_Analisa; this.selectedJenis = jenis;
+            this.selectedSample = null; this.sampleList = [];
+            this.pagination = { page:1, limit:20, totalPage:1, totalData:0 };
+            this.searchQuery = ""; this.resetDetail();
+            await this.fetchSamples();
+        },
+
+        // ─── Aktivitas helpers ───────────────────────────────────────
+        getAktivitasIcon(k) { return {ANL:'ri-flask-line',PLT:'ri-heart-pulse-line',LCKV:'ri-eye-line'}[k]||'ri-flask-line'; },
+        getAktivitasKey(k)  { return {ANL:'anl',PLT:'plt',LCKV:'lckv'}[k]||'anl'; },
+
+        // ─── Item field extractors (handle both API formats) ─────────
+        getNoSampel(item)    { return item.No_Po_Sampel||'-'; },
+        getNamaBarang(item)  { return item.Nama_Barang||item.nama_barang||''; },
+        getNoPoItem(item)    { return item.No_Po||item.no_po||''; },
+        getMultiFlag(item)   { return item.Flag_Multi_QrCode||item.flag_multi||''; },
+        getTipeProduksi(item){ return item.Tipe_Produksi||item.tipe_produksi||''; },
+        getNamaMesin(item)   { return item.Nama_Mesin||item.nama_mesin||''; },
+        getTanggal(item)     { return item.Tanggal_Uji||item.tanggal_pengujian||''; },
+        getJam(item)         { return item.Jam_Uji||item.jam_pengujian||''; },
+        getItemKey(item)     { return item.No_Po_Sampel; },
+        getDetailNamaBarang(){ return this.selectedSample ? this.getNamaBarang(this.selectedSample)||this.getNoSampel(this.selectedSample) : ''; },
+        getDetailNoSampel()  { return this.selectedSample ? this.getNoSampel(this.selectedSample) : ''; },
+        getDetailNoPo()      { return this.selectedSample ? this.getNoPoItem(this.selectedSample) : ''; },
+        getDetailNoSplitPo() { return this.selectedSample?.No_Split_Po||this.selectedSample?.no_split_po||''; },
+
+        // ─── Sample list ─────────────────────────────────────────────
+        debounceFetch() { clearTimeout(this.searchTimeout); this.searchTimeout=setTimeout(()=>{ this.pagination.page=1; this.fetchSamples(); },400); },
+        async fetchSamples() {
+            if (this.viewMode==='per-analisa' && !this.selectedJenisId) return;
+            this.loading.list = true;
             try {
-                const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
-                let urlLink, payload;
-                const fmt = this.exportFormat;
-                if (this.selectedJenisPrint === "psz") {
-                    const pszItem = this.listDataJenisAnalisa.find(i => this.selectedAnalysis.includes(i.id) && i.Kode_Analisa.includes("PSZ"));
-                    if (!pszItem) return Swal.fire("Peringatan", "Analisa Particle Size harus dipilih.", "warning");
-                    urlLink = fmt === "pdf" ? "/rekap-sampel/pdf/particle-size" : "/rekap-sampel/excell/particle-size";
-                    payload = { analysis: pszItem.id, Flag_Perhitungan: pszItem.Flag_Perhitungan, startDate: this.startDate, endDate: this.endDate, format: "pdf", Id_Master_Mesin: this.selectedListMesin?.value };
+                const params = { page:this.pagination.page, limit:this.pagination.limit, q:this.searchQuery };
+                if (this.filters.qrcode)       params.qrcode       = this.filters.qrcode;
+                if (this.filters.status)       params.status        = this.filters.status;
+                if (this.filters.tipeProduksi) params.tipe_produksi = this.filters.tipeProduksi;
+                if (this.filters.startDate && this.filters.endDate) { params.tanggal_mulai=this.filters.startDate; params.tanggal_selesai=this.filters.endDate; }
+
+                let res;
+                if (this.viewMode === 'per-prd') {
+                    res = await axios.get('/api/v1/lab/hasil-analisa/per-produk/semua', { params });
+                    if (res.data?.result) {
+                        this.sampleList = res.data.result.data || [];
+                        const pg = res.data.result.pagination||{};
+                        this.pagination = { page:pg.page||1, limit:pg.limit||20, totalPage:pg.totalPage||1, totalData:pg.totalData||this.sampleList.length };
+                    } else { this.sampleList=[]; }
                 } else {
-                    const isRingkas = this.selectedJenisPrint === "ringkas";
-                    urlLink = fmt === "pdf" ? (isRingkas ? "/api/v2/rekap-sampel/pdf" : "/rekap-sampel/pdf") : (isRingkas ? "/api/v2/rekap-sampel/excell" : "/api/v1/download-rekap/analisa");
-                    payload = { analysis: this.selectedAnalysis, Flag_Perhitungan: this.selectedIsPerhitungan, startDate: this.startDate, endDate: this.endDate, format: fmt, Id_Master_Mesin: this.selectedListMesin?.value };
+                    res = await axios.get(`/api/v1/lab/hasil-analisa/${this.selectedJenisId}`, { params });
+                    if (res.data?.result) {
+                        const data = res.data.result.data_sampel||{};
+                        this.sampleList = Object.entries(data).map(([no_po_sampel,item])=>({...item,No_Po_Sampel:no_po_sampel}));
+                        const pg = res.data.result.pagination||{};
+                        this.pagination = { page:pg.page||1, limit:pg.limit||20, totalPage:pg.totalPage||1, totalData:pg.totalData||this.sampleList.length };
+                    } else { this.sampleList=[]; }
                 }
-                const res = await axios.post(urlLink, payload, { headers: { "X-CSRF-TOKEN": csrf }, responseType: "blob" });
-                Swal.close();
-                const blob = new Blob([res.data], { type: res.headers["content-type"] });
-                const url  = window.URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href  = url;
-                let fileName = `laporan-rekap.${fmt === "pdf" ? "pdf" : "xlsx"}`;
-                const cd = res.headers["content-disposition"] || res.headers["Content-Disposition"];
-                if (cd) { const m = cd.match(/filename\*?=(?:(?:UTF-8'')?["']?)([^;"']+)/i); if (m?.[1]) fileName = decodeURIComponent(m[1]); }
-                link.setAttribute("download", fileName);
-                document.body.appendChild(link); link.click(); link.remove();
-                window.URL.revokeObjectURL(url);
-            } catch (err) {
-                try {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        try { const p = JSON.parse(reader.result); Swal.fire({ icon: "warning", title: "Tidak Ditemukan", text: p?.message || "Terjadi kesalahan." }); }
-                        catch { Swal.fire({ icon: "error", title: "Gagal", text: "Terjadi kesalahan internal." }); }
-                    };
-                    reader.readAsText(err.response?.data);
-                } catch { Swal.fire({ icon: "error", title: "Gagal", text: "Terjadi kesalahan tidak terduga." }); }
+            } catch { this.sampleList=[]; } finally { this.loading.list=false; }
+        },
+        changePage(p) { if(p>=1&&p<=this.pagination.totalPage){this.pagination.page=p;this.fetchSamples();} },
+        resetFilters() { this.searchQuery=""; this.filters={startDate:"",endDate:"",qrcode:"",status:"terima",tipeProduksi:""}; this.pagination.page=1; this.fetchSamples(); },
+
+        // ─── Sample selection ─────────────────────────────────────────
+        async selectSample(item) {
+            this.selectedSample = item; this.detailVisible = true; this.activeTab = "analisa"; this.resetDetail();
+            if (this.viewMode === 'per-prd') {
+                await this.loadJenisPerPrd(item.No_Po_Sampel);
+            } else {
+                if (this.getMultiFlag(item)==='Y') await this.fetchSubSamples(item.No_Po_Sampel);
+                else await this.fetchDetail(item.No_Po_Sampel, null);
             }
         },
-    },
 
-    mounted() {
-        this.fetchHasilAnalisa();
-        this.fetchJenisAnalisa();
-        this.fetchListMesin();
-        if (sessionStorage.getItem("printStep")) this.togglePrintModal();
+        // ─── Per PRD: load all jenis analisa for sample ───────────────
+        async loadJenisPerPrd(noSampel) {
+            this.loading.detail = true;
+            try {
+                const res = await axios.get(`/api/v1/lab/hasil-analisa/per-produk/detail-jenis/${noSampel}`);
+                this.jenisPerPrd = res.data?.result || [];
+                // Open all sections and load all tables immediately
+                const allSections = this.detailSections.map(s=>s.group);
+                this.openSections = [...allSections];
+                const allItems = this.detailSections.flatMap(s=>s.items);
+                this.openAnalisas = allItems.map(a=>a.key);
+                // Load tables in parallel
+                allItems.forEach(a => this.fetchAnalisaTableByKey(a));
+            } catch { this.jenisPerPrd=[]; } finally { this.loading.detail=false; }
+        },
+
+        isSectionOpen(group)  { return this.openSections.includes(group); },
+        isAnalisaOpen(key)    { return this.openAnalisas.includes(key); },
+        toggleSection(group)  { const i=this.openSections.indexOf(group); if(i>-1)this.openSections.splice(i,1); else this.openSections.push(group); },
+        toggleAnalisa(analisa){ const key=analisa.key; const i=this.openAnalisas.indexOf(key); if(i>-1){this.openAnalisas.splice(i,1);return;} this.openAnalisas.push(key); if(!this.tableByKey[key]&&!this.loadingTable[key])this.fetchAnalisaTableByKey(analisa); },
+
+        async fetchAnalisaTableByKey(analisa) {
+            const key = analisa.key;
+            const idJA = analisa.Id_Jenis_Analisa;
+            const noSampel = this.selectedSample.No_Po_Sampel;
+            this.loadingTable = { ...this.loadingTable, [key]:true };
+            try {
+                const [dataRes, templateRes] = await Promise.all([
+                    axios.get(`/api/v2/lab/hasil-analisa/no-multi/${idJA}/${noSampel}`).catch(()=>null),
+                    axios.get(`/fetch/lab/lama/${idJA}/parameter-perhitungan-old`).catch(()=>null),
+                ]);
+                const tmpl = templateRes?.data?.result || { parameter:[], formula:[] };
+                const sampel = dataRes?.data?.result?.sampel || [];
+                const info = dataRes?.data?.result?.informasi || null;
+                const { data, formulaAverages } = this.processItems(sampel, tmpl);
+                this.templateByKey = { ...this.templateByKey, [key]: { ...tmpl, is_sop:info?.is_sop, Range_Awal:info?.Range_Awal, Range_Akhir:info?.Range_Akhir } };
+                this.tableByKey = { ...this.tableByKey, [key]: data };
+                this.avgByKey = { ...this.avgByKey, [key]: formulaAverages };
+            } catch { this.tableByKey={...this.tableByKey,[key]:[]}; }
+            finally { this.loadingTable={...this.loadingTable,[key]:false}; }
+        },
+
+        hasTemplateKey(key) { const t=this.templateByKey[key]; return t&&((t.parameter?.length||0)>0||(t.formula?.length||0)>0); },
+        getTemplateKey(key) { return this.templateByKey[key]||{parameter:[],formula:[]}; },
+        getBaseColCount(analisa) {
+            let c=6; if(analisa.is_plt)c++; if(this.getMultiFlag(this.selectedSample)==='Y')c++;
+            return c+(this.getTemplateKey(analisa.key).parameter?.length||0);
+        },
+
+        // ─── Per Analisa: sub-samples ─────────────────────────────────
+        async fetchSubSamples(noSampel) {
+            this.loading.sub=true; this.subSamples=[]; this.selectedSub=null;
+            try { const res=await axios.get(`/api/v1/lab/hasil-analisa/sub/${this.selectedJenisId}/${noSampel}`); this.subSamples=res.data?.result||[]; if(this.subSamples.length>0)await this.selectSub(this.subSamples[0].No_Fak_Sub_Po); }
+            catch { this.subSamples=[]; } finally { this.loading.sub=false; }
+        },
+        async selectSub(noFakSub) { this.selectedSub=noFakSub; await this.fetchDetail(this.selectedSample.No_Po_Sampel, noFakSub); },
+
+        // ─── Per Analisa: single detail table ────────────────────────
+        async fetchDetail(noSampel, noSub) {
+            if(!this.selectedJenisId)return;
+            this.loading.detail=true; this.tableRows=[]; this.formulaAverages=[]; this.informasiData=null;
+            try {
+                const isSingle=!noSub;
+                const dataUrl=isSingle?`/api/v2/lab/hasil-analisa/no-multi/${this.selectedJenisId}/${noSampel}`:`/api/v2/lab/hasil-analisa/multi/${this.selectedJenisId}/${noSampel}/Y/${noSub}`;
+                const [dataRes,tmplRes]=await Promise.all([axios.get(dataUrl).catch(()=>null),axios.get(`/fetch/lab/lama/${this.selectedJenisId}/parameter-perhitungan-old`).catch(()=>null)]);
+                this.template=tmplRes?.data?.result||{parameter:[],formula:[]};
+                const result=dataRes?.data?.result||{};
+                const sampel=result.sampel||[];
+                this.informasiData=result.informasi||null;
+                if(sampel.length>0&&this.informasiData){const f=sampel[0];if(!this.informasiData.Flag_Perhitungan)this.informasiData.Flag_Perhitungan=f.Flag_Perhitungan;if(this.informasiData.is_sop===undefined)this.informasiData.is_sop=f.is_sop;if(this.informasiData.Range_Awal===undefined)this.informasiData.Range_Awal=f.Range_Awal;if(this.informasiData.Range_Akhir===undefined)this.informasiData.Range_Akhir=f.Range_Akhir;}
+                const {data,formulaAverages}=this.processItems(sampel,this.template);
+                this.tableRows=data; this.formulaAverages=formulaAverages;
+            } catch { this.tableRows=[]; } finally { this.loading.detail=false; }
+        },
+        getBaseColCountSingle() {
+            let c=6; if(this.informasiData?.is_plt)c++; if(this.getMultiFlag(this.selectedSample)==='Y')c++;
+            return c+(this.template.parameter?.length||0);
+        },
+
+        // ─── processItems ─────────────────────────────────────────────
+        processItems(items, template) {
+            if (!Array.isArray(items)||items.length===0) return{data:[],formulaAverages:[]};
+            const tplP=template?.parameter?.length||0; const tplF=template?.formula?.length||0;
+            if(!(tplP>0||tplF>0)){return{data:items.map(item=>({No_Faktur:item.No_Faktur||'-',No_Po_Sampel:item.No_Po_Sampel||'-',No_Fak_Sub_Po:item.No_Fak_Sub_Po||'-',No_Po:item.No_Po||'-',No_Split_Po:item.No_Split_Po||'-',Tanggal:item.Tanggal_Pengujian||'-',Nama_Pembanding:item.Nama_Pembanding||null,Hasil_Akhir_Analisa:this.formatHasil(item.Hasil_Akhir_Analisa),Flag_Layak:item.Flag_Layak||null,Flag_Perhitungan:item.Flag_Perhitungan,parameters:[],results:[]})),formulaAverages:[]};}
+            const grouped=items.reduce((acc,item)=>{const k=item.No_Faktur;if(!acc[k])acc[k]=[];acc[k].push(item);return acc;},{});
+            const processedData=Object.values(grouped).map(group=>{
+                const first=group[0]; const dp=Array.isArray(first.parameter)?first.parameter:[];
+                let pR,fR;
+                if(dp.length>0){pR=dp.map(p=>this.formatHasil(p.Hasil_Analisa));fR=tplF>0?group.map(item=>({value:this.formatHasil(item.Hasil_Akhir_Analisa),Flag_Layak:item.Flag_Layak,pembulatan:item.Pembulatan??4})):[];}
+                else if(group.length>1&&tplP>0&&tplF===0){pR=group.map(item=>this.formatHasil(item.Hasil_Akhir_Analisa));fR=[];}
+                else{pR=[];fR=tplF>0?group.map(item=>({value:this.formatHasil(item.Hasil_Akhir_Analisa),Flag_Layak:item.Flag_Layak,pembulatan:item.Pembulatan??4})):[];}
+                const wL=group.some(i=>i.Flag_Layak==='T')?'T':group.some(i=>i.Flag_Layak==='Y')?'Y':null;
+                return{No_Faktur:first.No_Faktur||'-',No_Po_Sampel:first.No_Po_Sampel||'-',No_Fak_Sub_Po:first.No_Fak_Sub_Po||'-',No_Po:first.No_Po||'-',No_Split_Po:first.No_Split_Po||'-',Tanggal:first.Tanggal_Pengujian||'-',Nama_Pembanding:first.Nama_Pembanding||null,Hasil_Akhir_Analisa:this.formatHasil(first.Hasil_Akhir_Analisa),Flag_Layak:wL,Flag_Perhitungan:first.Flag_Perhitungan,Range_Awal:first.Range_Awal,Range_Akhir:first.Range_Akhir,is_sop:first.is_sop,parameters:pR,results:fR};
+            });
+            const fa=[];for(let i=0;i<tplF;i++){let t=0,c=0,d=4;processedData.forEach(row=>{const r=row.results[i];if(r&&r.value!=='-'){const v=parseFloat(r.value);if(!isNaN(v)){t+=v;c++;if(r.pembulatan)d=parseInt(r.pembulatan,10);}}});fa.push(c>0?(t/c).toFixed(d):'-');}
+            return{data:processedData,formulaAverages:fa};
+        },
+        formatHasil(val){if(val===null||val===undefined)return'-';const s=String(val).trim();if(!s||s==='null')return'-';if(/^-?\d+\.0+$/.test(s))return String(Math.trunc(parseFloat(s)));return s;},
+        getRowClass(row){if(row.Flag_Layak==='T')return'ha-row--ng';if(row.Flag_Layak==='Y')return'ha-row--ok';if(row.is_sop&&row.Range_Awal!==null&&row.Range_Akhir!==null){const v=parseFloat(row.Hasil_Akhir_Analisa);if(!isNaN(v))return v>=row.Range_Awal&&v<=row.Range_Akhir?'ha-row--ok':'ha-row--ng';}return'';},
+
+        // ─── Timeline ──────────────────────────────────────────────────
+        async loadTimeline(){if(this.auditLog.length>0||!this.selectedSample)return;this.loading.timeline=true;try{const res=await axios.get(`/api/v1/log-aksi/by-sampel/${this.selectedSample.No_Po_Sampel}`);this.auditLog=res.data?.result||[];}catch{this.auditLog=[];}finally{this.loading.timeline=false;}},
+
+        // ─── Helpers ───────────────────────────────────────────────────
+        resetDetail(){this.jenisPerPrd=[];this.openSections=[];this.openAnalisas=[];this.loadingTable={};this.templateByKey={};this.tableByKey={};this.avgByKey={};this.subSamples=[];this.selectedSub=null;this.tableRows=[];this.formulaAverages=[];this.informasiData=null;this.template={parameter:[],formula:[]};this.auditLog=[];this.activeTab="analisa";},
+        isActive(item){return this.selectedSample?.No_Po_Sampel===item.No_Po_Sampel;},
+        formatDate(d){if(!d)return'-';try{return new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}},
+        formatAksi(aksi){const m={INPUT_ANALYZER:'Input Analyzer',VALIDASI_PRODUKSI:'Validasi Produksi',VALIDASI_TRIAL_PRODUKSI:'Validasi Trial',FINALISASI_PRODUKSI:'Finalisasi Produksi',FINALISASI_TRIAL_PRODUKSI:'Finalisasi Trial',VALIDASI_FORMULATOR:'Validasi Formulator',PRAFINALISASI_FORMULATOR:'Pra-Finalisasi',FINALISASI_FORMULATOR:'Finalisasi Formulator'};return m[aksi]||aksi;},
+        getStepClass(log){if(log.Sub_Aksi==='TOLAK')return'vtl-rejected';if(log.Jenis_Aksi?.includes('FINALISASI'))return'vtl-final';return'vtl-done';},
+        getStepIcon(log){if(log.Sub_Aksi==='TOLAK')return'ri-close-line';if(log.Jenis_Aksi==='INPUT_ANALYZER')return'ri-test-tube-line';if(log.Jenis_Aksi?.includes('FINALISASI'))return'ri-git-commit-line';return'ri-check-line';},
+        getStepBadgeClass(log){if(log.Sub_Aksi==='TOLAK')return'vtl-badge--danger';if(log.Jenis_Aksi==='INPUT_ANALYZER')return'vtl-badge--info';if(log.Jenis_Aksi?.includes('FINALISASI'))return'vtl-badge--primary';return'vtl-badge--success';},
+        checkMobile(){this.isMobile=window.innerWidth<768;},
     },
+    async mounted() {
+        this.checkMobile();
+        window.addEventListener('resize', this.checkMobile);
+        // Pre-load jenis analisa list in background (for Per Analisa mode switch)
+        this.fetchJenisAnalisa();
+        // Default: Per PRD → langsung load semua sampel
+        if (!this.selected_id) {
+            await this.fetchSamples();
+        } else {
+            // Deep-link: switch to Per Analisa mode and select the jenis analisa
+            this.viewMode = 'per-analisa';
+            await this.fetchJenisAnalisa();
+            const found = this.jenisAnalisaList.find(j => j.Id_Jenis_Analisa === this.selected_id);
+            if (found) {
+                await this.selectJenis(found);
+                if (this.initial_no_po_sampel) {
+                    const sample = this.sampleList.find(s => s.No_Po_Sampel === this.initial_no_po_sampel);
+                    if (sample) await this.selectSample(sample);
+                    if (this.initial_no_sub && this.subSamples.length > 0) await this.selectSub(this.initial_no_sub);
+                }
+            }
+        }
+    },
+    beforeUnmount() { window.removeEventListener('resize', this.checkMobile); },
 };
 </script>
 
 <style scoped>
-/* ── Page layout ─────────────────────────────────────── */
-.hasil-analisa-page { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
+/* ─── ROOT ─── */
+.ha-root{display:flex;flex-direction:column;height:100vh;overflow:hidden;background:#f0f2f5;font-family:'Segoe UI',system-ui,sans-serif;}
 
-.page-card { border-radius: 12px; overflow: hidden; }
+/* ─── TOP BAR ─── */
+.ha-topbar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:52px;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0;gap:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);}
+.ha-topbar-left{display:flex;align-items:center;gap:10px;}
+.ha-topbar-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#405189,#2e3a64);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.9rem;flex-shrink:0;}
+.ha-topbar-title{font-weight:700;font-size:.88rem;color:#0f172a;display:block;line-height:1.2;}
+.ha-topbar-sub{font-size:.66rem;color:#94a3b8;display:block;}
+.ha-topbar-right{display:flex;align-items:center;gap:10px;}
 
-.page-header { background: #fff; }
+/* ── Mode switch ── */
+.ha-mode-switch{display:flex;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;background:#f8fafc;}
+.ha-mode-btn{padding:5px 14px;border:none;background:transparent;font-size:.76rem;font-weight:500;color:#64748b;cursor:pointer;transition:.15s;display:flex;align-items:center;white-space:nowrap;}
+.ha-mode-btn:hover{background:#f1f5f9;}
+.ha-mode-btn--active{background:#405189;color:#fff;font-weight:600;}
 
-.page-icon {
-    width: 44px; height: 44px; border-radius: 10px;
-    background: linear-gradient(135deg, #405189, #2a3a6e);
-    color: #fff; display: flex; align-items: center; justify-content: center;
-    font-size: 1.2rem; flex-shrink: 0;
-}
+.ha-stat-badge{display:flex;flex-direction:column;align-items:center;background:#eef2ff;border:1px solid #c7d2fe;border-radius:7px;padding:3px 9px;}
+.ha-stat-num{font-weight:700;font-size:.95rem;color:#405189;line-height:1;}
+.ha-stat-lbl{font-size:.56rem;color:#818cf8;text-transform:uppercase;letter-spacing:.4px;}
+.ha-topbar-jenis{display:flex;align-items:center;gap:5px;}
+.ha-topbar-jenis-name{font-size:.78rem;font-weight:600;color:#374151;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ha-topbar-hint{font-size:.74rem;color:#94a3b8;font-style:italic;}
 
-.split-layout { min-height: 65vh; }
+/* ─── BODY ─── */
+.ha-body{display:flex;flex:1;overflow:hidden;}
 
-/* ── Sidebar ─────────────────────────────────────────── */
-.sidebar-col { background: #fafbfc; }
-.sidebar-head { background: #f4f6f9; }
+/* ─── LEFT PANEL ─── */
+.ha-left{width:380px;min-width:310px;display:flex;flex-direction:column;border-right:1px solid #e2e8f0;background:#fff;overflow:hidden;}
 
-.sidebar-list { overflow-y: auto; max-height: calc(100vh - 220px); }
+/* ── Per Analisa: jenis analisa selector (compact horizontal chips) ── */
+.ha-analisa-selector{flex-shrink:0;padding:8px 12px;border-bottom:1px solid #f1f5f9;background:#fafbff;}
+.ha-analisa-selector-hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+.ha-analisa-selector-title{font-size:.7rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
+.ha-analisa-search-wrap{position:relative;flex:1;max-width:160px;}
+.ha-analisa-search-icon{position:absolute;left:6px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.72rem;pointer-events:none;}
+.ha-analisa-search{width:100%;padding:4px 8px 4px 22px;border:1px solid #e2e8f0;border-radius:5px;font-size:.73rem;outline:none;background:#fff;}
+.ha-analisa-search:focus{border-color:#818cf8;}
+.ha-analisa-loading{display:flex;align-items:center;padding:4px;}
+.ha-analisa-chips{display:flex;flex-wrap:wrap;gap:4px;max-height:108px;overflow-y:auto;}
+.ha-analisa-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:5px;border:1px solid #e2e8f0;background:#f8fafc;cursor:pointer;font-size:.73rem;font-weight:600;color:#475569;transition:.12s;white-space:nowrap;}
+.ha-analisa-chip:hover{border-color:#818cf8;color:#405189;background:#eef2ff;}
+.ha-analisa-chip--active,.ha-analisa-chip--anl.ha-analisa-chip--active{background:#405189;color:#fff;border-color:#405189;}
+.ha-analisa-chip--plt.ha-analisa-chip--active{background:#0891b2;color:#fff;border-color:#0891b2;}
+.ha-analisa-chip--lckv.ha-analisa-chip--active{background:#7c3aed;color:#fff;border-color:#7c3aed;}
 
-.sidebar-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 14px; text-decoration: none; color: inherit;
-    border-left: 3px solid transparent;
-    border-bottom: 1px solid #f0f2f5;
-    transition: background .15s, border-color .15s;
-    cursor: pointer;
-}
-.sidebar-item:hover { background: #eef1f8; color: inherit; }
-.sidebar-item.active {
-    background: #eef1f8;
-    border-left-color: #405189;
-}
-.sidebar-item-icon {
-    width: 34px; height: 34px; flex-shrink: 0; border-radius: 8px;
-    background: rgba(64, 81, 137, .1); color: #405189;
-    display: flex; align-items: center; justify-content: center;
-    font-size: .95rem;
-}
-.sidebar-item.active .sidebar-item-icon { background: #405189; color: #fff; }
-.sidebar-item-body { flex: 1; min-width: 0; }
-.sidebar-kode {
-    display: block; font-size: .7rem; font-weight: 700;
-    color: #405189; text-transform: uppercase; letter-spacing: .04em;
-}
-.sidebar-name {
-    display: block; font-size: .82rem; font-weight: 500;
-    color: #343a40; line-height: 1.3;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.sidebar-chevron { font-size: .7rem; color: #adb5bd; flex-shrink: 0; opacity: 0; transition: opacity .15s; }
-.sidebar-item:hover .sidebar-chevron,
-.sidebar-item.active .sidebar-chevron { opacity: 1; }
+/* ── Filter bar ── */
+.ha-filter-bar{padding:8px 12px;border-bottom:1px solid #f1f5f9;flex-shrink:0;}
+.ha-search-wrap{position:relative;margin-bottom:6px;}
+.ha-search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.8rem;}
+.ha-search-input{width:100%;padding:6px 28px;border:1px solid #e2e8f0;border-radius:7px;font-size:.78rem;outline:none;background:#f8fafc;}
+.ha-search-input:focus{border-color:#818cf8;box-shadow:0 0 0 2px rgba(129,140,248,.1);background:#fff;}
+.ha-search-x{position:absolute;right:7px;top:50%;transform:translateY(-50%);border:none;background:none;color:#94a3b8;cursor:pointer;font-size:.78rem;padding:0;}
+.ha-filter-row{display:flex;gap:5px;align-items:center;margin-bottom:4px;}
+.ha-filter-row--inline{flex-wrap:wrap;}
+.ha-date-input{flex:1;min-width:88px;padding:4px 6px;border:1px solid #e2e8f0;border-radius:5px;font-size:.72rem;}
+.ha-sep{color:#94a3b8;font-size:.78rem;flex-shrink:0;}
+.ha-select{flex:1;min-width:74px;padding:4px 6px;border:1px solid #e2e8f0;border-radius:5px;font-size:.72rem;background:#fff;}
+.ha-btn-reset{padding:4px 8px;border:1px solid #fecaca;border-radius:5px;background:#fff;color:#ef4444;cursor:pointer;font-size:.74rem;}
 
-/* ── Detail panel ────────────────────────────────────── */
-.detail-col { background: #fff; display: flex; flex-direction: column; }
+/* ── List ── */
+.ha-left-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:24px;color:#94a3b8;text-align:center;gap:8px;}
+.ha-left-empty i{font-size:2rem;} .ha-left-empty p{font-size:.8rem;margin:0;}
+.ha-list{flex:1;overflow-y:auto;}
+.ha-skeleton{height:78px;background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 37%,#f1f5f9 63%);background-size:400% 100%;border-radius:7px;animation:ha-pulse 1.4s infinite;}
+@keyframes ha-pulse{0%{background-position:100% 50%}100%{background-position:0 50%}}
+.ha-empty-list{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;color:#94a3b8;gap:7px;text-align:center;}
+.ha-empty-list i{font-size:1.8rem;} .ha-empty-list p{font-size:.8rem;margin:0;}
+.ha-item{width:100%;display:flex;align-items:center;border:none;background:none;cursor:pointer;padding:9px 12px;text-align:left;position:relative;transition:background .12s;border-bottom:1px solid #f1f5f9;}
+.ha-item:hover{background:#f8fafc;} .ha-item--active{background:#eef2ff !important;}
+.ha-item-accent{width:3px;height:100%;position:absolute;left:0;top:0;background:transparent;}
+.ha-item--active .ha-item-accent{background:#405189;}
+.ha-item-body{flex:1;overflow:hidden;padding-left:2px;}
+.ha-item-top{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:2px;}
+.ha-item-title{font-weight:700;font-size:.78rem;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.ha-item-sub{font-size:.68rem;color:#64748b;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ha-item-meta{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:2px;}
+.ha-item-date{font-size:.65rem;color:#94a3b8;}
+.ha-item-arrow{color:#cbd5e1;font-size:.9rem;flex-shrink:0;}
+/* Per PRD badge (total analisa) */
+.ha-item-count-badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:4px;font-size:.62rem;font-weight:700;background:rgba(64,81,137,.1);color:#405189;flex-shrink:0;white-space:nowrap;}
+/* Per Analisa badge (jenis analisa) */
+.ha-item-analisa-badge{display:inline-flex;align-items:center;gap:2px;padding:1px 6px;border-radius:4px;font-size:.62rem;font-weight:700;flex-shrink:0;white-space:nowrap;}
+.ha-akv--anl.ha-item-analisa-badge{background:rgba(64,81,137,.1);color:#405189;}
+.ha-akv--plt.ha-item-analisa-badge{background:rgba(8,145,178,.1);color:#0891b2;}
+.ha-akv--lckv.ha-item-analisa-badge{background:rgba(124,58,237,.1);color:#7c3aed;}
 
-.empty-prompt { min-height: 65vh; text-align: center; }
+.ha-chip{display:inline-flex;align-items:center;gap:2px;padding:1px 5px;border-radius:3px;font-size:.62rem;font-weight:600;}
+.ha-chip i{font-size:.62rem;}
+.ha-chip--blue{background:#eef2ff;color:#405189;} .ha-chip--gray{background:#f1f5f9;color:#64748b;}
+.ha-chip--orange{background:#fff7ed;color:#ea580c;} .ha-chip--green{background:#f0fdf4;color:#15803d;}
+.ha-chip--cyan{background:#ecfeff;color:#0891b2;} .ha-chip--purple{background:#f5f3ff;color:#7c3aed;}
 
-.detail-subheader { background: #f8f9fc; }
-.detail-icon {
-    width: 40px; height: 40px; border-radius: 10px;
-    background: linear-gradient(135deg, #405189, #2a3a6e);
-    color: #fff; display: flex; align-items: center; justify-content: center;
-    font-size: 1rem; flex-shrink: 0;
-}
+/* ── Pagination ── */
+.ha-list-footer{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-top:1px solid #f1f5f9;background:#fff;flex-shrink:0;gap:6px;}
+.ha-page-info{font-size:.67rem;color:#94a3b8;flex-shrink:0;}
+.ha-page-btns{display:flex;align-items:center;gap:2px;}
+.ha-page-btn{width:23px;height:23px;border:1px solid #e2e8f0;border-radius:4px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.78rem;transition:.12s;}
+.ha-page-btn:hover:not(:disabled){border-color:#818cf8;color:#405189;}
+.ha-page-btn:disabled{opacity:.35;cursor:not-allowed;}
+.ha-page-current{font-size:.7rem;color:#475569;font-weight:600;padding:0 3px;white-space:nowrap;}
 
-.badge-kode {
-    display: inline-block; font-size: .7rem; font-weight: 700;
-    background: rgba(64,81,137,.12); color: #405189;
-    padding: .2em .6em; border-radius: 4px; letter-spacing: .04em;
-    text-transform: uppercase;
-}
+/* ─── RIGHT PANEL ─── */
+.ha-right{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#f0f2f5;}
+.ha-detail-empty{flex:1;display:flex;align-items:center;justify-content:center;}
+.ha-detail-empty-inner{text-align:center;color:#94a3b8;max-width:260px;}
+.ha-empty-icon-wrap{width:58px;height:58px;border-radius:50%;background:rgba(64,81,137,.1);color:#405189;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:1.5rem;}
+.ha-detail-empty-inner h6{color:#475569;font-weight:600;margin-bottom:6px;}
+.ha-detail-empty-inner p{font-size:.78rem;margin:0;}
 
-.stat-chip {
-    font-size: .75rem; color: #6c757d;
-    display: inline-flex; align-items: center;
-}
-.stat-chip-active { color: #f7b84b; }
+/* ─── DETAIL HEADER ─── */
+.ha-detail-header{padding:12px 16px;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0;}
+.ha-dh-main{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;}
+.ha-dh-icon{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#405189,#2e3a64);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0;}
+.ha-dh-title{font-weight:700;font-size:.86rem;color:#0f172a;}
+.ha-dh-sampel{font-size:.7rem;color:#64748b;margin:1px 0 4px;font-family:monospace;}
+.ha-dh-badges{display:flex;gap:3px;flex-wrap:wrap;}
+.ha-badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:4px;font-size:.67rem;font-weight:600;white-space:nowrap;}
+.ha-badge i{font-size:.67rem;}
+.ha-badge--blue{background:#eef2ff;color:#405189;}
+.ha-badge--gray{background:#f1f5f9;color:#475569;}
+.ha-badge--orange{background:#fff7ed;color:#ea580c;}
+.ha-badge--success{background:rgba(10,179,156,.1);color:#0ab39c;}
+.ha-badge--danger{background:rgba(240,101,72,.1);color:#f06548;border:1px solid rgba(240,101,72,.2);}
+.ha-badge--akv-anl{background:rgba(64,81,137,.1);color:#405189;}
+.ha-badge--akv-plt{background:rgba(8,145,178,.1);color:#0891b2;}
+.ha-badge--akv-lckv{background:rgba(124,58,237,.1);color:#7c3aed;}
+.ha-plt-banner{display:flex;align-items:flex-start;gap:9px;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-radius:7px;padding:7px 11px;margin-bottom:8px;}
+.ha-plt-icon{width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.78rem;}
+.ha-plt-title{font-size:.66rem;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;}
+.ha-plt-chips{display:flex;flex-wrap:wrap;gap:3px;}
+.ha-plt-chip{background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:600;}
+.ha-sub-bar{display:flex;align-items:center;gap:7px;margin-bottom:7px;flex-wrap:wrap;}
+.ha-sub-label{font-size:.7rem;font-weight:600;color:#475569;white-space:nowrap;}
+.ha-sub-loading{display:flex;align-items:center;}
+.ha-sub-pills{display:flex;flex-wrap:wrap;gap:3px;}
+.ha-sub-pill{padding:3px 9px;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc;color:#475569;font-size:.72rem;font-weight:600;cursor:pointer;transition:.12s;}
+.ha-sub-pill:hover{border-color:#818cf8;color:#405189;}
+.ha-sub-pill--active{background:#405189;color:#fff;border-color:#405189;}
+.ha-sop-bar{display:flex;align-items:center;gap:5px;padding:5px 10px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;margin-bottom:7px;font-size:.73rem;color:#405189;flex-wrap:wrap;}
+.ha-sop-label{font-weight:700;} .ha-sop-val{font-weight:600;font-family:monospace;}
 
-.btn-reset-filter {
-    font-size: .75rem; font-weight: 600; color: #f06548;
-    background: rgba(240,101,72,.08); border: 1px solid rgba(240,101,72,.2);
-    border-radius: 6px; padding: .3em .8em; cursor: pointer;
-    transition: background .15s;
-}
-.btn-reset-filter:hover { background: rgba(240,101,72,.15); }
+/* ─── TABS ─── */
+.ha-tabs{display:flex;border-bottom:1px solid #e2e8f0;background:#fff;flex-shrink:0;padding:0 14px;}
+.ha-tab{padding:8px 13px;border:none;background:none;font-size:.78rem;font-weight:500;color:#94a3b8;cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;gap:4px;transition:.12s;}
+.ha-tab--active{color:#405189;border-bottom-color:#405189;font-weight:600;}
+.ha-tab-count{background:#405189;color:#fff;border-radius:10px;padding:1px 5px;font-size:.58rem;font-weight:700;}
 
-/* ── Compact filter bar ──────────────────────────────── */
-.filter-bar { background: #fafbfc; }
+/* ─── DETAIL BODY ─── */
+.ha-detail-body{flex:1;overflow-y:auto;padding:10px 12px;}
+.ha-loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:180px;gap:8px;}
 
-.filter-row {
-    display: flex; align-items: center; gap: 8px;
-    flex-wrap: wrap;
-}
+/* ─── SECTIONS (Per PRD) ─── */
+.ha-section{background:#fff;border-radius:9px;margin-bottom:7px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #e8ecf4;}
+.ha-section-hdr{width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:none;border:none;cursor:pointer;transition:background .12s;gap:8px;}
+.ha-section-hdr:hover{background:#f8fafc;}
+.ha-section-hdr-l{display:flex;align-items:center;gap:9px;}
+.ha-section-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.82rem;flex-shrink:0;}
+.ha-section-title{font-weight:700;font-size:.82rem;color:#0f172a;display:block;text-align:left;}
+.ha-section-sub{font-size:.63rem;color:#94a3b8;display:block;text-align:left;}
+.ha-chevron{font-size:1rem;color:#94a3b8;transition:transform .2s;}
+.ha-chevron.collapsed{transform:rotate(180deg);}
+.ha-section-body{border-top:1px solid #f1f5f9;}
+.ha-analisa-panel{border-bottom:1px solid #f1f5f9;}
+.ha-analisa-panel:last-child{border-bottom:none;}
+.ha-analisa-hdr{width:100%;display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:none;border:none;cursor:pointer;transition:background .12s;gap:8px;}
+.ha-analisa-hdr:hover{background:#fafafa;}
+.ha-analisa-hdr--success{border-left:3px solid #0ab39c;} .ha-analisa-hdr--danger{border-left:3px solid #f06548;}
+.ha-analisa-hdr-l{display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;text-align:left;}
+.ha-analisa-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.dot--success{background:#0ab39c;} .dot--danger{background:#f06548;}
+.ha-analisa-hdr-title{font-weight:600;font-size:.8rem;color:#0f172a;display:block;}
+.ha-analisa-hdr-meta{display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;}
+.ha-analisa-table-wrap{padding-bottom:8px;background:#f9fafb;}
+.ha-table-loading{display:flex;align-items:center;padding:12px 16px;}
+.gap-7{gap:7px;}
 
-.filter-search {
-    flex: 1 1 220px; min-width: 200px;
-}
-.filter-search .input-group { border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden; background: #fff; }
-.filter-search .input-group-text { border: none; background: transparent; }
-.filter-search .form-control { border: none; font-size: .82rem; }
-.filter-search .form-control:focus { box-shadow: none; }
+/* ─── TABLE ─── */
+.ha-data-table{font-size:.75rem;}
+.ha-data-table thead th{background:#405189;color:#fff;font-weight:600;font-size:.68rem;white-space:nowrap;padding:6px 8px;border-color:#2e3a64;}
+.ha-data-table td{padding:5px 8px;vertical-align:middle;border-color:#e9ecf0;}
+.ha-th-no{width:28px;} .ha-th-plt{background:#0891b2 !important;color:#fff !important;} .ha-th-formula{background:#3a4d86 !important;color:#c7d2fe !important;}
+.ha-td-no{width:28px;color:#64748b;}
+.ha-td-plt{background:rgba(8,145,178,.05);border-left:3px solid #0891b2 !important;}
+.ha-td-formula{background:rgba(64,81,137,.04);}
+.ha-td-mono{font-family:monospace;font-size:.72rem;}
+.ha-pembanding{font-weight:700;font-size:.72rem;color:#0369a1;}
+.ha-row--ok{background:rgba(10,179,156,.06);} .ha-row--ok td{border-color:rgba(10,179,156,.14)!important;}
+.ha-row--ng{background:rgba(240,101,72,.06);} .ha-row--ng td{border-color:rgba(240,101,72,.14)!important;}
+.ha-row--rata{background:rgba(247,184,75,.08);} .ha-row--rata td{border-color:rgba(247,184,75,.24)!important;}
 
-.filter-date-group { flex: 0 0 auto; }
-.filter-date-wrapper {
-    display: flex; align-items: center; gap: 4px;
-    background: #fff; border: 1px solid #dee2e6;
-    border-radius: 6px; padding: 3px 8px;
-}
-.filter-date-icon { font-size: .75rem; flex-shrink: 0; }
-.filter-date-input {
-    border: none !important; box-shadow: none !important;
-    padding: 0 !important; font-size: .8rem;
-    width: 116px; background: transparent;
-}
-.filter-date-sep { color: #adb5bd; font-size: .8rem; flex-shrink: 0; }
+/* ─── TIMELINE ─── */
+.ha-vtl{padding:2px;} .ha-vtl-hdr{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;padding:0 2px 10px;display:flex;align-items:center;}
+.ha-vtl-steps{display:flex;flex-direction:column;} .ha-vtl-step{display:flex;gap:10px;}
+.ha-vtl-indicator{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:28px;}
+.ha-vtl-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.78rem;flex-shrink:0;border:2px solid;}
+.vtl-done .ha-vtl-dot{background:rgba(10,179,156,.1);border-color:#0ab39c;color:#0ab39c;}
+.vtl-rejected .ha-vtl-dot{background:rgba(240,101,72,.1);border-color:#f06548;color:#f06548;}
+.vtl-final .ha-vtl-dot{background:rgba(64,81,137,.1);border-color:#405189;color:#405189;}
+.ha-vtl-line{width:2px;flex:1;min-height:10px;background:#e2e8f0;margin:2px 0;}
+.vtl-done .ha-vtl-line{background:#0ab39c;}
+.ha-vtl-body{padding-bottom:16px;flex:1;min-width:0;}
+.ha-vtl-row1{display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;}
+.ha-vtl-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:.68rem;font-weight:700;}
+.vtl-badge--success{background:rgba(10,179,156,.1);color:#0ab39c;} .vtl-badge--danger{background:rgba(240,101,72,.1);color:#f06548;}
+.vtl-badge--primary{background:rgba(64,81,137,.1);color:#405189;} .vtl-badge--info{background:#ecfeff;color:#0e7490;}
+.ha-vtl-sub{font-size:.66rem;font-weight:700;}
+.ha-vtl-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:.71rem;color:#64748b;margin-bottom:3px;}
+.ha-vtl-details{font-size:.68rem;color:#64748b;background:#f8fafc;border-radius:5px;padding:5px 9px;margin-top:3px;}
+.ha-vtl-details-hdr{font-weight:600;color:#475569;margin-bottom:2px;}
+.ha-vtl-detail-row{display:flex;align-items:flex-start;gap:2px;line-height:1.6;}
+.ha-vtl-note{font-size:.7rem;color:#64748b;margin-top:3px;font-style:italic;padding:3px 7px;background:#f8fafc;border-left:2px solid #e2e8f0;}
 
-.filter-select-wrap {
-    display: flex; align-items: center; gap: 5px;
-    flex: 0 0 auto;
-}
-.filter-select-icon { font-size: .75rem; flex-shrink: 0; }
-
-/* v-select compact override */
-:deep(.vs-compact) { min-width: 130px; }
-:deep(.vs-compact .vs__dropdown-toggle) {
-    padding: 2px 6px;
-    min-height: calc(1.5em + .5rem + 2px);
-    font-size: .8rem;
-    border-radius: 6px;
-    border-color: #dee2e6;
-    background: #fff;
-}
-:deep(.vs-compact .vs__selected) { font-size: .8rem; margin: 1px 2px; }
-:deep(.vs-compact .vs__search) { font-size: .8rem; }
-
-/* Active filter chips */
-.filter-chips {
-    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
-    padding-top: 8px;
-}
-.filter-chip {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: .72rem; font-weight: 500;
-    background: rgba(64,81,137,.08); color: #405189;
-    border: 1px solid rgba(64,81,137,.2);
-    border-radius: 20px; padding: .2em .65em;
-}
-.chip-warning { background: rgba(247,184,75,.1); color: #c98f00; border-color: rgba(247,184,75,.3); }
-.chip-success { background: rgba(10,179,156,.1); color: #0a8f6e; border-color: rgba(10,179,156,.3); }
-
-.chip-remove {
-    background: none; border: none; padding: 0; margin-left: 2px;
-    font-size: .85rem; line-height: 1; cursor: pointer; color: inherit; opacity: .7;
-}
-.chip-remove:hover { opacity: 1; }
-
-/* ── Data cards ──────────────────────────────────────── */
-.data-card {
-    display: block; text-decoration: none; color: inherit;
-    background: #fff; border: 1px solid #e9ecef;
-    border-radius: 10px; padding: 14px 16px; margin-bottom: .75rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,.04);
-    transition: transform .2s, box-shadow .2s, border-color .2s;
-}
-.data-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(64,81,137,.12);
-    border-color: #c5cce8;
-}
-.dc-header { display: flex; align-items: flex-start; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #f1f3f5; }
-.dc-icon {
-    width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%;
-    background: rgba(64,81,137,.1); color: #405189;
-    display: flex; align-items: center; justify-content: center; font-size: 1rem;
-}
-.dc-title { flex: 1; min-width: 0; }
-.dc-name  { font-weight: 600; color: #212529; font-size: .9rem; }
-.badge-sm { font-size: .7rem; padding: .25em .55em; }
-
-.dc-status {
-    padding: .3em .75em; border-radius: 20px;
-    font-size: .72rem; font-weight: 600; text-transform: capitalize;
-    display: flex; align-items: center; gap: .35rem; flex-shrink: 0;
-}
-.status-terima { background: rgba(10,179,156,.12); color: #0ab39c; }
-.status-tolak  { background: rgba(240,101,72,.12);  color: #f06548; }
-.status-batal  { background: rgba(108,117,125,.12); color: #6c757d; }
-
-.dc-details {
-    padding-top: 12px;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: .75rem;
-}
-.dc-detail-item { display: flex; align-items: center; gap: .6rem; font-size: .82rem; }
-.dc-detail-item > i { color: #adb5bd; font-size: 1rem; width: 18px; text-align: center; flex-shrink: 0; }
-.dc-detail-label { color: #6c757d; font-size: .75rem; }
-.dc-detail-value { color: #212529; font-weight: 600; }
-
-/* ── Print modal ─────────────────────────────────────── */
-.steps-progress {
-    display: flex; justify-content: space-between; position: relative;
-}
-.steps-progress::before {
-    content: ""; position: absolute; top: 16px; left: 0; right: 0;
-    height: 2px; background: #e9ecef; z-index: 0;
-}
-.step { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; flex: 1; }
-.step-number {
-    width: 32px; height: 32px; border-radius: 50%;
-    background: #e9ecef; border: 2px solid #e9ecef;
-    display: flex; align-items: center; justify-content: center;
-    font-size: .85rem; margin-bottom: 6px;
-    transition: all .25s;
-}
-.step.active .step-number  { background: #405189; border-color: #405189; color: #fff; }
-.step.done .step-number    { background: #0ab39c; border-color: #0ab39c; color: #fff; }
-.step-label { font-size: .78rem; color: #6c757d; }
-.step.active .step-label   { color: #405189; font-weight: 600; }
-
-.analysis-selector { max-height: 340px; overflow-y: auto; }
-.analysis-option {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 14px; border-radius: 8px;
-    border: 1px solid #dee2e6; cursor: pointer;
-    transition: all .2s; background: #fff; margin-bottom: 6px;
-}
-.analysis-option:hover  { border-color: #86b7fe; box-shadow: 0 0 0 3px rgba(64,81,137,.1); }
-.analysis-option.selected { border-color: #405189; background: rgba(64,81,137,.06); }
-.option-icon {
-    width: 36px; height: 36px; border-radius: 8px;
-    background: rgba(64,81,137,.1); color: #405189;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1rem; flex-shrink: 0;
-}
-.option-details { flex: 1; }
-.option-details h6 { font-size: .9rem; }
-.option-check {
-    width: 22px; height: 22px; border-radius: 50%;
-    background: #405189; display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: .7rem; opacity: 0; transition: opacity .2s;
-}
-.analysis-option.selected .option-check { opacity: 1; }
-
-.summary-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 8px 0; border-bottom: 1px dashed #e9ecef;
-}
-.summary-item:last-child { border-bottom: none; }
-.summary-item > span { width: 110px; color: #6c757d; font-size: .85rem; flex-shrink: 0; }
-.summary-item .flex-1 { flex: 1; }
-
-/* ── Skeletons ───────────────────────────────────────── */
-.skeleton-item {
-    height: 52px; border-radius: 6px;
-    background: linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.2s infinite;
-}
-.skeleton-card {
-    height: 100px; border-radius: 10px;
-    background: linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.2s infinite;
-}
-@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
-/* ── v-select size override ──────────────────────────── */
-:deep(.vs-sm .vs__dropdown-toggle) {
-    padding: 1px 4px;
-    min-height: calc(1.5em + .5rem + 2px);
-    font-size: .875rem;
-}
-
-/* ── Responsive ──────────────────────────────────────── */
-@media (max-width: 767px) {
-    .sidebar-col { border-right: none !important; border-bottom: 1px solid #dee2e6; }
-    .sidebar-list { max-height: 220px; }
-    .empty-prompt { min-height: 40vh; }
-}
+/* ─── MOBILE ─── */
+.ha-hidden-mobile{display:none !important;}
+@media(min-width:768px){.ha-hidden-mobile{display:flex !important;}}
+.ha-mobile-back{padding:9px 12px;border-bottom:1px solid #e2e8f0;flex-shrink:0;background:#fff;}
 </style>
