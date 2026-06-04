@@ -290,38 +290,34 @@ class FormulatorTrialSampelController extends Controller
     {
         return inertia('vue/dashboard/lab/formulator/hasil-analisis/HasilAnalisa');
     }
+
     public function viewSubHasilAnalisa($id_jenis_analisa)
     {
-        return inertia('vue/dashboard/lab/formulator/hasil-analisis/SubHasilAnalisa', [
-            'id_jenis_analisa' => $id_jenis_analisa
+        // Consolidated: render formulator HasilAnalisa SPA with jenis analisa pre-selected
+        return inertia('vue/dashboard/lab/formulator/hasil-analisis/HasilAnalisa', [
+            'selected_id' => $id_jenis_analisa,
         ]);
     }
+
     public function viewNestedSubHasilAnalisa($id_jenis_analisa, $no_po_sampel, $flag_multi)
     {
-        if($flag_multi === 'Y'){
-            return inertia('vue/dashboard/lab/formulator/hasil-analisis/NestedSubHasilAnalisa', [
-                'id_jenis_analisa' => $id_jenis_analisa,
-                'no_po_sampel' => $no_po_sampel,
-                'flag_multi' => $flag_multi,
-            ]);
-        }else {
-            return inertia('vue/dashboard/lab/formulator/hasil-analisis/DetailHasilAnalisa', [
-                'id_jenis_analisa' => $id_jenis_analisa,
-                'no_po_sampel' => $no_po_sampel,
-                'flag_multi' => $flag_multi,
-            ]);
-        }
+        // Consolidated: render formulator HasilAnalisa SPA with deep-link props
+        return inertia('vue/dashboard/lab/formulator/hasil-analisis/HasilAnalisa', [
+            'selected_id'          => $id_jenis_analisa,
+            'initial_no_po_sampel' => $no_po_sampel,
+            'initial_flag_multi'   => $flag_multi,
+        ]);
     }
+
     public function viewDetaiHasilMulti($id_jenis_analisa, $no_po_sampel, $flag_multi, $no_sub)
     {
-        if($flag_multi === 'Y'){
-            return inertia('vue/dashboard/lab/formulator/hasil-analisis/DetailHasilAnalisaMulti', [
-                'id_jenis_analisa' => $id_jenis_analisa,
-                'no_po_sampel' => $no_po_sampel,
-                'flag_multi' => $flag_multi,
-                'no_fak_sub' => $no_sub
-            ]);
-        }
+        // Consolidated: render formulator HasilAnalisa SPA with deep-link props including sub-sample
+        return inertia('vue/dashboard/lab/formulator/hasil-analisis/HasilAnalisa', [
+            'selected_id'          => $id_jenis_analisa,
+            'initial_no_po_sampel' => $no_po_sampel,
+            'initial_flag_multi'   => $flag_multi,
+            'initial_no_sub'       => $no_sub,
+        ]);
     }
     public function refreshOtk()
     {
@@ -7291,7 +7287,7 @@ class FormulatorTrialSampelController extends Controller
 
             $poInfoLog = DB::table('N_LIMS_PO_Sampel')
                 ->where('No_Sampel', $analysis->No_Po_Sampel)
-                ->select('No_Po', 'No_Split_Po', 'Kode_Barang', 'Flag_Trial_Produksi')
+                ->select('No_Po', 'No_Split_Po', 'Kode_Barang')
                 ->first();
 
             if ($analysis->Flag_Multi_QrCode === 'Y') {
@@ -7345,7 +7341,7 @@ class FormulatorTrialSampelController extends Controller
                                 'No_Po'       => $poInfoLog->No_Po       ?? '-',
                                 'No_Split_Po' => $poInfoLog->No_Split_Po ?? '-',
                                 'Kode_Barang' => $poInfoLog->Kode_Barang ?? null,
-                                'Flag_Trial'  => $poInfoLog->Flag_Trial_Produksi ?? null,
+                                'Flag_Trial'  => null,
                                 'Jenis_Aksi'  => 'VALIDASI_FORMULATOR',
                                 'Sub_Aksi'    => 'SETUJU',
                                 'Id_User'     => $userId,
@@ -7425,7 +7421,7 @@ class FormulatorTrialSampelController extends Controller
                                 'No_Po'       => $poInfoLog->No_Po       ?? '-',
                                 'No_Split_Po' => $poInfoLog->No_Split_Po ?? '-',
                                 'Kode_Barang' => $poInfoLog->Kode_Barang ?? null,
-                                'Flag_Trial'  => $poInfoLog->Flag_Trial_Produksi ?? null,
+                                'Flag_Trial'  => null,
                                 'Jenis_Aksi'  => 'VALIDASI_FORMULATOR',
                                 'Sub_Aksi'    => 'SETUJU',
                                 'Id_User'     => $userId,
@@ -15020,7 +15016,7 @@ class FormulatorTrialSampelController extends Controller
 
         $poInfoMap = DB::table('N_LIMS_PO_Sampel')
             ->whereIn('No_Sampel', $noPoList)
-            ->select('No_Sampel', 'No_Po', 'No_Split_Po', 'Kode_Barang', 'Flag_Trial_Produksi')
+            ->select('No_Sampel', 'No_Po', 'No_Split_Po', 'Kode_Barang')
             ->get()->keyBy('No_Sampel');
 
         $results            = [];
@@ -15118,7 +15114,7 @@ class FormulatorTrialSampelController extends Controller
                             'No_Po'       => $poInfo->No_Po       ?? '-',
                             'No_Split_Po' => $poInfo->No_Split_Po ?? '-',
                             'Kode_Barang' => $poInfo->Kode_Barang ?? null,
-                            'Flag_Trial'  => $poInfo->Flag_Trial_Produksi ?? null,
+                            'Flag_Trial'  => null,
                             'Jenis_Aksi'  => 'VALIDASI_FORMULATOR',
                             'Sub_Aksi'    => 'SETUJU',
                             'Id_User'     => $userId,

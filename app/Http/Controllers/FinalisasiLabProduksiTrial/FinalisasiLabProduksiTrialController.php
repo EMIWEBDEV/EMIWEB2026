@@ -254,7 +254,9 @@ class FinalisasiLabProduksiTrialController extends Controller
             $item->is_plt = ($item->Kode_Aktivitas_Lab ?? null) === 'PLT';
             return $item;
         })->unique(function ($item) {
-            return $item->No_Po_Sampel . '-' . $item->Id_Jenis_Analisa . '-' . ($item->Nama_Pembanding ?? '');
+            // PLT analisa: one entry per analisa (not per pembanding) — pembanding appear as
+            // separate rows inside the detail table, same as monitoring display.
+            return $item->No_Po_Sampel . '-' . $item->Id_Jenis_Analisa;
         })->values();
 
         return response()->json([

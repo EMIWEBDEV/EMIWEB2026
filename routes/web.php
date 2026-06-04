@@ -200,6 +200,8 @@ Route::middleware(['auth', 'web'])->group(function () {
 
     Route::get('/api/v1/lab/validasi-akhir-close/uji-sampel/{no_sampel}', [UjiSampelController::class, 'validasiHasilAkhirDariValidasiAwalJenisAnalisaV1']);
     Route::get('/api/v1/lab/hasil-analisa/uji-sampel', [UjiSampelController::class, 'getDataHasilAnalisaSelesai']);
+    Route::get('/api/v1/lab/hasil-analisa/per-produk/semua', [UjiSampelController::class, 'getDataHasilAnalisaSelesaiPerProduk']);
+    Route::get('/api/v1/lab/hasil-analisa/per-produk/detail-jenis/{no_po_sampel}', [UjiSampelController::class, 'getDataJenisAnalisaBySampel']);
     Route::get('/api/v1/lab/hasil-analisa/{id_jenis_analisa}', [UjiSampelController::class, 'getDataHasilAnalisaSelesaiByJenisAnalisa']);
     Route::get('/api/v1/lab/hasil-analisa/sub/{id_jenis_analisa}/{no_po_sampel}', [UjiSampelController::class, 'getDataHasilAnalisaSubPoByJenisAnalisa']);
     Route::get('/api/v1/lab/confirmed-selesai/uji-sampel/by/{id_analisa}', [UjiSampelController::class, 'getDataConfirmedSelesaiByJenisAnalisa']);

@@ -494,16 +494,18 @@
                                 <div>Tidak ada foto tersedia</div>
                             </div>
                             <div v-else class="mon-foto-grid">
-                                <div v-for="(item, idx) in fotoModal.urls" :key="idx" class="mon-foto-item"
+                                <div v-for="(item, idx) in fotoModal.urls" :key="idx" class="mon-polaroid"
                                     @click="openLightbox(idx)">
-                                    <img :src="item.url" :alt="'Foto ' + (idx+1)"
-                                        class="mon-foto-img"
-                                        @error="item.error = true"
-                                        loading="lazy" />
-                                    <div v-if="item.error" class="mon-foto-err">
-                                        <i class="ri-image-2-line"></i>
+                                    <div class="mon-polaroid-img-wrap">
+                                        <img :src="item.url" :alt="item.keterangan||'Foto '+(idx+1)"
+                                            class="mon-polaroid-img"
+                                            @error="item.error = true" />
+                                        <div v-if="item.error" class="mon-foto-err">
+                                            <i class="ri-image-2-line"></i>
+                                        </div>
+                                        <div class="mon-polaroid-overlay"><i class="ri-zoom-in-line"></i></div>
                                     </div>
-                                    <div class="mon-foto-overlay-btn"><i class="ri-zoom-in-line"></i></div>
+                                    <div class="mon-polaroid-caption">{{ item.keterangan || '—' }}</div>
                                 </div>
                             </div>
                         </div>
@@ -519,6 +521,7 @@
                         <i class="ri-arrow-left-s-line"></i>
                     </button>
                     <img :src="fotoModal.urls[lightbox.idx]?.url" class="mon-lb-img" />
+                    <div v-if="fotoModal.urls[lightbox.idx]?.keterangan" class="mon-lb-caption">{{ fotoModal.urls[lightbox.idx].keterangan }}</div>
                     <button class="mon-lb-nav mon-lb-next" @click="lbNav(1)" :disabled="lightbox.idx === fotoModal.urls.length - 1">
                         <i class="ri-arrow-right-s-line"></i>
                     </button>
@@ -727,17 +730,25 @@ export default {
         },
         async openFoto(lckvGroups, noSampel) {
             this.fotoModal = { show: true, loading: true, urls: [], no_sampel: noSampel };
-            const allKeys = [];
-            lckvGroups.forEach(g => g.rows.forEach(r => { if (r.berkas_keys) allKeys.push(...r.berkas_keys); }));
-            if (allKeys.length === 0) {
+            const allFotos = [];
+            lckvGroups.forEach(g => g.rows.forEach(r => {
+                if (r.berkas_keys) {
+                    r.berkas_keys.forEach((k, i) => {
+                        allFotos.push({ key: k, keterangan: (r.berkas_keterangan || [])[i] || '' });
+                    });
+                }
+            }));
+            if (allFotos.length === 0) {
                 this.fotoModal.loading = false;
                 return;
             }
+            const allKeys = allFotos.map(f => f.key);
             try {
                 const res = await axios.post("/api/v1/lab/hasil-uji/berkas/foto/token/bulk", { keys: allKeys });
                 const tokenMap = res.data;
-                this.fotoModal.urls = allKeys.map(key => ({
-                    url: `/api/v1/lab/berkas/stream/foto-uji/${key}?token=${tokenMap[key]}`,
+                this.fotoModal.urls = allFotos.map(f => ({
+                    url: `/api/v1/lab/berkas/stream/foto-uji/${f.key}?token=${tokenMap[f.key]}`,
+                    keterangan: f.keterangan,
                     error: false,
                 }));
             } catch (e) {
@@ -1105,20 +1116,24 @@ export default {
 
 /* ── Foto Modal ───────────────────────────────────────────────────────── */
 .mon-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 9998; display: flex; align-items: center; justify-content: center; }
-.mon-modal { background: #fff; border-radius: 14px; width: min(660px, 95vw); max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.mon-modal { background: #fff; border-radius: 14px; width: min(98vw, 1160px); max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
 .mon-modal-hdr { padding: 14px 18px; background: #405189; color: #fff; display: flex; align-items: center; justify-content: space-between; font-size: .88rem; flex-shrink: 0; }
 .mon-modal-sub  { color: rgba(255,255,255,.75); font-size: .78rem; }
 .mon-modal-close { background: rgba(255,255,255,.18); border: none; color: #fff; border-radius: 7px; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-.mon-modal-body { overflow-y: auto; padding: 16px; flex: 1; }
+.mon-modal-body { overflow-y: auto; padding: 20px; flex: 1; }
 .mon-foto-loading, .mon-foto-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; color: #adb5bd; gap: 10px; font-size: .88rem; }
 .mon-foto-loading i { font-size: 30px; }
 .mon-foto-empty i   { font-size: 38px; }
-.mon-foto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
-.mon-foto-item { position: relative; border-radius: 9px; overflow: hidden; cursor: pointer; aspect-ratio: 4/3; background: #f0f1f5; }
-.mon-foto-img  { width: 100%; height: 100%; object-fit: cover; display: block; }
-.mon-foto-err  { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #adb5bd; font-size: 30px; }
-.mon-foto-overlay-btn { position: absolute; inset: 0; background: rgba(0,0,0,0); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; opacity: 0; transition: all .2s; }
-.mon-foto-item:hover .mon-foto-overlay-btn { opacity: 1; background: rgba(0,0,0,.35); }
+.mon-foto-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+@media(max-width: 700px) { .mon-foto-grid { grid-template-columns: repeat(2, 1fr); } }
+.mon-polaroid { background: #fff; border-radius: 3px; padding: 10px 10px 0; box-shadow: 0 3px 10px rgba(0,0,0,.18), 0 1px 3px rgba(0,0,0,.1); transition: transform .2s, box-shadow .2s; cursor: pointer; }
+.mon-polaroid:hover { transform: scale(1.04) rotate(-0.5deg); box-shadow: 0 8px 24px rgba(0,0,0,.22); }
+.mon-polaroid-img-wrap { width: 100%; aspect-ratio: 1/1; overflow: hidden; background: #f0f1f5; border-radius: 1px; position: relative; }
+.mon-polaroid-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mon-polaroid-overlay { position: absolute; inset: 0; background: rgba(64,81,137,.35); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .18s; color: #fff; font-size: 1.4rem; }
+.mon-polaroid:hover .mon-polaroid-overlay { opacity: 1; }
+.mon-polaroid-caption { font-size: .84rem; font-weight: 700; text-align: center; padding: 10px 8px 13px; color: #1e293b; line-height: 1.45; word-break: break-word; border-top: 2px solid #e8ecf4; margin-top: 1px; background: #fff; }
+.mon-foto-err { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #adb5bd; font-size: 30px; background: #f0f1f5; }
 
 /* ── Lightbox ─────────────────────────────────────────────────────────── */
 .mon-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 9999; display: flex; align-items: center; justify-content: center; }
@@ -1129,6 +1144,7 @@ export default {
 .mon-lb-prev  { left: 16px; }
 .mon-lb-next  { right: 16px; }
 .mon-lb-counter { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.5); color: #fff; border-radius: 20px; padding: 4px 14px; font-size: .8rem; }
+.mon-lb-caption { position: absolute; bottom: 58px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,.13); color: #fff; border-radius: 8px; padding: 8px 22px; font-size: .92rem; font-weight: 600; max-width: 80vw; text-align: center; word-break: break-word; }
 
 /* ── Modal transition ─────────────────────────────────────────────────── */
 .mon-modal-fade-enter-active, .mon-modal-fade-leave-active { transition: opacity .2s; }

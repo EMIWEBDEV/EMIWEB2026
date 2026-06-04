@@ -244,8 +244,38 @@
             </div>
         </div>
 
-        <!-- FOTO MODAL -->
-        <div v-if="fotoModal.show" class="fin-modal-backdrop" @click.self="fotoModal.show=false"><div class="fin-modal fin-modal--wide"><div class="fin-modal-hdr fin-modal-hdr--neutral"><i class="ri-image-2-line me-2 fs-5"></i><div><div class="fin-modal-title">Foto Analisa</div><div class="fin-modal-sub">{{ fotoModal.currentIndex+1 }} dari {{ fotoModal.photos.length }}</div></div><button class="fin-modal-close" @click="fotoModal.show=false"><i class="ri-close-line"></i></button></div><div class="fin-modal-body text-center"><img v-if="fotoModal.photos[fotoModal.currentIndex]" :src="fotoModal.photos[fotoModal.currentIndex]" class="img-fluid rounded" style="max-height:400px;object-fit:contain;" /><div class="d-flex justify-content-center gap-2 mt-3" v-if="fotoModal.photos.length>1"><button class="btn btn-sm btn-outline-secondary" @click="fotoModal.currentIndex=Math.max(0,fotoModal.currentIndex-1)"><i class="ri-arrow-left-s-line"></i></button><button class="btn btn-sm btn-outline-secondary" @click="fotoModal.currentIndex=Math.min(fotoModal.photos.length-1,fotoModal.currentIndex+1)"><i class="ri-arrow-right-s-line"></i></button></div></div></div></div>
+        <!-- FOTO MODAL + LIGHTBOX via teleport — same structure as monitoring -->
+        <teleport to="body">
+            <transition name="fin-foto-fade">
+                <div v-if="fotoModal.show" class="fin-foto-overlay" @click.self="fotoModal.show=false">
+                    <div class="fin-foto-modal">
+                        <div class="fin-foto-modal-hdr">
+                            <div><i class="ri-image-2-line me-2"></i><strong>Foto Analisa</strong><span class="fin-foto-modal-sub ms-2">{{ fotoModal.photos.length }} foto</span></div>
+                            <button class="fin-foto-modal-close" @click="fotoModal.show=false"><i class="ri-close-line"></i></button>
+                        </div>
+                        <div class="fin-foto-modal-body">
+                            <div v-if="fotoModal.loading" class="fin-foto-loading"><div class="spinner-border spinner-border-sm me-2" style="color:#d97706;"></div><span class="text-muted small">Memuat foto...</span></div>
+                            <div v-else-if="fotoModal.photos.length===0" class="fin-foto-empty"><i class="ri-image-line fs-1 text-muted"></i><p class="text-muted small mt-2">Tidak ada foto tersedia</p></div>
+                            <div v-else class="fin-foto-grid">
+                                <div v-for="(photo,pi) in fotoModal.photos" :key="pi" class="fin-polaroid" @click="lightbox={show:true,url:photo.url,keterangan:photo.keterangan}">
+                                    <div class="fin-polaroid-img-wrap"><img :src="photo.url" class="fin-polaroid-img" :alt="photo.keterangan||'Foto '+(pi+1)" /><div class="fin-polaroid-overlay"><i class="ri-zoom-in-line"></i></div></div>
+                                    <div class="fin-polaroid-caption">{{ photo.keterangan || '—' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </transition>
+            <transition name="fin-foto-fade">
+                <div v-if="lightbox.show" class="fin-lightbox" @click="lightbox.show=false">
+                    <button class="fin-lightbox-close" @click.stop="lightbox.show=false"><i class="ri-close-line"></i></button>
+                    <div class="fin-lightbox-inner" @click.stop>
+                        <img :src="lightbox.url" class="fin-lightbox-img" />
+                        <div v-if="lightbox.keterangan" class="fin-lightbox-caption">{{ lightbox.keterangan }}</div>
+                    </div>
+                </div>
+            </transition>
+        </teleport>
     </div>
 </template>
 
@@ -263,7 +293,9 @@ export default {
             modal:{show:false,isBulk:false},
             openSections:[], openAnalisas:[],
             loadingTable:{}, templates:{}, tableRows:{}, tableAverages:{}, tableRawFotos:{},
-            fotoModal:{show:false,photos:[],currentIndex:0},
+            blobUrlCache:{},
+            fotoModal:{show:false,photos:[],loading:false},
+            lightbox:{show:false,url:'',keterangan:''},
         };
     },
     computed: {
@@ -356,7 +388,28 @@ export default {
         getBaseColCount(analisa){let c=6;if(analisa.is_plt)c++;if(this.selectedItem?.Flag_Multi_QrCode==='Y')c++;return c+(this.getTemplate(analisa.key).parameter?.length||0);},
         tableHasFotos(key){return(this.tableRawFotos[key]||[]).length>0;},
         fotoCount(key){return(this.tableRawFotos[key]||[]).length;},
-        openFotoModal(key){const fotos=this.tableRawFotos[key]||[];this.fotoModal={show:true,photos:fotos.map(f=>f.url||f.src||'').filter(Boolean),currentIndex:0};},
+        async openFotoModal(key){
+            const fotos=this.tableRawFotos[key]||[];
+            if(!fotos.length)return;
+            this.fotoModal={show:true,photos:[],loading:true};
+            try{
+                const keysToFetch=fotos.map(f=>f.Berkas_Key).filter(k=>k&&!this.blobUrlCache[k]);
+                if(keysToFetch.length>0){
+                    const tokenRes=await axios.post('/api/v1/lab/hasil-uji/berkas/foto/token/bulk',{keys:keysToFetch});
+                    const tokenMap=tokenRes.data||{};
+                    await Promise.all(keysToFetch.map(async k=>{
+                        try{
+                            const res=await axios.get(`/api/v1/lab/berkas/stream/foto-uji/${k}?token=${tokenMap[k]}`,{responseType:'blob'});
+                            this.blobUrlCache[k]=URL.createObjectURL(res.data);
+                        }catch{}
+                    }));
+                }
+                this.fotoModal={show:true,loading:false,photos:fotos.map(f=>({url:this.blobUrlCache[f.Berkas_Key]||'',keterangan:f.Keterangan||f.keterangan||''})).filter(p=>p.url)};
+            }catch(e){
+                console.error('openFotoModal error:',e);
+                this.fotoModal={show:true,loading:false,photos:[]};
+            }
+        },
         async loadTimeline(){if(this.auditLog.length>0||!this.selectedItem)return;this.loading.timeline=true;try{const res=await axios.get(`/api/v1/log-aksi/by-sampel/${this.selectedItem.No_Po_Sampel}`);this.auditLog=res.data?.result||[];}catch{this.auditLog=[];}finally{this.loading.timeline=false;}},
         isActive(item){return this.selectedItem?.No_Po_Sampel===item.No_Po_Sampel;},
         isChecked(item){return this.selectedItems.some(i=>i.No_Po_Sampel===item.No_Po_Sampel);},
@@ -548,6 +601,31 @@ export default {
 /* FOTO */
 .fin-foto-strip{padding:7px 14px 0;}
 .fin-foto-btn{display:inline-flex;align-items:center;padding:4px 11px;border:1px solid #fde68a;border-radius:5px;background:#fffbeb;color:#d97706;font-size:.76rem;font-weight:600;cursor:pointer;}
+.fin-foto-overlay{position:fixed;inset:0;background:rgba(0,0,0,.68);z-index:9990;display:flex;align-items:center;justify-content:center;}
+.fin-foto-modal{background:#fff;border-radius:14px;width:min(98vw,1160px);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.fin-foto-modal-hdr{padding:14px 18px;background:linear-gradient(135deg,#1e293b,#334155);color:#fff;display:flex;align-items:center;justify-content:space-between;font-size:.88rem;flex-shrink:0;}
+.fin-foto-modal-sub{color:rgba(255,255,255,.75);font-size:.78rem;}
+.fin-foto-modal-close{background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:7px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.fin-foto-modal-body{overflow-y:auto;padding:22px;flex:1;}
+.fin-foto-fade-enter-active,.fin-foto-fade-leave-active{transition:opacity .2s;}
+.fin-foto-fade-enter-from,.fin-foto-fade-leave-to{opacity:0;}
+.fin-foto-loading{display:flex;align-items:center;justify-content:center;min-height:120px;}
+.fin-foto-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:120px;}
+.fin-foto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+@media(max-width:700px){.fin-foto-grid{grid-template-columns:repeat(2,1fr);}}
+.fin-polaroid{background:#fff;border-radius:3px;padding:10px 10px 0;box-shadow:0 3px 10px rgba(0,0,0,.18),0 1px 3px rgba(0,0,0,.1);transition:transform .2s,box-shadow .2s;cursor:pointer;}
+.fin-polaroid:hover{transform:scale(1.04) rotate(-0.5deg);box-shadow:0 8px 24px rgba(0,0,0,.22);}
+.fin-polaroid-img-wrap{width:100%;aspect-ratio:1/1;overflow:hidden;background:#f0f2f5;border-radius:1px;position:relative;}
+.fin-polaroid-img{width:100%;height:100%;object-fit:cover;display:block;}
+.fin-polaroid-overlay{position:absolute;inset:0;background:rgba(217,119,6,.35);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .18s;color:#fff;font-size:1.4rem;}
+.fin-polaroid:hover .fin-polaroid-overlay{opacity:1;}
+.fin-polaroid-caption{font-size:.84rem;font-weight:700;text-align:center;padding:10px 8px 13px;color:#1e293b;line-height:1.45;word-break:break-word;border-top:2px solid #fde68a;margin-top:1px;background:#fff;}
+.fin-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:1080;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;}
+.fin-lightbox-close{position:absolute;top:16px;right:16px;border:none;background:rgba(255,255,255,.15);color:#fff;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer;transition:background .15s;}
+.fin-lightbox-close:hover{background:rgba(255,255,255,.3);}
+.fin-lightbox-inner{display:flex;flex-direction:column;align-items:center;max-width:90vw;max-height:90vh;cursor:default;}
+.fin-lightbox-img{max-width:100%;max-height:80vh;object-fit:contain;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,.6);}
+.fin-lightbox-caption{margin-top:14px;background:rgba(255,255,255,.12);color:#fff;font-size:.92rem;font-weight:600;text-align:center;max-width:600px;padding:8px 20px;border-radius:8px;word-break:break-word;}
 /* TIMELINE - Velzon */
 .fin-vtl{padding:2px;}
 .fin-vtl-hdr{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;padding:0 2px 10px;display:flex;align-items:center;}

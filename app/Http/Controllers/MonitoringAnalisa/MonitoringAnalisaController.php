@@ -411,7 +411,11 @@ class MonitoringAnalisaController extends Controller
                 $jaRules = $strRules[$jaId] ?? [];
 
                 $rows = $jaItems
-                    ->groupBy(fn($u) => $u->No_Fak_Sub_Po ?? '__')
+                    // For PLT, each unique pembanding must produce its own row (different Id_Pembanding).
+                    // Grouping only by No_Fak_Sub_Po collapses all pembanding into one group and
+                    // only the first one (sortByDesc->first) would be shown — hence only 1 pembanding
+                    // appeared in monitoring. Including Id_Pembanding in the key for PLT fixes this.
+                    ->groupBy(fn($u) => ($u->No_Fak_Sub_Po ?? '__') . ($act === 'PLT' ? '-pb-' . ($u->Id_Pembanding ?? '0') : ''))
                     ->map(function ($grp) use ($jaRules, $berkasAll, $act, $pembandingMap, $parameterRaw) {
                         $top        = $grp->sortByDesc('Tahapan_Ke')->first();
                         $pembulatan = (int)($top->Pembulatan ?? 0);

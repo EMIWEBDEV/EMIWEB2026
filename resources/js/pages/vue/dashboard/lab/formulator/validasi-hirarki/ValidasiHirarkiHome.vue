@@ -377,8 +377,8 @@
                                                         </td>
                                                         <td>
                                                             <template v-if="item.Flag_Foto === 'Y'">
-                                                                <button v-if="item.File_Url" @click="lihatFoto(item.File_Url)" class="btn btn-sm btn-outline-info rounded-pill px-2">
-                                                                    <i class="ri-image-line me-1"></i>Lihat
+                                                                <button v-if="item.foto_list && item.foto_list.length > 0" @click="lihatFoto(item.foto_list)" class="btn btn-sm btn-outline-info rounded-pill px-2">
+                                                                    <i class="ri-image-line me-1"></i>Lihat ({{ item.foto_list.length }})
                                                                 </button>
                                                                 <span v-else class="text-danger small fst-italic">Belum</span>
                                                             </template>
@@ -439,8 +439,8 @@
                                                         </td>
                                                         <td>
                                                             <template v-if="item.Flag_Foto === 'Y'">
-                                                                <button v-if="item.File_Url" @click="lihatFoto(item.File_Url)" class="btn btn-sm btn-outline-info rounded-pill px-2">
-                                                                    <i class="ri-image-line me-1"></i>Lihat
+                                                                <button v-if="item.foto_list && item.foto_list.length > 0" @click="lihatFoto(item.foto_list)" class="btn btn-sm btn-outline-info rounded-pill px-2">
+                                                                    <i class="ri-image-line me-1"></i>Lihat ({{ item.foto_list.length }})
                                                                 </button>
                                                                 <span v-else class="text-danger small fst-italic">Belum</span>
                                                             </template>
@@ -644,6 +644,44 @@
             </div>
         </div>
     </div>
+
+    <!-- LIGHTBOX -->
+    <div v-if="lightbox.show" class="vld-lightbox" @click="lightbox.show=false">
+        <button class="vld-lightbox-close" @click.stop="lightbox.show=false"><i class="ri-close-line"></i></button>
+        <div class="vld-lightbox-inner" @click.stop>
+            <img :src="lightbox.url" class="vld-lightbox-img" />
+            <div v-if="lightbox.keterangan" class="vld-lightbox-caption">{{ lightbox.keterangan }}</div>
+        </div>
+    </div>
+
+    <!-- FOTO MODAL - Polaroid Grid -->
+    <div v-if="fotoModal.show" class="vld-foto-backdrop" @click.self="fotoModal.show = false">
+        <div class="vld-foto-modal vld-foto-modal--wide">
+            <div class="vld-foto-modal-hdr">
+                <span><i class="ri-image-2-line me-2"></i>Foto Analisa <span class="text-muted" style="font-size:.75rem;">({{ fotoModal.photos.length }} foto)</span></span>
+                <button @click="fotoModal.show = false"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="vld-foto-modal-body vld-foto-grid-wrap">
+                <div v-if="fotoModal.loading" class="vld-foto-loading">
+                    <span class="spinner-border spinner-border-sm me-2 text-primary"></span>
+                    <span class="text-muted small">Memuat foto...</span>
+                </div>
+                <div v-else-if="fotoModal.photos.length === 0" class="vld-foto-empty">
+                    <i class="ri-image-line fs-1 text-muted"></i>
+                    <p class="text-muted small mt-2">Tidak ada foto tersedia</p>
+                </div>
+                <div v-else class="vld-foto-grid">
+                    <div v-for="(photo, pi) in fotoModal.photos" :key="pi" class="vld-polaroid" @click="lightbox={show:true,url:photo.url,keterangan:photo.keterangan}">
+                        <div class="vld-polaroid-img-wrap">
+                            <img :src="photo.url" class="vld-polaroid-img" :alt="photo.keterangan||'Foto '+(pi+1)" />
+                            <div class="vld-polaroid-overlay"><i class="ri-zoom-in-line"></i></div>
+                        </div>
+                        <div class="vld-polaroid-caption">{{ photo.keterangan || '—' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script>
@@ -673,6 +711,9 @@ export default {
             formBatal: { alasan: "" },
 
             auditLog: [],
+            blobUrlCache: {},
+            fotoModal: { show: false, photos: [], loading: false },
+            lightbox: { show: false, url: '', keterangan: '' },
         };
     },
 
@@ -688,10 +729,14 @@ export default {
         },
 
         currentStepData() {
-            if (!this.detailValidasiData.length || !this.listKlasifikasi.length) return null;
+            if (!this.detailValidasiData.length) return null;
+            if (!this.listKlasifikasi.length) {
+                // Fallback: show by index when klasifikasi list not yet loaded
+                return this.detailValidasiData[this.activeStep] || this.detailValidasiData[0] || null;
+            }
             const idx = Math.min(this.activeStep, this.listKlasifikasi.length - 1);
             const kode = this.listKlasifikasi[idx].Kode_Aktivitas_Lab;
-            return this.detailValidasiData.find(s => s.Kode_Aktivitas_Lab === kode) || null;
+            return this.detailValidasiData.find(s => s.Kode_Aktivitas_Lab === kode) || this.detailValidasiData[0] || null;
         },
 
         groupedANLData() {
@@ -1049,8 +1094,30 @@ export default {
             }
         },
 
-        lihatFoto(url) {
-            if (url) window.open(url, "_blank", "noopener,noreferrer");
+        async lihatFoto(fotoList) {
+            if (!fotoList || fotoList.length === 0) return;
+            this.fotoModal = { show: true, photos: [], loading: true };
+            try {
+                const keysToFetch = fotoList.map(f => f.Berkas_Key).filter(k => k && !this.blobUrlCache[k]);
+                if (keysToFetch.length > 0) {
+                    const tokenRes = await axios.post('/api/v1/formulator/hasil-uji/berkas/foto/token/bulk', { keys: keysToFetch });
+                    const tokenMap = tokenRes.data || {};
+                    await Promise.all(keysToFetch.map(async k => {
+                        try {
+                            const res = await axios.get(`/api/v1/formulator/berkas/stream/foto-uji/${k}?token=${tokenMap[k]}`, { responseType: 'blob' });
+                            this.blobUrlCache[k] = URL.createObjectURL(res.data);
+                        } catch {}
+                    }));
+                }
+                const photos = fotoList.map(f => ({
+                    url: this.blobUrlCache[f.Berkas_Key] || '',
+                    keterangan: f.keterangan || f.Keterangan || ''
+                })).filter(p => p.url);
+                this.fotoModal = { show: true, loading: false, photos };
+            } catch (e) {
+                console.error('lihatFoto error:', e);
+                this.fotoModal = { show: true, loading: false, photos: [] };
+            }
         },
 
         formatTanggal(s) {
@@ -1646,4 +1713,45 @@ export default {
     .vld-mini-stats { flex-direction: row; }
     .vld-ms-item { min-width: calc(50% - 4px); }
 }
+
+/* ── Foto Modal - Polaroid ────────────────────────────────────────────── */
+.vld-foto-backdrop {
+    position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 1060;
+    display: flex; align-items: center; justify-content: center; padding: 14px;
+    backdrop-filter: blur(2px);
+}
+.vld-foto-modal {
+    background: #fff; border-radius: 12px; width: 100%; max-width: 500px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25); overflow: hidden;
+}
+.vld-foto-modal--wide { max-width: 760px; }
+.vld-foto-modal-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 18px; background: linear-gradient(135deg,#2e3a64,#405189);
+    color: #fff; font-weight: 600; font-size: .88rem;
+}
+.vld-foto-modal-hdr button {
+    border: none; background: rgba(255,255,255,.2); color: #fff;
+    border-radius: 5px; padding: 3px 8px; cursor: pointer; font-size: .9rem;
+}
+.vld-foto-modal-body { padding: 18px; }
+.vld-foto-grid-wrap { max-height: 72vh; overflow-y: auto; padding: 16px; }
+.vld-foto-loading { display: flex; align-items: center; justify-content: center; min-height: 120px; }
+.vld-foto-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 120px; }
+.vld-foto-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+@media(max-width:560px){.vld-foto-grid{grid-template-columns:repeat(2,1fr);}}
+.vld-polaroid { background:#fff; border-radius:3px; padding:10px 10px 0; box-shadow:0 3px 10px rgba(0,0,0,.18),0 1px 3px rgba(0,0,0,.1); transition:transform .2s,box-shadow .2s; cursor:pointer; }
+.vld-polaroid:hover { transform:scale(1.04) rotate(-0.5deg); box-shadow:0 8px 24px rgba(0,0,0,.22); }
+.vld-polaroid-img-wrap { width:100%; aspect-ratio:1/1; overflow:hidden; background:#f0f2f5; border-radius:1px; position:relative; }
+.vld-polaroid-img { width:100%; height:100%; object-fit:cover; display:block; }
+.vld-polaroid-overlay { position:absolute; inset:0; background:rgba(64,81,137,.35); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .18s; color:#fff; font-size:1.4rem; }
+.vld-polaroid:hover .vld-polaroid-overlay { opacity:1; }
+.vld-polaroid-caption { font-size:.72rem; text-align:center; padding:8px 4px 10px; color:#475569; font-weight:500; line-height:1.3; min-height:34px; display:flex; align-items:center; justify-content:center; }
+/* LIGHTBOX */
+.vld-lightbox { position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:1080; display:flex; align-items:center; justify-content:center; padding:20px; cursor:zoom-out; }
+.vld-lightbox-close { position:absolute; top:16px; right:16px; border:none; background:rgba(255,255,255,.15); color:#fff; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; cursor:pointer; transition:background .15s; }
+.vld-lightbox-close:hover { background:rgba(255,255,255,.3); }
+.vld-lightbox-inner { display:flex; flex-direction:column; align-items:center; max-width:90vw; max-height:90vh; cursor:default; }
+.vld-lightbox-img { max-width:100%; max-height:80vh; object-fit:contain; border-radius:4px; box-shadow:0 8px 40px rgba(0,0,0,.6); }
+.vld-lightbox-caption { margin-top:12px; color:#e2e8f0; font-size:.82rem; font-weight:500; text-align:center; max-width:500px; }
 </style>

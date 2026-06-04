@@ -186,15 +186,12 @@ class FormulatorFinalisasiController extends Controller
         try {
             $result = DB::table('N_EMI_LIMS_Uji_Sampel as us')
                 ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
-                ->leftJoin('N_EMI_LAB_Palatabilitas_Pembanding as pb', 'us.Id_Pembanding', '=', 'pb.Id_Pembanding')
                 ->select(
                     'us.*',
                     'ja.Jenis_Analisa',
                     'ja.Kode_Analisa',
                     'ja.Kode_Aktivitas_Lab',
-                    'ja.Flag_Perhitungan',
-                    'pb.Nama_Pembanding',
-                    'pb.Kode_Barang_Pembanding'
+                    'ja.Flag_Perhitungan'
                 )
                 ->where('us.No_Po_Sampel', $no_sampel)
                 ->whereNull('us.Status')
@@ -214,7 +211,7 @@ class FormulatorFinalisasiController extends Controller
                     $item->is_plt = ($item->Kode_Aktivitas_Lab ?? null) === 'PLT';
                     return $item;
                 })
-                ->unique(fn($i) => $i->No_Po_Sampel . '-' . $i->Id_Jenis_Analisa . '-' . ($i->Nama_Pembanding ?? ''))
+                ->unique(fn($i) => $i->No_Po_Sampel . '-' . $i->Id_Jenis_Analisa)
                 ->values();
 
             return response()->json(['success' => true, 'status' => 200, 'result' => $result], 200);

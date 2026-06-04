@@ -326,31 +326,23 @@ class UjiSampelController extends Controller
 
     public function viewNestedSubHasilAnalisa($id_jenis_analisa, $no_po_sampel, $flag_multi)
     {
-        if($flag_multi === 'Y'){
-            return inertia('vue/dashboard/lab/hasil-analisis/NestedSubHasilAnalisa', [
-                'id_jenis_analisa' => $id_jenis_analisa,
-                'no_po_sampel' => $no_po_sampel,
-                'flag_multi' => $flag_multi,
-            ]);
-        }else {
-            return inertia('vue/dashboard/lab/hasil-analisis/DetailHasilAnalisa', [
-                'id_jenis_analisa' => $id_jenis_analisa,
-                'no_po_sampel' => $no_po_sampel,
-                'flag_multi' => $flag_multi,
-            ]);
-        }
+        // Consolidated: render main HasilAnalisa SPA with deep-link props
+        return inertia('vue/dashboard/lab/hasil-analisis/HasilAnalisa', [
+            'selected_id'          => $id_jenis_analisa,
+            'initial_no_po_sampel' => $no_po_sampel,
+            'initial_flag_multi'   => $flag_multi,
+        ]);
     }
 
     public function viewDetaiHasilMulti($id_jenis_analisa, $no_po_sampel, $flag_multi, $no_sub)
     {
-        if($flag_multi === 'Y'){
-            return inertia('vue/dashboard/lab/hasil-analisis/DetailHasilAnalisaMulti', [
-                'id_jenis_analisa' => $id_jenis_analisa,
-                'no_po_sampel' => $no_po_sampel,
-                'flag_multi' => $flag_multi,
-                'no_fak_sub' => $no_sub
-            ]);
-        }
+        // Consolidated: render main HasilAnalisa SPA with deep-link props including sub-sample
+        return inertia('vue/dashboard/lab/hasil-analisis/HasilAnalisa', [
+            'selected_id'          => $id_jenis_analisa,
+            'initial_no_po_sampel' => $no_po_sampel,
+            'initial_flag_multi'   => $flag_multi,
+            'initial_no_sub'       => $no_sub,
+        ]);
     }
 
     public function refreshOtk()
@@ -8029,7 +8021,10 @@ class UjiSampelController extends Controller
                 ->where('ba.Id_User', Auth::user()->UserId)
                 ->where('ba.Flag_Aktif', 'Y')
                 ->where('ba.Kode_Role', 'LAB')
-                ->where('ja.Kode_Role', 'LAB')
+                // ja.Kode_Role intentionally not filtered — ba.Kode_Role is the authoritative
+                // access-control field. Filtering on ja.Kode_Role too caused analisa to silently
+                // disappear when the Jenis_Analisa master row has a different Kode_Role than
+                // the Barang_Analisa assignment (e.g. ja=FLM but ba=LAB).
                 ->select(
                     'ja.id as analisa_id',
                     'ja.Kode_Analisa',
@@ -10975,7 +10970,10 @@ class UjiSampelController extends Controller
             $item->is_plt = ($item->Kode_Aktivitas_Lab ?? null) === 'PLT';
             return $item;
         })->unique(function ($item) {
-            return $item->No_Po_Sampel . '-' . $item->Id_Jenis_Analisa . '-' . ($item->Nama_Pembanding ?? '');
+            // PLT analisa: group all pembanding under one entry (unique by sampel + analisa only).
+            // The detail table groups rows by No_Faktur, so each pembanding appears as its own
+            // row with a Pembanding column — matching how monitoring displays PLT.
+            return $item->No_Po_Sampel . '-' . $item->Id_Jenis_Analisa;
         })->values();
 
         return response()->json([
@@ -11304,6 +11302,137 @@ class UjiSampelController extends Controller
                 'message' => "Terjadi Kesalahan"
             ], 500);
         }
+    }
+
+    /**
+     * GET /api/v1/lab/hasil-analisa/per-produk/semua
+     * Mengembalikan semua No_Po_Sampel yang sudah selesai analisa (untuk view Per Produk).
+     */
+    public function getDataHasilAnalisaSelesaiPerProduk(Request $request)
+    {
+        $page       = (int) $request->input('page', 1);
+        $limit      = (int) $request->input('limit', 20);
+        $search     = $request->input('q');
+        $qrcode     = $request->input('qrcode');
+        $status     = $request->input('status', 'terima');
+        $tipe       = $request->input('tipe_produksi');
+        $dateFrom   = $request->input('tanggal_mulai');
+        $dateTo     = $request->input('tanggal_selesai');
+
+        $query = DB::table('N_EMI_LAB_Uji_Sampel as uji')
+            ->join('N_EMI_LAB_PO_Sampel as po', 'uji.No_Po_Sampel', '=', 'po.No_Sampel')
+            ->join('N_EMI_View_Barang as brg', 'po.Kode_Barang', '=', 'brg.Kode_Barang')
+            ->join('EMI_Master_Mesin as mesin', 'po.Id_Mesin', '=', 'mesin.Id_Master_Mesin')
+            ->select(
+                'uji.No_Po_Sampel',
+                'po.No_Po',
+                'po.No_Split_Po',
+                'po.No_Batch',
+                'po.Kode_Barang',
+                'brg.Nama as Nama_Barang',
+                'mesin.Nama_Mesin',
+                'uji.Flag_Multi_QrCode',
+                DB::raw("CASE WHEN po.Flag_Trial_Produksi = 'Y' THEN 'Trial Produksi' ELSE 'Produksi' END as Tipe_Produksi"),
+                DB::raw('MAX(uji.Tanggal) as Tanggal_Uji'),
+                DB::raw('MAX(uji.Jam) as Jam_Uji'),
+                DB::raw('COUNT(DISTINCT uji.Id_Jenis_Analisa) as Total_Analisa')
+            )
+            ->whereNull('uji.Status')
+            ->where('uji.Flag_Selesai', 'Y')
+            ->where(function ($q) {
+                $q->where('uji.Flag_Resampling', '!=', 'Y')->orWhereNull('uji.Flag_Resampling');
+            });
+
+        if (!empty($status))   $query->where('uji.Status_Keputusan_Sampel', $status);
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('uji.No_Po_Sampel', 'LIKE', "%{$search}%")
+                  ->orWhere('po.No_Po', 'LIKE', "%{$search}%")
+                  ->orWhere('brg.Nama', 'LIKE', "%{$search}%")
+                  ->orWhere('po.No_Batch', 'LIKE', "%{$search}%")
+                  ->orWhere('mesin.Nama_Mesin', 'LIKE', "%{$search}%");
+            });
+        }
+        if ($qrcode === 'multi') {
+            $query->where('uji.Flag_Multi_QrCode', 'Y');
+        } elseif ($qrcode === 'single') {
+            $query->where(function ($q) { $q->where('uji.Flag_Multi_QrCode', '!=', 'Y')->orWhereNull('uji.Flag_Multi_QrCode'); });
+        }
+        if ($tipe === 'trial')    $query->where('po.Flag_Trial_Produksi', 'Y');
+        if ($tipe === 'produksi') $query->whereNull('po.Flag_Trial_Produksi');
+        if (!empty($dateFrom) && !empty($dateTo)) $query->whereBetween('uji.Tanggal', [$dateFrom, $dateTo]);
+
+        $query->groupBy(
+            'uji.No_Po_Sampel', 'po.No_Po', 'po.No_Split_Po', 'po.No_Batch',
+            'po.Kode_Barang', 'brg.Nama', 'mesin.Nama_Mesin',
+            'uji.Flag_Multi_QrCode', 'po.Flag_Trial_Produksi'
+        )->orderByDesc(DB::raw('MAX(uji.Tanggal)'))->orderByDesc(DB::raw('MAX(uji.Jam)'));
+
+        $paginated = $query->paginate($limit, ['*'], 'page', $page);
+
+        return response()->json([
+            'success' => true,
+            'status'  => 200,
+            'message' => 'Data Ditemukan',
+            'result'  => [
+                'data' => $paginated->items(),
+                'pagination' => [
+                    'page'      => $paginated->currentPage(),
+                    'limit'     => $paginated->perPage(),
+                    'totalPage' => $paginated->lastPage(),
+                    'totalData' => $paginated->total(),
+                ],
+            ],
+        ], 200);
+    }
+
+    /**
+     * GET /api/v1/lab/hasil-analisa/per-produk/detail-jenis/{no_po_sampel}
+     * Mengembalikan daftar jenis analisa yang dimiliki sebuah No_Po_Sampel.
+     */
+    public function getDataJenisAnalisaBySampel($no_po_sampel)
+    {
+        $result = DB::table('N_EMI_LAB_Uji_Sampel as us')
+            ->join('N_EMI_LAB_Jenis_Analisa as ja', 'us.Id_Jenis_Analisa', '=', 'ja.id')
+            ->leftJoin('N_EMI_LAB_Palatabilitas_Pembanding as pb', 'us.Id_Pembanding', '=', 'pb.Id_Pembanding')
+            ->select(
+                'ja.id as Jenis_Analisa_Id_Raw',
+                'ja.Jenis_Analisa',
+                'ja.Kode_Analisa',
+                'ja.Kode_Aktivitas_Lab',
+                'ja.Flag_Perhitungan',
+                'us.Flag_Layak',
+                'pb.Nama_Pembanding',
+                'pb.Kode_Barang_Pembanding'
+            )
+            ->where('us.No_Po_Sampel', $no_po_sampel)
+            ->whereNull('us.Status')
+            ->where('us.Flag_Selesai', 'Y')
+            ->where(function ($q) {
+                $q->where('us.Status_Keputusan_Sampel', 'terima')->orWhere('us.Flag_Final', 'Y');
+            })
+            ->where(function ($q) {
+                $q->where('us.Flag_Resampling', '!=', 'Y')->orWhereNull('us.Flag_Resampling');
+            })
+            ->orderByDesc('us.Tanggal')
+            ->get()
+            ->map(function ($item) {
+                $item->Id_Jenis_Analisa = Hashids::connection('custom')->encode($item->Jenis_Analisa_Id_Raw);
+                $item->is_plt = ($item->Kode_Aktivitas_Lab ?? null) === 'PLT';
+                unset($item->Jenis_Analisa_Id_Raw);
+                return $item;
+            })
+            ->unique(function ($item) {
+                return $item->Id_Jenis_Analisa . '-' . ($item->Nama_Pembanding ?? '');
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'status'  => 200,
+            'message' => 'Data Ditemukan',
+            'result'  => $result,
+        ], 200);
     }
 
     public function getDataHasilAnalisaSelesai()
@@ -13040,7 +13169,8 @@ class UjiSampelController extends Controller
                 ->select(
                     'Id_Berkas_Lab',
                     'No_Faktur',
-                    'Berkas_Key'
+                    'Berkas_Key',
+                    'Keterangan'
                 )
                 ->whereIn('No_Faktur', $fakturList)
                 ->get()
@@ -13142,6 +13272,7 @@ class UjiSampelController extends Controller
                     foreach ($berkas as $file) {
                         $fotoList[] = [
                             'Berkas_Key' => $file->Berkas_Key,
+                            'Keterangan' => $file->Keterangan ?? '',
                         ];
                     }
                 }
@@ -13381,7 +13512,6 @@ class UjiSampelController extends Controller
             ->whereNull('uji.Status')
             ->where('uji.No_Po_Sampel', $no_po_sampel)
             ->where('uji.Id_Jenis_Analisa', $decoded_id_jenis_analisa)
-            ->whereNull('uji.Flag_Multi_QrCode')
             ->where('uji.Flag_Selesai', 'Y')
             ->orderBy('uji.No_Faktur') // Disarankan untuk menambah urutan agar data konsisten
             ->get(); // ✅ KUNCI PERUBAHAN: Mengambil semua data yang cocok

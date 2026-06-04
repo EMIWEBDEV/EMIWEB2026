@@ -472,27 +472,17 @@ class FormulatorValidasiHirarkiController extends Controller
 
                             $item->foto_list = [];
                             if ($item->Flag_Foto === 'Y' && $filesGlobal->isNotEmpty()) {
-                                
-                                // PERBAIKAN DI SINI: Filter file hanya yang sesuai dengan No_Faktur item saat ini
                                 $itemFiles = $filesGlobal->where('No_Faktur', $item->No_Faktur);
-                                
                                 foreach ($itemFiles as $file) {
-                                    try {
-                                        if (!empty($file->File_Path)) {
-                                            $url = Storage::disk('gcs')->temporaryUrl(
-                                                $file->File_Path,
-                                                now()->addMinutes(120)
-                                            );
-                                            $item->foto_list[] = [
-                                                'url' => $url,
-                                                'keterangan' => $file->Keterangan ?? 'Dokumen Uji Lab'
-                                            ];
-                                        }
-                                    } catch (\Exception $e) {
+                                    if (!empty($file->Berkas_Key)) {
+                                        $item->foto_list[] = [
+                                            'Berkas_Key' => $file->Berkas_Key,
+                                            'keterangan' => $file->Keterangan ?? 'Dokumen Uji Lab'
+                                        ];
                                     }
                                 }
                             }
-                            $item->File_Url = count($item->foto_list) > 0 ? $item->foto_list[0]['url'] : null;
+                            $item->File_Url = null;
 
                             $hasilStr = (string)$item->Hasil;
                             $cleanHasil = $hasilStr;
@@ -746,7 +736,7 @@ class FormulatorValidasiHirarkiController extends Controller
 
             $poInfoValidasi = DB::table('N_LIMS_PO_Sampel')
                 ->where('No_Sampel', $noPo)
-                ->select('No_Po', 'No_Split_Po', 'Kode_Barang', 'Flag_Trial_Produksi')
+                ->select('No_Po', 'No_Split_Po', 'Kode_Barang')
                 ->first();
 
             foreach ($request->Items as $item) {
@@ -786,7 +776,7 @@ class FormulatorValidasiHirarkiController extends Controller
                 'No_Po'      => $poInfoValidasi->No_Po      ?? '-',
                 'No_Split_Po'=> $poInfoValidasi->No_Split_Po ?? '-',
                 'Kode_Barang'=> $poInfoValidasi->Kode_Barang ?? null,
-                'Flag_Trial' => $poInfoValidasi->Flag_Trial_Produksi ?? null,
+                'Flag_Trial' => null,
                 'Jenis_Aksi' => 'VALIDASI_FORMULATOR',
                 'Sub_Aksi'   => $isTolak ? 'TOLAK' : 'SETUJU',
                 'Keterangan' => $isTolak ? $request->Alasan : null,
@@ -868,7 +858,7 @@ class FormulatorValidasiHirarkiController extends Controller
 
             $poInfoCancel = DB::table('N_LIMS_PO_Sampel')
                 ->where('No_Sampel', $noPo)
-                ->select('No_Po', 'No_Split_Po', 'Kode_Barang', 'Flag_Trial_Produksi')
+                ->select('No_Po', 'No_Split_Po', 'Kode_Barang')
                 ->first();
 
             $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
@@ -876,7 +866,7 @@ class FormulatorValidasiHirarkiController extends Controller
                 'No_Po'      => $poInfoCancel->No_Po       ?? '-',
                 'No_Split_Po'=> $poInfoCancel->No_Split_Po ?? '-',
                 'Kode_Barang'=> $poInfoCancel->Kode_Barang ?? null,
-                'Flag_Trial' => $poInfoCancel->Flag_Trial_Produksi ?? null,
+                'Flag_Trial' => null,
                 'Jenis_Aksi' => 'PRAFINALISASI_FORMULATOR',
                 'Sub_Aksi'   => 'TOLAK',
                 'Keterangan' => $request->Alasan,
