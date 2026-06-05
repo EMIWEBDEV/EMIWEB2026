@@ -193,7 +193,7 @@
                     <div class="ha-tabs">
                         <button class="ha-tab" :class="{'ha-tab--active':activeTab==='analisa'}" @click="activeTab='analisa'"><i class="ri-flask-line me-1"></i>Hasil Analisa</button>
                         <button class="ha-tab" :class="{'ha-tab--active':activeTab==='timeline'}" @click="activeTab='timeline';loadTimeline()">
-                            <i class="ri-timeline-view me-1"></i>Timeline<span v-if="auditLog.length>0" class="ha-tab-count">{{ auditLog.length }}</span>
+                            <i class="ri-timeline-view me-1"></i>Timeline
                         </button>
                     </div>
                     <!-- Content -->
@@ -266,15 +266,15 @@
                             <div v-else class="ha-vtl">
                                 <div class="ha-vtl-hdr"><i class="ri-history-line me-2"></i>Riwayat Proses Sampel</div>
                                 <div class="ha-vtl-steps">
-                                    <div v-for="(log,li) in auditLog" :key="li" class="ha-vtl-step" :class="getStepClass(log)">
+                                    <div v-for="(log,li) in expandedAuditLog" :key="li" class="ha-vtl-step" :class="getStepClass(log)">
                                         <div class="ha-vtl-indicator">
                                             <div class="ha-vtl-dot"><i :class="getStepIcon(log)"></i></div>
-                                            <div v-if="li<auditLog.length-1" class="ha-vtl-line"></div>
+                                            <div v-if="li<expandedAuditLog.length-1" class="ha-vtl-line"></div>
                                         </div>
                                         <div class="ha-vtl-body">
                                             <div class="ha-vtl-row1"><span class="ha-vtl-badge" :class="getStepBadgeClass(log)">{{ formatAksi(log.Jenis_Aksi) }}</span><span v-if="log.Sub_Aksi" class="ha-vtl-sub" :class="log.Sub_Aksi==='TOLAK'?'text-danger':'text-success'">{{ log.Sub_Aksi }}</span></div>
                                             <div class="ha-vtl-meta"><span><i class="ri-user-3-line me-1"></i>{{ log.Nama_User||log.Id_User }}</span><span><i class="ri-time-line me-1"></i>{{ formatDate(log.Tanggal) }}<template v-if="log.Jam"> · {{ log.Jam.substring(0,5) }}</template></span></div>
-                                            <div v-if="log.details&&log.details.length" class="ha-vtl-details"><div class="ha-vtl-details-hdr"><i class="ri-microscope-line me-1"></i>{{ log.details.length }} analisa</div><div v-for="d in log.details" :key="d.Id_Jenis_Analisa" class="ha-vtl-detail-row"><i class="ri-arrow-right-s-line text-muted"></i>{{ d.Nama_Jenis_Analisa }}<span v-if="d.Tanggal" class="text-muted ms-1" style="font-size:.65rem;"> · {{ formatDate(d.Tanggal) }}</span></div></div>
+                                            <div v-if="log.details&&log.details.length" class="ha-vtl-details"><div class="ha-vtl-details-hdr"><i class="ri-microscope-line me-1"></i>{{ log.details.length }} analisa</div><div v-for="d in log.details" :key="d.Id_Jenis_Analisa+'_'+d.Jam" class="ha-vtl-detail-row"><i class="ri-arrow-right-s-line text-muted"></i>{{ d.Nama_Jenis_Analisa }}</div></div>
                                             <div v-if="log.Keterangan" class="ha-vtl-note"><i class="ri-chat-3-line me-1"></i>{{ log.Keterangan }}</div>
                                         </div>
                                     </div>
@@ -349,6 +349,24 @@ export default {
         };
     },
     computed: {
+        expandedAuditLog() {
+            const result = [];
+            for (const log of this.auditLog) {
+                if (!log.details || log.details.length === 0) { result.push(log); continue; }
+                const byUser = new Map();
+                for (const d of log.details) {
+                    const uid = d.Id_User || '—';
+                    if (!byUser.has(uid)) byUser.set(uid, []);
+                    byUser.get(uid).push(d);
+                }
+                if (byUser.size <= 1) { result.push(log); } else {
+                    for (const [uid, items] of byUser) {
+                        result.push({ ...log, Id_User: uid, Nama_User: uid, Tanggal: items[0].Tanggal || log.Tanggal, Jam: items[0].Jam || log.Jam, details: items, _expanded: true });
+                    }
+                }
+            }
+            return result;
+        },
         hasTemplate() { return (this.template.parameter?.length||0)>0||(this.template.formula?.length||0)>0; },
         filteredJenisList() {
             if (!this.jenisSearch.trim()) return this.jenisAnalisaList;

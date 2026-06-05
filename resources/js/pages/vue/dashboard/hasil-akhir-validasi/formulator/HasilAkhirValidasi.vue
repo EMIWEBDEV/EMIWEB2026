@@ -36,6 +36,7 @@
                                     <div class="fin-item-meta">
                                         <span class="fin-chip fin-chip--blue"><i class="ri-file-list-3-line"></i>{{ item.No_Po }}</span>
                                         <span class="fin-chip" :class="item.Flag_Multi_QrCode==='Y'?'fin-chip--blue':'fin-chip--gray'"><i class="ri-qr-code-line"></i>{{ item.Flag_Multi_QrCode==='Y'?'Multi':'Single' }}</span>
+                                        <span class="fin-chip fin-chip--gray" v-if="item.Nama_Mesin"><i class="ri-settings-3-line"></i>{{ item.Nama_Mesin }}</span>
                                         <span class="fin-chip fin-chip--gray" v-if="item.Tanggal"><i class="ri-calendar-line"></i>{{ formatDate(item.Tanggal) }}</span>
                                     </div>
                                 </div>
@@ -66,6 +67,7 @@
                                     <span class="fin-badge fin-badge--gray"><i class="ri-git-branch-line me-1"></i>{{ selectedItem.No_Split_Po }}</span>
                                     <span class="fin-badge" :class="selectedItem.Flag_Multi_QrCode==='Y'?'fin-badge--primary':'fin-badge--gray'"><i class="ri-qr-code-line me-1"></i>{{ selectedItem.Flag_Multi_QrCode==='Y'?'Multi QR':'Single QR' }}</span>
                                     <span class="fin-badge fin-badge--form"><i class="ri-shield-star-line me-1"></i>Formulator</span>
+                                    <span class="fin-badge fin-badge--mesin" v-if="selectedItem.Nama_Mesin"><i class="ri-settings-3-line me-1"></i>{{ selectedItem.Nama_Mesin }}</span>
                                 </div>
                             </div>
                         </div>
@@ -77,7 +79,7 @@
                     </div>
                     <div class="fin-tabs">
                         <button class="fin-tab" :class="{'fin-tab--active':activeTab==='analisa'}" @click="activeTab='analisa'"><i class="ri-flask-line me-1"></i>Detail Analisa</button>
-                        <button class="fin-tab" :class="{'fin-tab--active':activeTab==='timeline'}" @click="activeTab='timeline';ensureTimeline()"><i class="ri-timeline-view me-1"></i>Timeline<span v-if="auditLog.length>0" class="fin-tab-count">{{ auditLog.length }}</span></button>
+                        <button class="fin-tab" :class="{'fin-tab--active':activeTab==='timeline'}" @click="activeTab='timeline';ensureTimeline()"><i class="ri-timeline-view me-1"></i>Timeline</button>
                     </div>
                     <div class="fin-detail-body">
                         <div v-if="loading.detail" class="fin-loading-state"><div class="spinner-border" style="color:#405189"></div><p class="mt-3 text-muted small">Memuat data analisa formulator...</p></div>
@@ -158,12 +160,12 @@
                             <div v-else class="fin-vtl">
                                 <div class="fin-vtl-hdr"><i class="ri-history-line me-2"></i>Riwayat Proses Sampel</div>
                                 <div class="fin-vtl-steps">
-                                    <div v-for="(log,li) in auditLog" :key="li" class="fin-vtl-step" :class="getStepClass(log)">
-                                        <div class="fin-vtl-indicator"><div class="fin-vtl-dot"><i :class="getStepIcon(log)"></i></div><div v-if="li<auditLog.length-1" class="fin-vtl-line"></div></div>
+                                    <div v-for="(log,li) in expandedAuditLog" :key="li" class="fin-vtl-step" :class="getStepClass(log)">
+                                        <div class="fin-vtl-indicator"><div class="fin-vtl-dot"><i :class="getStepIcon(log)"></i></div><div v-if="li<expandedAuditLog.length-1" class="fin-vtl-line"></div></div>
                                         <div class="fin-vtl-body">
                                             <div class="fin-vtl-row1"><span class="fin-vtl-badge" :class="getStepBadgeClass(log)">{{ formatAksi(log.Jenis_Aksi) }}</span><span v-if="log.Sub_Aksi" class="fin-vtl-sub" :class="log.Sub_Aksi==='TOLAK'?'text-danger':'text-success'">{{ log.Sub_Aksi }}</span></div>
                                             <div class="fin-vtl-meta"><span><i class="ri-user-3-line me-1"></i>{{ log.Nama_User||log.Id_User }}</span><span><i class="ri-time-line me-1"></i>{{ formatDate(log.Tanggal) }}<template v-if="log.Jam"> · {{ log.Jam.substring(0,5) }}</template></span></div>
-                                            <div v-if="log.details&&log.details.length" class="fin-vtl-details"><div class="fin-vtl-details-hdr"><i class="ri-microscope-line me-1"></i>{{ log.details.length }} analisa</div><div v-for="d in log.details" :key="d.Id_Jenis_Analisa" class="fin-vtl-detail-row"><i class="ri-arrow-right-s-line text-muted"></i>{{ d.Nama_Jenis_Analisa }}<span v-if="d.Tanggal" class="text-muted ms-1" style="font-size:.65rem;"> · {{ formatDate(d.Tanggal) }}</span></div></div>
+                                            <div v-if="log.details&&log.details.length" class="fin-vtl-details"><div class="fin-vtl-details-hdr"><i class="ri-microscope-line me-1"></i>{{ log.details.length }} analisa</div><div v-for="d in log.details" :key="d.Id_Jenis_Analisa+'_'+d.Jam" class="fin-vtl-detail-row"><i class="ri-arrow-right-s-line text-muted"></i>{{ d.Nama_Jenis_Analisa }}</div></div>
                                             <div v-if="log.Keterangan" class="fin-vtl-note"><i class="ri-chat-3-line me-1"></i>{{ log.Keterangan }}</div>
                                         </div>
                                     </div>
@@ -257,6 +259,26 @@ export default {
         };
     },
     computed: {
+        expandedAuditLog() {
+            const result = [];
+            for (const log of this.auditLog) {
+                if (!log.details || log.details.length === 0) { result.push(log); continue; }
+                const byUser = new Map();
+                for (const d of log.details) {
+                    const uid = d.Id_User || '—';
+                    if (!byUser.has(uid)) byUser.set(uid, []);
+                    byUser.get(uid).push(d);
+                }
+                if (byUser.size <= 1) {
+                    result.push(log);
+                } else {
+                    for (const [uid, items] of byUser) {
+                        result.push({ ...log, Id_User: uid, Nama_User: uid, Tanggal: items[0].Tanggal || log.Tanggal, Jam: items[0].Jam || log.Jam, details: items, _expanded: true });
+                    }
+                }
+            }
+            return result;
+        },
         detailSections(){
             const gDef={ANL:{label:'Analisa Lab',icon:'ri-flask-line',bg:'linear-gradient(135deg,#405189,#2e3a64)'},PLT:{label:'Palatabilitas',icon:'ri-heart-pulse-line',bg:'linear-gradient(135deg,#0ab39c,#0891b2)'},LCKV:{label:'Look View',icon:'ri-eye-line',bg:'linear-gradient(135deg,#7c3aed,#5b21b6)'}};
             const order={ANL:1,PLT:2,LCKV:3};
@@ -460,6 +482,7 @@ export default {
 .fin-badge--success{background:rgba(10,179,156,.1);color:#0ab39c;border:1px solid rgba(10,179,156,.2);}
 .fin-badge--danger{background:rgba(240,101,72,.1);color:#f06548;border:1px solid rgba(240,101,72,.2);}
 .fin-badge--gray{background:#f1f5f9;color:#475569;}
+.fin-badge--mesin{background:rgba(100,116,139,.1);color:#475569;border:1px solid rgba(100,116,139,.2);}
 .fin-btn-form{background:#405189;color:#fff;border:none;border-radius:6px;padding:5px 14px;}
 .fin-btn-form:hover{background:#2e3a64;color:#fff;}
 .fin-list-footer{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-top:1px solid #e2e8f0;background:#fff;flex-shrink:0;}

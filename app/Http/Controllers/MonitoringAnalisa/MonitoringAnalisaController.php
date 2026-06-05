@@ -377,7 +377,7 @@ class MonitoringAnalisaController extends Controller
         foreach (array_chunk($fakturs, 500) as $chunk) {
             $result = $result->merge(
                 DB::table('N_EMI_LAB_Berkas_Uji_Lab')
-                    ->select('No_Faktur', 'Berkas_Key')
+                    ->select('No_Faktur', 'Berkas_Key', 'Keterangan')
                     ->whereIn('No_Faktur', $chunk)->whereNotNull('Berkas_Key')->get()
             );
         }
@@ -446,9 +446,12 @@ class MonitoringAnalisaController extends Controller
                             })->values()->toArray();
 
                         $berkasKeys = [];
+                        $berkasKets = [];
                         $hasFoto    = false;
                         if ($act === 'LCKV' && $top->Flag_Foto === 'Y') {
-                            $berkasKeys = ($berkasAll[$top->No_Faktur] ?? collect())->pluck('Berkas_Key')->filter()->values()->toArray();
+                            $berkasList = ($berkasAll[$top->No_Faktur] ?? collect());
+                            $berkasKeys = $berkasList->pluck('Berkas_Key')->filter()->values()->toArray();
+                            $berkasKets = $berkasList->pluck('Keterangan')->values()->toArray();
                             $hasFoto    = count($berkasKeys) > 0;
                         }
 
@@ -470,9 +473,10 @@ class MonitoringAnalisaController extends Controller
                             'flag_perhitungan' => $top->Flag_Perhitungan,
                             'nama_pembanding'  => $namaPembanding,
                             'parameters'       => $paramValues,
-                            'has_foto'         => $hasFoto,
-                            'berkas_keys'      => $berkasKeys,
-                            'foto_count'       => count($berkasKeys),
+                            'has_foto'          => $hasFoto,
+                            'berkas_keys'       => $berkasKeys,
+                            'berkas_keterangan' => $berkasKets,
+                            'foto_count'        => count($berkasKeys),
                         ];
                     })->values()->toArray();
 

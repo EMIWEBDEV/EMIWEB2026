@@ -10501,6 +10501,7 @@ class FormulatorTrialSampelController extends Controller
             ->join('N_LIMS_PO_Sampel as po', 'uji.No_Po_Sampel', '=', 'po.No_Sampel')
             ->join('N_EMI_View_Barang as brg', 'po.Kode_Barang', '=', 'brg.Kode_Barang')
             ->join('N_EMI_LIMS_Uji_Pra_Final as pra', 'uji.No_Po_Sampel', '=', 'pra.No_Sampel')
+            ->leftJoin('EMI_Master_Mesin as mm', 'po.Id_Mesin', '=', 'mm.Id_Master_Mesin')
             ->select(
                 'uji.No_Po_Sampel',
                 DB::raw('MAX(uji.Tanggal) as Tanggal'),
@@ -10509,7 +10510,8 @@ class FormulatorTrialSampelController extends Controller
                 'po.No_Po',
                 'po.No_Split_Po',
                 'po.Kode_Barang',
-                'brg.Nama as Nama_Barang'
+                'brg.Nama as Nama_Barang',
+                DB::raw('MAX(mm.Nama_Mesin) as Nama_Mesin')
             )
             ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->whereNull('uji.Status')

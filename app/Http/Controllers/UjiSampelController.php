@@ -10602,6 +10602,7 @@ class UjiSampelController extends Controller
         $query = DB::table('N_EMI_LAB_Uji_Sampel as uji')
             ->join('N_EMI_LAB_PO_Sampel as po', 'uji.No_Po_Sampel', '=', 'po.No_Sampel')
             ->join('N_EMI_View_Barang as brg', 'po.Kode_Barang', '=', 'brg.Kode_Barang')
+            ->leftJoin('EMI_Master_Mesin as mm', 'po.Id_Mesin', '=', 'mm.Id_Master_Mesin')
             ->select(
                 'uji.No_Po_Sampel',
                 DB::raw('MAX(uji.Tanggal) as Tanggal'),
@@ -10611,7 +10612,8 @@ class UjiSampelController extends Controller
                 'po.No_Split_Po',
                 'po.Kode_Barang',
                 'brg.Nama as Nama_Barang',
-                'po.Flag_Trial_Produksi' 
+                'po.Flag_Trial_Produksi',
+                DB::raw('MAX(mm.Nama_Mesin) as Nama_Mesin')
             )
             ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->whereNull('po.Flag_Trial_Produksi')
