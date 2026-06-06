@@ -30,6 +30,7 @@
                     <span class="ha-topbar-jenis-name">{{ selectedJenis.Jenis_Analisa }}</span>
                 </div>
                 <span v-else-if="viewMode === 'per-analisa'" class="ha-topbar-hint">Pilih jenis analisa di panel kiri</span>
+                <button class="ha-print-btn" @click="togglePrintModal"><i class="ri-printer-line me-1"></i>Cetak Laporan</button>
             </div>
         </div>
 
@@ -460,11 +461,172 @@
             </div>
         </div>
     </div>
+
+    <!-- Print Modal -->
+    <div class="modal fade" id="printModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header" style="background:#405189">
+                    <h5 class="modal-title text-white"><i class="fas fa-file-export me-2"></i>Buat Laporan Analisa</h5>
+                    <button type="button" class="btn-close btn-close-white" @click="closePrintModal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Step indicator -->
+                    <div class="steps-progress mb-4">
+                        <div class="step" :class="{active:currentStep>=1,done:currentStep>1}">
+                            <div class="step-number"><i v-if="currentStep>1" class="fas fa-check"></i><span v-else>1</span></div>
+                            <div class="step-label">Pilih Jenis Analisa</div>
+                        </div>
+                        <div class="step" :class="{active:currentStep>=2,done:currentStep>2}">
+                            <div class="step-number"><i v-if="currentStep>2" class="fas fa-check"></i><span v-else>2</span></div>
+                            <div class="step-label">Atur Periode</div>
+                        </div>
+                        <div class="step" :class="{active:currentStep>=3}">
+                            <div class="step-number">3</div>
+                            <div class="step-label">Preview & Cetak</div>
+                        </div>
+                    </div>
+                    <!-- Step 1 -->
+                    <div v-show="currentStep===1">
+                        <h6 class="fw-semibold mb-3"><i class="fas fa-filter me-2 text-primary"></i>Pilih Jenis Analisa</h6>
+                        <div class="analysis-selector">
+                            <div v-for="item in listDataJenisAnalisa" :key="item.id"
+                                class="analysis-option" :class="{selected:selectedAnalysis.includes(item.id)}"
+                                @click="toggleAnalysisSelection(item)">
+                                <div class="option-icon"><i class="fas fa-flask"></i></div>
+                                <div class="option-details">
+                                    <span class="badge bg-primary-subtle text-primary mb-1">{{ item.Kode_Analisa }}</span>
+                                    <h6 class="mb-0">{{ item.Jenis_Analisa }}</h6>
+                                </div>
+                                <div class="option-check"><i class="fas fa-check"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Step 2 -->
+                    <div v-show="currentStep===2">
+                        <h6 class="fw-semibold mb-3"><i class="far fa-calendar-alt me-2 text-primary"></i>Atur Periode Laporan</h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small">Dari Tanggal</label>
+                                <input type="date" class="form-control" v-model="startDate" :max="endDate||today" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">Sampai Tanggal</label>
+                                <input type="date" class="form-control" v-model="endDate" :min="startDate" />
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Step 3 -->
+                    <div v-show="currentStep===3">
+                        <h6 class="fw-semibold mb-3"><i class="fas fa-eye me-2 text-primary"></i>Ringkasan Laporan</h6>
+                        <div class="alert alert-warning small">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Format <strong>Excel</strong> masih dalam pengembangan. Disarankan gunakan <strong>PDF</strong>.
+                        </div>
+                        <div class="card border">
+                            <div class="card-body">
+                                <div class="summary-item">
+                                    <span>Jenis Analisa</span>
+                                    <strong>{{ selectedAnalysisNames || '-' }}</strong>
+                                </div>
+                                <div class="summary-item">
+                                    <span>Periode</span>
+                                    <strong>{{ formattedStartDate }} — {{ formattedEndDate }}</strong>
+                                </div>
+                                <div class="summary-item">
+                                    <span>Mesin</span>
+                                    <v-select style="flex:1" v-model="selectedListMesin" :options="listDataMesin" label="Nama_Mesin" placeholder="--- Pilih Mesin ---" />
+                                </div>
+                                <div class="summary-item">
+                                    <span>Jenis Cetakan</span>
+                                    <select class="form-select form-select-sm flex-1" v-model="selectedJenisPrint">
+                                        <option value="">Pilih Jenis Cetakan</option>
+                                        <option value="ringkas">Cetak Ringkas (Hasil Akhir)</option>
+                                        <option v-if="showPszOption" value="psz">Final Report Particle Size</option>
+                                        <option value="detail">Cetak Detail (Per Analisa)</option>
+                                    </select>
+                                </div>
+                                <div class="summary-item">
+                                    <span>Format</span>
+                                    <div class="d-flex gap-3">
+                                        <div class="form-check"><input class="form-check-input" type="radio" value="excell" v-model="exportFormat" id="fExcel"><label class="form-check-label" for="fExcel"><i class="far fa-file-excel text-success me-1"></i>Excel</label></div>
+                                        <div class="form-check"><input class="form-check-input" type="radio" value="pdf" v-model="exportFormat" id="fPdf"><label class="form-check-label" for="fPdf"><i class="far fa-file-pdf text-danger me-1"></i>PDF</label></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="isPszReportSelected" class="alert alert-warning mt-3 small">
+                            <strong>Peringatan!</strong> Laporan ini hanya mencetak data Particle Size (PSZ).
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" v-model="pszConfirmation" id="pszCheck">
+                                <label class="form-check-label fw-semibold" for="pszCheck">Saya mengerti dan setuju.</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" @click="prevStep" :disabled="currentStep===1"><i class="fas fa-arrow-left me-1"></i>Kembali</button>
+                    <button type="button" class="btn btn-primary" @click="nextStep" v-if="currentStep<3">Lanjut<i class="fas fa-arrow-right ms-1"></i></button>
+                    <button type="button" class="btn btn-success" @click="generateReport" v-if="currentStep===3" :disabled="isGenerateButtonDisabled">
+                        <i class="fas fa-file-export me-1"></i>{{ isGenerateButtonDisabled ? 'Centang persetujuan dulu' : 'Generate Laporan' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Download Manager Widget -->
+    <div v-if="exportTasks.length" class="export-download-manager" :class="{'edm-minimized':exportManagerMinimized}">
+        <div class="edm-header d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <i class="ri-download-cloud-2-line fs-16" style="color:#405189"></i>
+                <span class="fw-semibold" style="font-size:13px">Unduhan
+                    <span v-if="activeExportCount>0" class="badge rounded-pill ms-1" style="background:#405189;font-size:10px;vertical-align:middle;">{{ activeExportCount }}</span>
+                </span>
+            </div>
+            <div class="d-flex gap-1 align-items-center">
+                <button @click="exportManagerMinimized=!exportManagerMinimized" class="btn btn-sm btn-icon btn-ghost-secondary rounded-circle">
+                    <i :class="exportManagerMinimized?'ri-arrow-up-s-line':'ri-arrow-down-s-line'" class="fs-16"></i>
+                </button>
+                <button @click="clearAllExports" class="btn btn-sm btn-icon btn-ghost-danger rounded-circle"><i class="ri-close-line fs-16"></i></button>
+            </div>
+        </div>
+        <div class="edm-body" v-show="!exportManagerMinimized">
+            <div v-for="task in exportTasks" :key="task.id" class="edm-task-row" :class="task.status">
+                <div class="edm-circle-wrap" @mouseenter="task._showPct=true" @mouseleave="task._showPct=false">
+                    <svg viewBox="0 0 36 36" class="edm-circle-svg">
+                        <circle class="edm-cb" cx="18" cy="18" r="15.9"/>
+                        <circle class="edm-cf" :class="task.status" cx="18" cy="18" r="15.9" :stroke-dasharray="`${task.progress} ${100-task.progress}`" stroke-dashoffset="25"/>
+                    </svg>
+                    <div class="edm-circle-inner">
+                        <span v-if="task._showPct&&task.status!=='completed'&&task.status!=='failed'&&task.status!=='cancelled'" class="edm-pct">{{ task.progress }}%</span>
+                        <i v-else-if="task.status==='completed'" class="ri-check-line" style="color:#0ab39c;font-size:13px"></i>
+                        <i v-else-if="task.status==='failed'" class="ri-error-warning-line" style="color:#f06548;font-size:12px"></i>
+                        <i v-else-if="task.status==='cancelled'" class="ri-subtract-line" style="color:#adb5bd;font-size:13px"></i>
+                        <div v-else-if="activeQueuePositions[task.id]<=maxConcurrentSpinners" class="spinner-border spinner-border-sm text-primary" style="width:10px;height:10px;border-width:.12em" role="status"></div>
+                        <i v-else class="ri-time-line" style="color:#adb5bd;font-size:12px"></i>
+                    </div>
+                </div>
+                <div class="edm-task-info flex-grow-1">
+                    <div class="edm-task-label">{{ task.label }}</div>
+                    <div class="edm-task-msg">{{ task.status==='pending'?(activeQueuePositions[task.id]>maxConcurrentSpinners?`Antrian ke-${activeQueuePositions[task.id]-maxConcurrentSpinners}`:'Menunggu antrian...'):task.status==='processing'?(task.currentMessage||'Memproses...'):task.status==='completed'?'Selesai — siap diunduh':task.status==='failed'?(task.errorMsg||'Gagal'):'Dibatalkan' }}</div>
+                </div>
+                <div class="d-flex gap-1 align-items-center flex-shrink-0">
+                    <a v-if="task.status==='completed'&&task.fileUrl" :href="task.fileUrl" download class="btn btn-sm btn-icon" style="color:#0ab39c" title="Unduh" @click.prevent="manualDownload(task)"><i class="ri-download-2-line fs-16"></i></a>
+                    <button v-if="task.status==='failed'" @click="retryExportTask(task)" class="btn btn-sm btn-icon" style="color:#405189" title="Coba lagi"><i class="ri-refresh-line fs-16"></i></button>
+                    <button v-if="task.status==='pending'||task.status==='processing'" @click="cancelExportTask(task)" class="btn btn-sm btn-icon" style="color:#f7b731" title="Batalkan"><i class="ri-stop-circle-line fs-16"></i></button>
+                    <button v-if="task.status!=='pending'&&task.status!=='processing'" @click="removeExportTask(task.id)" class="btn btn-sm btn-icon btn-ghost-secondary" title="Tutup"><i class="ri-close-line fs-14"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script>
 import axios from "axios";
+import vSelect from "vue-select";
 export default {
+    components: { vSelect },
     props: {
         selected_id:          { type: [String, Number], default: null },
         initial_no_po_sampel: { type: String, default: null },
@@ -489,7 +651,7 @@ export default {
             pagination: { page: 1, limit: 20, totalPage: 1, totalData: 0 },
             searchQuery: "",
             searchTimeout: null,
-            filters: { startDate: "", endDate: "", qrcode: "", status: "terima", tipeProduksi: "" },
+            filters: { startDate: (() => { const d = new Date(); d.setDate(d.getDate()-3); return d.toISOString().split('T')[0]; })(), endDate: new Date().toISOString().split('T')[0], qrcode: "", status: "terima", tipeProduksi: "" },
 
             // Sub-samples (multi QR, Per Analisa mode)
             subSamples: [],
@@ -515,7 +677,35 @@ export default {
             auditLog: [],
             isMobile: false,
             detailVisible: false,
+
+            // Print / Cetak Laporan (Queue)
+            printModal: null,
+            currentStep: 1,
+            listDataJenisAnalisa: [],
+            listDataMesin: [],
+            selectedAnalysis: [],
+            selectedIsPerhitungan: [],
+            selectedJenisPrint: "",
+            selectedListMesin: null,
+            startDate: "",
+            endDate: "",
+            exportFormat: "pdf",
+            pszConfirmation: false,
+            exportTasks: [],
+            pollingIntervals: {},
+            exportManagerMinimized: false,
+            maxConcurrentSpinners: 3,
         };
+    },
+    watch: {
+        currentStep(val) { sessionStorage.setItem("printStep", val); },
+        selectedAnalysis: { deep: true, handler(val) { sessionStorage.setItem("printSelectedAnalysis", JSON.stringify(val)); } },
+        selectedIsPerhitungan: { deep: true, handler(val) { sessionStorage.setItem("printSelectedIsPerhitungan", JSON.stringify(val)); } },
+        startDate(val) { sessionStorage.setItem("printStartDate", val ?? ""); },
+        endDate(val) { sessionStorage.setItem("printEndDate", val ?? ""); },
+        exportFormat(val) { sessionStorage.setItem("printExportFormat", val); },
+        selectedJenisPrint(val) { sessionStorage.setItem("printJenisPrint", val ?? ""); },
+        exportTasks: { deep: true, handler() { this.saveTasksState(); } },
     },
     computed: {
         expandedAuditLog() {
@@ -559,6 +749,32 @@ export default {
             });
             return Object.values(grouped).sort((a,b)=>(order[a.group]||99)-(order[b.group]||99));
         },
+        today() { return new Date().toISOString().split("T")[0]; },
+        formattedStartDate() { return this.startDate ? new Date(this.startDate).toLocaleDateString("id-ID") : "-"; },
+        formattedEndDate() { return this.endDate ? new Date(this.endDate).toLocaleDateString("id-ID") : "-"; },
+        activeExportCount() { return this.exportTasks.filter(t => t.status === 'pending' || t.status === 'processing').length; },
+        activeQueuePositions() {
+            const activeTasks = this.exportTasks.filter(t => t.status === 'pending' || t.status === 'processing');
+            const positions = {};
+            activeTasks.forEach((task, index) => { positions[task.id] = index + 1; });
+            return positions;
+        },
+        showPszOption() {
+            if (!this.selectedAnalysis.length) return false;
+            return this.selectedAnalysis.some(id => {
+                const item = this.listDataJenisAnalisa.find(j => j.id === id);
+                return item && (item.Kode_Analisa === 'PSZ' || item.Jenis_Analisa?.toLowerCase().includes('particle size'));
+            });
+        },
+        isPszReportSelected() { return this.selectedJenisPrint === 'psz'; },
+        isGenerateButtonDisabled() { return this.isPszReportSelected && !this.pszConfirmation; },
+        selectedAnalysisNames() {
+            if (!this.selectedAnalysis.length) return '';
+            return this.selectedAnalysis.map(id => {
+                const item = this.listDataJenisAnalisa.find(j => j.id === id);
+                return item ? item.Jenis_Analisa : id;
+            }).join(', ');
+        },
     },
     methods: {
         // ─── Mode switching ──────────────────────────────────────────
@@ -569,7 +785,8 @@ export default {
             this.sampleList = [];
             this.pagination = { page: 1, limit: 20, totalPage: 1, totalData: 0 };
             this.searchQuery = "";
-            this.filters = { startDate:"", endDate:"", qrcode:"", status:"terima", tipeProduksi:"" };
+            const _d3=new Date(); _d3.setDate(_d3.getDate()-3);
+            this.filters = { startDate:_d3.toISOString().split('T')[0], endDate:new Date().toISOString().split('T')[0], qrcode:"", status:"terima", tipeProduksi:"" };
             this.resetDetail();
             if (mode === 'per-analisa') {
                 if (this.jenisAnalisaList.length === 0) this.fetchJenisAnalisa();
@@ -646,7 +863,7 @@ export default {
             } catch { this.sampleList=[]; } finally { this.loading.list=false; }
         },
         changePage(p) { if(p>=1&&p<=this.pagination.totalPage){this.pagination.page=p;this.fetchSamples();} },
-        resetFilters() { this.searchQuery=""; this.filters={startDate:"",endDate:"",qrcode:"",status:"terima",tipeProduksi:""}; this.pagination.page=1; this.fetchSamples(); },
+        resetFilters() { const d3=new Date(); d3.setDate(d3.getDate()-3); this.searchQuery=""; this.filters={startDate:d3.toISOString().split('T')[0],endDate:new Date().toISOString().split('T')[0],qrcode:"",status:"terima",tipeProduksi:""}; this.pagination.page=1; this.fetchSamples(); },
 
         // ─── Sample selection ─────────────────────────────────────────
         async selectSample(item) {
@@ -771,10 +988,205 @@ export default {
         getStepIcon(log){if(log.Sub_Aksi==='TOLAK')return'ri-close-line';if(log.Jenis_Aksi==='INPUT_ANALYZER')return'ri-test-tube-line';if(log.Jenis_Aksi?.includes('FINALISASI'))return'ri-git-commit-line';return'ri-check-line';},
         getStepBadgeClass(log){if(log.Sub_Aksi==='TOLAK')return'vtl-badge--danger';if(log.Jenis_Aksi==='INPUT_ANALYZER')return'vtl-badge--info';if(log.Jenis_Aksi?.includes('FINALISASI'))return'vtl-badge--primary';return'vtl-badge--success';},
         checkMobile(){this.isMobile=window.innerWidth<768;},
+
+        // ─── Print / Cetak Laporan (Queue) ────────────────────────────
+        async fetchJenisAnalisaPrint() {
+            try { const res = await axios.get("/jenis-analisa-current/for-select"); this.listDataJenisAnalisa = res.data?.result || res.data || []; }
+            catch { this.listDataJenisAnalisa = []; }
+        },
+        async fetchListMesin() {
+            try {
+                const res = await axios.get("/api/v1/lab/mesin/export-hasil-analisa");
+                const data = res.data?.result || res.data || [];
+                this.listDataMesin = [{ Id_Master_Mesin: null, Nama_Mesin: 'Semua Mesin' }, ...data];
+            }
+            catch { this.listDataMesin = [{ Id_Master_Mesin: null, Nama_Mesin: 'Semua Mesin' }]; }
+        },
+        togglePrintModal() {
+            if (!this.printModal) { this.printModal = new bootstrap.Modal(document.getElementById("printModal")); }
+            const savedStep = sessionStorage.getItem("printStep");
+            const savedAnalysis = sessionStorage.getItem("printSelectedAnalysis");
+            const savedIsPerhitungan = sessionStorage.getItem("printSelectedIsPerhitungan");
+            const savedStart = sessionStorage.getItem("printStartDate");
+            const savedEnd = sessionStorage.getItem("printEndDate");
+            const savedFormat = sessionStorage.getItem("printExportFormat");
+            const savedJenisPrint = sessionStorage.getItem("printJenisPrint");
+            this.currentStep = savedStep ? parseInt(savedStep) : 1;
+            try { this.selectedAnalysis = savedAnalysis ? JSON.parse(savedAnalysis) : []; } catch { this.selectedAnalysis = []; }
+            try { this.selectedIsPerhitungan = savedIsPerhitungan ? JSON.parse(savedIsPerhitungan) : []; } catch { this.selectedIsPerhitungan = []; }
+            this.startDate = savedStart || "";
+            this.endDate = savedEnd || "";
+            this.exportFormat = savedFormat || "pdf";
+            this.selectedJenisPrint = savedJenisPrint || "";
+            if (!this.selectedListMesin) this.selectedListMesin = this.listDataMesin.find(m => m.Id_Master_Mesin === null) || null;
+            this.printModal.show();
+        },
+        closePrintModal() {
+            if (this.printModal) this.printModal.hide();
+            this.resetPrintForm();
+            ["printStep","printSelectedAnalysis","printSelectedIsPerhitungan","printStartDate","printEndDate","printExportFormat","printJenisPrint"].forEach(k => sessionStorage.removeItem(k));
+        },
+        nextStep() { if (this.validateCurrentStep()) this.currentStep++; },
+        prevStep() { this.currentStep--; },
+        validateCurrentStep() {
+            if (this.currentStep === 1 && !this.selectedAnalysis.length) {
+                Swal.fire({ icon: "warning", title: "Peringatan", text: "Pilih minimal satu jenis analisa" });
+                return false;
+            }
+            if (this.currentStep === 2 && (!this.startDate || !this.endDate)) {
+                Swal.fire({ icon: "warning", title: "Peringatan", text: "Isi periode tanggal lengkap" });
+                return false;
+            }
+            return true;
+        },
+        toggleAnalysisSelection(item) {
+            const idx = this.selectedAnalysis.indexOf(item.id);
+            if (idx > -1) {
+                this.selectedAnalysis.splice(idx, 1);
+                this.selectedIsPerhitungan.splice(idx, 1);
+            } else {
+                this.selectedAnalysis.push(item.id);
+                this.selectedIsPerhitungan.push(item.Flag_Perhitungan);
+            }
+        },
+        buildExportLabel() {
+            const names = this.selectedAnalysis.map(id => {
+                const item = this.listDataJenisAnalisa.find(j => j.id === id);
+                return item ? item.Kode_Analisa : id;
+            }).join('+');
+            return `${names} · ${this.startDate} s/d ${this.endDate}`;
+        },
+        saveTasksState() {
+            const tasks = this.exportTasks.map(t => ({ id: t.id, label: t.label, status: t.status, progress: t.progress, fileUrl: t.fileUrl, errorMsg: t.errorMsg, trackId: t.trackId }));
+            localStorage.setItem('exportTasksState_ha', JSON.stringify(tasks));
+        },
+        checkActiveExports() {
+            try {
+                const saved = localStorage.getItem('exportTasksState_ha');
+                if (!saved) return;
+                const tasks = JSON.parse(saved);
+                tasks.forEach(t => {
+                    if (t.status === 'pending' || t.status === 'processing') {
+                        const task = { ...t, _showPct: false, currentMessage: '' };
+                        this.exportTasks.push(task);
+                        if (task.trackId) this.pollExportProgress(task);
+                    }
+                });
+            } catch { /* ignore */ }
+        },
+        async generateReport() {
+            if (!this.selectedJenisPrint) {
+                Swal.fire({ icon: "warning", title: "Peringatan", text: "Pilih jenis cetakan terlebih dahulu" });
+                return;
+            }
+            const task = {
+                id: Date.now(),
+                label: this.buildExportLabel(),
+                status: 'pending',
+                progress: 0,
+                fileUrl: null,
+                errorMsg: '',
+                trackId: null,
+                _showPct: false,
+                currentMessage: '',
+                payload: {
+                    format: this.exportFormat,
+                    jenis_print: this.selectedJenisPrint,
+                    analysis: [...this.selectedAnalysis],
+                    Flag_Perhitungan: [...this.selectedIsPerhitungan],
+                    startDate: this.startDate,
+                    endDate: this.endDate,
+                    Id_Master_Mesin: this.selectedListMesin?.Id_Master_Mesin || null,
+                },
+            };
+            this.exportTasks.push(task);
+            this.closePrintModal();
+            await this.dispatchExportJob(task);
+        },
+        async dispatchExportJob(task) {
+            try {
+                const res = await axios.post('/api/v1/export-sampel-job', task.payload);
+                if (res.status === 202 && res.data?.data?.track_id) {
+                    task.trackId = res.data.data.track_id;
+                    this.pollExportProgress(task);
+                } else {
+                    task.status = 'failed'; task.errorMsg = 'Gagal mendapatkan tracking ID';
+                }
+            } catch (e) {
+                task.status = 'failed'; task.errorMsg = e.response?.data?.message || 'Gagal mengirim job';
+            }
+        },
+        pollExportProgress(task) {
+            if (!task.trackId) return;
+            const interval = setInterval(async () => {
+                try {
+                    const res = await axios.get(`/api/v1/export-status/${task.trackId}`);
+                    const d = res.data || {};
+                    task.progress = d.progress ?? task.progress;
+                    task.currentMessage = d.message || '';
+                    if (d.status === 'completed') {
+                        clearInterval(interval);
+                        delete this.pollingIntervals[task.id];
+                        task.status = 'completed';
+                        task.progress = 100;
+                        task.fileUrl = d.file_url;
+                        if (d.file_url) {
+                            const a = document.createElement('a'); a.href = d.file_url; a.download = ''; document.body.appendChild(a); a.click(); a.remove();
+                        }
+                        setTimeout(() => this.deleteExportFile(task), 8000);
+                    } else if (d.status === 'failed') {
+                        clearInterval(interval);
+                        delete this.pollingIntervals[task.id];
+                        task.status = 'failed'; task.errorMsg = d.message || 'Gagal';
+                    } else {
+                        task.status = 'processing';
+                    }
+                } catch {
+                    clearInterval(interval);
+                    delete this.pollingIntervals[task.id];
+                    task.status = 'failed'; task.errorMsg = 'Koneksi terputus';
+                }
+            }, 2000);
+            this.pollingIntervals[task.id] = interval;
+        },
+        cancelExportTask(task) {
+            if (this.pollingIntervals[task.id]) { clearInterval(this.pollingIntervals[task.id]); delete this.pollingIntervals[task.id]; }
+            task.status = 'cancelled';
+        },
+        async retryExportTask(task) {
+            task.status = 'pending'; task.progress = 0; task.fileUrl = null; task.errorMsg = ''; task.trackId = null;
+            await this.dispatchExportJob(task);
+        },
+        manualDownload(task) {
+            if (!task.fileUrl) return;
+            const a = document.createElement('a'); a.href = task.fileUrl; a.download = ''; document.body.appendChild(a); a.click(); a.remove();
+        },
+        async deleteExportFile(task) {
+            if (!task.trackId) return;
+            try { await axios.delete(`/api/v1/export-file/${task.trackId}`); } catch { /* ignore */ }
+        },
+        removeExportTask(taskId) {
+            const idx = this.exportTasks.findIndex(t => t.id === taskId);
+            if (idx > -1) this.exportTasks.splice(idx, 1);
+        },
+        clearAllExports() {
+            Object.values(this.pollingIntervals).forEach(clearInterval);
+            this.pollingIntervals = {};
+            this.exportTasks = [];
+            localStorage.removeItem('exportTasksState_ha');
+        },
+        resetPrintForm() {
+            this.currentStep = 1; this.selectedAnalysis = []; this.selectedIsPerhitungan = [];
+            this.startDate = ""; this.endDate = ""; this.exportFormat = "pdf";
+            this.selectedJenisPrint = ""; this.selectedListMesin = this.listDataMesin.find(m => m.Id_Master_Mesin === null) || null; this.pszConfirmation = false;
+        },
     },
     async mounted() {
         this.checkMobile();
         window.addEventListener('resize', this.checkMobile);
+        this.checkActiveExports();
+        this.fetchJenisAnalisaPrint();
+        this.fetchListMesin();
         // Pre-load jenis analisa list in background (for Per Analisa mode switch)
         this.fetchJenisAnalisa();
         // Default: Per PRD → langsung load semua sampel
@@ -794,6 +1206,8 @@ export default {
                 }
             }
         }
+        const savedPrintStep = sessionStorage.getItem("printStep");
+        if (savedPrintStep) { this.$nextTick(() => this.togglePrintModal()); }
     },
     beforeUnmount() { window.removeEventListener('resize', this.checkMobile); },
 };
@@ -1017,4 +1431,58 @@ export default {
 .ha-hidden-mobile{display:none !important;}
 @media(min-width:768px){.ha-hidden-mobile{display:flex !important;}}
 .ha-mobile-back{padding:9px 12px;border-bottom:1px solid #e2e8f0;flex-shrink:0;background:#fff;}
+
+/* ─── CETAK LAPORAN BUTTON ─── */
+.ha-print-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,#405189,#2e3a64);color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(64,81,137,.35);transition:all .2s;white-space:nowrap;}
+.ha-print-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(64,81,137,.45);}
+.ha-print-btn:active{transform:translateY(0);}
+
+/* ─── PRINT MODAL STEPS ─── */
+.steps-progress{display:flex;justify-content:space-between;position:relative;}
+.steps-progress::before{content:"";position:absolute;top:15px;left:0;right:0;height:2px;background:#e9ecef;z-index:0;}
+.step{display:flex;flex-direction:column;align-items:center;position:relative;z-index:1;flex:1;}
+.step-number{width:30px;height:30px;border-radius:50%;background:#e9ecef;display:flex;align-items:center;justify-content:center;margin-bottom:6px;font-size:.8rem;font-weight:700;color:#6c757d;transition:all .25s;}
+.step-label{font-size:.75rem;color:#6c757d;text-align:center;}
+.step.active .step-number{background:#405189;color:#fff;}
+.step.active .step-label{color:#405189;font-weight:600;}
+.step.done .step-number{background:#0ab39c;color:#fff;}
+
+/* ─── PRINT MODAL ANALYSIS SELECTOR ─── */
+.analysis-selector{max-height:360px;overflow-y:auto;}
+.analysis-option{display:flex;align-items:center;padding:10px 14px;border-radius:8px;border:1px solid #dee2e6;cursor:pointer;transition:all .2s;background:#fff;margin-bottom:8px;}
+.analysis-option:hover{border-color:#86b7fe;box-shadow:0 0 0 3px rgba(64,81,137,.1);}
+.analysis-option.selected{border-color:#405189;background:rgba(64,81,137,.05);}
+.option-icon{width:36px;height:36px;border-radius:8px;background:rgba(64,81,137,.1);display:flex;align-items:center;justify-content:center;margin-right:12px;color:#405189;font-size:.9rem;flex-shrink:0;}
+.option-details{flex:1;}
+.option-details h6{margin:0;font-size:.85rem;}
+.option-check{width:20px;height:20px;border-radius:50%;background:#405189;display:flex;align-items:center;justify-content:center;color:#fff;opacity:0;transition:opacity .2s;font-size:.7rem;}
+.analysis-option.selected .option-check{opacity:1;}
+
+/* ─── PRINT MODAL SUMMARY ─── */
+.summary-item{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;}
+.summary-item:last-child{border-bottom:none;}
+.summary-item>span{width:130px;color:#6c757d;font-size:.82rem;flex-shrink:0;}
+.summary-item>.flex-1{flex:1;}
+.flex-1{flex:1;}
+
+/* ─── EXPORT DOWNLOAD MANAGER ─── */
+.export-download-manager{position:fixed;bottom:24px;right:24px;width:370px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.16);border:1px solid #e2e8f0;z-index:9999;overflow:hidden;transition:all .2s;}
+.edm-minimized .edm-body{display:none!important;}
+.edm-header{padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
+.edm-body{max-height:320px;overflow-y:auto;}
+.edm-task-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #f1f5f9;}
+.edm-task-row:last-child{border-bottom:none;}
+.edm-circle-wrap{position:relative;width:38px;height:38px;flex-shrink:0;cursor:default;}
+.edm-circle-svg{width:38px;height:38px;transform:rotate(-90deg);}
+.edm-cb{fill:none;stroke:#e9ecef;stroke-width:3;}
+.edm-cf{fill:none;stroke-width:3;stroke-linecap:round;transition:stroke-dasharray .4s;}
+.edm-cf.processing,.edm-cf.pending{stroke:#405189;}
+.edm-cf.completed{stroke:#0ab39c;}
+.edm-cf.failed{stroke:#f06548;}
+.edm-cf.cancelled{stroke:#adb5bd;}
+.edm-circle-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.edm-pct{font-size:8px;font-weight:700;color:#405189;}
+.edm-task-info{flex:1;min-width:0;}
+.edm-task-label{font-size:.76rem;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.edm-task-msg{font-size:.68rem;color:#64748b;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 </style>

@@ -21,6 +21,7 @@
                     </div>
                 </template>
                 <span v-else class="ha-topbar-hint"><i class="ri-arrow-left-line me-1"></i>Pilih analisa di panel kiri</span>
+                <button class="ha-print-btn" @click="togglePrintModal"><i class="ri-printer-line me-1"></i>Cetak Laporan</button>
             </div>
         </div>
 
@@ -287,6 +288,87 @@
         </div>
     </div>
 
+    <!-- Print Modal -->
+    <div class="modal fade" id="printModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-primary">
+                    <h5 class="modal-title text-white"><i class="ri-printer-line me-2"></i>Cetak Laporan Analisis</h5>
+                    <button type="button" class="btn-close btn-close-white" @click="closePrintModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="pr-steps-progress mb-4">
+                        <div class="pr-step" :class="{active:currentStep===1}"><div class="pr-step-num">1</div><div class="pr-step-lbl">Pilih Jenis Analisa</div></div>
+                        <div class="pr-step" :class="{active:currentStep===2}"><div class="pr-step-num">2</div><div class="pr-step-lbl">Atur Periode</div></div>
+                        <div class="pr-step" :class="{active:currentStep===3}"><div class="pr-step-num">3</div><div class="pr-step-lbl">Preview & Cetak</div></div>
+                    </div>
+                    <div class="alert alert-warning d-flex align-items-start gap-2" role="alert">
+                        <i class="ri-error-warning-line text-warning fs-5 mt-1"></i>
+                        <div><strong>Perhatian!</strong><br />Data yang akan dicetak hanya mencakup <strong>nomor sampel yang sudah ditutup (closed)</strong> atau <strong>telah difinalisasi</strong>.</div>
+                    </div>
+                    <!-- Step 1 -->
+                    <div v-show="currentStep===1" class="pr-step-content">
+                        <h6 class="fw-bold mb-3 text-primary"><i class="ri-flask-line me-2"></i>Pilih Jenis Analisa</h6>
+                        <div class="pr-analysis-selector">
+                            <div v-for="item in jenisAnalisaList" :key="item.Id_Jenis_Analisa"
+                                class="pr-analysis-option mb-2" :class="{selected:selectedAnalysis===item.Id_Jenis_Analisa}"
+                                @click="toggleAnalysisSelection(item)">
+                                <div class="pr-option-icon"><i class="ri-flask-line"></i></div>
+                                <div class="pr-option-details">
+                                    <span class="badge bg-primary-soft mb-1">{{ item.Kode_Analisa }}</span>
+                                    <h6>{{ item.Jenis_Analisa }}</h6>
+                                </div>
+                                <div class="pr-option-check"><i class="ri-check-line"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Step 2 -->
+                    <div v-show="currentStep===2" class="pr-step-content">
+                        <h6 class="fw-bold mb-3 text-primary"><i class="ri-calendar-line me-2"></i>Atur Periode Laporan</h6>
+                        <div class="pr-date-picker">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Dari Tanggal</label>
+                                    <input type="date" class="form-control" v-model="startDate" :max="endDate||today" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Sampai Tanggal</label>
+                                    <input type="date" class="form-control" v-model="endDate" :min="startDate" :max="today" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Step 3 -->
+                    <div v-show="currentStep===3" class="pr-step-content">
+                        <h6 class="fw-bold mb-3 text-primary"><i class="ri-eye-line me-2"></i>Ringkasan Laporan</h6>
+                        <div class="pr-summary">
+                            <div class="pr-summary-card">
+                                <div class="pr-summary-hdr"><i class="ri-information-line"></i><h5>Detail Laporan</h5></div>
+                                <div class="pr-summary-body">
+                                    <div class="pr-summary-item"><span>Jenis Analisa:</span><strong>{{ selectedAnalysisName || '-' }}</strong></div>
+                                    <div class="pr-summary-item"><span>Periode:</span><strong>{{ formattedStartDate }} - {{ formattedEndDate }}</strong></div>
+                                    <div class="pr-summary-item">
+                                        <span>Format:</span>
+                                        <div class="d-flex gap-3">
+                                            <div class="form-check"><input class="form-check-input" type="radio" id="pr-fmt-excel-f" value="excel" v-model="exportFormat"><label class="form-check-label" for="pr-fmt-excel-f"><i class="ri-file-excel-line text-success me-1"></i>Excel</label></div>
+                                            <div class="form-check"><input class="form-check-input" type="radio" id="pr-fmt-pdf-f" value="pdf" v-model="exportFormat"><label class="form-check-label" for="pr-fmt-pdf-f"><i class="ri-file-pdf-line text-danger me-1"></i>PDF</label></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="alert alert-info mt-3"><i class="ri-information-line me-2"></i>Laporan akan dihasilkan berdasarkan kriteria di atas. Pastikan data sudah benar sebelum mencetak.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-outline-secondary" @click="prevStep" :disabled="currentStep===1"><i class="ri-arrow-left-line me-1"></i>Kembali</button>
+                    <button type="button" class="btn btn-primary" @click="nextStep" v-if="currentStep<3">Lanjut<i class="ri-arrow-right-line ms-1"></i></button>
+                    <button type="button" class="btn btn-success" @click="generateReport" v-if="currentStep===3"><i class="ri-file-download-line me-1"></i>Generate Laporan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- LIGHTBOX -->
     <div v-if="lightbox.show" class="ha-lightbox" @click="lightbox.show=false">
         <button class="ha-lightbox-close" @click.stop="lightbox.show=false"><i class="ri-close-line"></i></button>
@@ -346,7 +428,23 @@ export default {
             blobUrlCache: {},
             fotoModal: { show: false, photos: [], loading: false },
             lightbox: { show: false, url: '', keterangan: '' },
+
+            // Print / Cetak Laporan
+            printModal: null,
+            currentStep: 1,
+            selectedAnalysis: null,
+            selectedIsPerhitungan: null,
+            startDate: "",
+            endDate: "",
+            exportFormat: "excel",
         };
+    },
+    watch: {
+        currentStep(val) { sessionStorage.setItem("printStep", val); },
+        selectedAnalysis(val) { sessionStorage.setItem("printSelectedAnalysis", val ?? ""); },
+        startDate(val) { sessionStorage.setItem("printStartDate", val ?? ""); },
+        endDate(val) { sessionStorage.setItem("printEndDate", val ?? ""); },
+        exportFormat(val) { sessionStorage.setItem("printExportFormat", val); },
     },
     computed: {
         expandedAuditLog() {
@@ -373,6 +471,10 @@ export default {
             const q = this.jenisSearch.toLowerCase();
             return this.jenisAnalisaList.filter(j => j.Jenis_Analisa?.toLowerCase().includes(q) || j.Kode_Analisa?.toLowerCase().includes(q));
         },
+        today() { return new Date().toISOString().split("T")[0]; },
+        formattedStartDate() { return this.startDate ? new Date(this.startDate).toLocaleDateString("id-ID") : "-"; },
+        formattedEndDate() { return this.endDate ? new Date(this.endDate).toLocaleDateString("id-ID") : "-"; },
+        selectedAnalysisName() { const f = this.jenisAnalisaList.find(j => j.Id_Jenis_Analisa === this.selectedAnalysis); return f ? f.Jenis_Analisa : null; },
     },
     methods: {
         async fetchJenisAnalisa() {
@@ -512,8 +614,103 @@ export default {
         getStepIcon(log){if(log.Sub_Aksi==='TOLAK')return'ri-close-line';if(log.Jenis_Aksi==='INPUT_ANALYZER')return'ri-test-tube-line';if(log.Jenis_Aksi?.includes('FINALISASI'))return'ri-shield-star-line';return'ri-check-line';},
         getStepBadgeClass(log){if(log.Sub_Aksi==='TOLAK')return'vtl-badge--danger';if(log.Jenis_Aksi==='INPUT_ANALYZER')return'vtl-badge--info';if(log.Jenis_Aksi?.includes('FINALISASI'))return'vtl-badge--final';return'vtl-badge--success';},
         checkMobile(){this.isMobile=window.innerWidth<768;},
+
+        // ─── Print / Cetak Laporan ─────────────────────────────────────
+        togglePrintModal() {
+            if (!this.printModal) {
+                this.printModal = new bootstrap.Modal(document.getElementById("printModal"));
+            }
+            const savedStep = sessionStorage.getItem("printStep");
+            const savedAnalysis = sessionStorage.getItem("printSelectedAnalysis");
+            const savedStart = sessionStorage.getItem("printStartDate");
+            const savedEnd = sessionStorage.getItem("printEndDate");
+            const savedFormat = sessionStorage.getItem("printExportFormat");
+            this.currentStep = savedStep ? parseInt(savedStep) : 1;
+            this.selectedAnalysis = savedAnalysis || null;
+            this.startDate = savedStart || "";
+            this.endDate = savedEnd || "";
+            this.exportFormat = savedFormat || "excel";
+            this.printModal.show();
+        },
+        closePrintModal() {
+            this.printModal.hide();
+            this.resetPrintForm();
+            sessionStorage.removeItem("printStep");
+            sessionStorage.removeItem("printSelectedAnalysis");
+            sessionStorage.removeItem("printStartDate");
+            sessionStorage.removeItem("printEndDate");
+            sessionStorage.removeItem("printExportFormat");
+        },
+        nextStep() { if (this.validateCurrentStep()) this.currentStep++; },
+        prevStep() { this.currentStep--; },
+        validateCurrentStep() {
+            if (this.currentStep === 1 && !this.selectedAnalysis) {
+                Swal.fire({ icon: "warning", title: "Peringatan", text: "Pilih minimal satu jenis analisa" });
+                return false;
+            }
+            if (this.currentStep === 2 && (!this.startDate || !this.endDate)) {
+                Swal.fire({ icon: "warning", title: "Peringatan", text: "Isi periode tanggal lengkap" });
+                return false;
+            }
+            return true;
+        },
+        toggleAnalysisSelection(item) {
+            if (this.selectedAnalysis === item.Id_Jenis_Analisa) {
+                this.selectedAnalysis = null; this.selectedIsPerhitungan = null;
+            } else {
+                this.selectedAnalysis = item.Id_Jenis_Analisa; this.selectedIsPerhitungan = item.Flag_Perhitungan;
+            }
+        },
+        async generateReport() {
+            Swal.fire({ title: "Mohon Tunggu", html: "Laporan sedang diproses dan dibuat...", allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+            try {
+                const payload = { analysis: this.selectedAnalysis, Flag_Perhitungan: this.selectedIsPerhitungan, startDate: this.startDate, endDate: this.endDate, format: this.exportFormat };
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+                let response;
+                if (this.exportFormat === "pdf") {
+                    response = await axios.post("/rekap-sampel/pdf", payload, { headers: { "X-CSRF-TOKEN": csrfToken }, responseType: "blob" });
+                } else {
+                    response = await axios.post("/api/v1/download-rekap/analisa", payload, { headers: { "X-CSRF-TOKEN": csrfToken }, responseType: "blob" });
+                }
+                Swal.close();
+                const blob = new Blob([response.data], { type: response.headers["content-type"] });
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                let fileName = `laporan-rekap.${this.exportFormat === "pdf" ? "pdf" : "xlsx"}`;
+                const contentDisposition = response.headers["content-disposition"] || response.headers["Content-Disposition"];
+                if (contentDisposition) { const m = contentDisposition.match(/filename\*?=(?:(?:UTF-8'')?["']?)([^;"']+)/i); if (m && m[1]) fileName = decodeURIComponent(m[1]); }
+                link.setAttribute("download", fileName);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+                Swal.fire({ icon: "success", title: "Sukses", text: "Laporan berhasil diunduh.", timer: 2000, showConfirmButton: false });
+            } catch (error) {
+                try {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        try {
+                            const parsed = JSON.parse(reader.result);
+                            Swal.fire({ icon: "warning", title: "Tidak Ditemukan", text: parsed?.message || "Terjadi kesalahan saat membuat laporan." });
+                        } catch { Swal.fire({ icon: "error", title: "Gagal Memproses Laporan", text: "Terjadi kesalahan internal. Silakan coba lagi nanti." }); }
+                    };
+                    reader.readAsText(error.response?.data);
+                } catch { Swal.fire({ icon: "error", title: "Gagal Memproses Laporan", text: "Terjadi kesalahan tidak terduga." }); }
+            }
+        },
+        resetPrintForm() {
+            this.currentStep = 1; this.selectedAnalysis = null; this.selectedIsPerhitungan = null;
+            this.startDate = ""; this.endDate = ""; this.exportFormat = "excel";
+        },
     },
-    mounted(){this.checkMobile();window.addEventListener('resize',this.checkMobile);this.fetchJenisAnalisa();},
+    mounted(){
+        this.checkMobile();
+        window.addEventListener('resize',this.checkMobile);
+        this.fetchJenisAnalisa();
+        const savedPrintStep = sessionStorage.getItem("printStep");
+        if (savedPrintStep) { this.$nextTick(() => this.togglePrintModal()); }
+    },
     beforeUnmount(){window.removeEventListener('resize',this.checkMobile);},
 };
 </script>
@@ -716,4 +913,46 @@ export default {
 .ha-lightbox-inner{display:flex;flex-direction:column;align-items:center;max-width:90vw;max-height:90vh;cursor:default;}
 .ha-lightbox-img{max-width:100%;max-height:80vh;object-fit:contain;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,.6);}
 .ha-lightbox-caption{margin-top:12px;color:#e2e8f0;font-size:.82rem;font-weight:500;text-align:center;max-width:500px;}
+
+/* ─── CETAK LAPORAN BUTTON ─── */
+.ha-print-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,#405189,#2e3a64);color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(64,81,137,.35);transition:all .2s;white-space:nowrap;}
+.ha-print-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(64,81,137,.45);}
+.ha-print-btn:active{transform:translateY(0);}
+
+/* ─── PRINT MODAL STEPS ─── */
+.pr-steps-progress{display:flex;justify-content:space-between;position:relative;}
+.pr-steps-progress::before{content:"";position:absolute;top:15px;left:0;right:0;height:3px;background:#e9ecef;z-index:0;}
+.pr-step{display:flex;flex-direction:column;align-items:center;position:relative;z-index:1;flex:1;}
+.pr-step-num{width:32px;height:32px;border-radius:50%;background:#e9ecef;display:flex;align-items:center;justify-content:center;margin-bottom:8px;border:2px solid #e9ecef;transition:all .3s;font-size:.85rem;font-weight:700;color:#6c757d;}
+.pr-step-lbl{font-size:.8rem;color:#6c757d;text-align:center;}
+.pr-step.active .pr-step-num{background:#405189;color:#fff;border-color:#405189;}
+.pr-step.active .pr-step-lbl{color:#405189;font-weight:600;}
+
+/* ─── PRINT MODAL ANALYSIS SELECTOR ─── */
+.pr-analysis-selector{max-height:360px;overflow-y:auto;padding-right:4px;}
+.pr-analysis-selector::-webkit-scrollbar{width:6px;}
+.pr-analysis-selector::-webkit-scrollbar-track{background:#f1f1f1;border-radius:4px;}
+.pr-analysis-selector::-webkit-scrollbar-thumb{background:#405189;border-radius:4px;}
+.pr-analysis-option{display:flex;align-items:center;padding:11px 14px;border-radius:8px;border:1px solid #dee2e6;cursor:pointer;transition:all .2s;background:#fff;}
+.pr-analysis-option:hover{border-color:#86b7fe;box-shadow:0 0 0 3px rgba(64,81,137,.1);}
+.pr-analysis-option.selected{border-color:#405189;background:rgba(64,81,137,.05);}
+.pr-option-icon{width:38px;height:38px;border-radius:8px;background:rgba(64,81,137,.1);display:flex;align-items:center;justify-content:center;margin-right:14px;color:#405189;font-size:1rem;flex-shrink:0;}
+.pr-option-details{flex:1;}
+.pr-option-details h6{margin:0;font-size:.9rem;}
+.pr-option-check{width:22px;height:22px;border-radius:50%;background:#405189;display:flex;align-items:center;justify-content:center;color:#fff;opacity:0;transition:opacity .2s;font-size:.75rem;}
+.pr-analysis-option.selected .pr-option-check{opacity:1;}
+.badge.bg-primary-soft{background:rgba(64,81,137,.12);color:#405189;font-weight:700;padding:3px 8px;border-radius:5px;font-size:.72rem;}
+
+/* ─── PRINT MODAL DATE & SUMMARY ─── */
+.pr-date-picker{background:#f8f9fa;padding:18px;border-radius:8px;}
+.pr-summary{background:#f8f9fa;padding:18px;border-radius:8px;}
+.pr-summary-card{background:#fff;border-radius:8px;border:1px solid #dee2e6;overflow:hidden;}
+.pr-summary-hdr{background:#f8f9fa;padding:11px 14px;border-bottom:1px solid #dee2e6;display:flex;align-items:center;gap:8px;}
+.pr-summary-hdr i{color:#405189;font-size:1rem;}
+.pr-summary-hdr h5{margin:0;font-size:.95rem;}
+.pr-summary-body{padding:14px;}
+.pr-summary-item{display:flex;margin-bottom:11px;padding-bottom:11px;border-bottom:1px dashed #e9ecef;}
+.pr-summary-item:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.pr-summary-item span{width:120px;color:#6c757d;font-size:.85rem;flex-shrink:0;}
+.pr-summary-item strong{flex:1;font-weight:500;}
 </style>

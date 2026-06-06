@@ -5,6 +5,10 @@
 /public/hot
 /public/storage
 /storage/*.key
+/storage/app/temp/*
+!/storage/app/temp/.gitkeep
+/storage/app/temp_exports/*
+!/storage/app/temp_exports/.gitkeep
 /vendor
 .env
 .env.backup
