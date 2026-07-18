@@ -10753,6 +10753,7 @@ class FormulatorTrialSampelController extends Controller
             ->whereNull('N_EMI_LIMS_Uji_Sampel.Status')
             ->where('N_EMI_LIMS_Uji_Sampel.Flag_Selesai', 'Y')
             ->where('N_EMI_LIMS_Uji_Sampel.Status_Keputusan_Sampel', 'terima')
+            ->whereNull('N_EMI_LIMS_Uji_Sampel.Flag_Resampling')
             ->orderByDesc('Tanggal')
             ->get()
             )->map(function ($item) {
@@ -11203,7 +11204,8 @@ class FormulatorTrialSampelController extends Controller
             ->whereNull('N_EMI_LIMS_Uji_Sampel.Status')
             ->where('N_EMI_LIMS_Uji_Sampel.Id_Jenis_Analisa', $id)
             ->where('N_EMI_LIMS_Uji_Sampel.Flag_Selesai', 'Y')
-            ->where('N_EMI_LIMS_Uji_Sampel.Flag_Final', 'Y');
+            ->where('N_EMI_LIMS_Uji_Sampel.Flag_Final', 'Y')
+            ->whereNull('N_EMI_LIMS_Uji_Sampel.Flag_Resampling');
 
         if (!empty($searchQuery)) {
             $baseQuery->where(function ($query) use ($searchQuery) {
@@ -11343,9 +11345,10 @@ class FormulatorTrialSampelController extends Controller
                 ->where('Flag_Multi_QrCode', 'Y')
                 ->where('Flag_Selesai', 'Y')
                 ->where('Status_Keputusan_Sampel', 'terima')
+                ->whereNull('Flag_Resampling')
                 ->get()
                 ->unique(function($item) {
-                    return $item->No_Po_Sampel . '-' . $item->No_Fak_Sub_Po; // Gabungkan keduanya untuk memastikan tidak ada duplikat
+                    return $item->No_Po_Sampel . '-' . $item->No_Fak_Sub_Po;
                 })
                 ->values();
 
@@ -11541,6 +11544,7 @@ class FormulatorTrialSampelController extends Controller
                 ->where('N_EMI_LIMS_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
                 ->where('N_EMI_LIMS_Uji_Sampel.Flag_Multi_QrCode', $flag_multi)
                 ->where('N_EMI_LIMS_Uji_Sampel.Flag_Selesai', 'Y')
+                ->whereNull('N_EMI_LIMS_Uji_Sampel.Flag_Resampling')
                 ->get();
 
             if ($ujiSampel->isEmpty()) {
@@ -11677,6 +11681,7 @@ class FormulatorTrialSampelController extends Controller
                 ->where('N_EMI_LIMS_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
                 ->where('N_EMI_LIMS_Uji_Sampel.Flag_Multi_QrCode', $flag_multi)
                 ->where('N_EMI_LIMS_Uji_Sampel.Flag_Selesai', 'Y')
+                ->whereNull('N_EMI_LIMS_Uji_Sampel.Flag_Resampling')
                 ->first();
 
             // Tambahkan sesi foto ke object informasi
@@ -12653,8 +12658,9 @@ class FormulatorTrialSampelController extends Controller
                 ->where('uji.Id_Jenis_Analisa', $decoded_id_jenis_analisa)
                 ->whereNull('uji.Flag_Multi_QrCode')
                 ->where('uji.Flag_Selesai', 'Y')
+                ->whereNull('uji.Flag_Resampling')
                 ->orderBy('uji.No_Faktur')
-                ->get(); 
+                ->get();
 
             if ($daftarSampel->isEmpty()) {
                 return response()->json([
@@ -15248,6 +15254,7 @@ class FormulatorTrialSampelController extends Controller
             }
 
             $noSampelList   = $samples->pluck('No_Sampel')->toArray();
+            $noPoList       = $samples->pluck('No_Po')->unique()->filter()->toArray();
             $kodeBarangList = $samples->pluck('Kode_Barang')->unique()->filter()->toArray();
             $idMesinList    = $samples->pluck('Id_Mesin')->unique()->filter()->toArray();
 
@@ -15264,6 +15271,19 @@ class FormulatorTrialSampelController extends Controller
                 }
             }
             $barangNameMap = $barangNameMap->pluck('Nama', 'Kode_Barang');
+
+            $formulaRaw = collect([]);
+            if (!empty($noPoList)) {
+                foreach (array_chunk($noPoList, 1000) as $chunk) {
+                    $formulaRaw = $formulaRaw->concat(
+                        DB::table('N_EMI_View_Trial_Order_Produksi')
+                            ->whereIn('No_Faktur', $chunk)
+                            ->select('No_Faktur', 'Kode_Formula')
+                            ->get()
+                    );
+                }
+            }
+            $formulaByNoPo = $formulaRaw->pluck('Kode_Formula', 'No_Faktur');
 
             $allAnalisaRaw = collect([]);
             if (!empty($kodeBarangList) && !empty($idMesinList)) {
@@ -15314,7 +15334,7 @@ class FormulatorTrialSampelController extends Controller
             }
             $resamplingByNoSampel = $allResamplingRaw->groupBy('No_Po_Sampel');
 
-            $result = $samples->map(function ($po) use ($analisaByKey, $ujiByNoSampel, $multiQrData, $resamplingByNoSampel, $barangNameMap) {
+            $result = $samples->map(function ($po) use ($analisaByKey, $ujiByNoSampel, $multiQrData, $resamplingByNoSampel, $barangNameMap, $formulaByNoPo) {
                 $key          = $po->Kode_Barang . '|' . $po->Id_Mesin;
                 $analisaList  = $analisaByKey->get($key, collect());
                 $ujiList      = $ujiByNoSampel->get($po->No_Sampel, collect());
@@ -15358,6 +15378,7 @@ class FormulatorTrialSampelController extends Controller
                     'no_batch'       => $po->No_Batch ?? '-',
                     'kode_barang'    => $po->Kode_Barang,
                     'nama_barang'    => $barangNameMap->get($po->Kode_Barang, $po->Kode_Barang),
+                    'kode_formula'   => $formulaByNoPo->get($po->No_Po),
                     'nama_mesin'     => $po->Nama_Mesin,
                     'Id_Mesin'       => $po->Id_Mesin,
                     'is_multi_print' => $po->Flag_Multi_Qrcode,

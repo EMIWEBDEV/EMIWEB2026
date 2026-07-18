@@ -251,6 +251,31 @@
             </div>
         </div>
 
+        <!-- ERROR 422 MODAL -->
+        <div v-if="errorModal.show" class="fin-modal-backdrop" @click.self="errorModal.show=false">
+            <div class="fin-modal">
+                <div class="fin-modal-hdr" style="background:linear-gradient(135deg,#991b1b,#ef4444);">
+                    <i class="ri-error-warning-line me-2 fs-5"></i>
+                    <div>
+                        <div class="fin-modal-title">Analisa Belum Lengkap</div>
+                        <div class="fin-modal-sub">{{ errorModal.noSampel }}</div>
+                    </div>
+                    <button class="fin-modal-close" @click="errorModal.show=false"><i class="ri-close-line"></i></button>
+                </div>
+                <div class="fin-modal-body">
+                    <p class="text-muted small mb-3">{{ errorModal.message }}</p>
+                    <div v-if="errorModal.missingAnalisa.length > 0">
+                        <div class="fw-semibold text-danger small mb-2"><i class="ri-alert-line me-1"></i>Analisa yang belum dilakukan:</div>
+                        <div v-for="(analisa, idx) in errorModal.missingAnalisa" :key="idx" class="fin-error-analisa-row">
+                            <i class="ri-close-circle-line text-danger me-2"></i>
+                            <span>{{ analisa }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="fin-modal-ftr"><button class="btn btn-danger" @click="errorModal.show=false"><i class="ri-check-line me-1"></i>Mengerti</button></div>
+            </div>
+        </div>
+
         <!-- FOTO MODAL + LIGHTBOX via teleport — same structure as monitoring -->
         <teleport to="body">
             <transition name="fin-foto-fade">
@@ -298,6 +323,7 @@ export default {
             loading:{list:false,detail:false,timeline:false,submitting:false},
             selectedItems:[], isMobile:false, detailVisible:false,
             modal:{show:false,isBulk:false},
+            errorModal:{show:false,message:'',missingAnalisa:[],noSampel:''},
             openSections:[], openAnalisas:[],
             loadingTable:{}, templates:{}, tableRows:{}, tableAverages:{}, tableRawFotos:{},
             blobUrlCache:{},
@@ -459,7 +485,20 @@ export default {
                     else this.showToast("error",res.data?.message||"Gagal finalisasi");
                 }
                 this.modal.show=false;
-            }catch(e){this.showToast("error",e.response?.data?.message||"Terjadi kesalahan");}
+            }catch(e){
+                const errData=e.response?.data;
+                if(e.response?.status===422&&errData?.detail){
+                    this.modal.show=false;
+                    this.errorModal={
+                        show:true,
+                        message:errData.message||"Data analisa belum lengkap",
+                        missingAnalisa:errData.detail.Analisa_Kurang||[],
+                        noSampel:errData.detail.No_Sampel||''
+                    };
+                }else{
+                    this.showToast("error",errData?.message||"Terjadi kesalahan");
+                }
+            }
             finally{this.loading.submitting=false;}
         },
         showToast(type,msg){const el=document.createElement("div");el.className=`fin-toast fin-toast--${type==='success'?'success':'error'}`;el.innerHTML=`<i class="${type==='success'?'ri-checkbox-circle-line':'ri-close-circle-line'} me-2"></i>${msg}`;document.body.appendChild(el);setTimeout(()=>el.remove(),3500);},
@@ -706,6 +745,7 @@ export default {
 .fin-bulk-row{display:flex;align-items:center;gap:9px;padding:5px 9px;border-radius:5px;background:#fffbeb;margin-bottom:3px;}
 .fin-bulk-code{font-size:.76rem;color:#d97706;font-family:monospace;}
 .fin-modal-ftr{display:flex;justify-content:flex-end;gap:9px;padding:11px 18px;background:#fffbeb;border-top:1px solid #fde68a;}
+.fin-error-analisa-row{display:flex;align-items:center;padding:7px 11px;border-radius:6px;background:#fff5f5;border:1px solid #fecaca;margin-bottom:4px;font-size:.82rem;font-weight:500;color:#991b1b;}
 .fin-hidden-mobile{display:none !important;}
 @media(min-width:768px){.fin-hidden-mobile{display:flex !important;}}
 .fin-mobile-back{padding:9px 12px;border-bottom:1px solid #e2e8f0;flex-shrink:0;background:#fff;}

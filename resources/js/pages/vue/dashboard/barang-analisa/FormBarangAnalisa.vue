@@ -145,33 +145,31 @@
                                             </div>
 
                                             <div class="col-12">
-                                                <label
-                                                    class="form-label fw-bold"
-                                                    >Pilih Barang</label
-                                                >
-                                                <div
-                                                    class="text-muted small mb-1"
-                                                >
-                                                    Dapat memilih lebih dari 1
-                                                    barang (Harus dipilih
-                                                    manual)
+                                                <label class="form-label fw-bold">Pilih Barang</label>
+                                                <div class="text-muted small mb-1">
+                                                    Ketik untuk mencari, dapat memilih lebih dari 1 barang
                                                 </div>
                                                 <el-select
                                                     v-model="row.Kode_Barang"
                                                     multiple
                                                     collapse-tags
                                                     collapse-tags-tooltip
-                                                    placeholder="-- Pilih Barang --"
-                                                    class="w-100"
                                                     filterable
+                                                    remote
+                                                    reserve-keyword
+                                                    :remote-method="(q) => searchBarangForRow(q, row)"
+                                                    :loading="row.barangLoading"
+                                                    placeholder="Ketik kode / nama barang..."
+                                                    no-data-text="Ketik untuk mencari barang"
+                                                    loading-text="Mencari..."
+                                                    class="w-100"
+                                                    @change="(val) => onBarangChange(val, row)"
                                                 >
                                                     <el-option
-                                                        v-for="item in options.barang"
+                                                        v-for="item in row.barangOptions"
                                                         :key="item.Kode_Barang"
                                                         :label="`${item.Kode_Barang} ~ ${item.Nama}`"
-                                                        :value="
-                                                            item.Kode_Barang
-                                                        "
+                                                        :value="item.Kode_Barang"
                                                     />
                                                 </el-select>
                                             </div>
@@ -270,7 +268,6 @@ export default {
             selectedRole: "",
             options: {
                 jenisAnalisa: [],
-                barang: [],
                 mesin: [],
                 user: [],
             },
@@ -289,20 +286,12 @@ export default {
         async fetchAllOptions() {
             this.loading.init = true;
             try {
-                const [resJenis, resBarang, resMesin, resUser] =
-                    await Promise.all([
-                        axios.get(
-                            "/api/v1/barang-analisa/option/jenis-analisa"
-                        ),
-                        axios.get(
-                            "/api/v1/barang-analisa/option/varian-barang"
-                        ),
-                        axios.get("/api/v1/barang-analisa/option/mesin"),
-                        axios.get("/api/v1/barang-analisa/option/user"),
-                    ]);
-
+                const [resJenis, resMesin, resUser] = await Promise.all([
+                    axios.get("/api/v1/barang-analisa/option/jenis-analisa"),
+                    axios.get("/api/v1/barang-analisa/option/mesin"),
+                    axios.get("/api/v1/barang-analisa/option/user"),
+                ]);
                 this.options.jenisAnalisa = resJenis.data.result;
-                this.options.barang = resBarang.data.result;
                 this.options.mesin = resMesin.data.result;
                 this.options.user = resUser.data.result;
             } catch (error) {
@@ -319,6 +308,10 @@ export default {
                 Id_Master_Mesin: [],
                 Kode_Barang: [],
                 Id_User: [],
+                barangOptions: [],
+                barangLoading: false,
+                barangCache: {},
+                barangTimer: null,
             });
         },
 
@@ -339,6 +332,50 @@ export default {
                     row[field] = val.filter((item) => item !== "ALL");
                 }
             }
+        },
+
+        searchBarangForRow(query, row) {
+            clearTimeout(row.barangTimer);
+            if (!query || !query.trim()) {
+                row.barangOptions = Object.values(row.barangCache);
+                return;
+            }
+            row.barangLoading = true;
+            row.barangTimer = setTimeout(async () => {
+                try {
+                    const { data } = await axios.get(
+                        "/api/v1/barang-analisa/option/varian-barang",
+                        { params: { search: query.trim(), limit: 20 } }
+                    );
+                    const results = data.result || [];
+                    const inResults = new Set(results.map((r) => r.Kode_Barang));
+                    const extras = Object.values(row.barangCache).filter(
+                        (c) => !inResults.has(c.Kode_Barang)
+                    );
+                    row.barangOptions = [...results, ...extras];
+                } catch {
+                    // silent — keep existing options
+                } finally {
+                    row.barangLoading = false;
+                }
+            }, 350);
+        },
+
+        onBarangChange(val, row) {
+            const valSet = new Set(val);
+            // Remove deselected from cache
+            Object.keys(row.barangCache).forEach((k) => {
+                if (!valSet.has(k)) delete row.barangCache[k];
+            });
+            // Cache newly selected items so they survive future searches
+            val.forEach((kode) => {
+                if (!row.barangCache[kode]) {
+                    const found = row.barangOptions.find(
+                        (b) => b.Kode_Barang === kode
+                    );
+                    if (found) row.barangCache[kode] = found;
+                }
+            });
         },
 
         async saveData() {

@@ -400,7 +400,8 @@ class RoleMenuController extends Controller
             foreach ($request->items as $index => $item) {
                 $Id_Menu = $newMenuIds[$index];
 
-                // updateOrInsert: update record lama (Id_Page_Access tidak berubah) atau insert baru jika belum ada
+                // updateOrInsert: update record lama (Id_Page_Access tidak berubah) atau insert baru jika belum ada.
+                // Header grouping (Nama_Header dll) dibaca dari N_EMI_LAB_Menus — tidak disimpan di sini.
                 DB::table('N_EMI_LAB_Page_Access_2')->updateOrInsert(
                     [
                         'Kode_Perusahaan' => '001',
@@ -411,15 +412,6 @@ class RoleMenuController extends Controller
                         'Urutan_Menu' => $item['Urutan_Menu'],
                     ]
                 );
-
-                // Simpan grouping kembali ke N_EMI_LAB_Menus
-                DB::table('N_EMI_LAB_Menus')
-                    ->where('Id_Menu', $Id_Menu)
-                    ->update([
-                        'Nama_Header'     => $item['Nama_Header'] ?: null,
-                        'Sub_Header'      => $item['Sub_Header'] ?: null,
-                        'Sub_Sub_Header'  => $item['Sub_Sub_Header'] ?: null,
-                    ]);
             }
 
             DB::commit();

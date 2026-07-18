@@ -306,26 +306,33 @@ class BarangAnalisaController extends Controller
         }
     }
 
-    public function getDataVarianBarang()
+    public function getDataVarianBarang(Request $request)
     {
         try {
-            $barang = DB::table('N_EMI_View_Barang')
-                ->select("Kode_Barang", "Nama")
-                ->get()
-                ->unique('Kode_Barang')
-                ->values();
+            $search = trim($request->input('search', ''));
+            $limit  = min(25, max(5, (int) $request->input('limit', 20)));
 
-            return ResponseHelper::success(
-                $barang,
-                'Data Varian Barang berhasil diambil'
-            );
+            $query = DB::table('N_EMI_View_Barang')
+                ->select('Kode_Barang', DB::raw('MAX(Nama) as Nama'))
+                ->groupBy('Kode_Barang');
+
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('Kode_Barang', 'like', '%' . $search . '%')
+                      ->orWhere('Nama', 'like', '%' . $search . '%');
+                });
+            }
+
+            $barang = $query->orderBy('Kode_Barang')->limit($limit)->get();
+
+            return ResponseHelper::success($barang, 'Data Varian Barang berhasil diambil');
         } catch (\Exception $e) {
             Log::channel('BarangAnalisaController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
             return response()->json([
-                'success' => true,
+                'success' => false,
                 'status' => 500,
                 'message' => "Terjadi Kesalahan",
-            ], 500); 
+            ], 500);
         }
     }
 
