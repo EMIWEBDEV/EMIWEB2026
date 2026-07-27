@@ -94,16 +94,22 @@ class AuthController extends Controller
         $user = User::where('UserId', $request->UserId)->first();
 
         if (!$user) {
-            return back()->with('error', "Akun Tidak Terdaftar");
+            return back()
+                ->with('error', "Akun \"{$request->UserId}\" tidak terdaftar. Periksa kembali penulisan User ID Anda.")
+                ->withInput($request->only('UserId'));
         }
 
         if($user->Flag_Aktif === null){
-            return back()->with('error', "Akun Anda Telah Di Nonaktifkan, Silahkan Hubungi IT Pusat PT EVO Manufacturing");
+            return back()
+                ->with('error', "Akun Anda sedang dinonaktifkan. Silakan hubungi IT Pusat PT EVO Manufacturing untuk mengaktifkan kembali.")
+                ->withInput($request->only('UserId'));
         }
 
         if (app()->environment('production')) {
             if (!Hash::check(env('SALT_PREFIX') . $request->Password . env('SALT_SUFFIX'), $user->Password)) {
-                return back()->with('error', "Password Anda Salah");
+                return back()
+                    ->with('error', "Password salah untuk akun \"{$request->UserId}\". Silakan coba lagi.")
+                    ->withInput($request->only('UserId'));
             }
         }
 
@@ -239,9 +245,17 @@ class AuthController extends Controller
             $request->session()->save();
             return redirect($firstRedirectUrl)->with('success', 'Login berhasil!');
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Error DATABASE (koneksi / penyimpanan session / query) — BUKAN salah password.
+            Log::channel('AuthController')->error(__METHOD__ . ' [AUTH-DB]: ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
+            return back()
+                ->with('error', 'Login gagal karena gangguan database/penyimpanan sesi — BUKAN karena password salah. Detail sudah tercatat di log. Hubungi IT dengan kode: AUTH-DB.')
+                ->withInput($request->only('UserId'));
         } catch (\Exception $e) {
-            Log::channel('AuthController')->error(__METHOD__ . ': ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
-            return back()->with('error', "Terjadi Kesalahan Sistem.");
+            Log::channel('AuthController')->error(__METHOD__ . ' [AUTH-500]: ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
+            return back()
+                ->with('error', 'Terjadi kesalahan sistem saat memproses login — BUKAN karena password salah. Coba sekali lagi; jika berulang hubungi IT dengan kode: AUTH-500.')
+                ->withInput($request->only('UserId'));
         }
     }
 

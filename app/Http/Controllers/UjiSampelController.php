@@ -7498,8 +7498,7 @@ class UjiSampelController extends Controller
                                     ->update([
                                         'Status_Keputusan_Sampel' => 'terima',
                                         'Flag_Selesai' => 'Y',
-                                        'Flag_Layak' => 'Y',
-                                        'Flag_Final' => 'Y'
+                                        'Flag_Layak' => 'Y'
                                     ]);
 
                             $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
@@ -7564,8 +7563,7 @@ class UjiSampelController extends Controller
                                 ->update([
                                     'Flag_Selesai' => 'Y',
                                     'Status_Keputusan_Sampel' => 'terima',
-                                    'Flag_Layak' => 'Y',
-                                    'Flag_Final' => 'Y'
+                                    'Flag_Layak' => 'Y'
                                 ]);
 
                         $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
@@ -7627,8 +7625,7 @@ class UjiSampelController extends Controller
                                 ->update([
                                     'Flag_Selesai' => 'Y',
                                     'Status_Keputusan_Sampel' => 'terima',
-                                    'Flag_Layak' => 'Y',
-                                    'Flag_Final' => 'Y'
+                                    'Flag_Layak' => 'Y'
                                 ]);
 
                         $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
@@ -10437,6 +10434,12 @@ class UjiSampelController extends Controller
                 'N_EMI_LAB_Uji_Sampel.Tahapan_Ke'
             )
             ->whereIn('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $noPoSampelList)
+            // Baris yang sudah di-resample tidak boleh ikut menilai lolos/tidak lolos,
+            // karena hasil penggantinya sudah ada di baris lain.
+            ->where(function ($q) {
+                $q->whereNull('N_EMI_LAB_Uji_Sampel.Flag_Resampling')
+                  ->orWhere('N_EMI_LAB_Uji_Sampel.Flag_Resampling', '!=', 'Y');
+            })
             ->orderByDesc('N_EMI_LAB_Uji_Sampel.Tahapan_Ke')
             ->orderByDesc('N_EMI_LAB_Uji_Sampel.Tanggal')
             ->orderByDesc('N_EMI_LAB_Uji_Sampel.Jam')
@@ -11537,8 +11540,7 @@ class UjiSampelController extends Controller
             )
             ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
             ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id)
-            ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
-            ->where('N_EMI_LAB_Uji_Sampel.Flag_Final', 'Y');
+            ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y');
 
         if (!empty($searchQuery)) {
             $baseQuery->where(function ($query) use ($searchQuery) {
@@ -15806,7 +15808,7 @@ class UjiSampelController extends Controller
                     if ($isMultiQr && $noFakSubPo) {
                         $q->where('No_Fak_Sub_Po', $noFakSubPo);
                     }
-                    $q->update(['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y', 'Flag_Layak' => 'Y', 'Flag_Final' => 'Y']);
+                    $q->update(['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y', 'Flag_Layak' => 'Y']);
                 } else {
                     $q = DB::table('N_EMI_LAB_Uji_Sampel')
                         ->where('No_Po_Sampel', $noPo)
@@ -15815,7 +15817,7 @@ class UjiSampelController extends Controller
                     if ($isMultiQr && $noFakSubPo) {
                         $q->where('No_Fak_Sub_Po', $noFakSubPo);
                     }
-                    $q->update(['Flag_Selesai' => 'Y', 'Status_Keputusan_Sampel' => 'terima', 'Flag_Layak' => 'Y', 'Flag_Final' => 'Y']);
+                    $q->update(['Flag_Selesai' => 'Y', 'Status_Keputusan_Sampel' => 'terima', 'Flag_Layak' => 'Y']);
                 }
 
                 // Kumpulkan detail analisa per sampel untuk log detail

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AbsensiController;
 use App\Http\Controllers\BarangAnalisaController;
+use App\Http\Controllers\BarangUjiMasterController;
 use App\Http\Controllers\BindingIdentityController;
 use App\Http\Controllers\BindingJenisAnalisaController;
 use Illuminate\Support\Facades\Route;
@@ -47,6 +48,9 @@ Route::get('/checking', function (\Illuminate\Http\Request $request) {
     }
     abort(404);
 });
+
+// Cloud Tasks: 'sync-barangujilab' -> materialisasi master ke Barang_Analisa (diproteksi header X-Sync-Token)
+Route::post('/api/v1/tasks/sync-barangujilab', [BarangUjiMasterController::class, 'runTask']);
 
 
 Route::middleware(['auth'])->group(function () {
@@ -291,6 +295,23 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get('/api/v1/barang-analisa/option/user', [BarangAnalisaController::class, 'getDataUser']);
     Route::get('/barang-jenis/analisa/create', [BarangAnalisaController::class, 'create'])->name('barangjenisanalis.create')->middleware('autotrack', 'permission:Barang_Uji_Laboratorium,CREATE');
     Route::post('/api/v1/barang-jenis/analisa/store', [BarangAnalisaController::class, 'store'])->name('barangjenisanalis.store');
+
+    // Master Barang Uji Lab (template per user) + sinkronisasi ke Barang_Analisa
+    Route::get('/barang-uji-master', [BarangUjiMasterController::class, 'index'])->name('barangujimaster.index')->middleware('autotrack', 'permission:Master_Barang_Uji_Lab,VIEW');
+    Route::get('/barang-uji-master/create', [BarangUjiMasterController::class, 'create'])->name('barangujimaster.create')->middleware('autotrack', 'permission:Master_Barang_Uji_Lab,CREATE');
+    Route::get('/barang-uji-master/edit/{id}', [BarangUjiMasterController::class, 'edit'])->name('barangujimaster.edit')->middleware('autotrack', 'permission:Master_Barang_Uji_Lab,EDIT');
+    Route::get('/api/v1/barang-uji-master/current', [BarangUjiMasterController::class, 'getData']);
+    Route::get('/api/v1/barang-uji-master/detail/{id}', [BarangUjiMasterController::class, 'detail']);
+    Route::get('/api/v1/barang-uji-master/option/user', [BarangUjiMasterController::class, 'getOptionUser']);
+    Route::get('/api/v1/barang-uji-master/option/jenis-analisa', [BarangUjiMasterController::class, 'getOptionJenisAnalisa']);
+    Route::get('/api/v1/barang-uji-master/option/mesin', [BarangUjiMasterController::class, 'getOptionMesin']);
+    Route::get('/api/v1/barang-uji-master/preview/{id}', [BarangUjiMasterController::class, 'preview']);
+    Route::get('/api/v1/barang-uji-master/progress', [BarangUjiMasterController::class, 'progress']);
+    Route::post('/api/v1/barang-uji-master/store', [BarangUjiMasterController::class, 'store'])->name('barangujimaster.store');
+    Route::put('/api/v1/barang-uji-master/update/{id}', [BarangUjiMasterController::class, 'update'])->name('barangujimaster.update');
+    Route::post('/api/v1/barang-uji-master/sync/{id}', [BarangUjiMasterController::class, 'sync'])->name('barangujimaster.sync');
+    Route::post('/api/v1/barang-uji-master/cleanup-duplikat', [BarangUjiMasterController::class, 'cleanupDuplikat']);
+    Route::delete('/api/v1/barang-uji-master/delete/{id}', [BarangUjiMasterController::class, 'destroy'])->middleware('permission:Master_Barang_Uji_Lab,DELETE');
 
     Route::post('/uji-sampel/store', [UjiSampelController::class, 'storeNotMultiRumus']);
     Route::post('/uji-sampel/store/sementara-draft-notrumus', [UjiSampelController::class, 'storeNotMultiAndNoQrSementara']);

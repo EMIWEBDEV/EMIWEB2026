@@ -120,6 +120,12 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => 30,
         ],
+        'BarangUjiMasterController' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/BarangUjiMasterController.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+        ],
         'BindingIdentityController' => [
             'driver' => 'daily',
             'path' => storage_path('logs/BindingIdentityController.log'),
