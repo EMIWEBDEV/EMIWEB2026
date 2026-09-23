@@ -518,3 +518,4 @@ require base_path('routes/FormulatorStatusData/FormulatorStatusDataWeb.php');
 require base_path('routes/developer/fransDevEvo.php');
 require base_path('routes/developer/ridhoDevEvo.php');
 require base_path('routes/FormulatorDashboard/FormulatorDashboardWeb.php');
+require base_path('routes/BypassLims/BypassLimsWeb.php');

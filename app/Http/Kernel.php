@@ -75,5 +75,6 @@ class Kernel extends HttpKernel
         'role' => \App\Http\Middleware\RoleMiddleware::class,
         'permission' => \App\Http\Middleware\CheckPermission::class,
         'log-viewer-key' => \App\Http\Middleware\LogViewerKeyAuth::class,
+        'bypass-lims' => \App\Http\Middleware\BypassLimsGate::class,
     ];
 }

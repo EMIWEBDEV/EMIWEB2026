@@ -257,22 +257,22 @@
                 <div class="fin-modal-hdr" style="background:linear-gradient(135deg,#991b1b,#ef4444);">
                     <i class="ri-error-warning-line me-2 fs-5"></i>
                     <div>
-                        <div class="fin-modal-title">Analisa Belum Lengkap</div>
-                        <div class="fin-modal-sub">{{ errorModal.noSampel }}</div>
+                        <div class="fin-modal-title">{{ errorModal.title }}</div>
+                        <div class="fin-modal-sub">{{ errorModal.noSampel || 'Finalisasi dibatalkan' }}</div>
                     </div>
                     <button class="fin-modal-close" @click="errorModal.show=false"><i class="ri-close-line"></i></button>
                 </div>
                 <div class="fin-modal-body">
                     <p class="text-muted small mb-3">{{ errorModal.message }}</p>
-                    <div v-if="errorModal.missingAnalisa.length > 0">
-                        <div class="fw-semibold text-danger small mb-2"><i class="ri-alert-line me-1"></i>Analisa yang belum dilakukan:</div>
-                        <div v-for="(analisa, idx) in errorModal.missingAnalisa" :key="idx" class="fin-error-analisa-row">
+                    <div v-if="errorModal.items.length > 0">
+                        <div class="fw-semibold text-danger small mb-2"><i class="ri-alert-line me-1"></i>{{ errorModal.itemsLabel }}</div>
+                        <div v-for="(it, idx) in errorModal.items" :key="idx" class="fin-error-analisa-row">
                             <i class="ri-close-circle-line text-danger me-2"></i>
-                            <span>{{ analisa }}</span>
+                            <span>{{ it.text }}<em v-if="it.reason" class="fin-error-reason"> — {{ it.reason }}</em></span>
                         </div>
                     </div>
                 </div>
-                <div class="fin-modal-ftr"><button class="btn btn-danger" @click="errorModal.show=false"><i class="ri-check-line me-1"></i>Mengerti</button></div>
+                <div class="fin-modal-ftr"><button class="btn btn-danger fw-semibold" @click="errorModal.show=false"><i class="ri-check-line me-1"></i>Mengerti</button></div>
             </div>
         </div>
 
@@ -323,7 +323,7 @@ export default {
             loading:{list:false,detail:false,timeline:false,submitting:false},
             selectedItems:[], isMobile:false, detailVisible:false,
             modal:{show:false,isBulk:false},
-            errorModal:{show:false,message:'',missingAnalisa:[],noSampel:''},
+            errorModal:{show:false,title:'',message:'',noSampel:'',itemsLabel:'',items:[]},
             openSections:[], openAnalisas:[],
             loadingTable:{}, templates:{}, tableRows:{}, tableAverages:{}, tableRawFotos:{},
             blobUrlCache:{},
@@ -477,31 +477,98 @@ export default {
             try{
                 if(this.modal.isBulk){
                     const res=await axios.post("/api/v1/finalisai/trial-produksi/hasil-analisa-close/finalisasi/bulk",{no_sampel_list:this.selectedItems.map(i=>i.No_Po_Sampel)});
-                    if(res.data?.success){const sukses=res.data.result?.berhasil||[];this.selectedItems=this.selectedItems.filter(i=>!sukses.includes(i.No_Po_Sampel));if(this.selectedItem&&sukses.includes(this.selectedItem.No_Po_Sampel)){this.selectedItem=null;this.detailData=[];}this.showToast("success",`${sukses.length} sampel berhasil difinalisasi`);this.fetchList();}
-                    else this.showToast("error",res.data?.message||"Gagal finalisasi bulk");
+                    this.modal.show=false;
+                    if(res.data?.success){
+                        const sukses=res.data.result?.berhasil||[];
+                        const gagal=res.data.result?.gagal||[];
+                        this.selectedItems=this.selectedItems.filter(i=>!sukses.includes(i.No_Po_Sampel));
+                        if(this.selectedItem&&sukses.includes(this.selectedItem.No_Po_Sampel)){this.selectedItem=null;this.detailData=[];}
+                        this.fetchList();
+                        if(gagal.length>0){
+                            this.showErrorModal({
+                                title:sukses.length>0?"Sebagian Sampel Gagal":"Finalisasi Gagal",
+                                message:`${sukses.length} sampel berhasil difinalisasi, ${gagal.length} sampel gagal dan tetap berada di daftar.`,
+                                itemsLabel:"Sampel yang gagal difinalisasi:",
+                                items:gagal,
+                            });
+                        }else{
+                            this.showToast("success",`${sukses.length} sampel berhasil difinalisasi`);
+                        }
+                    }
+                    else this.showErrorModal({title:"Finalisasi Bulk Gagal",message:this.pickMessage(res.data,"Gagal finalisasi bulk")});
                 }else{
                     const res=await axios.post(`/api/v1/finalisai/trial-produksi/hasil-analisa-close/finalisasi/${this.selectedItem.No_Po_Sampel}`);
-                    if(res.data?.success){this.showToast("success","Sampel trial berhasil difinalisasi");this.selectedItem=null;this.detailData=[];this.detailVisible=false;this.fetchList();}
-                    else this.showToast("error",res.data?.message||"Gagal finalisasi");
-                }
-                this.modal.show=false;
-            }catch(e){
-                const errData=e.response?.data;
-                if(e.response?.status===422&&errData?.detail){
                     this.modal.show=false;
-                    this.errorModal={
-                        show:true,
-                        message:errData.message||"Data analisa belum lengkap",
-                        missingAnalisa:errData.detail.Analisa_Kurang||[],
-                        noSampel:errData.detail.No_Sampel||''
-                    };
-                }else{
-                    this.showToast("error",errData?.message||"Terjadi kesalahan");
+                    if(res.data?.success){this.showToast("success","Sampel trial berhasil difinalisasi");this.selectedItem=null;this.detailData=[];this.detailVisible=false;this.fetchList();}
+                    else this.showErrorModal({title:"Finalisasi Gagal",noSampel:this.selectedItem?.No_Po_Sampel||'',message:this.pickMessage(res.data,"Gagal finalisasi")});
                 }
-            }
-            finally{this.loading.submitting=false;}
+            }catch(e){ this.handleFinalisasiError(e); }
+            finally{this.loading.submitting=false;this.modal.show=false;}
         },
-        showToast(type,msg){const el=document.createElement("div");el.className=`fin-toast fin-toast--${type==='success'?'success':'error'}`;el.innerHTML=`<i class="${type==='success'?'ri-checkbox-circle-line':'ri-close-circle-line'} me-2"></i>${msg}`;document.body.appendChild(el);setTimeout(()=>el.remove(),3500);},
+        // Ambil pesan error dari response — backend kadang mengirim message berupa objek {error:...}
+        pickMessage(data,fallback){
+            const msg=data?.message;
+            if(typeof msg==="string"&&msg.trim())return msg;
+            if(msg&&typeof msg==="object")return msg.error||msg.message||fallback;
+            return fallback;
+        },
+        normalizeErrorItems(list){
+            if(!Array.isArray(list))return[];
+            return list.map(it=>{
+                if(it===null||it===undefined)return{text:"-",reason:""};
+                if(typeof it==="string"||typeof it==="number")return{text:String(it),reason:""};
+                return{text:String(it.sampel??it.No_Sampel??it.Jenis_Analisa??it.nama??"-"),reason:it.reason?String(it.reason):""};
+            });
+        },
+        showErrorModal({title,message,noSampel="",itemsLabel="",items=[]}){
+            this.modal.show=false;
+            this.errorModal={show:true,title,message,noSampel,itemsLabel,items:this.normalizeErrorItems(items)};
+        },
+        // Satu pintu untuk semua kegagalan finalisasi — modal konfirmasi selalu ditutup
+        // dan pengguna selalu mendapat penjelasan, tidak pernah dibiarkan menggantung.
+        handleFinalisasiError(e){
+            this.modal.show=false;
+            const res=e?.response;
+            if(!res){
+                this.showErrorModal({title:"Tidak Ada Respons Server",message:"Permintaan finalisasi tidak sampai ke server. Periksa koneksi jaringan Anda, lalu coba lagi."});
+                return;
+            }
+            const data=res.data||{};
+            const noSampel=data.detail?.No_Sampel||(this.modal.isBulk?"":this.selectedItem?.No_Po_Sampel||"");
+            if(res.status===419){
+                this.showErrorModal({title:"Sesi Telah Berakhir",message:"Sesi login Anda sudah habis. Muat ulang halaman (F5) dan login kembali sebelum melakukan finalisasi."});
+                return;
+            }
+            if(res.status===403){
+                this.showErrorModal({title:"Akses Ditolak",message:this.pickMessage(data,"Akun Anda tidak memiliki hak akses FINALISASI untuk menu ini. Hubungi administrator.")});
+                return;
+            }
+            const kurang=data.detail?.Analisa_Kurang||[];
+            const belumValidasi=data.detail?.Analisa_Belum_Validasi||[];
+            if(kurang.length>0){
+                this.showErrorModal({title:"Analisa Belum Lengkap",noSampel,message:this.pickMessage(data,"Data analisa belum lengkap. Lengkapi analisa berikut sebelum difinalisasi."),itemsLabel:"Analisa yang belum diinput:",items:kurang});
+                return;
+            }
+            if(belumValidasi.length>0){
+                this.showErrorModal({title:"Analisa Belum Divalidasi",noSampel,message:this.pickMessage(data,"Masih ada analisa yang belum divalidasi."),itemsLabel:"Analisa yang belum divalidasi:",items:belumValidasi});
+                return;
+            }
+            this.showErrorModal({title:"Finalisasi Gagal",noSampel,message:this.pickMessage(data,`Terjadi kesalahan pada server (HTTP ${res.status}). Coba lagi atau hubungi tim IT.`)});
+        },
+        showToast(type,msg){
+            const ok=type==="success";
+            const el=document.createElement("div");
+            el.className=`fin-toast fin-toast--${ok?'success':'error'}`;
+            // Elemen ini di-append ke <body> sehingga tidak terjangkau <style scoped> —
+            // gaya harus inline agar toast benar-benar terlihat.
+            el.setAttribute("style",`position:fixed;bottom:18px;right:18px;z-index:10060;display:flex;align-items:center;gap:8px;max-width:min(92vw,420px);padding:11px 16px;border-radius:9px;color:#fff;font-size:.82rem;font-weight:500;box-shadow:0 4px 14px rgba(0,0,0,.16);background:${ok?'#0ab39c':'#f06548'};`);
+            const icon=document.createElement("i");
+            icon.className=ok?"ri-checkbox-circle-line":"ri-close-circle-line";
+            const text=document.createElement("span");
+            text.textContent=msg;
+            el.appendChild(icon);el.appendChild(text);
+            document.body.appendChild(el);setTimeout(()=>el.remove(),4000);
+        },
         formatDate(d){if(!d)return"-";return new Date(d).toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"});},
         formatAksi(aksi){const map={INPUT_ANALYZER:"Input Analyzer",VALIDASI_PRODUKSI:"Validasi Produksi",VALIDASI_TRIAL_PRODUKSI:"Validasi Trial",FINALISASI_PRODUKSI:"Finalisasi Produksi",FINALISASI_TRIAL_PRODUKSI:"Finalisasi Trial",VALIDASI_FORMULATOR:"Validasi Formulator",PRAFINALISASI_FORMULATOR:"Pra-Finalisasi",FINALISASI_FORMULATOR:"Finalisasi Formulator"};return map[aksi]||aksi;},
         getStepClass(log){if(log.Sub_Aksi==='TOLAK')return'vtl-rejected';if(log.Jenis_Aksi?.includes('FINALISASI'))return'vtl-final';return'vtl-done';},
@@ -745,7 +812,8 @@ export default {
 .fin-bulk-row{display:flex;align-items:center;gap:9px;padding:5px 9px;border-radius:5px;background:#fffbeb;margin-bottom:3px;}
 .fin-bulk-code{font-size:.76rem;color:#d97706;font-family:monospace;}
 .fin-modal-ftr{display:flex;justify-content:flex-end;gap:9px;padding:11px 18px;background:#fffbeb;border-top:1px solid #fde68a;}
-.fin-error-analisa-row{display:flex;align-items:center;padding:7px 11px;border-radius:6px;background:#fff5f5;border:1px solid #fecaca;margin-bottom:4px;font-size:.82rem;font-weight:500;color:#991b1b;}
+.fin-error-analisa-row{display:flex;align-items:flex-start;padding:7px 11px;border-radius:6px;background:#fff5f5;border:1px solid #fecaca;margin-bottom:4px;font-size:.82rem;font-weight:500;color:#991b1b;}
+.fin-error-reason{font-style:normal;font-weight:400;color:#b45309;}
 .fin-hidden-mobile{display:none !important;}
 @media(min-width:768px){.fin-hidden-mobile{display:flex !important;}}
 .fin-mobile-back{padding:9px 12px;border-bottom:1px solid #e2e8f0;flex-shrink:0;background:#fff;}
