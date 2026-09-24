@@ -2068,11 +2068,17 @@ export default {
                     Kode_Analisa: first.Kode_Analisa || "—",
                     Flag_Layak: first.Flag_Layak || "—",
                     No_Po_Sampel: first.No_Po_Sampel || "—",
-                    No_Fak_Sub_Po: first.No_Fak_Sub_Po || "—",
+                    // Objek ini juga dikirim sebagai payload validasi, bukan
+                    // hanya untuk tampilan. Placeholder "—" pernah ikut
+                    // tersimpan sebagai No_Sub_Sampel; sampel tunggal harus
+                    // NULL. Tampilan memakai displaySubPo di bawah.
+                    No_Fak_Sub_Po: first.No_Fak_Sub_Po || null,
                     Id_Mesin: first.Id_Mesin,
                     Id_Jenis_Analisa: first.Id_Jenis_Analisa,
                     Tahapan_Ke: first.Tahapan_Ke,
                     Flag_Multi_QrCode: first.Flag_Multi_QrCode,
+                    Id_Session: first.Id_Session ?? null,
+                    Id_Pembanding: first.Id_Pembanding ?? null,
                     Tanggal: first.Tanggal_Pengujian || "—",
                     Tanggal_Registrasi: first.Tanggal_Registrasi || "—",
                     Nama_Pembanding: first.Nama_Pembanding || null,

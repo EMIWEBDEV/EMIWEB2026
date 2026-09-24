@@ -26,6 +26,42 @@ use ZipArchive;
 
 class FormulatorTrialSampelController extends Controller
 {
+    /**
+     * Tentukan kelayakan hasil analisa PERHITUNGAN terhadap standar rentang.
+     *
+     * Hasil dinyatakan layak hanya bila berada DI DALAM rentang:
+     *     Range_Awal <= hasil <= Range_Akhir
+     *
+     * Sebelumnya hanya batas bawah yang diperiksa, sehingga hasil yang
+     * MELEBIHI Range_Akhir tetap dinyatakan layak — misalnya rentang 0–3,5
+     * dengan hasil 3,6 atau 4 tetap lolos. Batas atas kini ditegakkan.
+     *
+     * Batas NULL berarti "tidak dibatasi pada sisi itu".
+     *
+     * Kembaran dari UjiSampelController::nilaiKelayakanRentang(); jalur LAB
+     * dan jalur formulator memakai tabel berbeda tetapi aturan mutunya sama.
+     *
+     * @return string 'Y' bila layak, 'T' bila di luar rentang
+     */
+    protected function nilaiKelayakanRentang($hasil, $rangeAwal, $rangeAkhir): string
+    {
+        if ($hasil === null) {
+            return 'T';
+        }
+
+        $hasil = (float) $hasil;
+
+        if ($rangeAwal !== null && $rangeAwal !== '' && $hasil < (float) $rangeAwal) {
+            return 'T';
+        }
+
+        if ($rangeAkhir !== null && $rangeAkhir !== '' && $hasil > (float) $rangeAkhir) {
+            return 'T';
+        }
+
+        return 'Y';
+    }
+
     protected function calculateFormulaServerSide($formula, $parameterValues, $decimalPlaces = 2)
     {
         try {
@@ -1389,11 +1425,14 @@ class FormulatorTrialSampelController extends Controller
                             $Flag_Layak = 'T';
                         }
                     } else {
-                        if (!is_null($RentangAwal) && $hasilFloat < (float)$RentangAwal) {
-                            $Flag_Layak = 'T';
-                        } else {
-                            $Flag_Layak = 'Y';
-                        }
+                        // Layak hanya bila hasil berada DI DALAM rentang.
+                        // Batas atas (Range_Akhir) ikut ditegakkan; sebelumnya
+                        // hasil yang melebihi batas atas tetap dinyatakan layak.
+                        $Flag_Layak = $this->nilaiKelayakanRentang(
+                            $hasilFloat,
+                            $RentangAwal,
+                            $result['Range_Akhir'] ?? null
+                        );
                     }
 
                     $getDataMesin = DB::table('EMI_Master_Mesin')
@@ -1915,9 +1954,17 @@ class FormulatorTrialSampelController extends Controller
 
 
                 foreach ($calculatedResults as $result) {
-                    $RentangAwal = (float) $result['Range_Awal'];
+                    // Tanpa cast: (float) mengubah NULL menjadi 0, sehingga
+                    // standar yang tidak punya batas bawah akan salah dinilai.
+                    $RentangAwal = $result['Range_Awal'];
                     $hasilFloat = $this->safeFloat($result['Hasil_Perhitungan']);
-                    $Flag_Layak = ($hasilFloat < $RentangAwal) ? 'T' : 'Y';
+                    // Layak hanya bila hasil berada DI DALAM rentang — batas
+                    // atas (Range_Akhir) kini ikut diperiksa.
+                    $Flag_Layak = $this->nilaiKelayakanRentang(
+                        $hasilFloat,
+                        $RentangAwal,
+                        $result['Range_Akhir'] ?? null
+                    );
 
                     $getDataMesin = DB::table('EMI_Master_Mesin')
                         ->where('Id_Master_Mesin', $sumberData->Id_Mesin)
@@ -3258,11 +3305,14 @@ class FormulatorTrialSampelController extends Controller
                             $Flag_Layak = 'T';
                         }
                     } else {
-                        if (!is_null($RentangAwal) && $hasilFloat < (float)$RentangAwal) {
-                            $Flag_Layak = 'T';
-                        } else {
-                            $Flag_Layak = 'Y';
-                        }
+                        // Layak hanya bila hasil berada DI DALAM rentang.
+                        // Batas atas (Range_Akhir) ikut ditegakkan; sebelumnya
+                        // hasil yang melebihi batas atas tetap dinyatakan layak.
+                        $Flag_Layak = $this->nilaiKelayakanRentang(
+                            $hasilFloat,
+                            $RentangAwal,
+                            $result['Range_Akhir'] ?? null
+                        );
                     }
 
                     $payloadUjiSampleData[] = [
@@ -3668,11 +3718,14 @@ class FormulatorTrialSampelController extends Controller
                             $Flag_Layak = 'T';
                         }
                     } else {
-                        if (!is_null($RentangAwal) && $hasilFloat < (float)$RentangAwal) {
-                            $Flag_Layak = 'T';
-                        } else {
-                            $Flag_Layak = 'Y';
-                        }
+                        // Layak hanya bila hasil berada DI DALAM rentang.
+                        // Batas atas (Range_Akhir) ikut ditegakkan; sebelumnya
+                        // hasil yang melebihi batas atas tetap dinyatakan layak.
+                        $Flag_Layak = $this->nilaiKelayakanRentang(
+                            $hasilFloat,
+                            $RentangAwal,
+                            $result['Range_Akhir'] ?? null
+                        );
                     }
 
                     $payloadUjiSampleData[] = [
@@ -10522,7 +10575,12 @@ class FormulatorTrialSampelController extends Controller
                 $q->where('uji.Flag_Resampling', '!=', 'Y')
                 ->orWhereNull('uji.Flag_Resampling');
             })
-            ->where('pra.Flag_Setuju', 'Y');
+            ->where('pra.Flag_Setuju', 'Y')
+            // Hanya sampel multi barcode — konsisten dengan jalur produksi
+            // dan trial produksi. Saat ini seluruh data LIMS memang ber-flag
+            // 'Y', jadi filter ini berfungsi sebagai pengaman agar sampel
+            // single tidak ikut terbawa bila kelak muncul.
+            ->where('uji.Flag_Multi_QrCode', 'Y');
 
         if (!empty($startDate) && !empty($endDate)) {
             $query->whereBetween('uji.Tanggal', [$startDate, $endDate]);

@@ -107,7 +107,7 @@
                     </div>
                     <div class="fin-tabs">
                         <button class="fin-tab" :class="{'fin-tab--active':activeTab==='analisa'}" @click="activeTab='analisa'"><i class="ri-flask-line me-1"></i>Detail Analisa</button>
-                        <button class="fin-tab" :class="{'fin-tab--active':activeTab==='timeline'}" @click="activeTab='timeline';loadTimeline()"><i class="ri-timeline-view me-1"></i>Timeline</button>
+                        <button class="fin-tab" :class="{'fin-tab--active':activeTab==='timeline'}" @click="activeTab='timeline';loadTimeline()"><i class="ri-route-line me-1"></i>Sample Lifecycle</button>
                     </div>
                     <div class="fin-detail-body">
                         <div v-if="loading.detail" class="fin-loading-state"><div class="spinner-border" style="color:#d97706"></div><p class="mt-3 text-muted small">Memuat data analisa trial...</p></div>
@@ -198,26 +198,111 @@
                             </div>
                         </template>
                         <template v-else-if="activeTab==='timeline'">
-                            <div v-if="loading.timeline" class="fin-loading-state"><div class="spinner-border spinner-border-sm" style="color:#d97706"></div><p class="text-muted small mt-2">Memuat...</p></div>
-                            <div v-else-if="auditLog.length===0" class="fin-loading-state"><i class="ri-history-line fs-1 text-muted"></i><p class="text-muted small mt-2">Belum ada riwayat aktivitas</p></div>
-                            <div v-else class="fin-vtl">
-                                <div class="fin-vtl-hdr"><i class="ri-history-line me-2"></i>Riwayat Proses Sampel</div>
-                                <div class="fin-vtl-steps">
-                                    <div v-for="(log,li) in expandedAuditLog" :key="li" class="fin-vtl-step" :class="getStepClass(log)">
-                                        <div class="fin-vtl-indicator">
-                                            <div class="fin-vtl-dot"><i :class="getStepIcon(log)"></i></div>
-                                            <div v-if="li<expandedAuditLog.length-1" class="fin-vtl-line"></div>
+                            <div v-if="loading.timeline" class="fin-loading-state"><div class="spinner-border spinner-border-sm" style="color:#d97706"></div><p class="text-muted small mt-2">Memuat riwayat sampel...</p></div>
+                            <div v-else-if="!lifecycle || !lifecycle.tahapan || lifecycle.tahapan.length===0" class="fin-loading-state"><i class="ri-route-line fs-1 text-muted"></i><p class="text-muted small mt-2">Belum ada tahapan tervalidasi</p></div>
+                            <div v-else class="lc">
+
+                                <!-- Ringkasan lifecycle -->
+                                <div class="lc-summary">
+                                    <div class="lc-sum-item">
+                                        <span class="lc-sum-label">Sampel</span>
+                                        <span class="lc-sum-value">{{ lifecycle.sampel.No_Sampel }}</span>
+                                    </div>
+                                    <div class="lc-sum-item">
+                                        <span class="lc-sum-label">Batch</span>
+                                        <span class="lc-sum-value">{{ lifecycle.sampel.No_Batch ?? '-' }}</span>
+                                    </div>
+                                    <div class="lc-sum-item">
+                                        <span class="lc-sum-label">Tahapan</span>
+                                        <span class="lc-sum-value">{{ lifecycle.ringkasan.Total_Tahapan }}</span>
+                                    </div>
+                                    <div class="lc-sum-item">
+                                        <span class="lc-sum-label">Analisa</span>
+                                        <span class="lc-sum-value">
+                                            {{ lifecycle.ringkasan.Total_Analisa }}
+                                            <em class="lc-sum-ok">{{ lifecycle.ringkasan.Lolos }} lolos</em>
+                                            <em v-if="lifecycle.ringkasan.Tidak_Lolos>0" class="lc-sum-bad">{{ lifecycle.ringkasan.Tidak_Lolos }} tidak</em>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Rangkaian tahapan -->
+                                <div class="lc-track">
+                                    <div v-for="(t,ti) in lifecycle.tahapan" :key="ti" class="lc-stage" :class="t.Status==='TIDAK LOLOS' ? 'lc-stage--bad' : 'lc-stage--ok'">
+                                        <div class="lc-rail">
+                                            <div class="lc-node"><span class="lc-node-num">{{ ti+1 }}</span></div>
+                                            <div class="lc-line"></div>
                                         </div>
-                                        <div class="fin-vtl-body">
-                                            <div class="fin-vtl-row1"><span class="fin-vtl-badge" :class="getStepBadgeClass(log)">{{ formatAksi(log.Jenis_Aksi) }}</span><span v-if="log.Sub_Aksi" class="fin-vtl-sub" :class="log.Sub_Aksi==='TOLAK'?'text-danger':'text-success'">{{ log.Sub_Aksi }}</span></div>
-                                            <div class="fin-vtl-meta"><span><i class="ri-user-3-line me-1"></i>{{ log.Nama_User||log.Id_User }}</span><span><i class="ri-time-line me-1"></i>{{ formatDate(log.Tanggal) }}<template v-if="log.Jam"> · {{ log.Jam.substring(0,5) }}</template></span></div>
-                                            <div v-if="log.details&&log.details.length" class="fin-vtl-details">
-                                                <div class="fin-vtl-details-hdr"><i class="ri-microscope-line me-1"></i>{{ log.details.length }} analisa</div>
-                                                <div v-for="d in log.details" :key="d.Id_Jenis_Analisa+'_'+d.Jam" class="fin-vtl-detail-row">
-                                                    <i class="ri-arrow-right-s-line text-muted"></i>{{ d.Nama_Jenis_Analisa }}
+                                        <div class="lc-card">
+                                            <div class="lc-card-hdr">
+                                                <div class="lc-hdr-left">
+                                                    <span class="lc-act-badge" :class="'lc-act--'+(t.Kode_Aktivitas_Lab||'').toLowerCase()">{{ t.Kode_Aktivitas_Lab }}</span>
+                                                    <span class="lc-act-name">{{ t.Nama_Aktivitas }}</span>
                                                 </div>
+                                                <span class="lc-status" :class="t.Status==='TIDAK LOLOS' ? 'lc-status--bad' : 'lc-status--ok'">
+                                                    <i :class="t.Status==='TIDAK LOLOS' ? 'ri-close-circle-line' : 'ri-checkbox-circle-line'"></i>
+                                                    {{ t.Status }}
+                                                </span>
                                             </div>
-                                            <div v-if="log.Keterangan" class="fin-vtl-note"><i class="ri-chat-3-line me-1"></i>{{ log.Keterangan }}</div>
+                                            <div class="lc-card-meta">
+                                                <span><i class="ri-user-3-line"></i>{{ t.Nama_User }}</span>
+                                                <span><i class="ri-calendar-line"></i>{{ formatStamp(t.Tanggal, t.Jam) }}</span>
+                                                <span><i class="ri-flask-line"></i>{{ t.Jumlah_Analisa }} analisa</span>
+                                            </div>
+                                            <table class="lc-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width:34%">Jenis Analisa</th>
+                                                        <th style="width:24%">No. Sub Sampel</th>
+                                                        <th style="width:24%">Waktu Validasi</th>
+                                                        <th style="width:18%">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="a in t.analisa" :key="a.Id_Jenis_Analisa+'_'+a.No_Sub_Sampel+'_'+a.Jam">
+                                                        <td>
+                                                            <span class="lc-an-name">{{ a.Nama_Jenis_Analisa }}</span>
+                                                            <span v-if="a.Id_Pembanding" class="lc-an-tag">pembanding #{{ a.Id_Pembanding }}</span>
+                                                            <span v-if="a.Flag_Resampling==='Y'" class="lc-an-tag lc-an-tag--warn">resampling</span>
+                                                        </td>
+                                                        <td><span class="lc-sub">{{ a.No_Sub_Sampel || lifecycle.sampel.No_Sampel }}</span></td>
+                                                        <td><span class="lc-time">{{ formatStamp(a.Tanggal, a.Jam) }}</span></td>
+                                                        <td>
+                                                            <span class="lc-pill" :class="a.Flag_Layak==='T' ? 'lc-pill--bad' : 'lc-pill--ok'">
+                                                                {{ a.Flag_Layak==='T' ? 'Tidak Lolos' : 'Lolos' }}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tahap akhir: finalisasi -->
+                                    <div class="lc-stage" :class="lifecycle.finalisasi ? (lifecycle.finalisasi.Flag_Ok==='T' ? 'lc-stage--bad' : 'lc-stage--ok') : 'lc-stage--pending'">
+                                        <div class="lc-rail">
+                                            <div class="lc-node lc-node--final"><i :class="lifecycle.finalisasi ? 'ri-shield-check-line' : 'ri-time-line'"></i></div>
+                                        </div>
+                                        <div class="lc-card">
+                                            <div class="lc-card-hdr">
+                                                <div class="lc-hdr-left">
+                                                    <span class="lc-act-badge lc-act--final">FINAL</span>
+                                                    <span class="lc-act-name">Finalisasi Sampel</span>
+                                                </div>
+                                                <span v-if="lifecycle.finalisasi" class="lc-status" :class="lifecycle.finalisasi.Flag_Ok==='T' ? 'lc-status--bad' : 'lc-status--ok'">
+                                                    <i :class="lifecycle.finalisasi.Flag_Ok==='T' ? 'ri-close-circle-line' : 'ri-checkbox-circle-line'"></i>
+                                                    {{ lifecycle.finalisasi.Status }}
+                                                </span>
+                                                <span v-else class="lc-status lc-status--pending"><i class="ri-time-line"></i>MENUNGGU</span>
+                                            </div>
+                                            <div v-if="lifecycle.finalisasi" class="lc-card-meta">
+                                                <span><i class="ri-user-3-line"></i>{{ lifecycle.finalisasi.Nama_User }}</span>
+                                                <span><i class="ri-calendar-line"></i>{{ formatStamp(lifecycle.finalisasi.Tanggal, lifecycle.finalisasi.Jam) }}</span>
+                                                <span><i class="ri-hashtag"></i>ID {{ lifecycle.finalisasi.Id_Uji_Validasi_Final }}</span>
+                                            </div>
+                                            <div v-else class="lc-pending-note">
+                                                <i class="ri-information-line me-1"></i>Sampel belum difinalisasi. Seluruh tahapan di atas sudah tervalidasi.
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -316,7 +401,7 @@ import axios from "axios";
 export default {
     data() {
         return {
-            listData:[], selectedItem:null, detailData:[], auditLog:[],
+            listData:[], selectedItem:null, detailData:[], auditLog:[], lifecycle:null,
             activeTab:"analisa", searchQuery:"", searchTimeout:null,
             filters:{startDate:"",endDate:"",qrType:""},
             pagination:{page:1,totalPage:1,total:0,limit:10},
@@ -386,7 +471,7 @@ export default {
             }catch{this.listData=[];}finally{this.loading.list=false;}
         },
         async selectItem(item){
-            this.selectedItem=item;this.activeTab="analisa";this.auditLog=[];this.detailVisible=true;
+            this.selectedItem=item;this.activeTab="analisa";this.auditLog=[];this.lifecycle=null;this.detailVisible=true;
             this.openSections=[];this.openAnalisas=[];this.templates={};this.tableRows={};this.tableAverages={};this.tableRawFotos={};
             await this.fetchDetail(item.No_Po_Sampel);
             this.openSections=this.detailSections.map(s=>s.group);
@@ -463,7 +548,27 @@ export default {
                 this.fotoModal={show:true,loading:false,photos:[]};
             }
         },
-        async loadTimeline(){if(this.auditLog.length>0||!this.selectedItem)return;this.loading.timeline=true;try{const res=await axios.get(`/api/v1/log-aksi/by-sampel/${this.selectedItem.No_Po_Sampel}`);this.auditLog=res.data?.result||[];}catch{this.auditLog=[];}finally{this.loading.timeline=false;}},
+        // Sample Lifecycle dibaca dari Hasil_Uji_Validasi_Final + _Detail_Final.
+        // Sebelumnya memakai /log-aksi/by-sampel yang bersumber dari Log_Aksi,
+        // sehingga satu analisa bisa muncul berulang kali (FS0926-0001 tampil
+        // 16 entri padahal analisanya hanya 10).
+        async loadTimeline(){
+            if(this.lifecycle||!this.selectedItem)return;
+            this.loading.timeline=true;
+            try{
+                const res=await axios.get(`/api/v1/finalisai/trial-produksi/lifecycle/${this.selectedItem.No_Po_Sampel}`);
+                this.lifecycle=res.data?.result||null;
+            }catch{this.lifecycle=null;}
+            finally{this.loading.timeline=false;}
+        },
+        // Gabungkan tanggal dan jam menjadi "24 Sep 2026 09:49".
+        formatStamp(tanggal,jam){
+            if(!tanggal)return "-";
+            const d=new Date(tanggal);
+            if(isNaN(d))return "-";
+            const tgl=d.toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"});
+            return jam ? `${tgl} ${String(jam).substring(0,5)}` : tgl;
+        },
         isActive(item){return this.selectedItem?.No_Po_Sampel===item.No_Po_Sampel;},
         isChecked(item){return this.selectedItems.some(i=>i.No_Po_Sampel===item.No_Po_Sampel);},
         toggleBulk(item){const idx=this.selectedItems.findIndex(i=>i.No_Po_Sampel===item.No_Po_Sampel);if(idx>-1)this.selectedItems.splice(idx,1);else this.selectedItems.push(item);},
@@ -789,6 +894,76 @@ export default {
 .fin-vtl-user-name{color:#405189;}
 .fin-vtl-user-time{color:#94a3b8;font-weight:400;font-size:.66rem;}
 .fin-vtl-note{font-size:.72rem;color:#64748b;margin-top:3px;font-style:italic;padding:3px 7px;background:#fef9c3;border-left:2px solid #fde68a;}
+
+/* ===== Sample Lifecycle ===== */
+.lc{padding:4px 2px 14px;}
+
+/* Ringkasan atas */
+.lc-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:#e2e8f0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:18px;}
+.lc-sum-item{background:#fff;padding:10px 14px;display:flex;flex-direction:column;gap:3px;}
+.lc-sum-label{font-size:.63rem;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;font-weight:600;}
+.lc-sum-value{font-size:.9rem;font-weight:700;color:#1e293b;display:flex;align-items:baseline;gap:6px;}
+.lc-sum-ok{font-size:.68rem;font-weight:600;font-style:normal;color:#0f9d76;}
+.lc-sum-bad{font-size:.68rem;font-weight:600;font-style:normal;color:#dc2626;}
+
+/* Rangkaian tahapan */
+.lc-track{position:relative;}
+.lc-stage{display:flex;gap:14px;position:relative;}
+.lc-rail{position:relative;display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:30px;}
+.lc-node{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.76rem;font-weight:700;color:#fff;background:#94a3b8;flex-shrink:0;box-shadow:0 0 0 3px #fff,0 0 0 4px #e2e8f0;z-index:1;}
+.lc-node--final{font-size:.9rem;}
+.lc-stage--ok .lc-node{background:linear-gradient(135deg,#0f9d76,#10b981);box-shadow:0 0 0 3px #fff,0 0 0 4px #a7f3d0;}
+.lc-stage--bad .lc-node{background:linear-gradient(135deg,#b91c1c,#ef4444);box-shadow:0 0 0 3px #fff,0 0 0 4px #fecaca;}
+.lc-stage--pending .lc-node{background:linear-gradient(135deg,#94a3b8,#cbd5e1);}
+.lc-line{flex:1;width:2px;background:#e2e8f0;margin:2px 0 -2px;}
+.lc-stage:last-child .lc-line{display:none;}
+
+/* Kartu tahapan */
+.lc-card{flex:1;min-width:0;border:1px solid #e2e8f0;border-radius:9px;background:#fff;margin-bottom:14px;overflow:hidden;transition:box-shadow .15s;}
+.lc-card:hover{box-shadow:0 2px 10px rgba(15,23,42,.07);}
+.lc-stage--ok .lc-card{border-left:3px solid #10b981;}
+.lc-stage--bad .lc-card{border-left:3px solid #ef4444;}
+.lc-stage--pending .lc-card{border-left:3px solid #cbd5e1;border-style:dashed;}
+
+.lc-card-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 13px;background:#f8fafc;border-bottom:1px solid #eef2f7;flex-wrap:wrap;}
+.lc-hdr-left{display:flex;align-items:center;gap:8px;min-width:0;}
+.lc-act-badge{font-size:.62rem;font-weight:800;letter-spacing:.05em;padding:3px 7px;border-radius:4px;color:#fff;background:#64748b;flex-shrink:0;}
+.lc-act--anl{background:#2563eb;}
+.lc-act--lckv{background:#0284c7;}
+.lc-act--plt{background:#7c3aed;}
+.lc-act--final{background:#d97706;}
+.lc-act-name{font-size:.82rem;font-weight:700;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lc-status{font-size:.65rem;font-weight:700;letter-spacing:.03em;padding:3px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0;}
+.lc-status--ok{background:#dcfce7;color:#15803d;}
+.lc-status--bad{background:#fee2e2;color:#b91c1c;}
+.lc-status--pending{background:#f1f5f9;color:#64748b;}
+
+.lc-card-meta{display:flex;flex-wrap:wrap;gap:14px;padding:8px 13px;font-size:.71rem;color:#64748b;border-bottom:1px solid #f1f5f9;}
+.lc-card-meta span{display:inline-flex;align-items:center;gap:4px;}
+.lc-card-meta i{color:#94a3b8;font-size:.8rem;}
+
+/* Tabel analisa */
+.lc-table{width:100%;border-collapse:collapse;font-size:.74rem;}
+.lc-table thead th{text-align:left;padding:7px 13px;font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;font-weight:700;background:#fcfdfe;border-bottom:1px solid #f1f5f9;}
+.lc-table tbody td{padding:8px 13px;border-bottom:1px solid #f8fafc;vertical-align:middle;}
+.lc-table tbody tr:last-child td{border-bottom:none;}
+.lc-table tbody tr:hover{background:#fafcff;}
+.lc-an-name{font-weight:600;color:#334155;}
+.lc-an-tag{display:inline-block;margin-left:6px;font-size:.6rem;font-weight:600;padding:1px 6px;border-radius:3px;background:#ede9fe;color:#6d28d9;vertical-align:middle;}
+.lc-an-tag--warn{background:#fef3c7;color:#b45309;}
+.lc-sub{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.71rem;color:#475569;background:#f1f5f9;padding:2px 7px;border-radius:4px;}
+.lc-time{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.71rem;color:#475569;white-space:nowrap;}
+.lc-pill{display:inline-flex;align-items:center;font-size:.64rem;font-weight:700;padding:3px 9px;border-radius:20px;}
+.lc-pill--ok{background:#dcfce7;color:#15803d;}
+.lc-pill--bad{background:#fee2e2;color:#b91c1c;}
+.lc-pending-note{padding:10px 13px;font-size:.73rem;color:#64748b;font-style:italic;}
+
+@media(max-width:768px){
+    .lc-table thead{display:none;}
+    .lc-table tbody td{display:flex;justify-content:space-between;gap:10px;padding:5px 13px;border:none;}
+    .lc-table tbody tr{display:block;padding:7px 0;border-bottom:1px solid #f1f5f9;}
+    .lc-table tbody td::before{content:attr(data-label);font-size:.62rem;text-transform:uppercase;color:#94a3b8;font-weight:700;}
+}
 /* ACTION FOOTER */
 .fin-action-footer{padding:11px 16px;background:#fff;border-top:1px solid #fde68a;flex-shrink:0;}
 .fin-action-info{font-size:.78rem;}
