@@ -26,6 +26,42 @@ use ZipArchive;
 
 class FormulatorTrialSampelController extends Controller
 {
+    /**
+     * Tentukan kelayakan hasil analisa PERHITUNGAN terhadap standar rentang.
+     *
+     * Hasil dinyatakan layak hanya bila berada DI DALAM rentang:
+     *     Range_Awal <= hasil <= Range_Akhir
+     *
+     * Sebelumnya hanya batas bawah yang diperiksa, sehingga hasil yang
+     * MELEBIHI Range_Akhir tetap dinyatakan layak — misalnya rentang 0–3,5
+     * dengan hasil 3,6 atau 4 tetap lolos. Batas atas kini ditegakkan.
+     *
+     * Batas NULL berarti "tidak dibatasi pada sisi itu".
+     *
+     * Kembaran dari UjiSampelController::nilaiKelayakanRentang(); jalur LAB
+     * dan jalur formulator memakai tabel berbeda tetapi aturan mutunya sama.
+     *
+     * @return string 'Y' bila layak, 'T' bila di luar rentang
+     */
+    protected function nilaiKelayakanRentang($hasil, $rangeAwal, $rangeAkhir): string
+    {
+        if ($hasil === null) {
+            return 'T';
+        }
+
+        $hasil = (float) $hasil;
+
+        if ($rangeAwal !== null && $rangeAwal !== '' && $hasil < (float) $rangeAwal) {
+            return 'T';
+        }
+
+        if ($rangeAkhir !== null && $rangeAkhir !== '' && $hasil > (float) $rangeAkhir) {
+            return 'T';
+        }
+
+        return 'Y';
+    }
+
     protected function calculateFormulaServerSide($formula, $parameterValues, $decimalPlaces = 2)
     {
         try {
@@ -1389,11 +1425,14 @@ class FormulatorTrialSampelController extends Controller
                             $Flag_Layak = 'T';
                         }
                     } else {
-                        if (!is_null($RentangAwal) && $hasilFloat < (float)$RentangAwal) {
-                            $Flag_Layak = 'T';
-                        } else {
-                            $Flag_Layak = 'Y';
-                        }
+                        // Layak hanya bila hasil berada DI DALAM rentang.
+                        // Batas atas (Range_Akhir) ikut ditegakkan; sebelumnya
+                        // hasil yang melebihi batas atas tetap dinyatakan layak.
+                        $Flag_Layak = $this->nilaiKelayakanRentang(
+                            $hasilFloat,
+                            $RentangAwal,
+                            $result['Range_Akhir'] ?? null
+                        );
                     }
 
                     $getDataMesin = DB::table('EMI_Master_Mesin')
@@ -1915,9 +1954,17 @@ class FormulatorTrialSampelController extends Controller
 
 
                 foreach ($calculatedResults as $result) {
-                    $RentangAwal = (float) $result['Range_Awal'];
+                    // Tanpa cast: (float) mengubah NULL menjadi 0, sehingga
+                    // standar yang tidak punya batas bawah akan salah dinilai.
+                    $RentangAwal = $result['Range_Awal'];
                     $hasilFloat = $this->safeFloat($result['Hasil_Perhitungan']);
-                    $Flag_Layak = ($hasilFloat < $RentangAwal) ? 'T' : 'Y';
+                    // Layak hanya bila hasil berada DI DALAM rentang — batas
+                    // atas (Range_Akhir) kini ikut diperiksa.
+                    $Flag_Layak = $this->nilaiKelayakanRentang(
+                        $hasilFloat,
+                        $RentangAwal,
+                        $result['Range_Akhir'] ?? null
+                    );
 
                     $getDataMesin = DB::table('EMI_Master_Mesin')
                         ->where('Id_Master_Mesin', $sumberData->Id_Mesin)
@@ -3258,11 +3305,14 @@ class FormulatorTrialSampelController extends Controller
                             $Flag_Layak = 'T';
                         }
                     } else {
-                        if (!is_null($RentangAwal) && $hasilFloat < (float)$RentangAwal) {
-                            $Flag_Layak = 'T';
-                        } else {
-                            $Flag_Layak = 'Y';
-                        }
+                        // Layak hanya bila hasil berada DI DALAM rentang.
+                        // Batas atas (Range_Akhir) ikut ditegakkan; sebelumnya
+                        // hasil yang melebihi batas atas tetap dinyatakan layak.
+                        $Flag_Layak = $this->nilaiKelayakanRentang(
+                            $hasilFloat,
+                            $RentangAwal,
+                            $result['Range_Akhir'] ?? null
+                        );
                     }
 
                     $payloadUjiSampleData[] = [
@@ -3668,11 +3718,14 @@ class FormulatorTrialSampelController extends Controller
                             $Flag_Layak = 'T';
                         }
                     } else {
-                        if (!is_null($RentangAwal) && $hasilFloat < (float)$RentangAwal) {
-                            $Flag_Layak = 'T';
-                        } else {
-                            $Flag_Layak = 'Y';
-                        }
+                        // Layak hanya bila hasil berada DI DALAM rentang.
+                        // Batas atas (Range_Akhir) ikut ditegakkan; sebelumnya
+                        // hasil yang melebihi batas atas tetap dinyatakan layak.
+                        $Flag_Layak = $this->nilaiKelayakanRentang(
+                            $hasilFloat,
+                            $RentangAwal,
+                            $result['Range_Akhir'] ?? null
+                        );
                     }
 
                     $payloadUjiSampleData[] = [
@@ -10501,6 +10554,7 @@ class FormulatorTrialSampelController extends Controller
             ->join('N_LIMS_PO_Sampel as po', 'uji.No_Po_Sampel', '=', 'po.No_Sampel')
             ->join('N_EMI_View_Barang as brg', 'po.Kode_Barang', '=', 'brg.Kode_Barang')
             ->join('N_EMI_LIMS_Uji_Pra_Final as pra', 'uji.No_Po_Sampel', '=', 'pra.No_Sampel')
+            ->leftJoin('EMI_Master_Mesin as mm', 'po.Id_Mesin', '=', 'mm.Id_Master_Mesin')
             ->select(
                 'uji.No_Po_Sampel',
                 DB::raw('MAX(uji.Tanggal) as Tanggal'),
@@ -10509,7 +10563,8 @@ class FormulatorTrialSampelController extends Controller
                 'po.No_Po',
                 'po.No_Split_Po',
                 'po.Kode_Barang',
-                'brg.Nama as Nama_Barang'
+                'brg.Nama as Nama_Barang',
+                DB::raw('MAX(mm.Nama_Mesin) as Nama_Mesin')
             )
             ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->whereNull('uji.Status')
@@ -10520,7 +10575,12 @@ class FormulatorTrialSampelController extends Controller
                 $q->where('uji.Flag_Resampling', '!=', 'Y')
                 ->orWhereNull('uji.Flag_Resampling');
             })
-            ->where('pra.Flag_Setuju', 'Y');
+            ->where('pra.Flag_Setuju', 'Y')
+            // Hanya sampel multi barcode — konsisten dengan jalur produksi
+            // dan trial produksi. Saat ini seluruh data LIMS memang ber-flag
+            // 'Y', jadi filter ini berfungsi sebagai pengaman agar sampel
+            // single tidak ikut terbawa bila kelak muncul.
+            ->where('uji.Flag_Multi_QrCode', 'Y');
 
         if (!empty($startDate) && !empty($endDate)) {
             $query->whereBetween('uji.Tanggal', [$startDate, $endDate]);
@@ -10751,6 +10811,7 @@ class FormulatorTrialSampelController extends Controller
             ->whereNull('N_EMI_LIMS_Uji_Sampel.Status')
             ->where('N_EMI_LIMS_Uji_Sampel.Flag_Selesai', 'Y')
             ->where('N_EMI_LIMS_Uji_Sampel.Status_Keputusan_Sampel', 'terima')
+            ->whereNull('N_EMI_LIMS_Uji_Sampel.Flag_Resampling')
             ->orderByDesc('Tanggal')
             ->get()
             )->map(function ($item) {
@@ -11201,7 +11262,8 @@ class FormulatorTrialSampelController extends Controller
             ->whereNull('N_EMI_LIMS_Uji_Sampel.Status')
             ->where('N_EMI_LIMS_Uji_Sampel.Id_Jenis_Analisa', $id)
             ->where('N_EMI_LIMS_Uji_Sampel.Flag_Selesai', 'Y')
-            ->where('N_EMI_LIMS_Uji_Sampel.Flag_Final', 'Y');
+            ->where('N_EMI_LIMS_Uji_Sampel.Flag_Final', 'Y')
+            ->whereNull('N_EMI_LIMS_Uji_Sampel.Flag_Resampling');
 
         if (!empty($searchQuery)) {
             $baseQuery->where(function ($query) use ($searchQuery) {
@@ -11341,9 +11403,10 @@ class FormulatorTrialSampelController extends Controller
                 ->where('Flag_Multi_QrCode', 'Y')
                 ->where('Flag_Selesai', 'Y')
                 ->where('Status_Keputusan_Sampel', 'terima')
+                ->whereNull('Flag_Resampling')
                 ->get()
                 ->unique(function($item) {
-                    return $item->No_Po_Sampel . '-' . $item->No_Fak_Sub_Po; // Gabungkan keduanya untuk memastikan tidak ada duplikat
+                    return $item->No_Po_Sampel . '-' . $item->No_Fak_Sub_Po;
                 })
                 ->values();
 
@@ -11539,6 +11602,7 @@ class FormulatorTrialSampelController extends Controller
                 ->where('N_EMI_LIMS_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
                 ->where('N_EMI_LIMS_Uji_Sampel.Flag_Multi_QrCode', $flag_multi)
                 ->where('N_EMI_LIMS_Uji_Sampel.Flag_Selesai', 'Y')
+                ->whereNull('N_EMI_LIMS_Uji_Sampel.Flag_Resampling')
                 ->get();
 
             if ($ujiSampel->isEmpty()) {
@@ -11675,6 +11739,7 @@ class FormulatorTrialSampelController extends Controller
                 ->where('N_EMI_LIMS_Uji_Sampel.Id_Jenis_Analisa', $id_jenis_analisa_decoded)
                 ->where('N_EMI_LIMS_Uji_Sampel.Flag_Multi_QrCode', $flag_multi)
                 ->where('N_EMI_LIMS_Uji_Sampel.Flag_Selesai', 'Y')
+                ->whereNull('N_EMI_LIMS_Uji_Sampel.Flag_Resampling')
                 ->first();
 
             // Tambahkan sesi foto ke object informasi
@@ -12651,8 +12716,9 @@ class FormulatorTrialSampelController extends Controller
                 ->where('uji.Id_Jenis_Analisa', $decoded_id_jenis_analisa)
                 ->whereNull('uji.Flag_Multi_QrCode')
                 ->where('uji.Flag_Selesai', 'Y')
+                ->whereNull('uji.Flag_Resampling')
                 ->orderBy('uji.No_Faktur')
-                ->get(); 
+                ->get();
 
             if ($daftarSampel->isEmpty()) {
                 return response()->json([
@@ -15246,6 +15312,7 @@ class FormulatorTrialSampelController extends Controller
             }
 
             $noSampelList   = $samples->pluck('No_Sampel')->toArray();
+            $noPoList       = $samples->pluck('No_Po')->unique()->filter()->toArray();
             $kodeBarangList = $samples->pluck('Kode_Barang')->unique()->filter()->toArray();
             $idMesinList    = $samples->pluck('Id_Mesin')->unique()->filter()->toArray();
 
@@ -15262,6 +15329,19 @@ class FormulatorTrialSampelController extends Controller
                 }
             }
             $barangNameMap = $barangNameMap->pluck('Nama', 'Kode_Barang');
+
+            $formulaRaw = collect([]);
+            if (!empty($noPoList)) {
+                foreach (array_chunk($noPoList, 1000) as $chunk) {
+                    $formulaRaw = $formulaRaw->concat(
+                        DB::table('N_EMI_View_Trial_Order_Produksi')
+                            ->whereIn('No_Faktur', $chunk)
+                            ->select('No_Faktur', 'Kode_Formula')
+                            ->get()
+                    );
+                }
+            }
+            $formulaByNoPo = $formulaRaw->pluck('Kode_Formula', 'No_Faktur');
 
             $allAnalisaRaw = collect([]);
             if (!empty($kodeBarangList) && !empty($idMesinList)) {
@@ -15312,7 +15392,7 @@ class FormulatorTrialSampelController extends Controller
             }
             $resamplingByNoSampel = $allResamplingRaw->groupBy('No_Po_Sampel');
 
-            $result = $samples->map(function ($po) use ($analisaByKey, $ujiByNoSampel, $multiQrData, $resamplingByNoSampel, $barangNameMap) {
+            $result = $samples->map(function ($po) use ($analisaByKey, $ujiByNoSampel, $multiQrData, $resamplingByNoSampel, $barangNameMap, $formulaByNoPo) {
                 $key          = $po->Kode_Barang . '|' . $po->Id_Mesin;
                 $analisaList  = $analisaByKey->get($key, collect());
                 $ujiList      = $ujiByNoSampel->get($po->No_Sampel, collect());
@@ -15356,6 +15436,7 @@ class FormulatorTrialSampelController extends Controller
                     'no_batch'       => $po->No_Batch ?? '-',
                     'kode_barang'    => $po->Kode_Barang,
                     'nama_barang'    => $barangNameMap->get($po->Kode_Barang, $po->Kode_Barang),
+                    'kode_formula'   => $formulaByNoPo->get($po->No_Po),
                     'nama_mesin'     => $po->Nama_Mesin,
                     'Id_Mesin'       => $po->Id_Mesin,
                     'is_multi_print' => $po->Flag_Multi_Qrcode,

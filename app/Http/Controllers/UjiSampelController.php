@@ -23,11 +23,95 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
+use App\Services\JejakValidasiService;
 use ZipArchive;
 
 
 class UjiSampelController extends Controller
 {
+    protected JejakValidasiService $jejakValidasi;
+
+    public function __construct(JejakValidasiService $jejakValidasi)
+    {
+        $this->jejakValidasi = $jejakValidasi;
+    }
+
+    /**
+     * Tentukan status kelayakan satu analisa saat divalidasi.
+     *
+     * Flag_Perhitungan menentukan CARA menghitung, bukan apakah jejaknya
+     * dicatat:
+     *   - Flag_Perhitungan 'Y' : analisa berbasis rumus. Kelayakan diambil
+     *     dari hasil perbandingan terhadap range di N_EMI_LAB_Uji_Sampel.
+     *   - selain itu (PLT, LCKV, ANL non-rumus) : kelayakan berasal dari
+     *     keputusan manual petugas, yang tersimpan di kolom Flag_Layak.
+     *     Bila belum ditandai, dianggap layak.
+     */
+    protected function hitungKelayakan(object $analysis, $masterAnalisa): string
+    {
+        $noSampel  = $analysis->No_Po_Sampel ?? null;
+        $idJenis   = $analysis->Id_Jenis_Analisa ?? null;
+        $subSampel = $analysis->No_Fak_Sub_Po ?? null;
+
+        if (empty($noSampel) || empty($idJenis)) {
+            return 'Y';
+        }
+
+        $adaTidakLayak = DB::table('N_EMI_LAB_Uji_Sampel')
+            ->where('No_Po_Sampel', $noSampel)
+            ->where('Id_Jenis_Analisa', $idJenis)
+            ->when(!empty($subSampel), fn ($q) => $q->where('No_Fak_Sub_Po', $subSampel))
+            ->when(isset($analysis->Id_Pembanding) && $analysis->Id_Pembanding !== null,
+                fn ($q) => $q->where('Id_Pembanding', $analysis->Id_Pembanding))
+            ->where('Flag_Layak', 'T')
+            ->exists();
+
+        return $adaTidakLayak ? 'T' : 'Y';
+    }
+
+    /**
+     * Tentukan kelayakan hasil analisa PERHITUNGAN terhadap standar rentang.
+     *
+     * Hasil dinyatakan layak hanya bila berada DI DALAM rentang:
+     *     Range_Awal <= hasil <= Range_Akhir
+     *
+     * Sebelumnya hanya batas bawah yang diperiksa (`$hasil < $RentangAwal`),
+     * sehingga hasil yang MELEBIHI Range_Akhir tetap dinyatakan layak —
+     * misalnya rentang 0–3,5 dengan hasil 3,6 atau 4 tetap lolos. Batas atas
+     * kini ikut ditegakkan.
+     *
+     * Batas yang bernilai NULL diperlakukan sebagai "tidak dibatasi pada sisi
+     * itu", sehingga standar yang memang hanya punya batas bawah (atau hanya
+     * batas atas) tetap berperilaku sebagaimana mestinya.
+     *
+     * Catatan: ini khusus analisa perhitungan. Analisa non-perhitungan
+     * (palatabilitas, look view) memakai Flag_Layak dari keputusan petugas
+     * atau dari N_EMI_LAB_Standar_Rentang_Non_Perhitungan.
+     *
+     * @param  float|null  $hasil
+     * @param  mixed       $rangeAwal   batas bawah; null = tak dibatasi
+     * @param  mixed       $rangeAkhir  batas atas;  null = tak dibatasi
+     * @return string 'Y' bila layak, 'T' bila di luar rentang
+     */
+    protected function nilaiKelayakanRentang($hasil, $rangeAwal, $rangeAkhir): string
+    {
+        if ($hasil === null) {
+            return 'T';
+        }
+
+        $hasil = (float) $hasil;
+
+        if ($rangeAwal !== null && $rangeAwal !== '' && $hasil < (float) $rangeAwal) {
+            return 'T';
+        }
+
+        if ($rangeAkhir !== null && $rangeAkhir !== '' && $hasil > (float) $rangeAkhir) {
+            return 'T';
+        }
+
+        return 'Y';
+    }
+
     protected function calculateFormulaServerSide($formula, $parameterValues, $decimalPlaces = 2)
     {
         try {
@@ -1423,11 +1507,14 @@ class UjiSampelController extends Controller
                             $Flag_Layak = 'T';
                         }
                     } else {
-                        if (!is_null($RentangAwal) && $hasilFloat < (float)$RentangAwal) {
-                            $Flag_Layak = 'T';
-                        } else {
-                            $Flag_Layak = 'Y';
-                        }
+                        // Layak hanya bila hasil berada DI DALAM rentang.
+                        // Batas atas (Range_Akhir) ikut ditegakkan; sebelumnya
+                        // hasil yang melebihi batas atas tetap dinyatakan layak.
+                        $Flag_Layak = $this->nilaiKelayakanRentang(
+                            $hasilFloat,
+                            $RentangAwal,
+                            $result['Range_Akhir'] ?? null
+                        );
                     }
 
                     $getDataMesin = DB::table('EMI_Master_Mesin')
@@ -1848,9 +1935,15 @@ class UjiSampelController extends Controller
 
 
                 foreach ($calculatedResults as $result) {
-                    $RentangAwal = (float) $result['Range_Awal'];
+                    $RentangAwal = $result['Range_Awal'];
                     $hasilFloat = $this->safeFloat($result['Hasil_Perhitungan']);
-                    $Flag_Layak = ($hasilFloat < $RentangAwal) ? 'T' : 'Y';
+                    // Layak hanya bila hasil berada DI DALAM rentang — batas
+                    // atas (Range_Akhir) kini ikut diperiksa.
+                    $Flag_Layak = $this->nilaiKelayakanRentang(
+                        $hasilFloat,
+                        $RentangAwal,
+                        $result['Range_Akhir'] ?? null
+                    );
 
                     $getDataMesin = DB::table('EMI_Master_Mesin')
                         ->where('Id_Master_Mesin', $sumberData->Id_Mesin)
@@ -3267,11 +3360,14 @@ class UjiSampelController extends Controller
                             $Flag_Layak = 'T';
                         }
                     } else {
-                        if (!is_null($RentangAwal) && $hasilFloat < (float)$RentangAwal) {
-                            $Flag_Layak = 'T';
-                        } else {
-                            $Flag_Layak = 'Y';
-                        }
+                        // Layak hanya bila hasil berada DI DALAM rentang.
+                        // Batas atas (Range_Akhir) ikut ditegakkan; sebelumnya
+                        // hasil yang melebihi batas atas tetap dinyatakan layak.
+                        $Flag_Layak = $this->nilaiKelayakanRentang(
+                            $hasilFloat,
+                            $RentangAwal,
+                            $result['Range_Akhir'] ?? null
+                        );
                     }
 
                     $payloadUjiSampleData[] = [
@@ -3674,11 +3770,14 @@ class UjiSampelController extends Controller
                             $Flag_Layak = 'T';
                         }
                     } else {
-                        if (!is_null($RentangAwal) && $hasilFloat < (float)$RentangAwal) {
-                            $Flag_Layak = 'T';
-                        } else {
-                            $Flag_Layak = 'Y';
-                        }
+                        // Layak hanya bila hasil berada DI DALAM rentang.
+                        // Batas atas (Range_Akhir) ikut ditegakkan; sebelumnya
+                        // hasil yang melebihi batas atas tetap dinyatakan layak.
+                        $Flag_Layak = $this->nilaiKelayakanRentang(
+                            $hasilFloat,
+                            $RentangAwal,
+                            $result['Range_Akhir'] ?? null
+                        );
                     }
 
                     $basePltPayload = $isPlt ? ['Id_Session' => $idSessionForPlt, 'Id_Pembanding' => $idPembandingForRow] : [];
@@ -7400,8 +7499,32 @@ class UjiSampelController extends Controller
                 ? 'VALIDASI_TRIAL_PRODUKSI'
                 : 'VALIDASI_PRODUKSI';
 
+            // Jejak validasi dicatat di SINI — sebelum percabangan Flag_FG /
+            // Flag_Perhitungan di bawah. Dulu pencatatan bersarang di dalam
+            // cabang (FG='Y' DAN Perhitungan='Y'), sehingga palatabilitas dan
+            // look view — yang di master selalu ber-Flag_Perhitungan NULL —
+            // tidak pernah tercatat meski validasinya benar-benar terjadi.
+            // Flag_Perhitungan kini hanya menentukan CARA menghitung kelayakan
+            // (lihat cabang di bawah), bukan APAKAH jejaknya disimpan.
+            $this->jejakValidasi->catatValidasi([
+                'No_Sampel'        => $analysis->No_Po_Sampel,
+                // Jangan ganti NULL dengan No_Po_Sampel: sampel tunggal harus
+                // ber-No_Sub_Sampel NULL, sama seperti di Uji_Sampel. Nilai
+                // akhirnya tetap diambil service dari Uji_Sampel.
+                'No_Sub_Sampel'    => $analysis->No_Fak_Sub_Po ?? null,
+                'Id_Jenis_Analisa' => $analysis->Id_Jenis_Analisa,
+                'Tahapan_Ke'       => $analysis->Tahapan_Ke ?? 1,
+                'Flag_Layak'       => $this->hitungKelayakan($analysis, $checkedPerhitungan),
+                'Id_User'          => $userId,
+                'Tanggal'          => $tanggalSqlServer,
+                'Jam'              => $jamSqlServer,
+                'Id_Session'       => $analysis->Id_Session ?? null,
+                'Id_Pembanding'    => $analysis->Id_Pembanding ?? null,
+                'Flag_Resampling'  => $analysis->Flag_Resampling ?? null,
+            ]);
+
             if($checkFinishGood && $checkFinishGood->Flag_FG === 'Y'){
-                
+
                 if($checkedPerhitungan->Flag_Perhitungan === 'Y'){
                         $adaTidakLayak = DB::table('N_EMI_LAB_Uji_Sampel')
                         ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
@@ -7425,17 +7548,10 @@ class UjiSampelController extends Controller
                                         'Flag_Selesai' => 'Y'
                                     ]);
 
-                            $payloadUjiFinalDetail = [
-                                'No_Sampel' => $analysis->No_Po_Sampel,
-                                'No_Sub_Sampel' => $analysis->No_Fak_Sub_Po,
-                                'Id_Jenis_Analisa' => $analysis->Id_Jenis_Analisa,
-                                'Tahapan_Ke' => $analysis->Tahapan_Ke,
-                                'Flag_Layak' => $statusKelayakan,
-                                'Tanggal' => $tanggalSqlServer,
-                                'Jam' => $jamSqlServer,    
-                                'Id_User' => $userId
-                            ];
-                            DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Detail_Final')->insert($payloadUjiFinalDetail);
+                            // Pencatatan ke Detail_Final sudah dilakukan di awal
+                            // iterasi lewat JejakValidasiService (berlaku untuk
+                            // SEMUA aktivitas, bukan hanya yang berbasis rumus).
+                            // Insert lama di sini dihapus agar tidak ganda.
 
                             $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
                                 ->where('No_Sampel', $analysis->No_Po_Sampel)
@@ -7498,8 +7614,7 @@ class UjiSampelController extends Controller
                                     ->update([
                                         'Status_Keputusan_Sampel' => 'terima',
                                         'Flag_Selesai' => 'Y',
-                                        'Flag_Layak' => 'Y',
-                                        'Flag_Final' => 'Y'
+                                        'Flag_Layak' => 'Y'
                                     ]);
 
                             $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
@@ -7564,8 +7679,7 @@ class UjiSampelController extends Controller
                                 ->update([
                                     'Flag_Selesai' => 'Y',
                                     'Status_Keputusan_Sampel' => 'terima',
-                                    'Flag_Layak' => 'Y',
-                                    'Flag_Final' => 'Y'
+                                    'Flag_Layak' => 'Y'
                                 ]);
 
                         $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
@@ -7627,8 +7741,7 @@ class UjiSampelController extends Controller
                                 ->update([
                                     'Flag_Selesai' => 'Y',
                                     'Status_Keputusan_Sampel' => 'terima',
-                                    'Flag_Layak' => 'Y',
-                                    'Flag_Final' => 'Y'
+                                    'Flag_Layak' => 'Y'
                                 ]);
 
                         $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
@@ -10437,6 +10550,12 @@ class UjiSampelController extends Controller
                 'N_EMI_LAB_Uji_Sampel.Tahapan_Ke'
             )
             ->whereIn('N_EMI_LAB_Uji_Sampel.No_Po_Sampel', $noPoSampelList)
+            // Baris yang sudah di-resample tidak boleh ikut menilai lolos/tidak lolos,
+            // karena hasil penggantinya sudah ada di baris lain.
+            ->where(function ($q) {
+                $q->whereNull('N_EMI_LAB_Uji_Sampel.Flag_Resampling')
+                  ->orWhere('N_EMI_LAB_Uji_Sampel.Flag_Resampling', '!=', 'Y');
+            })
             ->orderByDesc('N_EMI_LAB_Uji_Sampel.Tahapan_Ke')
             ->orderByDesc('N_EMI_LAB_Uji_Sampel.Tanggal')
             ->orderByDesc('N_EMI_LAB_Uji_Sampel.Jam')
@@ -10565,7 +10684,11 @@ class UjiSampelController extends Controller
         $permissionKonten = $checkedAkses['permission_konten'] ?? [];
 
         $allowedAnalisaIds = [];
-        if (isset($permissionKonten['Finalisasi Sampel']) && is_array($permissionKonten['Validasi Hasil Analisa'])) {
+        // Key pada isset() dan is_array() harus sama. Sebelumnya is_array()
+        // memeriksa 'Validasi Hasil Analisa' — key yang berbeda — sehingga
+        // user yang punya hak Finalisasi Sampel tapi tidak punya hak Validasi
+        // Hasil Analisa mendapat daftar kosong tanpa pesan apa pun.
+        if (isset($permissionKonten['Finalisasi Sampel']) && is_array($permissionKonten['Finalisasi Sampel'])) {
             foreach ($permissionKonten['Finalisasi Sampel'] as $akses) {
                 if (isset($akses['flag']) && $akses['flag'] === 'Y' && isset($akses['id_jenis_analisa'])) {
                     $allowedAnalisaIds[] = $akses['id_jenis_analisa'];
@@ -10602,6 +10725,7 @@ class UjiSampelController extends Controller
         $query = DB::table('N_EMI_LAB_Uji_Sampel as uji')
             ->join('N_EMI_LAB_PO_Sampel as po', 'uji.No_Po_Sampel', '=', 'po.No_Sampel')
             ->join('N_EMI_View_Barang as brg', 'po.Kode_Barang', '=', 'brg.Kode_Barang')
+            ->leftJoin('EMI_Master_Mesin as mm', 'po.Id_Mesin', '=', 'mm.Id_Master_Mesin')
             ->select(
                 'uji.No_Po_Sampel',
                 DB::raw('MAX(uji.Tanggal) as Tanggal'),
@@ -10611,7 +10735,8 @@ class UjiSampelController extends Controller
                 'po.No_Split_Po',
                 'po.Kode_Barang',
                 'brg.Nama as Nama_Barang',
-                'po.Flag_Trial_Produksi' 
+                'po.Flag_Trial_Produksi',
+                DB::raw('MAX(mm.Nama_Mesin) as Nama_Mesin')
             )
             ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->whereNull('po.Flag_Trial_Produksi')
@@ -10626,7 +10751,13 @@ class UjiSampelController extends Controller
             ->where(function($q) {
                 $q->where('uji.Flag_Resampling', '!=', 'Y')
                 ->orWhereNull('uji.Flag_Resampling');
-            });
+            })
+            // Finalisasi hanya untuk sampel multi barcode. Sampel single
+            // (Flag_Multi_QrCode NULL) tidak melewati jalur finalisasi ini
+            // dan tidak boleh ikut muncul. Sebelumnya pembatasan ini hanya
+            // aktif bila user memilih filter qr_type; saat filter kosong —
+            // kondisi default halaman — seluruh sampel single ikut terbawa.
+            ->where('uji.Flag_Multi_QrCode', 'Y');
 
         if (!empty($startDate) && !empty($endDate)) {
             $query->whereBetween('uji.Tanggal', [$startDate, $endDate]);
@@ -11535,8 +11666,7 @@ class UjiSampelController extends Controller
             )
             ->whereNull('N_EMI_LAB_Uji_Sampel.Status')
             ->where('N_EMI_LAB_Uji_Sampel.Id_Jenis_Analisa', $id)
-            ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y')
-            ->where('N_EMI_LAB_Uji_Sampel.Flag_Final', 'Y');
+            ->where('N_EMI_LAB_Uji_Sampel.Flag_Selesai', 'Y');
 
         if (!empty($searchQuery)) {
             $baseQuery->where(function ($query) use ($searchQuery) {
@@ -15748,7 +15878,7 @@ class UjiSampelController extends Controller
             ->get()->keyBy(fn($r) => $r->No_Po_Sampel . '|' . $r->Id_Jenis_Analisa);
 
         $results            = [];
-        $finalDetailInserts = [];
+        // ($finalDetailInserts dihapus — pencatatan lewat JejakValidasiService)
         $logDetailByNoPo    = [];
 
         DB::beginTransaction();
@@ -15770,32 +15900,44 @@ class UjiSampelController extends Controller
                 $tahapanKey = $noPo . '|' . $rawJaId;
                 $tahapanKe  = $tahapanMap->get($tahapanKey)?->Tahapan_Ke ?? 1;
 
-                if ($isFG && $isPerhitungan) {
-                    $adaTidakLayak = DB::table('N_EMI_LAB_Uji_Sampel')
-                        ->where('No_Po_Sampel', $noPo)
-                        ->where('No_Fak_Sub_Po', $noFakSubPo)
-                        ->where('Id_Jenis_Analisa', $rawJaId)
-                        ->where('Flag_Layak', 'T')
-                        ->exists();
-                    $statusKelayakan = $adaTidakLayak ? 'T' : 'Y';
+                // Hitung kelayakan untuk SEMUA analisa, bukan hanya yang
+                // berbasis rumus. Untuk analisa non-rumus (PLT, LCKV),
+                // Flag_Layak='T' hanya ada bila petugas menandainya sendiri.
+                // Variabel ini di-set setiap iterasi supaya nilainya tidak
+                // bocor dari analisa sebelumnya.
+                $statusKelayakan = DB::table('N_EMI_LAB_Uji_Sampel')
+                    ->where('No_Po_Sampel', $noPo)
+                    ->where('Id_Jenis_Analisa', $rawJaId)
+                    ->when(!empty($noFakSubPo), fn ($q) => $q->where('No_Fak_Sub_Po', $noFakSubPo))
+                    ->where('Flag_Layak', 'T')
+                    ->exists() ? 'T' : 'Y';
 
+                // Jejak dicatat untuk setiap analisa, apa pun aktivitasnya.
+                // Sebelumnya hanya cabang (FG && Perhitungan) yang mengisi
+                // $finalDetailInserts, sehingga PLT dan LCKV tidak pernah
+                // punya jejak sama sekali.
+                $this->jejakValidasi->catatValidasi([
+                    'No_Sampel'        => $noPo,
+                    // NULL untuk sampel tunggal — lihat catatan di versi
+                    // tunggal. Service mengambil nilai final dari Uji_Sampel.
+                    'No_Sub_Sampel'    => $noFakSubPo ?? null,
+                    'Id_Jenis_Analisa' => $rawJaId,
+                    'Tahapan_Ke'       => $tahapanKe,
+                    'Flag_Layak'       => $statusKelayakan,
+                    'Id_User'          => $userId,
+                    'Tanggal'          => $tanggalSqlServer,
+                    'Jam'              => $jamSqlServer,
+                    'Id_Session'       => $analisis['Id_Session'] ?? null,
+                    'Id_Pembanding'    => $analisis['Id_Pembanding'] ?? null,
+                ]);
+
+                if ($isFG && $isPerhitungan) {
                     DB::table('N_EMI_LAB_Uji_Sampel')
                         ->where('No_Po_Sampel', $noPo)
                         ->where('No_Fak_Sub_Po', $noFakSubPo)
                         ->where('Id_Jenis_Analisa', $rawJaId)
                         ->whereNull('Flag_Selesai')
                         ->update(['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y']);
-
-                    $finalDetailInserts[] = [
-                        'No_Sampel'       => $noPo,
-                        'No_Sub_Sampel'   => $noFakSubPo ?? $noPo,
-                        'Id_Jenis_Analisa'=> $rawJaId,
-                        'Tahapan_Ke'      => $tahapanKe,
-                        'Flag_Layak'      => $statusKelayakan,
-                        'Tanggal'         => $tanggalSqlServer,
-                        'Jam'             => $jamSqlServer,
-                        'Id_User'         => $userId,
-                    ];
                 } elseif ($isFG && !$isPerhitungan) {
                     $q = DB::table('N_EMI_LAB_Uji_Sampel')
                         ->where('No_Po_Sampel', $noPo)
@@ -15804,7 +15946,7 @@ class UjiSampelController extends Controller
                     if ($isMultiQr && $noFakSubPo) {
                         $q->where('No_Fak_Sub_Po', $noFakSubPo);
                     }
-                    $q->update(['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y', 'Flag_Layak' => 'Y', 'Flag_Final' => 'Y']);
+                    $q->update(['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y', 'Flag_Layak' => 'Y']);
                 } else {
                     $q = DB::table('N_EMI_LAB_Uji_Sampel')
                         ->where('No_Po_Sampel', $noPo)
@@ -15813,14 +15955,17 @@ class UjiSampelController extends Controller
                     if ($isMultiQr && $noFakSubPo) {
                         $q->where('No_Fak_Sub_Po', $noFakSubPo);
                     }
-                    $q->update(['Flag_Selesai' => 'Y', 'Status_Keputusan_Sampel' => 'terima', 'Flag_Layak' => 'Y', 'Flag_Final' => 'Y']);
+                    $q->update(['Flag_Selesai' => 'Y', 'Status_Keputusan_Sampel' => 'terima', 'Flag_Layak' => 'Y']);
                 }
 
-                // Kumpulkan detail analisa per sampel untuk log detail
+                // Kumpulkan detail analisa per sampel untuk log detail.
+                // Flag_Layak memakai hasil hitungan di atas untuk semua
+                // aktivitas — dulu dipaksa 'Y' untuk analisa non-rumus,
+                // sehingga PLT/LCKV yang tidak layak tetap tercatat layak.
                 $logDetailByNoPo[$noPo][] = [
                     'Id_Jenis_Analisa'   => $rawJaId,
                     'Nama_Jenis_Analisa' => $jenisAnalisa?->Jenis_Analisa ?? null,
-                    'Flag_Layak'         => ($isFG && $isPerhitungan) ? ($statusKelayakan ?? 'Y') : 'Y',
+                    'Flag_Layak'         => $statusKelayakan,
                     'Tanggal'            => $tanggalSqlServer,
                     'Jam'                => $jamSqlServer,
                     'Id_User'            => $userId,
@@ -15829,9 +15974,8 @@ class UjiSampelController extends Controller
                 $results[] = ['No_Po_Sampel' => $noPo, 'success' => true];
             }
 
-            if (!empty($finalDetailInserts)) {
-                DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Detail_Final')->insert($finalDetailInserts);
-            }
+            // $finalDetailInserts tidak dipakai lagi: pencatatan Detail_Final
+            // kini ditangani JejakValidasiService di dalam loop di atas.
 
             // Log validasi: satu header per unique sampel + detail per analisa
             $processedNoPosLog = collect($results)->pluck('No_Po_Sampel')->unique()->values()->toArray();

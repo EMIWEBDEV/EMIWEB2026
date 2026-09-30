@@ -51,6 +51,7 @@
                                         <span class="fin-chip fin-chip--blue"><i class="ri-file-list-3-line"></i>{{ item.No_Po }}</span>
                                         <span class="fin-chip" :class="item.Flag_Multi_QrCode==='Y'?'fin-chip--blue':'fin-chip--gray'"><i class="ri-qr-code-line"></i>{{ item.Flag_Multi_QrCode==='Y'?'Multi':'Single' }}</span>
                                         <span class="fin-chip fin-chip--trial"><i class="ri-test-tube-line"></i>Trial</span>
+                                        <span class="fin-chip fin-chip--gray" v-if="item.Nama_Mesin"><i class="ri-settings-3-line"></i>{{ item.Nama_Mesin }}</span>
                                         <span class="fin-chip fin-chip--gray" v-if="item.Tanggal"><i class="ri-calendar-line"></i>{{ formatDate(item.Tanggal) }}</span>
                                     </div>
                                 </div>
@@ -94,6 +95,7 @@
                                     <span class="fin-badge fin-badge--gray"><i class="ri-git-branch-line me-1"></i>{{ selectedItem.No_Split_Po }}</span>
                                     <span class="fin-badge" :class="selectedItem.Flag_Multi_QrCode==='Y'?'fin-badge--primary':'fin-badge--gray'"><i class="ri-qr-code-line me-1"></i>{{ selectedItem.Flag_Multi_QrCode==='Y'?'Multi QR':'Single QR' }}</span>
                                     <span class="fin-badge fin-badge--trial"><i class="ri-test-tube-line me-1"></i>Trial Produksi</span>
+                                    <span class="fin-badge fin-badge--mesin" v-if="selectedItem.Nama_Mesin"><i class="ri-settings-3-line me-1"></i>{{ selectedItem.Nama_Mesin }}</span>
                                 </div>
                             </div>
                         </div>
@@ -105,7 +107,7 @@
                     </div>
                     <div class="fin-tabs">
                         <button class="fin-tab" :class="{'fin-tab--active':activeTab==='analisa'}" @click="activeTab='analisa'"><i class="ri-flask-line me-1"></i>Detail Analisa</button>
-                        <button class="fin-tab" :class="{'fin-tab--active':activeTab==='timeline'}" @click="activeTab='timeline';loadTimeline()"><i class="ri-timeline-view me-1"></i>Timeline<span v-if="auditLog.length>0" class="fin-tab-count">{{ auditLog.length }}</span></button>
+                        <button class="fin-tab" :class="{'fin-tab--active':activeTab==='timeline'}" @click="activeTab='timeline';loadTimeline()"><i class="ri-route-line me-1"></i>Sample Lifecycle</button>
                     </div>
                     <div class="fin-detail-body">
                         <div v-if="loading.detail" class="fin-loading-state"><div class="spinner-border" style="color:#d97706"></div><p class="mt-3 text-muted small">Memuat data analisa trial...</p></div>
@@ -196,21 +198,111 @@
                             </div>
                         </template>
                         <template v-else-if="activeTab==='timeline'">
-                            <div v-if="loading.timeline" class="fin-loading-state"><div class="spinner-border spinner-border-sm" style="color:#d97706"></div><p class="text-muted small mt-2">Memuat...</p></div>
-                            <div v-else-if="auditLog.length===0" class="fin-loading-state"><i class="ri-history-line fs-1 text-muted"></i><p class="text-muted small mt-2">Belum ada riwayat aktivitas</p></div>
-                            <div v-else class="fin-vtl">
-                                <div class="fin-vtl-hdr"><i class="ri-history-line me-2"></i>Riwayat Proses Sampel</div>
-                                <div class="fin-vtl-steps">
-                                    <div v-for="(log,li) in auditLog" :key="li" class="fin-vtl-step" :class="getStepClass(log)">
-                                        <div class="fin-vtl-indicator">
-                                            <div class="fin-vtl-dot"><i :class="getStepIcon(log)"></i></div>
-                                            <div v-if="li<auditLog.length-1" class="fin-vtl-line"></div>
+                            <div v-if="loading.timeline" class="fin-loading-state"><div class="spinner-border spinner-border-sm" style="color:#d97706"></div><p class="text-muted small mt-2">Memuat riwayat sampel...</p></div>
+                            <div v-else-if="!lifecycle || !lifecycle.tahapan || lifecycle.tahapan.length===0" class="fin-loading-state"><i class="ri-route-line fs-1 text-muted"></i><p class="text-muted small mt-2">Belum ada tahapan tervalidasi</p></div>
+                            <div v-else class="lc">
+
+                                <!-- Ringkasan lifecycle -->
+                                <div class="lc-summary">
+                                    <div class="lc-sum-item">
+                                        <span class="lc-sum-label">Sampel</span>
+                                        <span class="lc-sum-value">{{ lifecycle.sampel.No_Sampel }}</span>
+                                    </div>
+                                    <div class="lc-sum-item">
+                                        <span class="lc-sum-label">Batch</span>
+                                        <span class="lc-sum-value">{{ lifecycle.sampel.No_Batch ?? '-' }}</span>
+                                    </div>
+                                    <div class="lc-sum-item">
+                                        <span class="lc-sum-label">Tahapan</span>
+                                        <span class="lc-sum-value">{{ lifecycle.ringkasan.Total_Tahapan }}</span>
+                                    </div>
+                                    <div class="lc-sum-item">
+                                        <span class="lc-sum-label">Analisa</span>
+                                        <span class="lc-sum-value">
+                                            {{ lifecycle.ringkasan.Total_Analisa }}
+                                            <em class="lc-sum-ok">{{ lifecycle.ringkasan.Lolos }} lolos</em>
+                                            <em v-if="lifecycle.ringkasan.Tidak_Lolos>0" class="lc-sum-bad">{{ lifecycle.ringkasan.Tidak_Lolos }} tidak</em>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Rangkaian tahapan -->
+                                <div class="lc-track">
+                                    <div v-for="(t,ti) in lifecycle.tahapan" :key="ti" class="lc-stage" :class="t.Status==='TIDAK LOLOS' ? 'lc-stage--bad' : 'lc-stage--ok'">
+                                        <div class="lc-rail">
+                                            <div class="lc-node"><span class="lc-node-num">{{ ti+1 }}</span></div>
+                                            <div class="lc-line"></div>
                                         </div>
-                                        <div class="fin-vtl-body">
-                                            <div class="fin-vtl-row1"><span class="fin-vtl-badge" :class="getStepBadgeClass(log)">{{ formatAksi(log.Jenis_Aksi) }}</span><span v-if="log.Sub_Aksi" class="fin-vtl-sub" :class="log.Sub_Aksi==='TOLAK'?'text-danger':'text-success'">{{ log.Sub_Aksi }}</span></div>
-                                            <div class="fin-vtl-meta"><span><i class="ri-user-3-line me-1"></i>{{ log.Nama_User||log.Id_User }}</span><span><i class="ri-time-line me-1"></i>{{ formatDate(log.Tanggal) }}<template v-if="log.Jam"> · {{ log.Jam.substring(0,5) }}</template></span></div>
-                                            <div v-if="log.details&&log.details.length" class="fin-vtl-details"><div class="fin-vtl-details-hdr"><i class="ri-microscope-line me-1"></i>{{ log.details.length }} analisa</div><div v-for="d in log.details" :key="d.Id_Jenis_Analisa" class="fin-vtl-detail-row"><i class="ri-arrow-right-s-line text-muted"></i>{{ d.Nama_Jenis_Analisa }}<span v-if="d.Tanggal" class="text-muted ms-1" style="font-size:.65rem;"> · {{ formatDate(d.Tanggal) }}</span></div></div>
-                                            <div v-if="log.Keterangan" class="fin-vtl-note"><i class="ri-chat-3-line me-1"></i>{{ log.Keterangan }}</div>
+                                        <div class="lc-card">
+                                            <div class="lc-card-hdr">
+                                                <div class="lc-hdr-left">
+                                                    <span class="lc-act-badge" :class="'lc-act--'+(t.Kode_Aktivitas_Lab||'').toLowerCase()">{{ t.Kode_Aktivitas_Lab }}</span>
+                                                    <span class="lc-act-name">{{ t.Nama_Aktivitas }}</span>
+                                                </div>
+                                                <span class="lc-status" :class="t.Status==='TIDAK LOLOS' ? 'lc-status--bad' : 'lc-status--ok'">
+                                                    <i :class="t.Status==='TIDAK LOLOS' ? 'ri-close-circle-line' : 'ri-checkbox-circle-line'"></i>
+                                                    {{ t.Status }}
+                                                </span>
+                                            </div>
+                                            <div class="lc-card-meta">
+                                                <span><i class="ri-user-3-line"></i>{{ t.Nama_User }}</span>
+                                                <span><i class="ri-calendar-line"></i>{{ formatStamp(t.Tanggal, t.Jam) }}</span>
+                                                <span><i class="ri-flask-line"></i>{{ t.Jumlah_Analisa }} analisa</span>
+                                            </div>
+                                            <table class="lc-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width:34%">Jenis Analisa</th>
+                                                        <th style="width:24%">No. Sub Sampel</th>
+                                                        <th style="width:24%">Waktu Validasi</th>
+                                                        <th style="width:18%">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="a in t.analisa" :key="a.Id_Jenis_Analisa+'_'+a.No_Sub_Sampel+'_'+a.Jam">
+                                                        <td>
+                                                            <span class="lc-an-name">{{ a.Nama_Jenis_Analisa }}</span>
+                                                            <span v-if="a.Id_Pembanding" class="lc-an-tag">pembanding #{{ a.Id_Pembanding }}</span>
+                                                            <span v-if="a.Flag_Resampling==='Y'" class="lc-an-tag lc-an-tag--warn">resampling</span>
+                                                        </td>
+                                                        <td><span class="lc-sub">{{ a.No_Sub_Sampel || lifecycle.sampel.No_Sampel }}</span></td>
+                                                        <td><span class="lc-time">{{ formatStamp(a.Tanggal, a.Jam) }}</span></td>
+                                                        <td>
+                                                            <span class="lc-pill" :class="a.Flag_Layak==='T' ? 'lc-pill--bad' : 'lc-pill--ok'">
+                                                                {{ a.Flag_Layak==='T' ? 'Tidak Lolos' : 'Lolos' }}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tahap akhir: finalisasi -->
+                                    <div class="lc-stage" :class="lifecycle.finalisasi ? (lifecycle.finalisasi.Flag_Ok==='T' ? 'lc-stage--bad' : 'lc-stage--ok') : 'lc-stage--pending'">
+                                        <div class="lc-rail">
+                                            <div class="lc-node lc-node--final"><i :class="lifecycle.finalisasi ? 'ri-shield-check-line' : 'ri-time-line'"></i></div>
+                                        </div>
+                                        <div class="lc-card">
+                                            <div class="lc-card-hdr">
+                                                <div class="lc-hdr-left">
+                                                    <span class="lc-act-badge lc-act--final">FINAL</span>
+                                                    <span class="lc-act-name">Finalisasi Sampel</span>
+                                                </div>
+                                                <span v-if="lifecycle.finalisasi" class="lc-status" :class="lifecycle.finalisasi.Flag_Ok==='T' ? 'lc-status--bad' : 'lc-status--ok'">
+                                                    <i :class="lifecycle.finalisasi.Flag_Ok==='T' ? 'ri-close-circle-line' : 'ri-checkbox-circle-line'"></i>
+                                                    {{ lifecycle.finalisasi.Status }}
+                                                </span>
+                                                <span v-else class="lc-status lc-status--pending"><i class="ri-time-line"></i>MENUNGGU</span>
+                                            </div>
+                                            <div v-if="lifecycle.finalisasi" class="lc-card-meta">
+                                                <span><i class="ri-user-3-line"></i>{{ lifecycle.finalisasi.Nama_User }}</span>
+                                                <span><i class="ri-calendar-line"></i>{{ formatStamp(lifecycle.finalisasi.Tanggal, lifecycle.finalisasi.Jam) }}</span>
+                                                <span><i class="ri-hashtag"></i>ID {{ lifecycle.finalisasi.Id_Uji_Validasi_Final }}</span>
+                                            </div>
+                                            <div v-else class="lc-pending-note">
+                                                <i class="ri-information-line me-1"></i>Sampel belum difinalisasi. Seluruh tahapan di atas sudah tervalidasi.
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -241,6 +333,31 @@
                     <div v-else-if="modal.isBulk"><p class="text-muted small mb-3">Sampel yang akan difinalisasi:</p><div v-for="(it,si) in selectedItems" :key="si" class="fin-bulk-row"><code class="fin-bulk-code">{{ it.No_Po_Sampel }}</code><span class="text-muted small">{{ it.Nama_Barang }}</span></div></div>
                 </div>
                 <div class="fin-modal-ftr"><button class="btn btn-light" @click="modal.show=false">Batal</button><button class="btn fw-semibold fin-btn-trial" @click="submitFinalisasi" :disabled="loading.submitting"><span v-if="loading.submitting" class="spinner-border spinner-border-sm me-2"></span><i v-else class="ri-git-commit-line me-1"></i>Konfirmasi & Finalisasi</button></div>
+            </div>
+        </div>
+
+        <!-- ERROR 422 MODAL -->
+        <div v-if="errorModal.show" class="fin-modal-backdrop" @click.self="errorModal.show=false">
+            <div class="fin-modal">
+                <div class="fin-modal-hdr" style="background:linear-gradient(135deg,#991b1b,#ef4444);">
+                    <i class="ri-error-warning-line me-2 fs-5"></i>
+                    <div>
+                        <div class="fin-modal-title">{{ errorModal.title }}</div>
+                        <div class="fin-modal-sub">{{ errorModal.noSampel || 'Finalisasi dibatalkan' }}</div>
+                    </div>
+                    <button class="fin-modal-close" @click="errorModal.show=false"><i class="ri-close-line"></i></button>
+                </div>
+                <div class="fin-modal-body">
+                    <p class="text-muted small mb-3">{{ errorModal.message }}</p>
+                    <div v-if="errorModal.items.length > 0">
+                        <div class="fw-semibold text-danger small mb-2"><i class="ri-alert-line me-1"></i>{{ errorModal.itemsLabel }}</div>
+                        <div v-for="(it, idx) in errorModal.items" :key="idx" class="fin-error-analisa-row">
+                            <i class="ri-close-circle-line text-danger me-2"></i>
+                            <span>{{ it.text }}<em v-if="it.reason" class="fin-error-reason"> — {{ it.reason }}</em></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="fin-modal-ftr"><button class="btn btn-danger fw-semibold" @click="errorModal.show=false"><i class="ri-check-line me-1"></i>Mengerti</button></div>
             </div>
         </div>
 
@@ -284,13 +401,14 @@ import axios from "axios";
 export default {
     data() {
         return {
-            listData:[], selectedItem:null, detailData:[], auditLog:[],
+            listData:[], selectedItem:null, detailData:[], auditLog:[], lifecycle:null,
             activeTab:"analisa", searchQuery:"", searchTimeout:null,
             filters:{startDate:"",endDate:"",qrType:""},
             pagination:{page:1,totalPage:1,total:0,limit:10},
             loading:{list:false,detail:false,timeline:false,submitting:false},
             selectedItems:[], isMobile:false, detailVisible:false,
             modal:{show:false,isBulk:false},
+            errorModal:{show:false,title:'',message:'',noSampel:'',itemsLabel:'',items:[]},
             openSections:[], openAnalisas:[],
             loadingTable:{}, templates:{}, tableRows:{}, tableAverages:{}, tableRawFotos:{},
             blobUrlCache:{},
@@ -301,6 +419,26 @@ export default {
     computed: {
         allCurrentPageChecked() { return this.listData.length>0&&this.listData.every(i=>this.isChecked(i)); },
         someCurrentPageChecked() { return this.listData.some(i=>this.isChecked(i)); },
+        expandedAuditLog() {
+            const result = [];
+            for (const log of this.auditLog) {
+                if (!log.details || log.details.length === 0) { result.push(log); continue; }
+                const byUser = new Map();
+                for (const d of log.details) {
+                    const uid = d.Id_User || '—';
+                    if (!byUser.has(uid)) byUser.set(uid, []);
+                    byUser.get(uid).push(d);
+                }
+                if (byUser.size <= 1) {
+                    result.push(log);
+                } else {
+                    for (const [uid, items] of byUser) {
+                        result.push({ ...log, Id_User: uid, Nama_User: uid, Tanggal: items[0].Tanggal || log.Tanggal, Jam: items[0].Jam || log.Jam, details: items, _expanded: true });
+                    }
+                }
+            }
+            return result;
+        },
         detailSections() {
             const gDef={ANL:{label:'Analisa Lab',icon:'ri-flask-line',bg:'linear-gradient(135deg,#405189,#2e3a64)'},PLT:{label:'Palatabilitas',icon:'ri-heart-pulse-line',bg:'linear-gradient(135deg,#0ab39c,#0891b2)'},LCKV:{label:'Look View',icon:'ri-eye-line',bg:'linear-gradient(135deg,#7c3aed,#5b21b6)'}};
             const order={ANL:1,PLT:2,LCKV:3};
@@ -333,7 +471,7 @@ export default {
             }catch{this.listData=[];}finally{this.loading.list=false;}
         },
         async selectItem(item){
-            this.selectedItem=item;this.activeTab="analisa";this.auditLog=[];this.detailVisible=true;
+            this.selectedItem=item;this.activeTab="analisa";this.auditLog=[];this.lifecycle=null;this.detailVisible=true;
             this.openSections=[];this.openAnalisas=[];this.templates={};this.tableRows={};this.tableAverages={};this.tableRawFotos={};
             await this.fetchDetail(item.No_Po_Sampel);
             this.openSections=this.detailSections.map(s=>s.group);
@@ -410,7 +548,27 @@ export default {
                 this.fotoModal={show:true,loading:false,photos:[]};
             }
         },
-        async loadTimeline(){if(this.auditLog.length>0||!this.selectedItem)return;this.loading.timeline=true;try{const res=await axios.get(`/api/v1/log-aksi/by-sampel/${this.selectedItem.No_Po_Sampel}`);this.auditLog=res.data?.result||[];}catch{this.auditLog=[];}finally{this.loading.timeline=false;}},
+        // Sample Lifecycle dibaca dari Hasil_Uji_Validasi_Final + _Detail_Final.
+        // Sebelumnya memakai /log-aksi/by-sampel yang bersumber dari Log_Aksi,
+        // sehingga satu analisa bisa muncul berulang kali (FS0926-0001 tampil
+        // 16 entri padahal analisanya hanya 10).
+        async loadTimeline(){
+            if(this.lifecycle||!this.selectedItem)return;
+            this.loading.timeline=true;
+            try{
+                const res=await axios.get(`/api/v1/finalisai/trial-produksi/lifecycle/${this.selectedItem.No_Po_Sampel}`);
+                this.lifecycle=res.data?.result||null;
+            }catch{this.lifecycle=null;}
+            finally{this.loading.timeline=false;}
+        },
+        // Gabungkan tanggal dan jam menjadi "24 Sep 2026 09:49".
+        formatStamp(tanggal,jam){
+            if(!tanggal)return "-";
+            const d=new Date(tanggal);
+            if(isNaN(d))return "-";
+            const tgl=d.toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"});
+            return jam ? `${tgl} ${String(jam).substring(0,5)}` : tgl;
+        },
         isActive(item){return this.selectedItem?.No_Po_Sampel===item.No_Po_Sampel;},
         isChecked(item){return this.selectedItems.some(i=>i.No_Po_Sampel===item.No_Po_Sampel);},
         toggleBulk(item){const idx=this.selectedItems.findIndex(i=>i.No_Po_Sampel===item.No_Po_Sampel);if(idx>-1)this.selectedItems.splice(idx,1);else this.selectedItems.push(item);},
@@ -424,18 +582,98 @@ export default {
             try{
                 if(this.modal.isBulk){
                     const res=await axios.post("/api/v1/finalisai/trial-produksi/hasil-analisa-close/finalisasi/bulk",{no_sampel_list:this.selectedItems.map(i=>i.No_Po_Sampel)});
-                    if(res.data?.success){const sukses=res.data.result?.berhasil||[];this.selectedItems=this.selectedItems.filter(i=>!sukses.includes(i.No_Po_Sampel));if(this.selectedItem&&sukses.includes(this.selectedItem.No_Po_Sampel)){this.selectedItem=null;this.detailData=[];}this.showToast("success",`${sukses.length} sampel berhasil difinalisasi`);this.fetchList();}
-                    else this.showToast("error",res.data?.message||"Gagal finalisasi bulk");
+                    this.modal.show=false;
+                    if(res.data?.success){
+                        const sukses=res.data.result?.berhasil||[];
+                        const gagal=res.data.result?.gagal||[];
+                        this.selectedItems=this.selectedItems.filter(i=>!sukses.includes(i.No_Po_Sampel));
+                        if(this.selectedItem&&sukses.includes(this.selectedItem.No_Po_Sampel)){this.selectedItem=null;this.detailData=[];}
+                        this.fetchList();
+                        if(gagal.length>0){
+                            this.showErrorModal({
+                                title:sukses.length>0?"Sebagian Sampel Gagal":"Finalisasi Gagal",
+                                message:`${sukses.length} sampel berhasil difinalisasi, ${gagal.length} sampel gagal dan tetap berada di daftar.`,
+                                itemsLabel:"Sampel yang gagal difinalisasi:",
+                                items:gagal,
+                            });
+                        }else{
+                            this.showToast("success",`${sukses.length} sampel berhasil difinalisasi`);
+                        }
+                    }
+                    else this.showErrorModal({title:"Finalisasi Bulk Gagal",message:this.pickMessage(res.data,"Gagal finalisasi bulk")});
                 }else{
                     const res=await axios.post(`/api/v1/finalisai/trial-produksi/hasil-analisa-close/finalisasi/${this.selectedItem.No_Po_Sampel}`);
+                    this.modal.show=false;
                     if(res.data?.success){this.showToast("success","Sampel trial berhasil difinalisasi");this.selectedItem=null;this.detailData=[];this.detailVisible=false;this.fetchList();}
-                    else this.showToast("error",res.data?.message||"Gagal finalisasi");
+                    else this.showErrorModal({title:"Finalisasi Gagal",noSampel:this.selectedItem?.No_Po_Sampel||'',message:this.pickMessage(res.data,"Gagal finalisasi")});
                 }
-                this.modal.show=false;
-            }catch(e){this.showToast("error",e.response?.data?.message||"Terjadi kesalahan");}
-            finally{this.loading.submitting=false;}
+            }catch(e){ this.handleFinalisasiError(e); }
+            finally{this.loading.submitting=false;this.modal.show=false;}
         },
-        showToast(type,msg){const el=document.createElement("div");el.className=`fin-toast fin-toast--${type==='success'?'success':'error'}`;el.innerHTML=`<i class="${type==='success'?'ri-checkbox-circle-line':'ri-close-circle-line'} me-2"></i>${msg}`;document.body.appendChild(el);setTimeout(()=>el.remove(),3500);},
+        // Ambil pesan error dari response — backend kadang mengirim message berupa objek {error:...}
+        pickMessage(data,fallback){
+            const msg=data?.message;
+            if(typeof msg==="string"&&msg.trim())return msg;
+            if(msg&&typeof msg==="object")return msg.error||msg.message||fallback;
+            return fallback;
+        },
+        normalizeErrorItems(list){
+            if(!Array.isArray(list))return[];
+            return list.map(it=>{
+                if(it===null||it===undefined)return{text:"-",reason:""};
+                if(typeof it==="string"||typeof it==="number")return{text:String(it),reason:""};
+                return{text:String(it.sampel??it.No_Sampel??it.Jenis_Analisa??it.nama??"-"),reason:it.reason?String(it.reason):""};
+            });
+        },
+        showErrorModal({title,message,noSampel="",itemsLabel="",items=[]}){
+            this.modal.show=false;
+            this.errorModal={show:true,title,message,noSampel,itemsLabel,items:this.normalizeErrorItems(items)};
+        },
+        // Satu pintu untuk semua kegagalan finalisasi — modal konfirmasi selalu ditutup
+        // dan pengguna selalu mendapat penjelasan, tidak pernah dibiarkan menggantung.
+        handleFinalisasiError(e){
+            this.modal.show=false;
+            const res=e?.response;
+            if(!res){
+                this.showErrorModal({title:"Tidak Ada Respons Server",message:"Permintaan finalisasi tidak sampai ke server. Periksa koneksi jaringan Anda, lalu coba lagi."});
+                return;
+            }
+            const data=res.data||{};
+            const noSampel=data.detail?.No_Sampel||(this.modal.isBulk?"":this.selectedItem?.No_Po_Sampel||"");
+            if(res.status===419){
+                this.showErrorModal({title:"Sesi Telah Berakhir",message:"Sesi login Anda sudah habis. Muat ulang halaman (F5) dan login kembali sebelum melakukan finalisasi."});
+                return;
+            }
+            if(res.status===403){
+                this.showErrorModal({title:"Akses Ditolak",message:this.pickMessage(data,"Akun Anda tidak memiliki hak akses FINALISASI untuk menu ini. Hubungi administrator.")});
+                return;
+            }
+            const kurang=data.detail?.Analisa_Kurang||[];
+            const belumValidasi=data.detail?.Analisa_Belum_Validasi||[];
+            if(kurang.length>0){
+                this.showErrorModal({title:"Analisa Belum Lengkap",noSampel,message:this.pickMessage(data,"Data analisa belum lengkap. Lengkapi analisa berikut sebelum difinalisasi."),itemsLabel:"Analisa yang belum diinput:",items:kurang});
+                return;
+            }
+            if(belumValidasi.length>0){
+                this.showErrorModal({title:"Analisa Belum Divalidasi",noSampel,message:this.pickMessage(data,"Masih ada analisa yang belum divalidasi."),itemsLabel:"Analisa yang belum divalidasi:",items:belumValidasi});
+                return;
+            }
+            this.showErrorModal({title:"Finalisasi Gagal",noSampel,message:this.pickMessage(data,`Terjadi kesalahan pada server (HTTP ${res.status}). Coba lagi atau hubungi tim IT.`)});
+        },
+        showToast(type,msg){
+            const ok=type==="success";
+            const el=document.createElement("div");
+            el.className=`fin-toast fin-toast--${ok?'success':'error'}`;
+            // Elemen ini di-append ke <body> sehingga tidak terjangkau <style scoped> —
+            // gaya harus inline agar toast benar-benar terlihat.
+            el.setAttribute("style",`position:fixed;bottom:18px;right:18px;z-index:10060;display:flex;align-items:center;gap:8px;max-width:min(92vw,420px);padding:11px 16px;border-radius:9px;color:#fff;font-size:.82rem;font-weight:500;box-shadow:0 4px 14px rgba(0,0,0,.16);background:${ok?'#0ab39c':'#f06548'};`);
+            const icon=document.createElement("i");
+            icon.className=ok?"ri-checkbox-circle-line":"ri-close-circle-line";
+            const text=document.createElement("span");
+            text.textContent=msg;
+            el.appendChild(icon);el.appendChild(text);
+            document.body.appendChild(el);setTimeout(()=>el.remove(),4000);
+        },
         formatDate(d){if(!d)return"-";return new Date(d).toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"});},
         formatAksi(aksi){const map={INPUT_ANALYZER:"Input Analyzer",VALIDASI_PRODUKSI:"Validasi Produksi",VALIDASI_TRIAL_PRODUKSI:"Validasi Trial",FINALISASI_PRODUKSI:"Finalisasi Produksi",FINALISASI_TRIAL_PRODUKSI:"Finalisasi Trial",VALIDASI_FORMULATOR:"Validasi Formulator",PRAFINALISASI_FORMULATOR:"Pra-Finalisasi",FINALISASI_FORMULATOR:"Finalisasi Formulator"};return map[aksi]||aksi;},
         getStepClass(log){if(log.Sub_Aksi==='TOLAK')return'vtl-rejected';if(log.Jenis_Aksi?.includes('FINALISASI'))return'vtl-final';return'vtl-done';},
@@ -514,6 +752,7 @@ export default {
 .fin-badge--success{background:rgba(10,179,156,.1);color:#0ab39c;border:1px solid rgba(10,179,156,.2);}
 .fin-badge--danger{background:rgba(240,101,72,.1);color:#f06548;border:1px solid rgba(240,101,72,.2);}
 .fin-badge--gray{background:#f1f5f9;color:#475569;}
+.fin-badge--mesin{background:rgba(100,116,139,.1);color:#475569;border:1px solid rgba(100,116,139,.2);}
 .fin-bulk-bar{padding:9px 12px;background:#92400e;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .fin-bulk-count{font-size:.8rem;}
 .fin-btn-trial{background:#d97706;color:#fff;border:none;border-radius:6px;padding:5px 14px;}
@@ -650,7 +889,81 @@ export default {
 .fin-vtl-details{font-size:.7rem;color:#64748b;background:#fffbeb;border-radius:5px;padding:5px 9px;margin-top:3px;}
 .fin-vtl-details-hdr{font-weight:600;color:#475569;margin-bottom:2px;}
 .fin-vtl-detail-row{display:flex;align-items:flex-start;gap:2px;line-height:1.6;}
+.fin-vtl-user-group{border-left:2px solid #e2e8f0;margin-left:4px;padding-left:7px;margin-top:5px;}
+.fin-vtl-user-hdr{display:flex;align-items:center;gap:4px;font-weight:600;color:#334155;font-size:.71rem;margin-bottom:2px;}
+.fin-vtl-user-name{color:#405189;}
+.fin-vtl-user-time{color:#94a3b8;font-weight:400;font-size:.66rem;}
 .fin-vtl-note{font-size:.72rem;color:#64748b;margin-top:3px;font-style:italic;padding:3px 7px;background:#fef9c3;border-left:2px solid #fde68a;}
+
+/* ===== Sample Lifecycle ===== */
+.lc{padding:4px 2px 14px;}
+
+/* Ringkasan atas */
+.lc-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:#e2e8f0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:18px;}
+.lc-sum-item{background:#fff;padding:10px 14px;display:flex;flex-direction:column;gap:3px;}
+.lc-sum-label{font-size:.63rem;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;font-weight:600;}
+.lc-sum-value{font-size:.9rem;font-weight:700;color:#1e293b;display:flex;align-items:baseline;gap:6px;}
+.lc-sum-ok{font-size:.68rem;font-weight:600;font-style:normal;color:#0f9d76;}
+.lc-sum-bad{font-size:.68rem;font-weight:600;font-style:normal;color:#dc2626;}
+
+/* Rangkaian tahapan */
+.lc-track{position:relative;}
+.lc-stage{display:flex;gap:14px;position:relative;}
+.lc-rail{position:relative;display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:30px;}
+.lc-node{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.76rem;font-weight:700;color:#fff;background:#94a3b8;flex-shrink:0;box-shadow:0 0 0 3px #fff,0 0 0 4px #e2e8f0;z-index:1;}
+.lc-node--final{font-size:.9rem;}
+.lc-stage--ok .lc-node{background:linear-gradient(135deg,#0f9d76,#10b981);box-shadow:0 0 0 3px #fff,0 0 0 4px #a7f3d0;}
+.lc-stage--bad .lc-node{background:linear-gradient(135deg,#b91c1c,#ef4444);box-shadow:0 0 0 3px #fff,0 0 0 4px #fecaca;}
+.lc-stage--pending .lc-node{background:linear-gradient(135deg,#94a3b8,#cbd5e1);}
+.lc-line{flex:1;width:2px;background:#e2e8f0;margin:2px 0 -2px;}
+.lc-stage:last-child .lc-line{display:none;}
+
+/* Kartu tahapan */
+.lc-card{flex:1;min-width:0;border:1px solid #e2e8f0;border-radius:9px;background:#fff;margin-bottom:14px;overflow:hidden;transition:box-shadow .15s;}
+.lc-card:hover{box-shadow:0 2px 10px rgba(15,23,42,.07);}
+.lc-stage--ok .lc-card{border-left:3px solid #10b981;}
+.lc-stage--bad .lc-card{border-left:3px solid #ef4444;}
+.lc-stage--pending .lc-card{border-left:3px solid #cbd5e1;border-style:dashed;}
+
+.lc-card-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 13px;background:#f8fafc;border-bottom:1px solid #eef2f7;flex-wrap:wrap;}
+.lc-hdr-left{display:flex;align-items:center;gap:8px;min-width:0;}
+.lc-act-badge{font-size:.62rem;font-weight:800;letter-spacing:.05em;padding:3px 7px;border-radius:4px;color:#fff;background:#64748b;flex-shrink:0;}
+.lc-act--anl{background:#2563eb;}
+.lc-act--lckv{background:#0284c7;}
+.lc-act--plt{background:#7c3aed;}
+.lc-act--final{background:#d97706;}
+.lc-act-name{font-size:.82rem;font-weight:700;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lc-status{font-size:.65rem;font-weight:700;letter-spacing:.03em;padding:3px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0;}
+.lc-status--ok{background:#dcfce7;color:#15803d;}
+.lc-status--bad{background:#fee2e2;color:#b91c1c;}
+.lc-status--pending{background:#f1f5f9;color:#64748b;}
+
+.lc-card-meta{display:flex;flex-wrap:wrap;gap:14px;padding:8px 13px;font-size:.71rem;color:#64748b;border-bottom:1px solid #f1f5f9;}
+.lc-card-meta span{display:inline-flex;align-items:center;gap:4px;}
+.lc-card-meta i{color:#94a3b8;font-size:.8rem;}
+
+/* Tabel analisa */
+.lc-table{width:100%;border-collapse:collapse;font-size:.74rem;}
+.lc-table thead th{text-align:left;padding:7px 13px;font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;font-weight:700;background:#fcfdfe;border-bottom:1px solid #f1f5f9;}
+.lc-table tbody td{padding:8px 13px;border-bottom:1px solid #f8fafc;vertical-align:middle;}
+.lc-table tbody tr:last-child td{border-bottom:none;}
+.lc-table tbody tr:hover{background:#fafcff;}
+.lc-an-name{font-weight:600;color:#334155;}
+.lc-an-tag{display:inline-block;margin-left:6px;font-size:.6rem;font-weight:600;padding:1px 6px;border-radius:3px;background:#ede9fe;color:#6d28d9;vertical-align:middle;}
+.lc-an-tag--warn{background:#fef3c7;color:#b45309;}
+.lc-sub{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.71rem;color:#475569;background:#f1f5f9;padding:2px 7px;border-radius:4px;}
+.lc-time{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.71rem;color:#475569;white-space:nowrap;}
+.lc-pill{display:inline-flex;align-items:center;font-size:.64rem;font-weight:700;padding:3px 9px;border-radius:20px;}
+.lc-pill--ok{background:#dcfce7;color:#15803d;}
+.lc-pill--bad{background:#fee2e2;color:#b91c1c;}
+.lc-pending-note{padding:10px 13px;font-size:.73rem;color:#64748b;font-style:italic;}
+
+@media(max-width:768px){
+    .lc-table thead{display:none;}
+    .lc-table tbody td{display:flex;justify-content:space-between;gap:10px;padding:5px 13px;border:none;}
+    .lc-table tbody tr{display:block;padding:7px 0;border-bottom:1px solid #f1f5f9;}
+    .lc-table tbody td::before{content:attr(data-label);font-size:.62rem;text-transform:uppercase;color:#94a3b8;font-weight:700;}
+}
 /* ACTION FOOTER */
 .fin-action-footer{padding:11px 16px;background:#fff;border-top:1px solid #fde68a;flex-shrink:0;}
 .fin-action-info{font-size:.78rem;}
@@ -674,6 +987,8 @@ export default {
 .fin-bulk-row{display:flex;align-items:center;gap:9px;padding:5px 9px;border-radius:5px;background:#fffbeb;margin-bottom:3px;}
 .fin-bulk-code{font-size:.76rem;color:#d97706;font-family:monospace;}
 .fin-modal-ftr{display:flex;justify-content:flex-end;gap:9px;padding:11px 18px;background:#fffbeb;border-top:1px solid #fde68a;}
+.fin-error-analisa-row{display:flex;align-items:flex-start;padding:7px 11px;border-radius:6px;background:#fff5f5;border:1px solid #fecaca;margin-bottom:4px;font-size:.82rem;font-weight:500;color:#991b1b;}
+.fin-error-reason{font-style:normal;font-weight:400;color:#b45309;}
 .fin-hidden-mobile{display:none !important;}
 @media(min-width:768px){.fin-hidden-mobile{display:flex !important;}}
 .fin-mobile-back{padding:9px 12px;border-bottom:1px solid #e2e8f0;flex-shrink:0;background:#fff;}

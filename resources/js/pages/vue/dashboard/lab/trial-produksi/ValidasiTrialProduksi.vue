@@ -1827,6 +1827,25 @@ export default {
             };
         },
 
+        expandedAuditLog() {
+            const result = [];
+            for (const log of this.auditLog) {
+                if (!log.details || log.details.length === 0) { result.push(log); continue; }
+                const byUser = new Map();
+                for (const d of log.details) {
+                    const uid = d.Id_User || '—';
+                    if (!byUser.has(uid)) byUser.set(uid, []);
+                    byUser.get(uid).push(d);
+                }
+                if (byUser.size <= 1) { result.push(log); } else {
+                    for (const [uid, items] of byUser) {
+                        result.push({ ...log, Id_User: uid, Nama_User: uid, Tanggal: items[0].Tanggal || log.Tanggal, Jam: items[0].Jam || log.Jam, details: items, _expanded: true });
+                    }
+                }
+            }
+            return result;
+        },
+
         auditValidators() {
             return this.auditLog.filter(l => l.Jenis_Aksi === 'INPUT_ANALYZER');
         },

@@ -16,6 +16,13 @@ return [
     'default' => env('QUEUE_CONNECTION', 'sync'),
 
     /*
+    | Nama queue sinkronisasi Master Barang Uji Lab.
+    | Default 'default' -> `php artisan queue:work` polos langsung menangkapnya (lokal).
+    | Produksi (Cloud Tasks): set SYNC_BARANG_QUEUE=sync-barangujilab di .env.
+    */
+    'barang_uji_sync' => env('SYNC_BARANG_QUEUE', 'default'),
+
+    /*
     |--------------------------------------------------------------------------
     | Queue Connections
     |--------------------------------------------------------------------------

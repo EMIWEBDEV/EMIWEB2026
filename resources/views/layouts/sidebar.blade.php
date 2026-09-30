@@ -44,6 +44,27 @@
             <i class="fas fa-circle"></i>
         </button>
     </div>
+    {{-- Pencarian menu: murni di sisi klien, menyaring menu yang SUDAH dirender
+         sehingga hak akses pengguna otomatis terhormati. --}}
+    <div class="menu-search-box">
+        <div class="menu-search-input">
+            <i class="ri-search-line menu-search-icon"></i>
+            <input type="text"
+                   id="sidebarMenuSearch"
+                   class="form-control"
+                   placeholder="Cari menu..."
+                   autocomplete="off"
+                   spellcheck="false">
+            <button type="button" id="sidebarMenuSearchClear" class="menu-search-clear" hidden>
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+        <div id="sidebarMenuSearchEmpty" class="menu-search-empty" hidden>
+            <i class="ri-inbox-line"></i>
+            <span>Menu tidak ditemukan</span>
+        </div>
+    </div>
+
     {{-- start --}}
     <div id="scrollbar">
         <div class="container-fluid">
@@ -225,3 +246,310 @@
 </div>
 
 <div class="vertical-overlay"></div>
+
+<style>
+    /* ================= KOTAK PENCARIAN MENU ================= */
+    .menu-search-box {
+        padding: 10px 16px 6px;
+    }
+
+    .menu-search-input {
+        position: relative;
+    }
+
+    .menu-search-input .form-control {
+        height: 36px;
+        padding: 0 30px 0 32px;
+        font-size: 0.8125rem;
+        border-radius: 6px;
+        background-color: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #fff;
+        transition: background-color .15s, border-color .15s;
+    }
+
+    .menu-search-input .form-control::placeholder {
+        color: rgba(255, 255, 255, 0.45);
+    }
+
+    .menu-search-input .form-control:focus {
+        background-color: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.35);
+        box-shadow: none;
+        color: #fff;
+    }
+
+    .menu-search-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 15px;
+        color: rgba(255, 255, 255, 0.5);
+        pointer-events: none;
+    }
+
+    .menu-search-clear {
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+        font-size: 13px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .menu-search-clear:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .menu-search-empty {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.75rem;
+    }
+
+    /* Penanda potongan kata yang cocok */
+    .menu-search-hit {
+        background: #f7b84b;
+        color: #1b1f3b;
+        border-radius: 2px;
+        padding: 0 1px;
+        font-weight: 600;
+    }
+
+    /* Sembunyikan kotak pencarian saat sidebar dalam mode ikon kecil */
+    .vertical-menu-sm-hover .menu-search-box,
+    [data-sidebar-size="sm"] .menu-search-box,
+    [data-sidebar-size="sm-hover"] .menu-search-box {
+        display: none;
+    }
+</style>
+
+<script>
+(function () {
+    'use strict';
+
+    /**
+     * Pencarian menu sidebar.
+     *
+     * Bekerja sepenuhnya di sisi klien terhadap menu yang SUDAH dirender Blade.
+     * Karena Blade hanya merender menu sesuai N_EMI_LAB_Page_Access_2, menu yang
+     * tidak menjadi hak akses pengguna memang tidak ada di DOM sehingga mustahil
+     * ikut muncul di hasil pencarian.
+     */
+    document.addEventListener('DOMContentLoaded', function () {
+        var input     = document.getElementById('sidebarMenuSearch');
+        var clearBtn  = document.getElementById('sidebarMenuSearchClear');
+        var emptyMsg  = document.getElementById('sidebarMenuSearchEmpty');
+        var navRoot   = document.getElementById('navbar-nav');
+
+        if (!input || !navRoot) return;
+
+        /* ---------- Kumpulkan seluruh item menu yang bisa diklik ---------- */
+        var items = [];
+
+        navRoot.querySelectorAll('a.nav-link').forEach(function (link) {
+            // Lewati tautan pembuka collapse (bukan menu tujuan).
+            if (link.getAttribute('data-bs-toggle') === 'collapse') return;
+
+            var li = link.closest('li.nav-item');
+            if (!li) return;
+
+            // Simpan teks asli agar penyorotan bisa dibatalkan.
+            var labelNode = link.querySelector('span[data-key]');
+            var teks = (labelNode ? labelNode.textContent : link.textContent) || '';
+            teks = teks.replace(/\s+/g, ' ').trim();
+
+            // Buang label lencana seperti "Baru" agar tidak ikut tercari.
+            link.querySelectorAll('.badge').forEach(function (b) {
+                teks = teks.replace(b.textContent.trim(), '').trim();
+            });
+
+            items.push({
+                li: li,
+                link: link,
+                labelNode: labelNode,
+                teksAsli: teks,
+                teksCari: teks.toLowerCase()
+            });
+        });
+
+        if (!items.length) return;
+
+        /* ---------- Simpan setiap wadah collapse beserta induknya ---------- */
+        var collapses = [];
+
+        navRoot.querySelectorAll('.collapse.menu-dropdown').forEach(function (box) {
+            collapses.push({
+                box: box,
+                li: box.closest('li.nav-item'),
+                toggle: navRoot.querySelector('a[href="#' + box.id + '"]'),
+                // Keadaan awal dicatat supaya bisa dipulihkan saat pencarian dikosongkan.
+                terbukaAwal: box.classList.contains('show')
+            });
+        });
+
+        var judulKategori = navRoot.querySelectorAll('li.menu-title');
+
+        /* ---------- Penyorotan teks yang cocok ---------- */
+        function escapeHtml(s) {
+            return s.replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
+        function sorot(item, kata) {
+            var target = item.labelNode;
+            if (!target) return;
+
+            if (!kata) {
+                target.textContent = item.teksAsli;
+                return;
+            }
+
+            var posisi = item.teksCari.indexOf(kata);
+            if (posisi === -1) {
+                target.textContent = item.teksAsli;
+                return;
+            }
+
+            var depan  = item.teksAsli.slice(0, posisi);
+            var cocok  = item.teksAsli.slice(posisi, posisi + kata.length);
+            var buntut = item.teksAsli.slice(posisi + kata.length);
+
+            target.innerHTML = escapeHtml(depan)
+                + '<mark class="menu-search-hit">' + escapeHtml(cocok) + '</mark>'
+                + escapeHtml(buntut);
+        }
+
+        /* ---------- Kembalikan sidebar ke keadaan semula ---------- */
+        function pulihkan() {
+            items.forEach(function (it) {
+                it.li.hidden = false;
+                sorot(it, '');
+            });
+
+            collapses.forEach(function (c) {
+                if (c.li) c.li.hidden = false;
+                c.box.classList.toggle('show', c.terbukaAwal);
+                if (c.toggle) {
+                    c.toggle.setAttribute('aria-expanded', c.terbukaAwal ? 'true' : 'false');
+                    c.toggle.classList.toggle('collapsed', !c.terbukaAwal);
+                }
+            });
+
+            judulKategori.forEach(function (t) { t.hidden = false; });
+            emptyMsg.hidden = true;
+        }
+
+        /* ---------- Saring menu sesuai kata kunci ---------- */
+        function saring(kata) {
+            var jumlahCocok = 0;
+
+            items.forEach(function (it) {
+                var cocok = it.teksCari.indexOf(kata) !== -1;
+                it.li.hidden = !cocok;
+                sorot(it, cocok ? kata : '');
+                if (cocok) jumlahCocok++;
+            });
+
+            // Wadah collapse hanya ditampilkan bila masih menyisakan item cocok.
+            // Diproses dari dalam ke luar agar sub-header ikut diperhitungkan.
+            for (var i = collapses.length - 1; i >= 0; i--) {
+                var c = collapses[i];
+                var adaIsi = c.box.querySelector('li.nav-item:not([hidden])') !== null;
+
+                if (c.li) c.li.hidden = !adaIsi;
+
+                // Buka otomatis supaya hasil pencarian langsung terlihat.
+                c.box.classList.toggle('show', adaIsi);
+                if (c.toggle) {
+                    c.toggle.setAttribute('aria-expanded', adaIsi ? 'true' : 'false');
+                    c.toggle.classList.toggle('collapsed', !adaIsi);
+                }
+            }
+
+            // Judul kategori disembunyikan bila seluruh menu di bawahnya tersembunyi.
+            judulKategori.forEach(function (judul) {
+                var ada = false;
+                var n = judul.nextElementSibling;
+
+                while (n && !n.classList.contains('menu-title')) {
+                    if (n.classList.contains('nav-item') && !n.hidden) { ada = true; break; }
+                    n = n.nextElementSibling;
+                }
+
+                judul.hidden = !ada;
+            });
+
+            emptyMsg.hidden = jumlahCocok > 0;
+        }
+
+        /* ---------- Penanganan input (ditunda sesaat agar ringan) ---------- */
+        var timer = null;
+
+        function jalankan() {
+            var kata = input.value.trim().toLowerCase();
+            clearBtn.hidden = kata.length === 0;
+
+            if (!kata) { pulihkan(); return; }
+            saring(kata);
+        }
+
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(jalankan, 120);
+        });
+
+        // Enter membuka menu pertama yang cocok.
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                input.value = '';
+                jalankan();
+                input.blur();
+                return;
+            }
+
+            if (e.key === 'Enter') {
+                var pertama = items.find(function (it) { return !it.li.hidden; });
+                if (pertama && pertama.link.href) {
+                    e.preventDefault();
+                    window.location.href = pertama.link.href;
+                }
+            }
+        });
+
+        clearBtn.addEventListener('click', function () {
+            input.value = '';
+            jalankan();
+            input.focus();
+        });
+
+        // Pintasan Ctrl+K / Cmd+K untuk melompat ke kotak pencarian.
+        document.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                input.focus();
+                input.select();
+            }
+        });
+    });
+})();
+</script>

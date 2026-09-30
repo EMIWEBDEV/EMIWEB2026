@@ -184,7 +184,15 @@
                             </div>
                         </div>
 
-                        <!-- Card meta -->
+                        <!-- Product identity -->
+                        <div class="lhm-card-product">
+                            <div class="lhm-card-barang">{{ sample.nama_barang }}</div>
+                            <span v-if="sample.kode_formula" class="lhm-formula-pill">
+                                <i class="ri-flask-2-line"></i>{{ sample.kode_formula }}
+                            </span>
+                        </div>
+
+                        <!-- Operational meta -->
                         <div class="lhm-card-meta">
                             <span
                                 ><i class="ri-barcode-box-line"></i>
@@ -208,9 +216,6 @@
                                 <i class="ri-qr-code-line"></i>
                                 {{ sample.multi_qr_list.length }} Sub QR
                             </span>
-                        </div>
-                        <div class="lhm-card-barang">
-                            {{ sample.nama_barang }}
                         </div>
 
                         <!-- Analisa chips -->
@@ -338,6 +343,8 @@
                             >
                             <span class="lhm-sep">·</span>
                             <span>Oleh: {{ selectedSample.registrar }}</span>
+                            <span v-if="selectedSample.kode_formula" class="lhm-sep">·</span>
+                            <span v-if="selectedSample.kode_formula" class="lhm-banner-formula-code">{{ selectedSample.kode_formula }}</span>
                         </div>
                     </div>
                     <button
@@ -1372,7 +1379,7 @@ export default {
     gap: 0.35rem 0.75rem;
     font-size: 11px;
     color: #6b7280;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.45rem;
 }
 .lhm-card-meta i {
     font-size: 11px;
@@ -1381,11 +1388,11 @@ export default {
 .lhm-card-barang {
     font-size: 12px;
     color: #374151;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    width: 100%;
 }
 
 /* ── Analisa chips ── */
@@ -2089,5 +2096,52 @@ export default {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
     gap: 0.75rem;
+}
+
+/* ── Product identity block ── */
+.lhm-card-product {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    margin-bottom: 0.3rem;
+}
+.lhm-formula-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.22rem;
+    font-size: 10.5px;
+    font-weight: 700;
+    font-family: 'Courier New', Courier, monospace;
+    color: #4f46e5;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    padding: 0.12rem 0.48rem;
+    border-radius: 5px;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+    flex-shrink: 0;
+    line-height: 1.5;
+}
+.lhm-formula-pill i {
+    font-size: 11px;
+    opacity: 0.75;
+}
+
+/* ── Kode Formula in active banner ── */
+.lhm-banner-formula-code {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10.5px;
+    font-weight: 700;
+    font-family: 'Courier New', Courier, monospace;
+    color: #4f46e5;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    padding: 0.1rem 0.45rem;
+    border-radius: 5px;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+    line-height: 1.6;
 }
 </style>

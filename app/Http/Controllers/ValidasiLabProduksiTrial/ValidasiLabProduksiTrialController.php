@@ -20,7 +20,9 @@ class ValidasiLabProduksiTrialController extends Controller
         $permissionKonten = $checkedAkses['permission_konten'] ?? [];
 
         $allowedAnalisaIds = [];
-        if (isset($permissionKonten['Validasi Trial Produksi']) && is_array($permissionKonten['Validasi Hasil Analisa'])) {
+        // Key pada isset() dan is_array() harus sama — lihat catatan yang sama
+        // di UjiSampelController::getDataValidasiHasilAkhirDanCloseSampel().
+        if (isset($permissionKonten['Validasi Trial Produksi']) && is_array($permissionKonten['Validasi Trial Produksi'])) {
                 foreach ($permissionKonten['Validasi Trial Produksi'] as $akses) {
                     if (isset($akses['flag']) && $akses['flag'] === 'Y' && isset($akses['id_jenis_analisa'])) {
                         $allowedAnalisaIds[] = $akses['id_jenis_analisa'];

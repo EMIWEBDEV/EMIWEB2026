@@ -1822,6 +1822,25 @@ export default {
             };
         },
 
+        expandedAuditLog() {
+            const result = [];
+            for (const log of this.auditLog) {
+                if (!log.details || log.details.length === 0) { result.push(log); continue; }
+                const byUser = new Map();
+                for (const d of log.details) {
+                    const uid = d.Id_User || '—';
+                    if (!byUser.has(uid)) byUser.set(uid, []);
+                    byUser.get(uid).push(d);
+                }
+                if (byUser.size <= 1) { result.push(log); } else {
+                    for (const [uid, items] of byUser) {
+                        result.push({ ...log, Id_User: uid, Nama_User: uid, Tanggal: items[0].Tanggal || log.Tanggal, Jam: items[0].Jam || log.Jam, details: items, _expanded: true });
+                    }
+                }
+            }
+            return result;
+        },
+
         auditValidators() {
             return this.auditLog.filter(l => l.Jenis_Aksi === 'INPUT_ANALYZER');
         },
@@ -2049,11 +2068,17 @@ export default {
                     Kode_Analisa: first.Kode_Analisa || "—",
                     Flag_Layak: first.Flag_Layak || "—",
                     No_Po_Sampel: first.No_Po_Sampel || "—",
-                    No_Fak_Sub_Po: first.No_Fak_Sub_Po || "—",
+                    // Objek ini juga dikirim sebagai payload validasi, bukan
+                    // hanya untuk tampilan. Placeholder "—" pernah ikut
+                    // tersimpan sebagai No_Sub_Sampel; sampel tunggal harus
+                    // NULL. Tampilan memakai displaySubPo di bawah.
+                    No_Fak_Sub_Po: first.No_Fak_Sub_Po || null,
                     Id_Mesin: first.Id_Mesin,
                     Id_Jenis_Analisa: first.Id_Jenis_Analisa,
                     Tahapan_Ke: first.Tahapan_Ke,
                     Flag_Multi_QrCode: first.Flag_Multi_QrCode,
+                    Id_Session: first.Id_Session ?? null,
+                    Id_Pembanding: first.Id_Pembanding ?? null,
                     Tanggal: first.Tanggal_Pengujian || "—",
                     Tanggal_Registrasi: first.Tanggal_Registrasi || "—",
                     Nama_Pembanding: first.Nama_Pembanding || null,

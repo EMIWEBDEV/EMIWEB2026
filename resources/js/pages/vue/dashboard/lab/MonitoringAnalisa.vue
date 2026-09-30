@@ -289,9 +289,6 @@
                                                 <span class="mon-act-badge mon-badge-lckv">LCKV</span>
                                                 Look View
                                             </div>
-                                            <button v-if="sm.activities.LCKV.some(g => g.rows.some(r => r.has_foto))" class="mon-btn-foto" @click.stop="openFoto(sm.activities.LCKV, sm.no_sampel)" :disabled="loadingFoto">
-                                                <i class="ri-image-line"></i> {{ totalFoto(sm.activities.LCKV) }} Foto
-                                            </button>
                                         </div>
                                         <div v-for="group in sm.activities.LCKV" :key="group.kode_analisa" class="mon-analisa-group">
                                             <div class="mon-analisa-lbl">
@@ -309,7 +306,6 @@
                                                         <th class="col-info">Tgl Reg</th>
                                                         <th class="col-info">Tgl Uji</th>
                                                         <th v-if="secHasSub(group.rows)" class="col-info">Sub</th>
-                                                        <th v-if="secHasResamp(group.rows)">Tahap</th>
                                                         <th v-for="p in group.template" :key="p.id_qc" class="col-param">{{ p.nama_parameter }}</th>
                                                         <th class="col-hasil">Hasil</th>
                                                         <th class="col-status">Status</th>
@@ -325,10 +321,6 @@
                                                             <td class="col-info td-muted">{{ formatDate(sm.tanggal) }}</td>
                                                             <td class="col-info">{{ formatDate(row.tanggal_uji) }}</td>
                                                             <td v-if="secHasSub(group.rows)" class="col-sub">{{ row.no_fak_sub_po || '—' }}</td>
-                                                            <td v-if="secHasResamp(group.rows)">
-                                                                <span v-if="row.flag_resampling === 'Y'" class="mon-resamp-tag">R{{ row.tahapan_ke }}</span>
-                                                                <span v-else class="col-dash">—</span>
-                                                            </td>
                                                             <td v-for="(pval, pi) in row.parameters" :key="pi" class="col-param-val">{{ pval !== null && pval !== undefined ? pval : '—' }}</td>
                                                             <td class="col-hasil" :class="resultClass(row)">
                                                                 <template v-if="row.hasil !== null && row.hasil !== undefined && row.hasil !== ''">{{ row.hasil }}</template>
@@ -343,6 +335,13 @@
                                                         </tr>
                                                     </tbody>
                                                 </table>
+                                            </div>
+                                            <!-- Tombol foto melekat di bawah tabel analisa ini -->
+                                            <div v-if="group.rows.some(r => r.has_foto)" class="mon-foto-btn-wrap">
+                                                <button class="mon-btn-foto" @click.stop="openFoto([group], sm.no_sampel, sm.no_fak_sub_po_list)" :disabled="loadingFoto">
+                                                    <i class="ri-image-line"></i>
+                                                    Lihat {{ group.rows.reduce((s, r) => s + (r.foto_count || 0), 0) }} Foto
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -368,8 +367,7 @@
                                                         <th class="col-info">Tgl Reg</th>
                                                         <th class="col-info">Tgl Uji</th>
                                                         <th v-if="secHasSub(group.rows)" class="col-info">Sub</th>
-                                                        <th v-if="secHasResamp(group.rows)">Tahap</th>
-                                                        <th v-for="p in group.template" :key="p.id_qc" class="col-param">{{ p.nama_parameter }}</th>
+                                        <th v-for="p in group.template" :key="p.id_qc" class="col-param">{{ p.nama_parameter }}</th>
                                                         <th class="col-hasil">Hasil</th>
                                                         <th class="col-status">Status</th>
                                                     </tr></thead>
@@ -384,10 +382,6 @@
                                                             <td class="col-info td-muted">{{ formatDate(sm.tanggal) }}</td>
                                                             <td class="col-info">{{ formatDate(row.tanggal_uji) }}</td>
                                                             <td v-if="secHasSub(group.rows)" class="col-sub">{{ row.no_fak_sub_po || '—' }}</td>
-                                                            <td v-if="secHasResamp(group.rows)">
-                                                                <span v-if="row.flag_resampling === 'Y'" class="mon-resamp-tag">R{{ row.tahapan_ke }}</span>
-                                                                <span v-else class="col-dash">—</span>
-                                                            </td>
                                                             <td v-for="(pval, pi) in row.parameters" :key="pi" class="col-param-val">{{ pval !== null && pval !== undefined ? pval : '—' }}</td>
                                                             <td class="col-hasil" :class="resultClass(row)">
                                                                 <template v-if="row.hasil !== null && row.hasil !== undefined && row.hasil !== ''">{{ row.hasil }}</template>
@@ -427,7 +421,6 @@
                                                         <th class="col-info">Batch</th>
                                                         <th class="col-info">Tgl Reg</th>
                                                         <th class="col-info">Tgl Uji</th>
-                                                        <th v-if="secHasResamp(group.rows)">Tahap</th>
                                                         <th v-for="p in group.template" :key="p.id_qc" class="col-param">{{ p.nama_parameter }}</th>
                                                         <th class="col-hasil">Hasil</th>
                                                         <th class="col-status">Status</th>
@@ -443,10 +436,6 @@
                                                             <td class="col-info td-muted">{{ sm.no_batch || '—' }}</td>
                                                             <td class="col-info td-muted">{{ formatDate(sm.tanggal) }}</td>
                                                             <td class="col-info">{{ formatDate(row.tanggal_uji) }}</td>
-                                                            <td v-if="secHasResamp(group.rows)">
-                                                                <span v-if="row.flag_resampling === 'Y'" class="mon-resamp-tag">R{{ row.tahapan_ke }}</span>
-                                                                <span v-else class="col-dash">—</span>
-                                                            </td>
                                                             <td v-for="(pval, pi) in row.parameters" :key="pi" class="col-param-val">{{ pval !== null && pval !== undefined ? pval : '—' }}</td>
                                                             <td class="col-hasil" :class="resultClass(row)">
                                                                 <template v-if="row.hasil !== null && row.hasil !== undefined && row.hasil !== ''">{{ row.hasil }}</template>
@@ -493,19 +482,35 @@
                                 <i class="ri-image-2-line"></i>
                                 <div>Tidak ada foto tersedia</div>
                             </div>
-                            <div v-else class="mon-foto-grid">
-                                <div v-for="(item, idx) in fotoModal.urls" :key="idx" class="mon-polaroid"
-                                    @click="openLightbox(idx)">
-                                    <div class="mon-polaroid-img-wrap">
-                                        <img :src="item.url" :alt="item.keterangan||'Foto '+(idx+1)"
-                                            class="mon-polaroid-img"
-                                            @error="item.error = true" />
-                                        <div v-if="item.error" class="mon-foto-err">
-                                            <i class="ri-image-2-line"></i>
+                            <div v-else>
+                                <div v-for="(group, gi) in fotoModal.groups" :key="gi" class="mon-foto-group-section">
+                                    <!-- Header grup: selalu tampil agar jelas per no_sampel / per sub -->
+                                    <div class="mon-foto-group-hdr">
+                                        <div class="mon-foto-group-title">
+                                            <i class="ri-folder-image-line"></i>
+                                            <span>{{ group.label }}</span>
+                                            <span class="mon-foto-group-count">{{ group.indices.length }} foto</span>
                                         </div>
-                                        <div class="mon-polaroid-overlay"><i class="ri-zoom-in-line"></i></div>
+                                        <div v-if="group.note" class="mon-foto-group-note">
+                                            <i class="ri-information-line"></i> {{ group.note }}
+                                        </div>
                                     </div>
-                                    <div class="mon-polaroid-caption">{{ item.keterangan || '—' }}</div>
+                                    <div class="mon-foto-grid">
+                                        <div v-for="idx in group.indices" :key="idx" class="mon-polaroid"
+                                            @click="openLightbox(idx)">
+                                            <div class="mon-polaroid-img-wrap">
+                                                <img :src="fotoModal.urls[idx].url"
+                                                    :alt="fotoModal.urls[idx].keterangan || 'Foto ' + (idx + 1)"
+                                                    class="mon-polaroid-img"
+                                                    @error="fotoModal.urls[idx].error = true" />
+                                                <div v-if="fotoModal.urls[idx].error" class="mon-foto-err">
+                                                    <i class="ri-image-2-line"></i>
+                                                </div>
+                                                <div class="mon-polaroid-overlay"><i class="ri-zoom-in-line"></i></div>
+                                            </div>
+                                            <div class="mon-polaroid-caption">{{ fotoModal.urls[idx].keterangan || '—' }}</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -582,7 +587,7 @@ export default {
             openSecs: { belum_input: true, sedang_proses: true, menunggu_finalisasi: true, selesai: false },
             sections: SECTIONS,
             pipeline: PIPELINE,
-            fotoModal: { show: false, loading: false, urls: [], no_sampel: "" },
+            fotoModal: { show: false, loading: false, urls: [], groups: [], no_sampel: "" },
             lightbox: { show: false, idx: 0 },
             _timer: null,
         };
@@ -728,32 +733,75 @@ export default {
         totalFoto(lckvGroups) {
             return lckvGroups.reduce((sum, g) => sum + g.rows.reduce((s2, r) => s2 + (r.foto_count || 0), 0), 0);
         },
-        async openFoto(lckvGroups, noSampel) {
-            this.fotoModal = { show: true, loading: true, urls: [], no_sampel: noSampel };
-            const allFotos = [];
+        async openFoto(lckvGroups, noSampel, subPoList) {
+            this.fotoModal = { show: true, loading: true, urls: [], groups: [], no_sampel: noSampel };
+            const hasSub = Array.isArray(subPoList) && subPoList.length > 0;
+
+            // Kumpulkan foto per no_fak_sub_po dengan deduplication global
+            const subMap = new Map(); // no_fak_sub_po (atau '__no_sub__') -> [{key, keterangan}]
+            const seenKeys = new Set();
+
             lckvGroups.forEach(g => g.rows.forEach(r => {
-                if (r.berkas_keys) {
-                    r.berkas_keys.forEach((k, i) => {
-                        allFotos.push({ key: k, keterangan: (r.berkas_keterangan || [])[i] || '' });
-                    });
-                }
+                if (!r.berkas_keys || !r.berkas_keys.length) return;
+                const subKey = r.no_fak_sub_po || '__no_sub__';
+                if (!subMap.has(subKey)) subMap.set(subKey, []);
+                r.berkas_keys.forEach((k, i) => {
+                    if (!seenKeys.has(k)) {
+                        seenKeys.add(k);
+                        subMap.get(subKey).push({ key: k, keterangan: (r.berkas_keterangan || [])[i] || '' });
+                    }
+                });
             }));
-            if (allFotos.length === 0) {
+
+            if (seenKeys.size === 0) {
                 this.fotoModal.loading = false;
                 return;
             }
-            const allKeys = allFotos.map(f => f.key);
+
             try {
-                const res = await axios.post("/api/v1/lab/hasil-uji/berkas/foto/token/bulk", { keys: allKeys });
+                const res = await axios.post("/api/v1/lab/hasil-uji/berkas/foto/token/bulk", { keys: [...seenKeys] });
                 const tokenMap = res.data;
-                this.fotoModal.urls = allFotos.map(f => ({
-                    url: `/api/v1/lab/berkas/stream/foto-uji/${f.key}?token=${tokenMap[f.key]}`,
-                    keterangan: f.keterangan,
-                    error: false,
-                }));
+
+                // Bangun flat urls (untuk lightbox) dan grouped (untuk tampilan)
+                const flatUrls = [];
+                const groups = [];
+
+                subMap.forEach((fotos, subKey) => {
+                    const isNoSub = subKey === '__no_sub__';
+                    const indices = [];
+
+                    fotos.forEach(f => {
+                        const idx = flatUrls.length;
+                        flatUrls.push({
+                            url: `/api/v1/lab/berkas/stream/foto-uji/${f.key}?token=${tokenMap[f.key]}`,
+                            keterangan: f.keterangan,
+                            error: false,
+                        });
+                        indices.push(idx);
+                    });
+
+                    let label, note;
+                    if (isNoSub) {
+                        label = hasSub
+                            ? `No. Sampel: ${noSampel} (Foto Gabungan)`
+                            : `No. Sampel: ${noSampel}`;
+                        note = hasSub
+                            ? 'Foto ini merupakan hasil pengujian yang mencakup semua sub sampel (digabung — tidak spesifik per sub sampel)'
+                            : null;
+                    } else {
+                        label = `No. Sub Sampel: ${subKey}`;
+                        note = null;
+                    }
+
+                    groups.push({ label, note, indices });
+                });
+
+                this.fotoModal.urls = flatUrls;
+                this.fotoModal.groups = groups;
             } catch (e) {
                 console.error(e);
                 this.fotoModal.urls = [];
+                this.fotoModal.groups = [];
             } finally {
                 this.fotoModal.loading = false;
             }
@@ -819,7 +867,6 @@ export default {
             const base = isPlt ? 9 : 8;
             return base
                 + (!isPlt && this.secHasSub(group.rows) ? 1 : 0)
-                + (this.secHasResamp(group.rows) ? 1 : 0)
                 + group.template.length;
         },
         checkMobile() { this.isMobile = window.innerWidth < 800; },
@@ -1134,6 +1181,42 @@ export default {
 .mon-polaroid:hover .mon-polaroid-overlay { opacity: 1; }
 .mon-polaroid-caption { font-size: .84rem; font-weight: 700; text-align: center; padding: 10px 8px 13px; color: #1e293b; line-height: 1.45; word-break: break-word; border-top: 2px solid #e8ecf4; margin-top: 1px; background: #fff; }
 .mon-foto-err { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #adb5bd; font-size: 30px; background: #f0f1f5; }
+
+/* ── Foto group section ────────────────────────────────────────────────── */
+.mon-foto-group-section { margin-bottom: 24px; }
+.mon-foto-group-section:last-child { margin-bottom: 0; }
+.mon-foto-group-hdr {
+    margin-bottom: 12px; padding: 10px 14px;
+    background: #eef0f9; border-radius: 8px;
+    border-left: 4px solid #405189;
+}
+.mon-foto-group-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .84rem; font-weight: 700; color: #405189;
+}
+.mon-foto-group-title i { font-size: 1rem; }
+.mon-foto-group-count {
+    background: #405189; color: #fff;
+    border-radius: 20px; padding: 1px 9px;
+    font-size: .68rem; font-weight: 700;
+}
+.mon-foto-group-note {
+    display: flex; align-items: flex-start; gap: 6px;
+    margin-top: 6px; font-size: .76rem; color: #6c757d;
+    font-style: italic; line-height: 1.4;
+}
+.mon-foto-group-note i { color: #f8ab00; flex-shrink: 0; margin-top: 1px; }
+
+/* ── Foto button bawah tabel analisa ─────────────────────────────────── */
+.mon-foto-btn-wrap {
+    display: flex; justify-content: flex-end;
+    padding: 8px 14px 10px;
+    border-top: 1px dashed #e2e8f0;
+    background: #fdf8ff;
+}
+
+/* ── Kolom Tahap ─────────────────────────────────────────────────────── */
+.col-tahap { width: 52px; text-align: center; }
 
 /* ── Lightbox ─────────────────────────────────────────────────────────── */
 .mon-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 9999; display: flex; align-items: center; justify-content: center; }

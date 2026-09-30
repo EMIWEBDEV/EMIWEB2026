@@ -57,7 +57,12 @@ return [
         ],
         'gcs' => [
             'driver' => 'gcs',
-            'key_file_path' => env('GOOGLE_CLOUD_KEY_FILE_PATH', null), // path file untuk lokal
+            // Pakai key file HANYA jika filenya ada (lokal). Di Cloud Run tidak ada -> null
+            // -> library otomatis pakai ADC (service account Cloud Run / IAM otomatis).
+            'key_file_path' => (function () {
+                $path = env('GOOGLE_CLOUD_KEY_FILE_PATH');
+                return ($path && is_file($path)) ? $path : null;
+            })(),
             // 'key_file' => env('GOOGLE_CLOUD_KEY_FILE', null), // gunakan ini jika pakai string JSON
             'project_id' => env('GOOGLE_CLOUD_PROJECT_ID'),
             'bucket' => env('GOOGLE_CLOUD_STORAGE_BUCKET'),

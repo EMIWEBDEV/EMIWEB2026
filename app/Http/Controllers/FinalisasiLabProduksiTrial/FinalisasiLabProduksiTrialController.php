@@ -10,9 +10,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Vinkla\Hashids\Facades\Hashids;
+use App\Services\JejakValidasiService;
 
 class FinalisasiLabProduksiTrialController extends Controller
 {
+    protected JejakValidasiService $jejakValidasi;
+
+    public function __construct(JejakValidasiService $jejakValidasi)
+    {
+        $this->jejakValidasi = $jejakValidasi;
+    }
+
     public function index()
     {
         return inertia("vue/dashboard/hasil-akhir-validasi/trial-produksi/HasilAkhirValidasi");
@@ -32,6 +40,166 @@ class FinalisasiLabProduksiTrialController extends Controller
         }
     }
     
+    /**
+     * Sample Lifecycle — riwayat hidup satu sampel untuk halaman finalisasi
+     * trial produksi.
+     *
+     * Sumbernya N_EMI_LAB_Hasil_Uji_Validasi_Final dan _Detail_Final, BUKAN
+     * N_EMI_LAB_Log_Aksi. Log_Aksi menyimpan satu baris per aksi mentah,
+     * sehingga satu analisa yang divalidasi lewat beberapa sub-sampel muncul
+     * berulang kali — pada FS0926-0001 misalnya tercatat 20 entri padahal
+     * analisanya hanya 10. Detail_Final sudah bersih: satu baris = satu
+     * analisa tervalidasi, lengkap dengan sub-sampel, aktivitas, kelayakan,
+     * tanggal, dan jamnya.
+     *
+     * Keluarannya dikelompokkan per tahap (aktivitas lab + pelaku + waktu),
+     * masing-masing memuat daftar analisa dengan waktunya sendiri-sendiri.
+     */
+    public function getSampleLifecycle($no_sampel)
+    {
+        try {
+            $po = DB::table('N_EMI_LAB_PO_Sampel as ps')
+                ->leftJoin('N_EMI_View_Barang as b', 'b.Kode_Barang', '=', 'ps.Kode_Barang')
+                ->where('ps.No_Sampel', $no_sampel)
+                ->select('ps.No_Sampel', 'ps.No_Po', 'ps.No_Split_Po', 'ps.No_Batch',
+                    'ps.Kode_Barang', 'ps.Tanggal', 'ps.Jam', 'ps.Id_User',
+                    'ps.Flag_Trial_Produksi', 'b.Nama as Nama_Barang')
+                ->first();
+
+            if (!$po) {
+                return response()->json([
+                    'success' => false,
+                    'status'  => 404,
+                    'message' => 'Sampel tidak ditemukan.',
+                ], 404);
+            }
+
+            $header = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
+                ->where('No_Sampel', $no_sampel)
+                ->first();
+
+            $detail = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Detail_Final as d')
+                ->leftJoin('N_EMI_LAB_Users as u', 'u.UserId', '=', 'd.Id_User')
+                ->leftJoin('N_EMI_LIMS_Klasifikasi_Aktivitas_Lab as k',
+                    'k.Kode_Aktivitas_Lab', '=', 'd.Kode_Aktivitas_Lab')
+                ->where('d.No_Sampel', $no_sampel)
+                ->select(
+                    'd.Id_Uji_Validasi_Detail_Final', 'd.No_Sub_Sampel',
+                    'd.Id_Jenis_Analisa', 'd.Nama_Jenis_Analisa',
+                    'd.Kode_Aktivitas_Lab', 'd.Tahapan_Ke', 'd.Flag_Layak',
+                    'd.Flag_Resampling', 'd.Tanggal', 'd.Jam', 'd.Id_User',
+                    'd.Id_Session', 'd.Id_Pembanding', 'd.Id_Uji_Validasi_Final',
+                    'u.Nama as Nama_User', 'k.Nama_Aktivitas', 'k.Urutan'
+                )
+                ->orderBy('d.Tanggal')
+                ->orderBy('d.Jam')
+                ->get();
+
+            // Kelompokkan menjadi tahapan: satu aktivitas + pelaku + waktu.
+            $tahapan = $detail
+                ->groupBy(fn ($d) => ($d->Kode_Aktivitas_Lab ?? '-')
+                    . '|' . ($d->Id_User ?? '-')
+                    . '|' . substr((string) $d->Jam, 0, 5))
+                ->map(function ($rows) {
+                    $first = $rows->first();
+
+                    return [
+                        'Kode_Aktivitas_Lab' => $first->Kode_Aktivitas_Lab,
+                        'Nama_Aktivitas'     => $first->Nama_Aktivitas
+                            ?? $this->labelAktivitas($first->Kode_Aktivitas_Lab),
+                        'Urutan'             => $first->Urutan ?? 99,
+                        'Id_User'            => $first->Id_User,
+                        'Nama_User'          => $first->Nama_User ?? $first->Id_User,
+                        'Tanggal'            => $first->Tanggal,
+                        'Jam'                => $first->Jam,
+                        'Jumlah_Analisa'     => $rows->count(),
+                        'Jumlah_Tidak_Layak' => $rows->where('Flag_Layak', 'T')->count(),
+                        'Status'             => $rows->contains('Flag_Layak', 'T')
+                            ? 'TIDAK LOLOS' : 'LOLOS',
+                        'analisa'            => $rows->map(fn ($d) => [
+                            'Id_Jenis_Analisa'   => $d->Id_Jenis_Analisa,
+                            'Nama_Jenis_Analisa' => $d->Nama_Jenis_Analisa,
+                            'No_Sub_Sampel'      => $d->No_Sub_Sampel,
+                            'Tahapan_Ke'         => $d->Tahapan_Ke,
+                            'Flag_Layak'         => $d->Flag_Layak,
+                            'Flag_Resampling'    => $d->Flag_Resampling,
+                            'Tanggal'            => $d->Tanggal,
+                            'Jam'                => $d->Jam,
+                            'Id_User'            => $d->Id_User,
+                            'Nama_User'          => $d->Nama_User ?? $d->Id_User,
+                            'Id_Session'         => $d->Id_Session,
+                            'Id_Pembanding'      => $d->Id_Pembanding,
+                        ])->values(),
+                    ];
+                })
+                ->sortBy([['Tanggal', 'asc'], ['Jam', 'asc']])
+                ->values();
+
+            $namaFinalisator = null;
+            if ($header && $header->Id_User) {
+                $namaFinalisator = DB::table('N_EMI_LAB_Users')
+                    ->where('UserId', $header->Id_User)
+                    ->value('Nama');
+            }
+
+            return response()->json([
+                'success' => true,
+                'status'  => 200,
+                'result'  => [
+                    'sampel' => [
+                        'No_Sampel'   => $po->No_Sampel,
+                        'No_Po'       => $po->No_Po,
+                        'No_Split_Po' => $po->No_Split_Po,
+                        'No_Batch'    => $po->No_Batch,
+                        'Kode_Barang' => $po->Kode_Barang,
+                        'Nama_Barang' => $po->Nama_Barang,
+                        'Tanggal'     => $po->Tanggal,
+                        'Jam'         => $po->Jam,
+                        'Id_User'     => $po->Id_User,
+                    ],
+                    'finalisasi' => $header ? [
+                        'Id_Uji_Validasi_Final' => $header->Id_Uji_Validasi_Final,
+                        'Flag_Ok'   => $header->Flag_Ok,
+                        'Status'    => $header->Flag_Ok === 'Y' ? 'LOLOS UJI'
+                            : ($header->Flag_Ok === 'T' ? 'TIDAK LOLOS UJI' : '-'),
+                        'Tanggal'   => $header->Tanggal,
+                        'Jam'       => $header->Jam,
+                        'Id_User'   => $header->Id_User,
+                        'Nama_User' => $namaFinalisator ?? $header->Id_User,
+                    ] : null,
+                    'ringkasan' => [
+                        'Total_Analisa'   => $detail->count(),
+                        'Lolos'           => $detail->where('Flag_Layak', 'Y')->count(),
+                        'Tidak_Lolos'     => $detail->where('Flag_Layak', 'T')->count(),
+                        'Total_Tahapan'   => $tahapan->count(),
+                    ],
+                    'tahapan' => $tahapan,
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error(__METHOD__ . ': ' . $e->getMessage(), [
+                'file' => $e->getFile(), 'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'status'  => 500,
+                'message' => 'Terjadi kesalahan saat memuat riwayat sampel.',
+            ], 500);
+        }
+    }
+
+    /** Label cadangan bila master klasifikasi tidak memuat kode tersebut. */
+    private function labelAktivitas(?string $kode): string
+    {
+        return [
+            'ANL'  => 'Analisa Lab',
+            'PLT'  => 'Uji Palatabilitas',
+            'LCKV' => 'Look View',
+        ][$kode] ?? ($kode ?: 'Aktivitas');
+    }
+
     public function getDataValidasiHasilAkhirDanCloseSampel(Request $request)
     {
         $checkedAkses = Session::get("user_permissions");
@@ -75,6 +243,7 @@ class FinalisasiLabProduksiTrialController extends Controller
         $query = DB::table('N_EMI_LAB_Uji_Sampel as uji')
             ->join('N_EMI_LAB_PO_Sampel as po', 'uji.No_Po_Sampel', '=', 'po.No_Sampel')
             ->join('N_EMI_View_Barang as brg', 'po.Kode_Barang', '=', 'brg.Kode_Barang')
+            ->leftJoin('EMI_Master_Mesin as mm', 'po.Id_Mesin', '=', 'mm.Id_Master_Mesin')
             ->select(
                 'uji.No_Po_Sampel',
                 DB::raw('MAX(uji.Tanggal) as Tanggal'),
@@ -84,7 +253,8 @@ class FinalisasiLabProduksiTrialController extends Controller
                 'po.No_Split_Po',
                 'po.Kode_Barang',
                 'brg.Nama as Nama_Barang',
-                'po.Flag_Trial_Produksi'
+                'po.Flag_Trial_Produksi',
+                DB::raw('MAX(mm.Nama_Mesin) as Nama_Mesin')
             )
             ->whereIn('uji.Id_Jenis_Analisa', $allowedAnalisaIds)
             ->where('po.Flag_Trial_Produksi', 'Y')
@@ -97,7 +267,10 @@ class FinalisasiLabProduksiTrialController extends Controller
             ->where(function($q) {
                 $q->where('uji.Flag_Resampling', '!=', 'Y')
                 ->orWhereNull('uji.Flag_Resampling');
-            });
+            })
+            // Hanya sampel multi barcode — lihat catatan yang sama di
+            // UjiSampelController::getDataValidasiHasilAkhirDanCloseSampel().
+            ->where('uji.Flag_Multi_QrCode', 'Y');
 
         if (!empty($startDate) && !empty($endDate)) {
             $query->whereBetween('uji.Tanggal', [$startDate, $endDate]);
@@ -499,6 +672,24 @@ class FinalisasiLabProduksiTrialController extends Controller
                     ]
                 );
 
+                // Sambungkan detail ke header dan catat pelaku finalisasi,
+                // sama seperti jalur produksi, supaya jejak auditnya utuh.
+                $idHeader = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
+                    ->where('No_Split_Po', $getInformasiPo->No_Split_Po)
+                    ->where('No_Batch', $getInformasiPo->No_Batch)
+                    ->where('No_Sampel', $no_sampel)
+                    ->value('Id_Uji_Validasi_Final');
+
+                if ($idHeader) {
+                    $this->jejakValidasi->sambungkanKeHeader($no_sampel, (int) $idHeader);
+                }
+
+                $this->jejakValidasi->catatFinalisasi($no_sampel, Auth::user()->UserId, [
+                    'Flag_Ok' => $flagOkValue,
+                    'Tanggal' => $tanggalSqlServer,
+                    'Jam'     => $jamSqlServer,
+                ]);
+
                 DB::table('N_EMI_LAB_PO_Sampel')
                     ->where('No_Sampel', $no_sampel)
                     ->where('Flag_Trial_Produksi', 'Y')
@@ -650,16 +841,9 @@ class FinalisasiLabProduksiTrialController extends Controller
                 ->pluck('Flag_FG', 'Id_Master_Mesin')
                 ->toArray();
 
-            $tidakLayakData = DB::table('N_EMI_LAB_Uji_Sampel as us')
-                ->join('N_EMI_LAB_PO_Sampel as ps', 'us.No_Po_Sampel', '=', 'ps.No_Sampel')
-                ->whereIn('us.No_Po_Sampel', $no_sampel_list)
-                ->where('ps.Flag_Trial_Produksi', 'Y')
-                ->where('us.Flag_Layak', 'T')
-                ->whereNull('us.Status')
-                ->whereNull('us.Flag_Resampling')
-                ->select('us.No_Po_Sampel', 'us.Id_Jenis_Analisa')
-                ->get()
-                ->groupBy('No_Po_Sampel');
+            // Penilaian kelayakan kini lewat JejakValidasiService di dalam
+            // loop, mencakup seluruh aktivitas. Query pra-ambil di sini
+            // tidak dipakai lagi.
 
             $poSampelUpdateCases = [];
             $berhasil            = [];
@@ -741,9 +925,9 @@ class FinalisasiLabProduksiTrialController extends Controller
                         ->update(['Flag_Final' => 'Y']);
                 }
 
-                $tidakLayakDataSampel = $tidakLayakData->get($no_sampel) ?? collect();
-                $adaYangTidakLayak    = collect($tidakLayakDataSampel)
-                    ->contains(fn($tl) => in_array($tl->Id_Jenis_Analisa, $idJenisAnalisaList));
+                // Kelayakan menilai seluruh aktivitas pada sampel, termasuk
+                // palatabilitas dan look view.
+                $adaYangTidakLayak = $this->jejakValidasi->adaYangTidakLayak($no_sampel);
 
                 $flagOkValue = $adaYangTidakLayak ? 'T' : 'Y';
 
@@ -763,6 +947,23 @@ class FinalisasiLabProduksiTrialController extends Controller
                             'Id_User' => $userId,
                         ]
                     );
+
+                // Sambungkan detail ke header dan catat pelaku finalisasi.
+                $idHeader = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
+                    ->where('No_Split_Po', $infoPo->No_Split_Po)
+                    ->where('No_Batch', $infoPo->No_Batch)
+                    ->where('No_Sampel', $no_sampel)
+                    ->value('Id_Uji_Validasi_Final');
+
+                if ($idHeader) {
+                    $this->jejakValidasi->sambungkanKeHeader($no_sampel, (int) $idHeader);
+                }
+
+                $this->jejakValidasi->catatFinalisasi($no_sampel, $userId, [
+                    'Flag_Ok' => $flagOkValue,
+                    'Tanggal' => $tanggalSqlServer,
+                    'Jam'     => $jamSqlServer,
+                ]);
 
                 $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
                     'No_Sampel'  => $no_sampel,

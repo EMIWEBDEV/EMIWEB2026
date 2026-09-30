@@ -1,7 +1,12 @@
 FROM node:18-alpine AS node-builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+
+# npm registry sesekali gagal; beri retry agar build tidak jatuh karenanya.
+RUN npm config set fetch-retries 5 \
+    && npm config set fetch-retry-maxtimeout 120000 \
+    && npm ci --no-audit --no-fund
+
 COPY . .
 RUN npm run build
 
@@ -20,20 +25,29 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd xml zip \
     && rm -rf /var/lib/apt/lists/*
 
-RUN wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
+# wkhtmltopdf diunduh dari GitHub Releases yang sesekali membalas 5xx.
+# Tanpa --retry-on-http-error, wget langsung menyerah pada error 500 dan
+# seluruh build ikut gagal padahal berkasnya baik-baik saja.
+ARG WKHTMLTOPDF_URL=https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.bookworm_amd64.deb
+
+RUN wget --tries=5 --waitretry=15 --timeout=60 --retry-connrefused \
+        --retry-on-http-error=408,429,500,502,503,504 \
+        -O /tmp/wkhtmltox.deb "${WKHTMLTOPDF_URL}" \
     && apt-get update \
-    && apt-get install -y ./wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
-    && rm wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
+    && apt-get install -y /tmp/wkhtmltox.deb \
+    && rm /tmp/wkhtmltox.deb \
     && ln -sf /usr/local/bin/wkhtmltopdf /usr/bin/wkhtmltopdf \
     && ln -sf /usr/local/bin/wkhtmltoimage /usr/bin/wkhtmltoimage \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sS https://getcomposer.org/installer | php -- \
-    --install-dir=/usr/local/bin \
-    --filename=composer
+RUN curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 \
+        https://getcomposer.org/installer -o /tmp/composer-setup.php \
+    && php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer \
+    && rm /tmp/composer-setup.php
 
 RUN mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg \
+    && curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 \
+        https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg \
     && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 mssql-tools18 \
@@ -45,7 +59,15 @@ RUN mkdir -p /etc/apt/keyrings \
 WORKDIR /var/www/html
 
 COPY composer.json composer.lock ./
-RUN composer install --no-interaction --no-scripts --optimize-autoloader
+
+# COMPOSER_MAX_PARALLEL_HTTP diturunkan agar unduhan paket tidak mudah
+# kena rate-limit, dan seluruh perintah diulang bila jaringan bermasalah.
+RUN COMPOSER_MAX_PARALLEL_HTTP=6 \
+    sh -c 'for i in 1 2 3; do \
+        composer install --no-interaction --no-scripts --optimize-autoloader --prefer-dist && exit 0; \
+        echo "[retry] composer install gagal (percobaan $i), ulangi dalam 15 detik..."; \
+        sleep 15; \
+    done; exit 1'
 
 COPY . .
 COPY --from=node-builder /app/public/build ./public/build

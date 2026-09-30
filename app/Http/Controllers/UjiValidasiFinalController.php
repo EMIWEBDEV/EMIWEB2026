@@ -6,9 +6,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\JejakValidasiService;
 
 class UjiValidasiFinalController extends Controller
 {
+    protected JejakValidasiService $jejakValidasi;
+
+    public function __construct(JejakValidasiService $jejakValidasi)
+    {
+        $this->jejakValidasi = $jejakValidasi;
+    }
 
     public function index()
     {
@@ -461,11 +468,13 @@ class UjiValidasiFinalController extends Controller
             }
 
             if ($flagFgValid) {
-                $adaYangTidakLayak = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Detail_Final')
-                    ->where('No_Sampel', $no_sampel)
-                    ->whereIn('Id_Jenis_Analisa', $idJenisAnalisaList)
-                    ->where('Flag_Layak', 'T')
-                    ->exists();
+                // Kelayakan dinilai atas SELURUH analisa pada sampel ini —
+                // termasuk palatabilitas dan look view. Sebelumnya dibatasi
+                // whereIn($idJenisAnalisaList), dan daftar itu hanya berisi
+                // analisa yang lolos filter di $getData, sehingga tahapan
+                // yang tidak layak bisa terlewat dan produk tetap berstatus
+                // "Lolos Uji" padahal ada tahapan yang gagal.
+                $adaYangTidakLayak = $this->jejakValidasi->adaYangTidakLayak($no_sampel);
 
                 $flagOkValue = $adaYangTidakLayak ? 'T' : 'Y';
 
@@ -481,17 +490,38 @@ class UjiValidasiFinalController extends Controller
                     'Id_User' => Auth::user()->UserId
                 ];
 
-                // 🚀 PERUBAHAN UTAMA: Menggunakan updateOrInsert
+                // Kriteria unik WAJIB menyertakan No_Sampel. Tanpa itu, satu
+                // No_Split_Po + No_Batch yang punya lebih dari satu sampel
+                // akan saling menimpa: finalisasi sampel kedua mengubah baris
+                // sampel pertama, bukan menambah baris baru.
                 DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
                     ->updateOrInsert(
                         [
-                            // 1. Array pertama: Kriteria pencarian unik
                             'No_Split_Po' => $getInformasiPo->No_Split_Po,
-                            'No_Batch'    => $getInformasiPo->No_Batch
+                            'No_Batch'    => $getInformasiPo->No_Batch,
+                            'No_Sampel'   => $no_sampel,
                         ],
-                        // 2. Array kedua: Kolom yang akan di-update (jika ketemu) ATAU di-insert (jika tidak ketemu)
                         $payloadUjiFInal
                     );
+
+                // Sambungkan baris detail ke header-nya, lalu catat siapa yang
+                // melakukan finalisasi. Keduanya membuat jejak audit lengkap:
+                // detail tahu induknya, dan setiap persetujuan punya pelaku.
+                $idHeader = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
+                    ->where('No_Split_Po', $getInformasiPo->No_Split_Po)
+                    ->where('No_Batch', $getInformasiPo->No_Batch)
+                    ->where('No_Sampel', $no_sampel)
+                    ->value('Id_Uji_Validasi_Final');
+
+                if ($idHeader) {
+                    $this->jejakValidasi->sambungkanKeHeader($no_sampel, (int) $idHeader);
+                }
+
+                $this->jejakValidasi->catatFinalisasi($no_sampel, Auth::user()->UserId, [
+                    'Flag_Ok'  => $flagOkValue,
+                    'Tanggal'  => $tanggalSqlServer,
+                    'Jam'      => $jamSqlServer,
+                ]);
 
                 DB::table('N_EMI_LAB_PO_Sampel')
                     ->where('No_Sampel', $no_sampel)
@@ -626,12 +656,9 @@ class UjiValidasiFinalController extends Controller
                 ->pluck('Flag_FG', 'Id_Master_Mesin')
                 ->toArray();
 
-            $tidakLayakData = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Detail_Final')
-                ->whereIn('No_Sampel', $no_sampel_list)
-                ->where('Flag_Layak', 'T')
-                ->select('No_Sampel', 'Id_Jenis_Analisa')
-                ->get()
-                ->groupBy('No_Sampel');
+            // Penilaian kelayakan kini lewat JejakValidasiService di dalam
+            // loop, yang mencakup seluruh aktivitas. Query pra-ambil di sini
+            // tidak dipakai lagi.
 
             $poSampelUpdateCases = [];
             $berhasil = [];
@@ -710,25 +737,24 @@ class UjiValidasiFinalController extends Controller
                             'Flag_Final' => 'Y'
                         ]);
 
-                    $tidakLayakDataSampel = $tidakLayakData->get($no_sampel) ?? collect();
-
-                    $adaYangTidakLayak = collect($tidakLayakDataSampel)
-                        ->contains(function ($tl) use ($idJenisAnalisaList) {
-                            return in_array($tl->Id_Jenis_Analisa, $idJenisAnalisaList);
-                        });
+                    // Kelayakan dinilai atas SELURUH analisa pada sampel ini,
+                    // termasuk palatabilitas dan look view — lihat catatan
+                    // yang sama di store().
+                    $adaYangTidakLayak = $this->jejakValidasi->adaYangTidakLayak($no_sampel);
 
                     $flagOkValue = $adaYangTidakLayak ? 'T' : 'Y';
 
-                    // 🚀 PERUBAHAN UTAMA: Menggunakan updateOrInsert langsung di dalam loop
+                    // Kriteria unik menyertakan No_Sampel — lihat catatan yang
+                    // sama di store(). Tanpa itu sampel saling menimpa.
                     DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
                         ->updateOrInsert(
                             [
                                 'No_Split_Po' => $infoPo->No_Split_Po,
-                                'No_Batch'    => $infoPo->No_Batch
+                                'No_Batch'    => $infoPo->No_Batch,
+                                'No_Sampel'   => $no_sampel,
                             ],
                             [
                                 'No_Po'       => $infoPo->No_Po,
-                                'No_Sampel'   => $no_sampel,
                                 'Tanggal'     => $tanggalSqlServer,
                                 'Jam'         => $jamSqlServer,
                                 'Flag_FG'     => 'Y',
@@ -736,6 +762,23 @@ class UjiValidasiFinalController extends Controller
                                 'Id_User'     => $userId
                             ]
                         );
+
+                    // Sambungkan detail ke header dan catat pelaku finalisasi.
+                    $idHeader = DB::table('N_EMI_LAB_Hasil_Uji_Validasi_Final')
+                        ->where('No_Split_Po', $infoPo->No_Split_Po)
+                        ->where('No_Batch', $infoPo->No_Batch)
+                        ->where('No_Sampel', $no_sampel)
+                        ->value('Id_Uji_Validasi_Final');
+
+                    if ($idHeader) {
+                        $this->jejakValidasi->sambungkanKeHeader($no_sampel, (int) $idHeader);
+                    }
+
+                    $this->jejakValidasi->catatFinalisasi($no_sampel, $userId, [
+                        'Flag_Ok' => $flagOkValue,
+                        'Tanggal' => $tanggalSqlServer,
+                        'Jam'     => $jamSqlServer,
+                    ]);
 
                     DB::table('N_EMI_LAB_Log_Aksi')->insert([
                         'No_Sampel'  => $no_sampel,
