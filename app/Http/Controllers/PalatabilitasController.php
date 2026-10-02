@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\JejakValidasiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,35 @@ use Vinkla\Hashids\Facades\Hashids;
 
 class PalatabilitasController extends Controller
 {
+    /**
+     * Tanggal & jam server lab (dbo.Get_Date_Time) — dipakai untuk kolom
+     * Tanggal DAN Jam, supaya keduanya dari jam yang sama. Sebelumnya Jam
+     * diambil dari jam PHP.
+     *
+     * @return array{0: string, 1: string} [Y-m-d, H:i:s]
+     */
+    private function waktuServer(): array
+    {
+        $t = DB::selectOne("SELECT CONVERT(varchar(19), dbo.Get_Date_Time(), 120) AS t")->t;
+
+        return [substr($t, 0, 10), substr($t, 11, 8)];
+    }
+
+    /**
+     * Finalisasi sesi palatabilitas langsung menandai hasilnya selesai
+     * (Flag_Selesai = 'Y') — itulah validasinya. Jejaknya dicatat seperti
+     * validasi lain, dengan pelaku finalisasi sesi sebagai validator.
+     * Sebelumnya tidak ada jejak sama sekali, sehingga di Sample Lifecycle
+     * validator palatabilitas selalu "tidak tercatat".
+     */
+    private function catatValidasiPalatabilitas(array $data): void
+    {
+        app(JejakValidasiService::class)->catatValidasi($data + [
+            'Flag_Layak' => 'Y',
+            'Keterangan' => 'Finalisasi sesi palatabilitas',
+        ]);
+    }
+
     private function encode($id): string
     {
         return Hashids::connection('custom')->encode($id);
@@ -462,7 +492,7 @@ class PalatabilitasController extends Controller
                 ->get()
                 ->keyBy(fn($r) => $r->Id_Pembanding . '|' . $r->Id_Jenis_Analisa);
 
-            $dt = DB::raw('dbo.Get_Date_Time()');
+            [$tanggal, $jam] = $this->waktuServer();
 
             $currentMonth = date('m');
             $currentYear  = date('y');
@@ -507,14 +537,26 @@ class PalatabilitasController extends Controller
                         'Flag_String'             => $hasilStr !== null ? 'Y' : null,
                         'Status'                  => null,
                         'Flag_Selesai'            => 'Y',
-                        'Tanggal'                 => $dt,
-                        'Jam'                     => date('H:i:s'),
+                        'Tanggal'                 => $tanggal,
+                        'Jam'                     => $jam,
                         'Id_User'                 => $userId,
                         'No_Po_Sampel'            => $noPoSampel,
                         'Status_Keputusan_Sampel' => 'menunggu',
                         'Tahapan_Ke'              => 1,
                         'Id_Session'              => $session->Id_Session,
                         'Id_Pembanding'           => $pembanding->Id_Pembanding,
+                    ]);
+
+                    $this->catatValidasiPalatabilitas([
+                        'No_Sampel'        => $noPoSampel,
+                        'No_Sub_Sampel'    => null,
+                        'Id_Jenis_Analisa' => $idAnalisa,
+                        'Tahapan_Ke'       => 1,
+                        'Id_User'          => $userId,
+                        'Tanggal'          => $tanggal,
+                        'Jam'              => $jam,
+                        'Id_Session'       => $session->Id_Session,
+                        'Id_Pembanding'    => $pembanding->Id_Pembanding,
                     ]);
 
                     $insertedCount++;
@@ -537,8 +579,8 @@ class PalatabilitasController extends Controller
                 ->where('Id_Session', $session->Id_Session)
                 ->update([
                     'Status_Session' => 'F',
-                    'Tanggal_Final'  => $dt,
-                    'Jam_Final'      => date('H:i:s'),
+                    'Tanggal_Final'  => $tanggal . ' ' . $jam,
+                    'Jam_Final'      => $jam,
                     'Id_User_Final'  => $userId,
                 ]);
 
@@ -763,7 +805,7 @@ class PalatabilitasController extends Controller
                 return response()->json(['success' => false, 'status' => 422, 'message' => 'Tidak ada data resampling yang dikirim.'], 422);
             }
 
-            $dt           = DB::raw('dbo.Get_Date_Time()');
+            [$tanggal, $jam] = $this->waktuServer();
             $currentMonth = date('m');
             $currentYear  = date('y');
             $prefix       = 'FUS' . $currentMonth . $currentYear;
@@ -810,8 +852,8 @@ class PalatabilitasController extends Controller
                     'Status'                  => null,
                     'Flag_Selesai'            => 'Y',
                     'Flag_Resampling'         => 'Y',
-                    'Tanggal'                 => $dt,
-                    'Jam'                     => date('H:i:s'),
+                    'Tanggal'                 => $tanggal,
+                    'Jam'                     => $jam,
                     'Id_User'                 => $userId,
                     'No_Po_Sampel'            => $noPoSampel,
                     'Status_Keputusan_Sampel' => 'menunggu',
@@ -823,6 +865,20 @@ class PalatabilitasController extends Controller
                 DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')
                     ->where('Id_Resampling', $idResamplingRaw)
                     ->update(['Flag_Selesai_Resampling' => 'Y']);
+
+                $this->catatValidasiPalatabilitas([
+                    'No_Sampel'        => $noPoSampel,
+                    'No_Sub_Sampel'    => null,
+                    'Id_Jenis_Analisa' => $idAnalisaRaw,
+                    'Tahapan_Ke'       => $log->Tahapan_Ke,
+                    'Id_User'          => $userId,
+                    'Tanggal'          => $tanggal,
+                    'Jam'              => $jam,
+                    'Id_Session'       => $session->Id_Session,
+                    'Id_Pembanding'    => $idPembandingRaw,
+                    'Flag_Resampling'  => 'Y',
+                    'Keterangan'       => 'Finalisasi resampling palatabilitas',
+                ]);
 
                 $insertedCount++;
             }

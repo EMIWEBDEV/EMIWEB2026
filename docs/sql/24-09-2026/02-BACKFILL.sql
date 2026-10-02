@@ -177,6 +177,15 @@ PRINT '';
 -- Sumber kebenaran: N_EMI_LAB_Uji_Sampel dengan Flag_Selesai='Y',
 -- yang berarti analisa itu benar-benar sudah divalidasi seseorang.
 --
+-- SIAPA yang memvalidasi TIDAK tersimpan di Uji_Sampel: Id_User di sana
+-- adalah PENGINPUT hasil (pembuat draf), dan Tanggal/Jam-nya waktu input.
+-- (Revisi 26-09-2026 — versi awal skrip ini menyalin penginput sebagai
+-- validator.) Validator diambil dari N_EMI_LAB_Log_Aksi (+_Detail): catatan
+-- validasi PALING AWAL setelah hasil diinput. Bila tidak ada, Id_User,
+-- Tanggal, dan Jam dibiarkan NULL — lebih jujur daripada menulis penginput
+-- sebagai validator. Barisnya tetap ditulis karena Flag_Layak-nya dipakai
+-- untuk menentukan status lolos sampel.
+--
 -- Flag_Layak diambil apa adanya. Bila NULL, diisi 'Y': alur non-perhitungan
 -- lama menyetel Flag_Layak='Y' secara eksplisit saat validasi, sehingga NULL
 -- berarti "tidak pernah ditandai tidak layak". Asumsi ini didokumentasikan
@@ -201,11 +210,11 @@ BEGIN
         u.No_Fak_Sub_Po,                      -- NULL bila sampel tunggal
         u.Id_Jenis_Analisa,
         ISNULL(u.Tahapan_Ke, 1),
-        u.Tanggal,
-        u.Jam,
+        CASE WHEN v.Waktu IS NULL THEN NULL ELSE CAST(CAST(v.Waktu AS DATE) AS DATETIME) END,
+        CASE WHEN v.Waktu IS NULL THEN NULL ELSE CONVERT(VARCHAR(8), v.Waktu, 108) END,
         ISNULL(u.Flag_Layak, 'Y'),
         u.Flag_Resampling,
-        u.Id_User,
+        v.Id_User,                            -- validator; NULL bila tak tercatat
         ja.Kode_Aktivitas_Lab,
         ja.Jenis_Analisa,
         u.Id_Session,
@@ -218,6 +227,23 @@ BEGIN
         ON ja.id = u.Id_Jenis_Analisa
     LEFT JOIN N_EMI_LAB_Hasil_Uji_Validasi_Final h
         ON h.No_Sampel = u.No_Po_Sampel
+    OUTER APPLY (
+        SELECT TOP 1 x.Id_User, x.Waktu
+        FROM (
+            SELECT COALESCE(NULLIF(LTRIM(RTRIM(ld.Id_User)), ''), la.Id_User) AS Id_User,
+                   CAST(COALESCE(TRY_CONVERT(DATE, ld.Tanggal), la.Tanggal) AS DATETIME)
+                     + CAST(COALESCE(TRY_CONVERT(TIME(0), ld.Jam), CAST(la.Jam AS TIME(0))) AS DATETIME) AS Waktu
+            FROM N_EMI_LAB_Log_Aksi la
+            JOIN N_EMI_LAB_Log_Aksi_Detail ld ON ld.Id_Log_Aksi = la.Id_Log_Aksi
+            WHERE la.No_Sampel = u.No_Po_Sampel
+              AND ld.Id_Jenis_Analisa = u.Id_Jenis_Analisa
+              AND la.Jenis_Aksi LIKE 'VALIDASI%'
+              AND la.Sub_Aksi = 'SETUJU'
+        ) x
+        WHERE x.Id_User IS NOT NULL
+          AND x.Waktu >= CAST(CAST(u.Tanggal AS DATE) AS DATETIME) + CAST(TRY_CONVERT(TIME(0), u.Jam) AS DATETIME)
+        ORDER BY x.Waktu
+    ) v
     WHERE u.Flag_Selesai = 'Y'
       AND u.Status IS NULL
       AND NOT EXISTS (
@@ -243,8 +269,16 @@ PRINT '';
 -- ============================================================================
 -- D. Isi tabel approval dari riwayat validasi
 -- ============================================================================
--- Setiap Uji_Sampel ber-Flag_Selesai='Y' berarti ada orang yang
--- menyetujuinya; Id_User di baris itu adalah pelakunya.
+-- Approval menjawab "SIAPA yang menyetujui". Karena itu hanya ditulis bila
+-- penyetujunya DIKETAHUI (revisi 26-09-2026 — versi awal skrip ini memakai
+-- Uji_Sampel.Id_User, yaitu penginput hasil). Sumber validator, berurutan:
+--   1. N_EMI_LAB_Log_Aksi (+_Detail): catatan validasi paling awal setelah
+--      hasil diinput.
+--   2. Detail_Final ber-Sumber 'PRA_MIGRASI' pada sampel, sub-sampel,
+--      analisa, dan tahapan yang sama — ditulis kode lama saat validasi,
+--      Id_User-nya validator.
+-- Analisa yang validatornya tidak tercatat di mana pun TIDAK dibuatkan
+-- approval; layar menampilkannya sebagai "validator tidak tercatat".
 --
 -- PENTING — kenapa ada GROUP BY:
 --   Satu analisa bisa punya BANYAK baris Uji_Sampel, karena satu uji
@@ -256,46 +290,91 @@ PRINT '';
 --   MIN(Flag_Layak) dipakai karena 'T' < 'Y' secara leksikal: bila salah satu
 --   parameter tidak layak, persetujuannya ikut tertandai tidak layak.
 --   Konservatif, dan memang itu yang diinginkan untuk audit mutu.
+--
+-- Kandidat disusun sekali ke tabel sementara, lalu ditulis per batch.
+-- (Menyaring validator di dalam loop TOP(@batch) membuat loop berhenti
+-- terlalu cepat bila satu batch penuh berisi analisa tanpa validator.)
+-- Satu approval per (sampel, sub-sampel, analisa, pembanding, validator):
+-- kunci unik lama belum memuat Tahapan_Ke, sehingga tahapan tertinggi yang
+-- diambil — sama seperti versi awal.
 PRINT '--- D. Isi approval dari riwayat validasi ---';
 
+IF OBJECT_ID('tempdb..#SumberD') IS NOT NULL DROP TABLE #SumberD;
+
+;WITH Grup AS (
+    SELECT
+        u.No_Po_Sampel                          AS No_Sampel,
+        u.No_Fak_Sub_Po                         AS No_Sub_Sampel,
+        u.Id_Jenis_Analisa,
+        u.Id_Pembanding,
+        ISNULL(u.Tahapan_Ke, 1)                 AS Tahapan_Ke,
+        MAX(ja.Kode_Aktivitas_Lab)              AS Kode_Aktivitas_Lab,
+        MAX(ja.Jenis_Analisa)                   AS Nama_Jenis_Analisa,
+        MAX(u.Id_Session)                       AS Id_Session,
+        MIN(ISNULL(u.Flag_Layak, 'Y'))          AS Flag_Layak,
+        MIN(CAST(CAST(u.Tanggal AS DATE) AS DATETIME) + CAST(TRY_CONVERT(TIME(0), u.Jam) AS DATETIME)) AS Waktu_Input,
+        MAX(u.Flag_Resampling)                  AS Flag_Resampling
+    FROM N_EMI_LAB_Uji_Sampel u
+    JOIN N_EMI_LAB_Jenis_Analisa ja
+        ON ja.id = u.Id_Jenis_Analisa
+    WHERE u.Flag_Selesai = 'Y'
+      AND u.Status IS NULL
+      AND ja.Kode_Aktivitas_Lab IS NOT NULL
+    GROUP BY u.No_Po_Sampel, u.No_Fak_Sub_Po, u.Id_Jenis_Analisa,
+             u.Id_Pembanding, ISNULL(u.Tahapan_Ke, 1)
+),
+Bervalidator AS (
+    SELECT g.*, v.Id_User AS Validator, v.Waktu AS Waktu_Validasi
+    FROM Grup g
+    OUTER APPLY (
+        SELECT TOP 1 x.Id_User, x.Waktu
+        FROM (
+            SELECT COALESCE(NULLIF(LTRIM(RTRIM(ld.Id_User)), ''), la.Id_User) AS Id_User,
+                   CAST(COALESCE(TRY_CONVERT(DATE, ld.Tanggal), la.Tanggal) AS DATETIME)
+                     + CAST(COALESCE(TRY_CONVERT(TIME(0), ld.Jam), CAST(la.Jam AS TIME(0))) AS DATETIME) AS Waktu,
+                   1 AS Prio
+            FROM N_EMI_LAB_Log_Aksi la
+            JOIN N_EMI_LAB_Log_Aksi_Detail ld ON ld.Id_Log_Aksi = la.Id_Log_Aksi
+            WHERE la.No_Sampel = g.No_Sampel
+              AND ld.Id_Jenis_Analisa = g.Id_Jenis_Analisa
+              AND la.Jenis_Aksi LIKE 'VALIDASI%'
+              AND la.Sub_Aksi = 'SETUJU'
+            UNION ALL
+            SELECT d.Id_User,
+                   CAST(CAST(d.Tanggal AS DATE) AS DATETIME) + CAST(TRY_CONVERT(TIME(0), d.Jam) AS DATETIME),
+                   2
+            FROM N_EMI_LAB_Hasil_Uji_Validasi_Detail_Final d
+            WHERE d.Sumber_Pencatatan = 'PRA_MIGRASI'
+              AND d.Id_User IS NOT NULL
+              AND d.No_Sampel = g.No_Sampel
+              AND d.Id_Jenis_Analisa = g.Id_Jenis_Analisa
+              AND ISNULL(d.No_Sub_Sampel, '~') = ISNULL(g.No_Sub_Sampel, '~')
+              AND ISNULL(d.Tahapan_Ke, 1) = g.Tahapan_Ke
+        ) x
+        WHERE x.Id_User IS NOT NULL
+          AND (x.Prio = 2 OR x.Waktu >= g.Waktu_Input)
+        ORDER BY x.Prio, x.Waktu
+    ) v
+    WHERE v.Id_User IS NOT NULL
+)
+SELECT ROW_NUMBER() OVER (ORDER BY b.No_Sampel, b.Id_Jenis_Analisa, b.Tahapan_Ke) AS No_Urut, b.*
+INTO #SumberD
+FROM (
+    SELECT bv.*,
+           ROW_NUMBER() OVER (PARTITION BY bv.No_Sampel, ISNULL(bv.No_Sub_Sampel, '~'), bv.Id_Jenis_Analisa,
+                                           ISNULL(bv.Id_Pembanding, -1), bv.Validator
+                              ORDER BY bv.Tahapan_Ke DESC) AS rn
+    FROM Bervalidator bv
+) b
+WHERE b.rn = 1;
+
+DECLARE @dari INT = 1;
+DECLARE @maks INT = (SELECT ISNULL(MAX(No_Urut), 0) FROM #SumberD);
+PRINT '      ' + CAST(@maks AS VARCHAR(12)) + ' analisa dengan validator tercatat.';
+
 SET @total = 0; SET @putaran = 0;
-WHILE 1 = 1
+WHILE @dari <= @maks
 BEGIN
-    ;WITH Sumber AS (
-        SELECT TOP (@batch)
-            u.No_Po_Sampel                          AS No_Sampel,
-            u.No_Fak_Sub_Po                         AS No_Sub_Sampel,
-            u.Id_Jenis_Analisa,
-            u.Id_Pembanding,
-            u.Id_User,
-            MAX(ja.Kode_Aktivitas_Lab)              AS Kode_Aktivitas_Lab,
-            MAX(ja.Jenis_Analisa)                   AS Nama_Jenis_Analisa,
-            MAX(ISNULL(u.Tahapan_Ke, 1))            AS Tahapan_Ke,
-            MAX(u.Id_Session)                       AS Id_Session,
-            MIN(ISNULL(u.Flag_Layak, 'Y'))          AS Flag_Layak,
-            MIN(CAST(u.Tanggal AS DATE))            AS Tanggal,
-            MIN(u.Jam)                              AS Jam,
-            MAX(u.Flag_Resampling)                  AS Flag_Resampling
-        FROM N_EMI_LAB_Uji_Sampel u
-        JOIN N_EMI_LAB_Jenis_Analisa ja
-            ON ja.id = u.Id_Jenis_Analisa
-        WHERE u.Flag_Selesai = 'Y'
-          AND u.Status IS NULL
-          AND u.Id_User IS NOT NULL
-          AND ja.Kode_Aktivitas_Lab IS NOT NULL
-          AND NOT EXISTS (
-                SELECT 1
-                FROM N_EMI_LAB_Hasil_Uji_Approval_Aktivitas a
-                WHERE a.No_Sampel        = u.No_Po_Sampel
-                  AND ISNULL(a.No_Sub_Sampel,'~') = ISNULL(u.No_Fak_Sub_Po,'~')
-                  AND a.Id_Jenis_Analisa = u.Id_Jenis_Analisa
-                  AND a.Jenis_Approval   = 'VALIDASI'
-                  AND a.Id_User          = u.Id_User
-                  AND ISNULL(a.Id_Pembanding, -1) = ISNULL(u.Id_Pembanding, -1)
-          )
-        GROUP BY u.No_Po_Sampel, u.No_Fak_Sub_Po, u.Id_Jenis_Analisa,
-                 u.Id_Pembanding, u.Id_User
-    )
     INSERT INTO N_EMI_LAB_Hasil_Uji_Approval_Aktivitas (
         No_Sampel, No_Sub_Sampel, No_Po, No_Split_Po, No_Batch, Kode_Barang,
         Kode_Aktivitas_Lab, Nama_Aktivitas,
@@ -311,24 +390,34 @@ BEGIN
         s.Kode_Aktivitas_Lab, k.Nama_Aktivitas,
         s.Id_Jenis_Analisa, s.Nama_Jenis_Analisa, s.Tahapan_Ke,
         s.Id_Session, s.Id_Pembanding,
-        s.Id_User, us.Nama, 'VALIDASI', 'Y', s.Flag_Layak,
-        s.Tanggal, s.Jam, @now,
+        s.Validator, us.Nama, 'VALIDASI', 'Y', s.Flag_Layak,
+        CAST(s.Waktu_Validasi AS DATE), CONVERT(VARCHAR(8), s.Waktu_Validasi, 108), @now,
         po.Flag_Trial_Produksi, s.Flag_Resampling, 'BACKFILL'
-    FROM Sumber s
+    FROM #SumberD s
     LEFT JOIN N_EMI_LIMS_Klasifikasi_Aktivitas_Lab k
         ON k.Kode_Aktivitas_Lab = s.Kode_Aktivitas_Lab
     LEFT JOIN N_EMI_LAB_PO_Sampel po
         ON po.No_Sampel = s.No_Sampel
     LEFT JOIN N_EMI_LAB_Users us
-        ON us.UserId = s.Id_User;
+        ON us.UserId = s.Validator
+    WHERE s.No_Urut BETWEEN @dari AND @dari + @batch - 1
+      AND NOT EXISTS (
+            SELECT 1
+            FROM N_EMI_LAB_Hasil_Uji_Approval_Aktivitas a
+            WHERE a.No_Sampel        = s.No_Sampel
+              AND ISNULL(a.No_Sub_Sampel,'~') = ISNULL(s.No_Sub_Sampel,'~')
+              AND a.Id_Jenis_Analisa = s.Id_Jenis_Analisa
+              AND a.Jenis_Approval   = 'VALIDASI'
+              AND a.Id_User          = s.Validator
+              AND ISNULL(a.Id_Pembanding, -1) = ISNULL(s.Id_Pembanding, -1)
+      );
 
-    SET @n = @@ROWCOUNT;
-    SET @total += @n;
+    SET @total += @@ROWCOUNT;
     SET @putaran += 1;
-    IF @n = 0 BREAK;
+    SET @dari += @batch;
     IF @putaran % 5 = 0 PRINT '      ... ' + CAST(@total AS VARCHAR(12)) + ' baris approval';
 END
-PRINT '  [D] ' + CAST(@total AS VARCHAR(12)) + ' baris approval VALIDASI dipulihkan.';
+PRINT '  [D] ' + CAST(@total AS VARCHAR(12)) + ' baris approval VALIDASI dipulihkan (validator tercatat saja).';
 PRINT '';
 
 

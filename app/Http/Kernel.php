@@ -36,6 +36,8 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
+            // Harus SESUDAH StartSession: membaca penanda sesi sandbox.
+            \App\Http\Middleware\AlihkanSesiSandbox::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
@@ -76,5 +78,7 @@ class Kernel extends HttpKernel
         'permission' => \App\Http\Middleware\CheckPermission::class,
         'log-viewer-key' => \App\Http\Middleware\LogViewerKeyAuth::class,
         'bypass-lims' => \App\Http\Middleware\BypassLimsGate::class,
+        // Halaman sandbox (/trial-ui) per tahap alur, mis. 'sandbox.tahap:VAL'.
+        'sandbox.tahap' => \App\Http\Middleware\TahapSandbox::class,
     ];
 }

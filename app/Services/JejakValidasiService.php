@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -177,6 +179,11 @@ class JejakValidasiService
             ->where('Id_Jenis_Analisa', $idJenis)
             ->where('Jenis_Approval', $jenisAppr)
             ->where('Id_User', $idUser)
+            // Setiap putaran resampling adalah persetujuan tersendiri. Hanya
+            // berlaku bila kunci unik tabel sudah memuat Tahapan_Ke (migrasi
+            // 26-09-2026); sebelum itu tetap satu approval per analisa.
+            ->when($this->kunciApprovalPerTahapan(),
+                fn ($q) => $q->where('Tahapan_Ke', $konteks['Tahapan_Ke']))
             ->when($pembanding === null,
                 fn ($q) => $q->whereNull('Id_Pembanding'),
                 fn ($q) => $q->where('Id_Pembanding', $pembanding))
@@ -189,35 +196,63 @@ class JejakValidasiService
         $po   = $this->infoPo($noSampel);
         $user = $this->infoUser($idUser);
 
-        DB::table(self::TABEL_APPROVAL)->insert([
-            'No_Sampel'           => $noSampel,
-            'No_Sub_Sampel'       => $subSampel,
-            'No_Po'               => $po->No_Po ?? null,
-            'No_Split_Po'         => $po->No_Split_Po ?? null,
-            'No_Batch'            => $po->No_Batch ?? null,
-            'Kode_Barang'         => $po->Kode_Barang ?? null,
-            'Kode_Aktivitas_Lab'  => $master->Kode_Aktivitas_Lab,
-            'Nama_Aktivitas'      => $master->Nama_Aktivitas ?? null,
-            'Id_Jenis_Analisa'    => $idJenis,
-            'Nama_Jenis_Analisa'  => $master->Jenis_Analisa ?? null,
-            'Tahapan_Ke'          => $konteks['Tahapan_Ke'],
-            'Id_Session'          => $konteks['Id_Session'],
-            'Id_Pembanding'       => $pembanding,
-            'Id_User'             => $idUser,
-            'Nama_User'           => $user->Nama ?? null,
-            'Jenis_Approval'      => $jenisAppr,
-            'Flag_Approval'       => $data['Flag_Approval'] ?? 'Y',
-            'Flag_Layak'          => $data['Flag_Layak'] ?? null,
-            'Keterangan'          => $data['Keterangan'] ?? null,
-            'Tanggal'             => $data['Tanggal'] ?? null,
-            'Jam'                 => $data['Jam'] ?? null,
-            'Dibuat_Pada'         => now(),
-            'Flag_Trial_Produksi' => $po->Flag_Trial_Produksi ?? null,
-            'Flag_Resampling'     => $konteks['Flag_Resampling'],
-            'Sumber_Pencatatan'   => self::SUMBER_VALIDASI,
-        ]);
+        try {
+            DB::table(self::TABEL_APPROVAL)->insert([
+                'No_Sampel'           => $noSampel,
+                'No_Sub_Sampel'       => $subSampel,
+                'No_Po'               => $po->No_Po ?? null,
+                'No_Split_Po'         => $po->No_Split_Po ?? null,
+                'No_Batch'            => $po->No_Batch ?? null,
+                'Kode_Barang'         => $po->Kode_Barang ?? null,
+                'Kode_Aktivitas_Lab'  => $master->Kode_Aktivitas_Lab,
+                'Nama_Aktivitas'      => $master->Nama_Aktivitas ?? null,
+                'Id_Jenis_Analisa'    => $idJenis,
+                'Nama_Jenis_Analisa'  => $master->Jenis_Analisa ?? null,
+                'Tahapan_Ke'          => $konteks['Tahapan_Ke'],
+                'Id_Session'          => $konteks['Id_Session'],
+                'Id_Pembanding'       => $pembanding,
+                'Id_User'             => $idUser,
+                'Nama_User'           => $user->Nama ?? null,
+                'Jenis_Approval'      => $jenisAppr,
+                'Flag_Approval'       => $data['Flag_Approval'] ?? 'Y',
+                'Flag_Layak'          => $data['Flag_Layak'] ?? null,
+                'Keterangan'          => $data['Keterangan'] ?? null,
+                'Tanggal'             => $data['Tanggal'] ?? null,
+                'Jam'                 => $data['Jam'] ?? null,
+                'Dibuat_Pada'         => now(),
+                'Flag_Trial_Produksi' => $po->Flag_Trial_Produksi ?? null,
+                'Flag_Resampling'     => $konteks['Flag_Resampling'],
+                'Sumber_Pencatatan'   => self::SUMBER_VALIDASI,
+            ]);
+        } catch (QueryException $e) {
+            // Bentrok kunci unik = persetujuan yang sama sudah tercatat
+            // (mis. klik ganda bersamaan). Bukan kegagalan validasi.
+            if (in_array($e->errorInfo[1] ?? null, [2601, 2627], true)) {
+                return false;
+            }
+            throw $e;
+        }
 
         return true;
+    }
+
+    /**
+     * Apakah kunci unik approval sudah memuat Tahapan_Ke
+     * (docs/sql/26-09-2026-lifecycle/01-STRUKTUR-LIFECYCLE.sql)?
+     * Disimpan 10 menit agar tidak diperiksa di setiap validasi.
+     */
+    private function kunciApprovalPerTahapan(): bool
+    {
+        return (bool) Cache::remember('jejak-validasi:kunci-approval-tahapan:' . DB::connection()->getDatabaseName(), 600,
+            fn () => DB::table('sys.indexes as i')
+                ->join('sys.index_columns as ic', fn ($j) => $j->on('ic.object_id', '=', 'i.object_id')
+                    ->on('ic.index_id', '=', 'i.index_id'))
+                ->join('sys.columns as c', fn ($j) => $j->on('c.object_id', '=', 'ic.object_id')
+                    ->on('c.column_id', '=', 'ic.column_id'))
+                ->whereRaw("i.object_id = OBJECT_ID('" . self::TABEL_APPROVAL . "')")
+                ->where('i.name', 'UX_ApprovalAktivitas_NonPlt')
+                ->where('c.name', 'Tahapan_Ke')
+                ->exists());
     }
 
     /**

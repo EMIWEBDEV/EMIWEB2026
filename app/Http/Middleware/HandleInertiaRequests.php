@@ -37,7 +37,17 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return array_merge(parent::share($request), [
+            // Penanda sesi sandbox (/trial-ui). Dibagikan ke seluruh halaman
+            // supaya menu dapat mengarahkan tahapan tertentu ke modul
+            // pembaharuan, sementara sesi login biasa tetap memakai jalur
+            // lama. Bernilai false pada sesi biasa.
             //
+            // Keberadaan sesi diperiksa lebih dulu: middleware ini juga
+            // berjalan pada rute yang tidak memakai sesi (mis. halaman awal
+            // sebelum login), dan memanggil session() di sana melemparkan
+            // "Session store not set on request".
+            'sandbox' => $request->hasSession()
+                && $request->session()->get('sandbox_trial', false) === true,
         ]);
     }
 }

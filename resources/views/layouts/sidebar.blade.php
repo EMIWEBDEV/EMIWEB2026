@@ -1,4 +1,34 @@
 
+@php
+    /*
+    |--------------------------------------------------------------------------
+    | Pengalihan menu untuk sesi sandbox (/trial-ui)
+    |--------------------------------------------------------------------------
+    | Sesi yang dibentuk dari /trial-ui ditandai 'sandbox_trial'. Pada sesi
+    | itu sebagian menu diarahkan ke modul pembaharuan, sementara sesi login
+    | biasa tetap membuka modul lama. Tabel menu tidak diubah sama sekali —
+    | pengalihan hanya terjadi saat pencetakan tautan, sehingga jalur lama
+    | tidak tersentuh dan pengalihan ini mudah dicabut kembali.
+    */
+    $sandboxTrial = session('sandbox_trial', false) === true;
+
+    $petaSandbox = [
+        // Mockup siklus (session storage): Validasi -> Verifikasi ->
+        // Finalisasi -> Hasil Analisa.
+        '/validasi-trial/produksi'  => '/mockup/validasi',
+        '/verifikasi-hasil-analisa' => '/mockup/verifikasi',
+        '/finalisai/trial-produksi' => '/mockup/finalisasi',
+        '/lab/hasil-analisa'        => '/mockup/hasil-analisa',
+    ];
+
+    $tautanMenu = function ($url) use ($sandboxTrial, $petaSandbox) {
+        if ($sandboxTrial && isset($petaSandbox[$url])) {
+            return url($petaSandbox[$url]);
+        }
+        return url($url);
+    };
+@endphp
+
 <style>
     .bg-beta {
         background: #7c91c3; /* Lebih lembut dan matching */
@@ -103,7 +133,7 @@
                         $isSingleActive = (request()->is($urlSingle . '*') || request()->is($singleDash->Url_Menu . '*')) ? 'active' : '';
                     @endphp
                     <li class="nav-item">
-                        <a href="{{ url($singleDash->Url_Menu) }}" class="nav-link menu-link {{ $isSingleActive }}">
+                        <a href="{{ $tautanMenu($singleDash->Url_Menu) }}" class="nav-link menu-link {{ $isSingleActive }}">
                             <i class="fas fa-home"></i>
                             <span data-key="t-dashboard">Dashboard</span>
                         </a>
@@ -133,7 +163,7 @@
                                         $isDashItemActive = (request()->is($urlDashItem . '*') || request()->is($dashItem->Url_Menu . '*')) ? 'active' : '';
                                     @endphp
                                     <li class="nav-item">
-                                        <a href="{{ url($dashItem->Url_Menu) }}"
+                                        <a href="{{ $tautanMenu($dashItem->Url_Menu) }}"
                                            class="nav-link {{ $isDashItemActive }}"
                                            data-key="t-{{ \Str::slug($dashItem->Nama_Menu) }}">
                                             <i class="{{ $dashItem->Icon_Menu }}"></i>
@@ -178,7 +208,7 @@
                                                 $isActive = request()->is($urlMenu . '*') || request()->is($menu->Url_Menu . '*') ? 'active' : '';
                                             @endphp
                                             <li class="nav-item">
-                                                <a href="{{ url($menu->Url_Menu) }}" class="nav-link {{ $isActive }}" data-key="t-{{ \Str::slug($menu->Nama_Menu) }}">
+                                                <a href="{{ $tautanMenu($menu->Url_Menu) }}" class="nav-link {{ $isActive }}" data-key="t-{{ \Str::slug($menu->Nama_Menu) }}">
                                                     <i class="{{ $menu->Icon_Menu }}"></i> {{ $menu->Nama_Menu }}
                                                 </a>
                                             </li>
@@ -203,7 +233,7 @@
                                                             $isMenuActive = request()->is($urlSubMenu . '*') || request()->is($menu->Url_Menu . '*') ? 'active' : '';
                                                         @endphp
                                                         <li class="nav-item">
-                                                            <a href="{{ url($menu->Url_Menu) }}" class="nav-link {{ $isMenuActive }}" data-key="t-{{ \Str::slug($menu->Nama_Menu) }}">
+                                                            <a href="{{ $tautanMenu($menu->Url_Menu) }}" class="nav-link {{ $isMenuActive }}" data-key="t-{{ \Str::slug($menu->Nama_Menu) }}">
                                                                 <i class="{{ $menu->Icon_Menu }}"></i> {{ $menu->Nama_Menu }}
                                                             </a>
                                                         </li>
@@ -227,7 +257,7 @@
                             $isActiveBottom = request()->is($urlBottom . '*') || request()->is($menu->Url_Menu . '*') ? 'active' : '';
                         @endphp
                         <li class="nav-item">
-                            <a href="{{ url($menu->Url_Menu) }}" class="nav-link menu-link {{ $isActiveBottom }}">
+                            <a href="{{ $tautanMenu($menu->Url_Menu) }}" class="nav-link menu-link {{ $isActiveBottom }}">
                                 <i class="{{ $menu->Icon_Menu }}"></i>
                                 <span data-key="t-{{ \Str::slug($menu->Nama_Menu) }}">{{ $menu->Nama_Menu }}</span>
 

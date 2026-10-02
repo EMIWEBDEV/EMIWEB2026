@@ -10,6 +10,7 @@ use MathParser\Interpreting\Evaluator;
 use Illuminate\Support\Facades\Log;
 use Vinkla\Hashids\Facades\Hashids;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use App\Exports\RekapSampelExport;
 use App\Exports\ParticleSizeExport;
@@ -57,12 +58,18 @@ class UjiSampelController extends Controller
             return 'Y';
         }
 
+        // Baris putaran yang sudah ditolak lewat resampling tidak ikut
+        // dinilai: pada sampel tunggal nomornya sama dengan putaran ulang,
+        // sehingga tanpa penyaring ini hasil putaran 1 yang tidak layak
+        // membuat putaran 2 yang layak ikut tercatat tidak layak.
         $adaTidakLayak = DB::table('N_EMI_LAB_Uji_Sampel')
             ->where('No_Po_Sampel', $noSampel)
             ->where('Id_Jenis_Analisa', $idJenis)
             ->when(!empty($subSampel), fn ($q) => $q->where('No_Fak_Sub_Po', $subSampel))
             ->when(isset($analysis->Id_Pembanding) && $analysis->Id_Pembanding !== null,
                 fn ($q) => $q->where('Id_Pembanding', $analysis->Id_Pembanding))
+            ->where(fn ($q) => $q->whereNull('Status_Keputusan_Sampel')
+                ->orWhere('Status_Keputusan_Sampel', '<>', 'tolak'))
             ->where('Flag_Layak', 'T')
             ->exists();
 
@@ -1950,7 +1957,11 @@ class UjiSampelController extends Controller
                         ->where('Flag_FG', 'Y')
                         ->first();
 
-                    $tahapanKe = $getDataMesin ? $sumberData->Tahapan_Ke : 1;
+                    // Putaran diambil dari log resampling — sumber
+                    // kebenarannya — untuk semua mesin. Sebelumnya mesin
+                    // non-FG dipaksa Tahapan_Ke = 1, sehingga hasil putaran
+                    // ulang tidak dapat dibedakan dari putaran yang ditolak.
+                    $tahapanKe = (int) ($resamplingLog->Tahapan_Ke ?: ($sumberData->Tahapan_Ke ?: 1));
 
                     $payloadUjiSampleData[] = [
                         "No_Faktur" => $newNumber,
@@ -2474,8 +2485,8 @@ class UjiSampelController extends Controller
                             'No_Sampel' => $analysisData['No_Po_Sampel'],
                             'Berkas_Key' => Str::random(32),
                             'File_Path' => $fileData['File_Path'],
-                            'Keterangan' => $fileData['Keterangan'] 
-                        ];
+                            'Keterangan' => $fileData['Keterangan'],
+                        ] + $this->kolomPengunggahFoto($userId, 1);
                     }
                     DB::table('N_EMI_LAB_Berkas_Uji_Lab')->insert($berkasPayload);
                 }
@@ -2688,8 +2699,15 @@ class UjiSampelController extends Controller
 
             $noSementaraList = collect($request->analyses)->pluck('No_Sementara')->filter()->toArray();
 
-            $allFakturToDelete = array_unique(array_merge($oldFakturRecords, $noSementaraList));
-            
+            // Foto hasil putaran yang DITOLAK tidak dihapus: dinonaktifkan,
+            // dan berkasnya tetap di penyimpanan sebagai bukti putaran itu
+            // (data asli wajib disimpan — ISO/IEC 17025 klausul 7.5.2).
+            // Sebelumnya baris foto dan berkas GCS-nya ikut dihapus.
+            $this->nonaktifkanFotoPutaranDitolak($oldFakturRecords, $userId);
+
+            // Foto draf (No_Sementara) tetap dibuang: digantikan unggahan baru.
+            $allFakturToDelete = array_values(array_unique(array_diff($noSementaraList, $oldFakturRecords)));
+
             if (!empty($allFakturToDelete)) {
                 $oldBerkasRecords = DB::table('N_EMI_LAB_Berkas_Uji_Lab')
                     ->whereIn('No_Faktur', $allFakturToDelete)
@@ -3018,10 +3036,11 @@ class UjiSampelController extends Controller
                 DB::table('N_EMI_LAB_Activity_Uji_Sampel_Parameter_Detail')->insert($payloadActiviyUjiSampelDetail);
 
                 if (!empty($berkasInsertsTemplate)) {
-                    $berkasToInsert = array_map(function($item) use ($newNumber) {
+                    $tambahanFoto = $this->kolomPengunggahFoto($userId, (int) $fixedTahapanKe);
+                    $berkasToInsert = array_map(function($item) use ($newNumber, $tambahanFoto) {
                         $item['No_Faktur'] = $newNumber;
-                        $item['Berkas_Key'] = Str::random(32); 
-                        return $item;
+                        $item['Berkas_Key'] = Str::random(32);
+                        return $item + $tambahanFoto;
                     }, $berkasInsertsTemplate);
 
                     DB::table('N_EMI_LAB_Berkas_Uji_Lab')->insert($berkasToInsert);
@@ -4266,8 +4285,8 @@ class UjiSampelController extends Controller
                             'No_Sampel' => $analysisData['No_Po_Sampel'],
                             'Berkas_Key' => Str::random(32),
                             'File_Path' => $fileData['File_Path'],
-                            'Keterangan' => $fileData['Keterangan'] 
-                        ];
+                            'Keterangan' => $fileData['Keterangan'],
+                        ] + $this->kolomPengunggahFoto($userId, 1);
                     }
                     DB::table('N_EMI_LAB_Berkas_Uji_Lab')->insert($berkasPayload);
                 }
@@ -4429,8 +4448,15 @@ class UjiSampelController extends Controller
 
             $noSementaraList = collect($request->analyses)->pluck('No_Sementara')->filter()->toArray();
 
-            $allFakturToDelete = array_unique(array_merge($oldFakturRecords, $noSementaraList));
-            
+            // Foto hasil putaran yang DITOLAK tidak dihapus: dinonaktifkan,
+            // dan berkasnya tetap di penyimpanan sebagai bukti putaran itu
+            // (data asli wajib disimpan — ISO/IEC 17025 klausul 7.5.2).
+            // Sebelumnya baris foto dan berkas GCS-nya ikut dihapus.
+            $this->nonaktifkanFotoPutaranDitolak($oldFakturRecords, $userId);
+
+            // Foto draf (No_Sementara) tetap dibuang: digantikan unggahan baru.
+            $allFakturToDelete = array_values(array_unique(array_diff($noSementaraList, $oldFakturRecords)));
+
             if (!empty($allFakturToDelete)) {
                 $oldBerkasRecords = DB::table('N_EMI_LAB_Berkas_Uji_Lab')
                     ->whereIn('No_Faktur', $allFakturToDelete)
@@ -4730,10 +4756,11 @@ class UjiSampelController extends Controller
                 }
 
                 if (!empty($berkasInsertsTemplate)) {
-                    $berkasToInsert = array_map(function($item) use ($newNumber) {
+                    $tambahanFoto = $this->kolomPengunggahFoto($userId, (int) $tahapanKe);
+                    $berkasToInsert = array_map(function($item) use ($newNumber, $tambahanFoto) {
                         $item['No_Faktur'] = $newNumber;
-                        $item['Berkas_Key'] = Str::random(32); 
-                        return $item;
+                        $item['Berkas_Key'] = Str::random(32);
+                        return $item + $tambahanFoto;
                     }, $berkasInsertsTemplate);
 
                     DB::table('N_EMI_LAB_Berkas_Uji_Lab')->insert($berkasToInsert);
@@ -7345,6 +7372,7 @@ class UjiSampelController extends Controller
                             ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
                             ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
                             ->whereNull('Flag_Selesai')
+                            ->where(fn ($q) => $q->whereNull('Status_Keputusan_Sampel')->orWhere('Status_Keputusan_Sampel', '<>', 'tolak'))
                             ->update(['Flag_Selesai' => 'Y']);
 
                     $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
@@ -7404,6 +7432,7 @@ class UjiSampelController extends Controller
                             ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
                             ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
                             ->whereNull('Flag_Selesai')
+                            ->where(fn ($q) => $q->whereNull('Status_Keputusan_Sampel')->orWhere('Status_Keputusan_Sampel', '<>', 'tolak'))
                             ->update(['Flag_Selesai' => 'Y']);
 
                     $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
@@ -7481,319 +7510,148 @@ class UjiSampelController extends Controller
             ], 404);
         }
 
-        foreach ($request->analyses as $analisis) {
-            $analysis = (object) $analisis;
+        // Seluruh analisa dalam satu permintaan diproses dalam SATU transaksi,
+        // termasuk jejak validasinya. Sebelumnya:
+        //   - fungsi kembali (return) setelah analisa pertama, sehingga analisa
+        //     berikutnya dalam permintaan yang sama tidak pernah diproses;
+        //   - jejak validasi ditulis DI LUAR transaksi, sehingga bila update
+        //     gagal, jejak "sudah divalidasi" tetap tersimpan.
+        DB::beginTransaction();
 
-            $checkFinishGood = DB::table('EMI_Master_Mesin')
-                ->where('Id_Master_Mesin', $analysis->Id_Mesin)
-                ->first();
+        try {
+            foreach ($request->analyses as $analisis) {
+                $this->validasiSatuAnalisa((object) $analisis, $userId, $tanggalSqlServer, $jamSqlServer);
+            }
 
-            $checkedPerhitungan = DB::table('N_EMI_LAB_Jenis_Analisa')->where('id', $analysis->Id_Jenis_Analisa)->first();
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error($e);
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan pada server saat memproses data.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
 
-            $poInfoLog = DB::table('N_EMI_LAB_PO_Sampel')
-                ->where('No_Sampel', $analysis->No_Po_Sampel)
-                ->select('No_Po', 'No_Split_Po', 'Kode_Barang', 'Flag_Trial_Produksi')
-                ->first();
+        return response()->json([
+            'success' => true,
+            'message' => 'Data berhasil diupdate dan status penyelesaian telah diperiksa.'
+        ], 200);
+    }
 
-            $jenisAksiLog = ($poInfoLog->Flag_Trial_Produksi ?? null) === 'Y'
-                ? 'VALIDASI_TRIAL_PRODUKSI'
-                : 'VALIDASI_PRODUKSI';
+    /**
+     * Validasi satu analisa (dipanggil di dalam transaksi pemanggil).
+     *
+     * Hanya baris PUTARAN BERJALAN yang diubah: baris putaran lama yang sudah
+     * ditolak lewat resampling (Status_Keputusan_Sampel 'tolak') dikecualikan.
+     * Sebelumnya, pada sampel tunggal (nomor sampel sama di setiap putaran),
+     * validasi putaran 2 ikut mengubah baris putaran 1 yang ditolak menjadi
+     * 'terima' — di production 204 baris putaran lama berubah status karena ini.
+     *
+     * Bila tidak ada baris yang menunggu validasi (mis. tombol ditekan dua
+     * kali), tidak ada jejak yang ditulis.
+     */
+    private function validasiSatuAnalisa(object $analysis, string $userId, string $tanggal, string $jam): void
+    {
+        $checkFinishGood = DB::table('EMI_Master_Mesin')
+            ->where('Id_Master_Mesin', $analysis->Id_Mesin ?? null)
+            ->first();
 
-            // Jejak validasi dicatat di SINI — sebelum percabangan Flag_FG /
-            // Flag_Perhitungan di bawah. Dulu pencatatan bersarang di dalam
-            // cabang (FG='Y' DAN Perhitungan='Y'), sehingga palatabilitas dan
-            // look view — yang di master selalu ber-Flag_Perhitungan NULL —
-            // tidak pernah tercatat meski validasinya benar-benar terjadi.
-            // Flag_Perhitungan kini hanya menentukan CARA menghitung kelayakan
-            // (lihat cabang di bawah), bukan APAKAH jejaknya disimpan.
-            $this->jejakValidasi->catatValidasi([
-                'No_Sampel'        => $analysis->No_Po_Sampel,
-                // Jangan ganti NULL dengan No_Po_Sampel: sampel tunggal harus
-                // ber-No_Sub_Sampel NULL, sama seperti di Uji_Sampel. Nilai
-                // akhirnya tetap diambil service dari Uji_Sampel.
-                'No_Sub_Sampel'    => $analysis->No_Fak_Sub_Po ?? null,
-                'Id_Jenis_Analisa' => $analysis->Id_Jenis_Analisa,
-                'Tahapan_Ke'       => $analysis->Tahapan_Ke ?? 1,
-                'Flag_Layak'       => $this->hitungKelayakan($analysis, $checkedPerhitungan),
-                'Id_User'          => $userId,
-                'Tanggal'          => $tanggalSqlServer,
-                'Jam'              => $jamSqlServer,
-                'Id_Session'       => $analysis->Id_Session ?? null,
-                'Id_Pembanding'    => $analysis->Id_Pembanding ?? null,
-                'Flag_Resampling'  => $analysis->Flag_Resampling ?? null,
+        $checkedPerhitungan = DB::table('N_EMI_LAB_Jenis_Analisa')->where('id', $analysis->Id_Jenis_Analisa)->first();
+
+        $poInfoLog = DB::table('N_EMI_LAB_PO_Sampel')
+            ->where('No_Sampel', $analysis->No_Po_Sampel)
+            ->select('No_Po', 'No_Split_Po', 'Kode_Barang', 'Flag_Trial_Produksi')
+            ->first();
+
+        $jenisAksiLog = ($poInfoLog->Flag_Trial_Produksi ?? null) === 'Y'
+            ? 'VALIDASI_TRIAL_PRODUKSI'
+            : 'VALIDASI_PRODUKSI';
+
+        $fg          = $checkFinishGood && $checkFinishGood->Flag_FG === 'Y';
+        $perhitungan = $checkedPerhitungan && $checkedPerhitungan->Flag_Perhitungan === 'Y';
+        $multi       = ($analysis->Flag_Multi_QrCode ?? null) === 'Y';
+        $sub         = $analysis->No_Fak_Sub_Po ?? null;
+
+        // Baris yang divalidasi. Aturan sub-sampel sama seperti sebelumnya:
+        // mesin FG dan multi QR memakai sub-sampel yang dikirim (NULL untuk
+        // sampel tunggal); non-FG tunggal cukup nomor sampel + analisa.
+        $baris = DB::table('N_EMI_LAB_Uji_Sampel')
+            ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
+            ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
+            ->whereNull('Flag_Selesai')
+            ->where(fn ($q) => $q->whereNull('Status_Keputusan_Sampel')
+                ->orWhere('Status_Keputusan_Sampel', '<>', 'tolak'))
+            ->when($fg || $multi, fn ($q) => $q->where('No_Fak_Sub_Po', $sub));
+
+        if ($fg && $perhitungan) {
+            $statusKelayakan = (clone $baris)->where('Flag_Layak', 'T')->exists() ? 'T' : 'Y';
+            $payload = ['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y'];
+        } else {
+            $statusKelayakan = 'Y';
+            $payload = ['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y', 'Flag_Layak' => 'Y'];
+        }
+
+        // Kelayakan untuk jejak dihitung SEBELUM update, dari baris putaran ini.
+        $flagJejak = $this->hitungKelayakan($analysis, $checkedPerhitungan);
+
+        $diubah = $baris->update($payload);
+
+        if ($diubah === 0) {
+            return;
+        }
+
+        // Jejak validasi untuk SEMUA aktivitas (ANL, PLT, LCKV) — lihat
+        // JejakValidasiService. Flag_Perhitungan hanya menentukan CARA
+        // menghitung kelayakan, bukan APAKAH jejaknya disimpan.
+        $this->jejakValidasi->catatValidasi([
+            'No_Sampel'        => $analysis->No_Po_Sampel,
+            // Jangan ganti NULL dengan No_Po_Sampel: sampel tunggal harus
+            // ber-No_Sub_Sampel NULL, sama seperti di Uji_Sampel. Nilai
+            // akhirnya tetap diambil service dari Uji_Sampel.
+            'No_Sub_Sampel'    => $sub,
+            'Id_Jenis_Analisa' => $analysis->Id_Jenis_Analisa,
+            'Tahapan_Ke'       => $analysis->Tahapan_Ke ?? 1,
+            'Flag_Layak'       => $flagJejak,
+            'Id_User'          => $userId,
+            'Tanggal'          => $tanggal,
+            'Jam'              => $jam,
+            'Id_Session'       => $analysis->Id_Session ?? null,
+            'Id_Pembanding'    => $analysis->Id_Pembanding ?? null,
+            'Flag_Resampling'  => $analysis->Flag_Resampling ?? null,
+        ]);
+
+        $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
+            ->where('No_Sampel', $analysis->No_Po_Sampel)
+            ->where('Jenis_Aksi', $jenisAksiLog)
+            ->where('Sub_Aksi', 'SETUJU')
+            ->first();
+
+        $logId = $existingHeader
+            ? $existingHeader->Id_Log_Aksi
+            : DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
+                'No_Sampel'   => $analysis->No_Po_Sampel,
+                'No_Po'       => $poInfoLog->No_Po       ?? '-',
+                'No_Split_Po' => $poInfoLog->No_Split_Po ?? '-',
+                'Kode_Barang' => $poInfoLog->Kode_Barang ?? null,
+                'Flag_Trial'  => $poInfoLog->Flag_Trial_Produksi ?? null,
+                'Jenis_Aksi'  => $jenisAksiLog,
+                'Sub_Aksi'    => 'SETUJU',
+                'Id_User'     => $userId,
+                'Tanggal'     => $tanggal,
+                'Jam'         => $jam,
             ]);
 
-            if($checkFinishGood && $checkFinishGood->Flag_FG === 'Y'){
-
-                if($checkedPerhitungan->Flag_Perhitungan === 'Y'){
-                        $adaTidakLayak = DB::table('N_EMI_LAB_Uji_Sampel')
-                        ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
-                        ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
-                        ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
-                        ->where('Flag_Layak', 'T')
-                        ->exists();
-
-                    $statusKelayakan = $adaTidakLayak ? 'T' : 'Y';
-
-                    DB::beginTransaction();
-
-                    try {
-                            DB::table('N_EMI_LAB_Uji_Sampel')
-                                    ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
-                                    ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
-                                    ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa) 
-                                    ->whereNull('Flag_Selesai')
-                                    ->update([
-                                        'Status_Keputusan_Sampel' => 'terima',
-                                        'Flag_Selesai' => 'Y'
-                                    ]);
-
-                            // Pencatatan ke Detail_Final sudah dilakukan di awal
-                            // iterasi lewat JejakValidasiService (berlaku untuk
-                            // SEMUA aktivitas, bukan hanya yang berbasis rumus).
-                            // Insert lama di sini dihapus agar tidak ganda.
-
-                            $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
-                                ->where('No_Sampel', $analysis->No_Po_Sampel)
-                                ->where('Jenis_Aksi', $jenisAksiLog)
-                                ->where('Sub_Aksi', 'SETUJU')
-                                ->first();
-                            if ($existingHeader) {
-                                $logId = $existingHeader->Id_Log_Aksi;
-                            } else {
-                                $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
-                                    'No_Sampel'   => $analysis->No_Po_Sampel,
-                                    'No_Po'       => $poInfoLog->No_Po       ?? '-',
-                                    'No_Split_Po' => $poInfoLog->No_Split_Po ?? '-',
-                                    'Kode_Barang' => $poInfoLog->Kode_Barang ?? null,
-                                    'Flag_Trial'  => $poInfoLog->Flag_Trial_Produksi ?? null,
-                                    'Jenis_Aksi'  => $jenisAksiLog,
-                                    'Sub_Aksi'    => 'SETUJU',
-                                    'Id_User'     => $userId,
-                                    'Tanggal'     => $tanggalSqlServer,
-                                    'Jam'         => $jamSqlServer,
-                                ]);
-                            }
-
-                            DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert([
-                                'Id_Log_Aksi'        => $logId,
-                                'Id_Jenis_Analisa'   => $analysis->Id_Jenis_Analisa,
-                                'Nama_Jenis_Analisa' => $checkedPerhitungan->Jenis_Analisa ?? null,
-                                'Flag_Layak'         => $statusKelayakan,
-                                'Tanggal'            => $tanggalSqlServer,
-                                'Jam'                => $jamSqlServer,
-                                'Id_User'            => $userId,
-                            ]);
-
-                            DB::commit();
-
-                            return response()->json([
-                                'success' => true,
-                                'message' => 'Data berhasil diupdate dan status penyelesaian telah diperiksa.'
-                            ], 200);
-
-                    } catch (\Exception $e) {
-                            DB::rollBack();
-                            Log::error($e);
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'Terjadi kesalahan pada server saat memproses data.',
-                                'error' => $e->getMessage(),
-                            ], 500);
-                    }
-                }else {
-                    DB::beginTransaction();
-
-                    try {
-
-                        DB::table('N_EMI_LAB_Uji_Sampel')
-                                    ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
-                                    ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
-                                    ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
-                                    ->whereNull('Flag_Selesai')
-                                    ->update([
-                                        'Status_Keputusan_Sampel' => 'terima',
-                                        'Flag_Selesai' => 'Y',
-                                        'Flag_Layak' => 'Y'
-                                    ]);
-
-                            $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
-                                ->where('No_Sampel', $analysis->No_Po_Sampel)
-                                ->where('Jenis_Aksi', $jenisAksiLog)
-                                ->where('Sub_Aksi', 'SETUJU')
-                                ->first();
-                            if ($existingHeader) {
-                                $logId = $existingHeader->Id_Log_Aksi;
-                            } else {
-                                $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
-                                    'No_Sampel'   => $analysis->No_Po_Sampel,
-                                    'No_Po'       => $poInfoLog->No_Po       ?? '-',
-                                    'No_Split_Po' => $poInfoLog->No_Split_Po ?? '-',
-                                    'Kode_Barang' => $poInfoLog->Kode_Barang ?? null,
-                                    'Flag_Trial'  => $poInfoLog->Flag_Trial_Produksi ?? null,
-                                    'Jenis_Aksi'  => $jenisAksiLog,
-                                    'Sub_Aksi'    => 'SETUJU',
-                                    'Id_User'     => $userId,
-                                    'Tanggal'     => $tanggalSqlServer,
-                                    'Jam'         => $jamSqlServer,
-                                ]);
-                            }
-
-                            DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert([
-                                'Id_Log_Aksi'        => $logId,
-                                'Id_Jenis_Analisa'   => $analysis->Id_Jenis_Analisa,
-                                'Nama_Jenis_Analisa' => $checkedPerhitungan->Jenis_Analisa ?? null,
-                                'Flag_Layak'         => 'Y',
-                                'Tanggal'            => $tanggalSqlServer,
-                                'Jam'                => $jamSqlServer,
-                                'Id_User'            => $userId,
-                            ]);
-
-                            DB::commit();
-
-                            return response()->json([
-                                'success' => true,
-                                'message' => 'Data berhasil diupdate dan status penyelesaian telah diperiksa.'
-                            ], 200);
-
-                    } catch (\Exception $e) {
-                            DB::rollBack();
-                            Log::error($e);
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'Terjadi kesalahan pada server saat memproses data.',
-                                'error' => $e->getMessage(),
-                            ], 500);
-                    }
-                }
-            }else {
-                if($analysis->Flag_Multi_QrCode === 'Y'){
-                    DB::beginTransaction();
-
-                    try {
-                        DB::table('N_EMI_LAB_Uji_Sampel')
-                                ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
-                                ->where('No_Fak_Sub_Po', $analysis->No_Fak_Sub_Po)
-                                ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
-                                ->whereNull('Flag_Selesai')
-                                ->update([
-                                    'Flag_Selesai' => 'Y',
-                                    'Status_Keputusan_Sampel' => 'terima',
-                                    'Flag_Layak' => 'Y'
-                                ]);
-
-                        $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
-                            ->where('No_Sampel', $analysis->No_Po_Sampel)
-                            ->where('Jenis_Aksi', $jenisAksiLog)
-                            ->where('Sub_Aksi', 'SETUJU')
-                            ->first();
-                        if ($existingHeader) {
-                            $logId = $existingHeader->Id_Log_Aksi;
-                        } else {
-                            $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
-                                'No_Sampel'   => $analysis->No_Po_Sampel,
-                                'No_Po'       => $poInfoLog->No_Po       ?? '-',
-                                'No_Split_Po' => $poInfoLog->No_Split_Po ?? '-',
-                                'Kode_Barang' => $poInfoLog->Kode_Barang ?? null,
-                                'Flag_Trial'  => $poInfoLog->Flag_Trial_Produksi ?? null,
-                                'Jenis_Aksi'  => $jenisAksiLog,
-                                'Sub_Aksi'    => 'SETUJU',
-                                'Id_User'     => $userId,
-                                'Tanggal'     => $tanggalSqlServer,
-                                'Jam'         => $jamSqlServer,
-                            ]);
-                        }
-
-                        DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert([
-                            'Id_Log_Aksi'        => $logId,
-                            'Id_Jenis_Analisa'   => $analysis->Id_Jenis_Analisa,
-                            'Nama_Jenis_Analisa' => $checkedPerhitungan->Jenis_Analisa ?? null,
-                            'Flag_Layak'         => 'Y',
-                            'Tanggal'            => $tanggalSqlServer,
-                            'Jam'                => $jamSqlServer,
-                            'Id_User'            => $userId,
-                        ]);
-
-                        DB::commit();
-
-                        return response()->json([
-                            'success' => true,
-                            'message' => 'Data berhasil diupdate dan status penyelesaian telah diperiksa.'
-                        ], 200);
-
-                    } catch (\Exception $e) {
-                        DB::rollBack();
-                        Log::error($e);
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Terjadi kesalahan pada server saat memproses data.',
-                            'error' => $e->getMessage(),
-                        ], 500);
-                    }
-                }else {
-                    DB::beginTransaction();
-
-                    try {
-                        DB::table('N_EMI_LAB_Uji_Sampel')
-                                ->where('No_Po_Sampel', $analysis->No_Po_Sampel)
-                                ->where('Id_Jenis_Analisa', $analysis->Id_Jenis_Analisa)
-                                ->whereNull('Flag_Selesai')
-                                ->update([
-                                    'Flag_Selesai' => 'Y',
-                                    'Status_Keputusan_Sampel' => 'terima',
-                                    'Flag_Layak' => 'Y'
-                                ]);
-
-                        $existingHeader = DB::table('N_EMI_LAB_Log_Aksi')
-                            ->where('No_Sampel', $analysis->No_Po_Sampel)
-                            ->where('Jenis_Aksi', $jenisAksiLog)
-                            ->where('Sub_Aksi', 'SETUJU')
-                            ->first();
-                        if ($existingHeader) {
-                            $logId = $existingHeader->Id_Log_Aksi;
-                        } else {
-                            $logId = DB::table('N_EMI_LAB_Log_Aksi')->insertGetId([
-                                'No_Sampel'   => $analysis->No_Po_Sampel,
-                                'No_Po'       => $poInfoLog->No_Po       ?? '-',
-                                'No_Split_Po' => $poInfoLog->No_Split_Po ?? '-',
-                                'Kode_Barang' => $poInfoLog->Kode_Barang ?? null,
-                                'Flag_Trial'  => $poInfoLog->Flag_Trial_Produksi ?? null,
-                                'Jenis_Aksi'  => $jenisAksiLog,
-                                'Sub_Aksi'    => 'SETUJU',
-                                'Id_User'     => $userId,
-                                'Tanggal'     => $tanggalSqlServer,
-                                'Jam'         => $jamSqlServer,
-                            ]);
-                        }
-
-                        DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert([
-                            'Id_Log_Aksi'        => $logId,
-                            'Id_Jenis_Analisa'   => $analysis->Id_Jenis_Analisa,
-                            'Nama_Jenis_Analisa' => $checkedPerhitungan->Jenis_Analisa ?? null,
-                            'Flag_Layak'         => 'Y',
-                            'Tanggal'            => $tanggalSqlServer,
-                            'Jam'                => $jamSqlServer,
-                            'Id_User'            => $userId,
-                        ]);
-
-                        DB::commit();
-                        return response()->json([
-                            'success' => true,
-                            'message' => 'Data berhasil diupdate dan status penyelesaian telah diperiksa.'
-                        ], 200);
-
-                    }catch(\Exception $e){
-                        DB::rollBack();
-                        Log::error($e);
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Terjadi kesalahan pada server saat memproses data.',
-                            'error' => $e->getMessage()
-                        ], 500);
-                    }
-                }
-            }
-        }
+        DB::table('N_EMI_LAB_Log_Aksi_Detail')->insert([
+            'Id_Log_Aksi'        => $logId,
+            'Id_Jenis_Analisa'   => $analysis->Id_Jenis_Analisa,
+            'Nama_Jenis_Analisa' => $checkedPerhitungan->Jenis_Analisa ?? null,
+            'Flag_Layak'         => $statusKelayakan,
+            'Tanggal'            => $tanggal,
+            'Jam'                => $jam,
+            'Id_User'            => $userId,
+        ]);
     }
 
     public function finalisasiNoPoSampel($no_sampel)
@@ -15557,53 +15415,64 @@ class UjiSampelController extends Controller
             ], 400);
         }
 
+        $request->validate([
+            'Alasan' => 'nullable|string|max:500',
+        ]);
+
         $pengguna = Auth::user();
+        [$tanggal, $jam] = $this->waktuServerLab();
 
         DB::beginTransaction();
 
-        $getTahapan = DB::table("N_EMI_LAB_Uji_Sampel")
+        try {
+            $getTahapan = DB::table("N_EMI_LAB_Uji_Sampel")
+                        ->where('No_Po_Sampel', $request->No_Po_Sampel)
+                        ->where('No_Fak_Sub_Po', $request->No_Sampel_Resampling_Origin)
+                        ->where('Id_Jenis_Analisa', $id_jenis_analisa)
+                        ->orderByDesc('Tahapan_Ke')
+                        ->first();
+
+            // Putaran berikutnya dihitung per JENIS ANALISA pada sampel ini:
+            // putaran tertinggi yang pernah ada, baik di baris uji maupun di
+            // log resampling. Sebelumnya tahapan diambil dari baris pertama
+            // sub-sampel asal tanpa menyaring jenis analisa, sehingga bisa
+            // terbawa tahapan analisa lain.
+            $tahapKe = $this->tahapanTertinggi($request->No_Po_Sampel, $id_jenis_analisa);
+
+            // Carry PLT context jika analisa ini adalah PLT
+            $idSessionPlt    = $getTahapan->Id_Session ?? null;
+            $idPembandingPlt = $getTahapan->Id_Pembanding ?? null;
+
+            // Fallback: jika parent tidak punya Id_Session, cari dari Palatabilitas_Session
+            if (empty($idSessionPlt)) {
+                $idSessionPlt = DB::table('N_EMI_LAB_Palatabilitas_Session')
+                    ->where('No_Po_Sampel', $request->No_Po_Sampel)
+                    ->where('Kode_Aktivitas_Lab', 'PLT')
+                    ->value('Id_Session');
+            }
+
+            // Fallback Id_Pembanding: cari dari row uji sampel sebelumnya jika NULL
+            if (empty($idPembandingPlt) && !empty($idSessionPlt)) {
+                $idPembandingPlt = DB::table('N_EMI_LAB_Uji_Sampel')
                     ->where('No_Po_Sampel', $request->No_Po_Sampel)
                     ->where('No_Fak_Sub_Po', $request->No_Sampel_Resampling_Origin)
-                    ->first();
+                    ->whereNotNull('Id_Pembanding')
+                    ->value('Id_Pembanding');
+            }
 
-        $tahapKe = $getTahapan->Tahapan_Ke ?? 1;
-
-        // Carry PLT context jika analisa ini adalah PLT
-        $idSessionPlt    = $getTahapan->Id_Session ?? null;
-        $idPembandingPlt = $getTahapan->Id_Pembanding ?? null;
-
-        // Fallback: jika parent tidak punya Id_Session, cari dari Palatabilitas_Session
-        if (empty($idSessionPlt)) {
-            $idSessionPlt = DB::table('N_EMI_LAB_Palatabilitas_Session')
-                ->where('No_Po_Sampel', $request->No_Po_Sampel)
-                ->where('Kode_Aktivitas_Lab', 'PLT')
-                ->value('Id_Session');
-        }
-
-        // Fallback Id_Pembanding: cari dari row uji sampel sebelumnya jika NULL
-        if (empty($idPembandingPlt) && !empty($idSessionPlt)) {
-            $idPembandingPlt = DB::table('N_EMI_LAB_Uji_Sampel')
-                ->where('No_Po_Sampel', $request->No_Po_Sampel)
-                ->where('No_Fak_Sub_Po', $request->No_Sampel_Resampling_Origin)
-                ->whereNotNull('Id_Pembanding')
-                ->value('Id_Pembanding');
-        }
-
-        try {
-            $payloadResampling = [
+            $payloadResampling = $this->payloadLogResampling([
                 'No_Po_Sampel'                => $request->No_Po_Sampel,
                 'No_Sampel_Resampling_Origin' => $request->No_Sampel_Resampling_Origin,
                 'No_Sampel_Resampling'        => $request->No_Sampel_Resampling,
                 'Tahapan_Ke'                  => $tahapKe + 1,
-                'Tanggal'                     => date('Y-m-d'),
-                'Jam'                         => date('H:i:s'),
+                'Tanggal'                     => $tanggal,
+                'Jam'                         => $jam,
                 'Id_Jenis_Analisa'            => $id_jenis_analisa,
                 'Id_User'                     => $pengguna->UserId,
                 'Keterangan'                  => 'Nomor Sampel ' . $request->No_Sampel_Resampling_Origin . ' melakukan reanalisa dengan sampel ' . $request->No_Sampel_Resampling,
                 'Id_Session'                  => $idSessionPlt,
                 'Id_Pembanding'               => $idPembandingPlt,
-            ];
-
+            ], $request->input('Alasan'), $tanggal, $jam);
 
             DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')->insert($payloadResampling);
 
@@ -15634,7 +15503,7 @@ class UjiSampelController extends Controller
             ], 500);
         }
     }
-    
+
     public function resampelingAnalisaSingle(Request $request)
     {
         try {
@@ -15646,7 +15515,12 @@ class UjiSampelController extends Controller
             ], 400);
         }
 
+        $request->validate([
+            'Alasan' => 'nullable|string|max:500',
+        ]);
+
         $user = Auth::user();
+        [$tanggal, $jam] = $this->waktuServerLab();
 
         DB::beginTransaction();
 
@@ -15668,14 +15542,8 @@ class UjiSampelController extends Controller
                 ], 404);
             }
 
-            $lastLogStage = DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')
-                ->where('No_Po_Sampel', $request->No_Po_Sampel)
-                ->where('Id_Jenis_Analisa', $id_jenis_analisa)
-                ->max('Tahapan_Ke');
-
-            $currentMasterStage = $data->Tahapan_Ke;
-            $maxExistingStage = $lastLogStage ? max($currentMasterStage, $lastLogStage) : $currentMasterStage;
-            $nextStage = $maxExistingStage + 1;
+            $nextStage = max((int) $data->Tahapan_Ke,
+                $this->tahapanTertinggi($request->No_Po_Sampel, $id_jenis_analisa)) + 1;
 
             DB::table('N_EMI_LAB_Uji_Sampel')
                 ->where('No_Po_Sampel', $request->No_Po_Sampel)
@@ -15710,19 +15578,19 @@ class UjiSampelController extends Controller
                     ->value('Id_Pembanding');
             }
 
-            DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')->insert([
+            DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')->insert($this->payloadLogResampling([
                 'No_Po_Sampel'                => $request->No_Po_Sampel,
                 'Tahapan_Ke'                  => $nextStage,
                 'No_Sampel_Resampling_Origin' => $request->No_Sampel,
                 'No_Sampel_Resampling'        => $request->No_Sampel,
-                'Tanggal'                     => now()->toDateString(),
-                'Jam'                         => now()->toTimeString(),
+                'Tanggal'                     => $tanggal,
+                'Jam'                         => $jam,
                 'Id_User'                     => $user->UserId,
                 'Id_Jenis_Analisa'            => $id_jenis_analisa,
                 'Keterangan'                  => 'Reanalisa tanpa multi QR (sampel sama)',
                 'Id_Session'                  => $idSessionPlt,
                 'Id_Pembanding'               => $idPembandingPlt,
-            ]);
+            ], $request->input('Alasan'), $tanggal, $jam));
 
             DB::commit();
 
@@ -15740,6 +15608,95 @@ class UjiSampelController extends Controller
                 'message' => "Terjadi Kesalahan. Hubungi Admin"
             ], 500);
         }
+    }
+
+    /**
+     * Kolom pengunggah & putaran untuk baris foto baru — bila kolomnya sudah
+     * ada (migrasi 26-09-2026). Waktu unggah terisi otomatis oleh DEFAULT
+     * kolom Dibuat_Pada (jam server).
+     */
+    private function kolomPengunggahFoto(string $userId, int $tahapan): array
+    {
+        static $ada = null;
+        $ada ??= Schema::hasColumn('N_EMI_LAB_Berkas_Uji_Lab', 'Id_User');
+
+        return $ada ? ['Id_User' => $userId, 'Tahapan_Ke' => max(1, $tahapan)] : [];
+    }
+
+    /**
+     * Nonaktifkan foto milik hasil putaran yang ditolak (resampling).
+     *
+     * Baris foto dan berkasnya di penyimpanan TETAP ada sebagai bukti putaran
+     * itu; hanya ditandai tidak aktif agar tidak tampil sebagai foto hasil
+     * yang berlaku. Sebelum kolomnya ada (migrasi 26-09-2026 belum
+     * dijalankan), foto dibiarkan apa adanya — tidak dihapus.
+     */
+    private function nonaktifkanFotoPutaranDitolak(array $noFaktur, string $userId): void
+    {
+        $noFaktur = array_values(array_unique(array_filter($noFaktur)));
+
+        if (empty($noFaktur) || !Schema::hasColumn('N_EMI_LAB_Berkas_Uji_Lab', 'Flag_Nonaktif')) {
+            return;
+        }
+
+        [$tanggal, $jam] = $this->waktuServerLab();
+
+        foreach (array_chunk($noFaktur, 500) as $bagian) {
+            DB::table('N_EMI_LAB_Berkas_Uji_Lab')
+                ->whereIn('No_Faktur', $bagian)
+                ->whereNull('Flag_Nonaktif')
+                ->update([
+                    'Flag_Nonaktif'      => 'Y',
+                    'Dinonaktifkan_Pada' => $tanggal . ' ' . $jam,
+                    'Id_User_Nonaktif'   => $userId,
+                ]);
+        }
+    }
+
+    /**
+     * Tanggal & jam server lab (dbo.Get_Date_Time), sama dengan yang dipakai
+     * saat hasil diinput dan divalidasi — supaya urutan kejadian di Sample
+     * Lifecycle tidak bergantung pada jam PHP.
+     *
+     * @return array{0: string, 1: string} [Y-m-d, H:i:s]
+     */
+    private function waktuServerLab(): array
+    {
+        $dt = DB::selectOne("SELECT dbo.Get_Date_Time() as DateTimeNow")->DateTimeNow;
+
+        return [date('Y-m-d', strtotime($dt)), date('H:i:s', strtotime($dt))];
+    }
+
+    /** Putaran tertinggi satu analisa pada satu sampel (baris uji & log resampling). */
+    private function tahapanTertinggi(string $noSampel, int $idJenisAnalisa): int
+    {
+        $uji = DB::table('N_EMI_LAB_Uji_Sampel')
+            ->where('No_Po_Sampel', $noSampel)
+            ->where('Id_Jenis_Analisa', $idJenisAnalisa)
+            ->max('Tahapan_Ke');
+
+        $log = DB::table('N_EMI_LAB_Uji_Sampel_Resampling_Log')
+            ->where('No_Po_Sampel', $noSampel)
+            ->where('Id_Jenis_Analisa', $idJenisAnalisa)
+            ->max('Tahapan_Ke');
+
+        return max(1, (int) $uji, (int) $log);
+    }
+
+    /**
+     * Lengkapi baris log resampling dengan alasan yang diketik validator dan
+     * waktu pencatatan — bila kolomnya sudah ada (lihat
+     * docs/sql/26-09-2026-lifecycle/01-STRUKTUR-LIFECYCLE.sql).
+     */
+    private function payloadLogResampling(array $payload, ?string $alasan, string $tanggal, string $jam): array
+    {
+        if (Schema::hasColumn('N_EMI_LAB_Uji_Sampel_Resampling_Log', 'Alasan')) {
+            $alasan = trim((string) $alasan);
+            $payload['Alasan'] = $alasan !== '' ? $alasan : null;
+            $payload['Dibuat_Pada'] = $tanggal . ' ' . $jam;
+        }
+
+        return $payload;
     }
 
     public function generateFotoToken(Request $request)
@@ -15900,17 +15857,36 @@ class UjiSampelController extends Controller
                 $tahapanKey = $noPo . '|' . $rawJaId;
                 $tahapanKe  = $tahapanMap->get($tahapanKey)?->Tahapan_Ke ?? 1;
 
-                // Hitung kelayakan untuk SEMUA analisa, bukan hanya yang
-                // berbasis rumus. Untuk analisa non-rumus (PLT, LCKV),
+                // Baris yang divalidasi: putaran berjalan saja. Baris putaran
+                // lama yang sudah ditolak lewat resampling (Status 'tolak')
+                // tidak ikut dinilai maupun diubah — lihat validasiSatuAnalisa().
+                // Sub-sampel dipakai bila dikirim; sampel tunggal ber-sub NULL.
+                //
+                // Kelayakan dihitung untuk SEMUA analisa, bukan hanya yang
+                // berbasis rumus; untuk analisa non-rumus (PLT, LCKV),
                 // Flag_Layak='T' hanya ada bila petugas menandainya sendiri.
-                // Variabel ini di-set setiap iterasi supaya nilainya tidak
-                // bocor dari analisa sebelumnya.
-                $statusKelayakan = DB::table('N_EMI_LAB_Uji_Sampel')
+                $baris = DB::table('N_EMI_LAB_Uji_Sampel')
                     ->where('No_Po_Sampel', $noPo)
                     ->where('Id_Jenis_Analisa', $rawJaId)
+                    ->whereNull('Flag_Selesai')
+                    ->where(fn ($q) => $q->whereNull('Status_Keputusan_Sampel')
+                        ->orWhere('Status_Keputusan_Sampel', '<>', 'tolak'))
                     ->when(!empty($noFakSubPo), fn ($q) => $q->where('No_Fak_Sub_Po', $noFakSubPo))
-                    ->where('Flag_Layak', 'T')
-                    ->exists() ? 'T' : 'Y';
+                    ->when(empty($noFakSubPo) && $isFG && $isPerhitungan && !$isMultiQr,
+                        fn ($q) => $q->whereNull('No_Fak_Sub_Po'));
+
+                $statusKelayakan = (clone $baris)->where('Flag_Layak', 'T')->exists() ? 'T' : 'Y';
+
+                $diubah = $baris->update($isFG && $isPerhitungan
+                    ? ['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y']
+                    : ['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y', 'Flag_Layak' => 'Y']);
+
+                // Tidak ada yang menunggu validasi (mis. sudah divalidasi dari
+                // layar lain) — jangan catat jejak validasi palsu.
+                if ($diubah === 0) {
+                    $results[] = ['No_Po_Sampel' => $noPo, 'success' => true, 'dilewati' => true];
+                    continue;
+                }
 
                 // Jejak dicatat untuk setiap analisa, apa pun aktivitasnya.
                 // Sebelumnya hanya cabang (FG && Perhitungan) yang mengisi
@@ -15930,33 +15906,6 @@ class UjiSampelController extends Controller
                     'Id_Session'       => $analisis['Id_Session'] ?? null,
                     'Id_Pembanding'    => $analisis['Id_Pembanding'] ?? null,
                 ]);
-
-                if ($isFG && $isPerhitungan) {
-                    DB::table('N_EMI_LAB_Uji_Sampel')
-                        ->where('No_Po_Sampel', $noPo)
-                        ->where('No_Fak_Sub_Po', $noFakSubPo)
-                        ->where('Id_Jenis_Analisa', $rawJaId)
-                        ->whereNull('Flag_Selesai')
-                        ->update(['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y']);
-                } elseif ($isFG && !$isPerhitungan) {
-                    $q = DB::table('N_EMI_LAB_Uji_Sampel')
-                        ->where('No_Po_Sampel', $noPo)
-                        ->where('Id_Jenis_Analisa', $rawJaId)
-                        ->whereNull('Flag_Selesai');
-                    if ($isMultiQr && $noFakSubPo) {
-                        $q->where('No_Fak_Sub_Po', $noFakSubPo);
-                    }
-                    $q->update(['Status_Keputusan_Sampel' => 'terima', 'Flag_Selesai' => 'Y', 'Flag_Layak' => 'Y']);
-                } else {
-                    $q = DB::table('N_EMI_LAB_Uji_Sampel')
-                        ->where('No_Po_Sampel', $noPo)
-                        ->where('Id_Jenis_Analisa', $rawJaId)
-                        ->whereNull('Flag_Selesai');
-                    if ($isMultiQr && $noFakSubPo) {
-                        $q->where('No_Fak_Sub_Po', $noFakSubPo);
-                    }
-                    $q->update(['Flag_Selesai' => 'Y', 'Status_Keputusan_Sampel' => 'terima', 'Flag_Layak' => 'Y']);
-                }
 
                 // Kumpulkan detail analisa per sampel untuk log detail.
                 // Flag_Layak memakai hasil hitungan di atas untuk semua
@@ -15978,7 +15927,8 @@ class UjiSampelController extends Controller
             // kini ditangani JejakValidasiService di dalam loop di atas.
 
             // Log validasi: satu header per unique sampel + detail per analisa
-            $processedNoPosLog = collect($results)->pluck('No_Po_Sampel')->unique()->values()->toArray();
+            // Hanya sampel yang benar-benar ada analisanya divalidasi.
+            $processedNoPosLog = array_keys($logDetailByNoPo);
             if (!empty($processedNoPosLog)) {
                 $poInfoForLog = DB::table('N_EMI_LAB_PO_Sampel')
                     ->whereIn('No_Sampel', $processedNoPosLog)
