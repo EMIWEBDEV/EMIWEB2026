@@ -1183,12 +1183,28 @@
                             class="form-control form-control-sm bg-light"
                         />
                     </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small" for="alasanReanalisisSingle">
+                            Alasan resampling <span class="text-danger">*</span>
+                        </label>
+                        <textarea
+                            id="alasanReanalisisSingle"
+                            v-model="reanalisisForm.alasan"
+                            rows="3"
+                            maxlength="500"
+                            class="form-control form-control-sm"
+                            placeholder="Contoh: hasil ASH 11,2% di atas batas 10%, duplo konsisten, dugaan sampel tidak homogen."
+                        ></textarea>
+                        <div class="form-text" style="font-size: 11px">
+                            Wajib diisi (min. 5 karakter). Tercatat di riwayat sampel sebagai alasan resampling.
+                        </div>
+                    </div>
                     <div class="d-grid">
                         <button
                             type="button"
                             class="btn btn-primary"
                             @click="submitReanalisisSingle"
-                            :disabled="loading.reanalisis"
+                            :disabled="loading.reanalisis || !alasanReanalisisValid"
                         >
                             <span
                                 v-if="loading.reanalisis"
@@ -1243,6 +1259,22 @@
                                 placeholder="— Pilih No Sampel —"
                             />
                         </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold small" for="alasanReanalisisMulti">
+                                Alasan resampling <span class="text-danger">*</span>
+                            </label>
+                            <textarea
+                                id="alasanReanalisisMulti"
+                                v-model="reanalisisForm.alasan"
+                                rows="3"
+                                maxlength="500"
+                                class="form-control form-control-sm"
+                                placeholder="Contoh: hasil ASH 11,2% di atas batas 10%, duplo konsisten, dugaan sampel tidak homogen."
+                            ></textarea>
+                            <div class="form-text" style="font-size: 11px">
+                                Wajib diisi (min. 5 karakter). Tercatat di riwayat sampel sebagai alasan resampling.
+                            </div>
+                        </div>
                         <div class="d-grid">
                             <button
                                 type="submit"
@@ -1250,7 +1282,8 @@
                                 :disabled="
                                     loading.reanalisis ||
                                     loading.reanalisisOptions ||
-                                    !reanalisisForm.selectedOption
+                                    !reanalisisForm.selectedOption ||
+                                    !alasanReanalisisValid
                                 "
                             >
                                 <span
@@ -1675,11 +1708,16 @@ export default {
                 selectedOption: null,
                 noPo: null,
                 idJenisAnalisa: null,
+                alasan: "",
             },
         };
     },
 
     computed: {
+        /** Alasan resampling wajib diisi (min. 5 karakter) sebelum dikirim. */
+        alasanReanalisisValid() {
+            return (this.reanalisisForm.alasan || "").trim().length >= 5;
+        },
         stats() {
             const total = this.pagination.totalData;
             return { total };
@@ -2204,6 +2242,7 @@ export default {
                 selectedOption: null,
                 noPo: this.selectedItem.No_Po_Sampel,
                 idJenisAnalisa: this.selectedItem.Id_Jenis_Analisa,
+                alasan: "",
             };
             if (!isSingle) this.fetchReanalisisOptions();
         },
@@ -2239,6 +2278,7 @@ export default {
                         No_Sampel_Resampling:
                             this.reanalisisForm.selectedOption?.value,
                         Id_Jenis_Analisa: this.reanalisisForm.idJenisAnalisa,
+                        Alasan: (this.reanalisisForm.alasan || "").trim(),
                     }
                 );
                 if (res.data.success) {
@@ -2266,6 +2306,7 @@ export default {
                         No_Po_Sampel: this.reanalisisForm.noPo,
                         No_Sampel: this.reanalisisForm.noUjiSebelumnya,
                         Id_Jenis_Analisa: this.reanalisisForm.idJenisAnalisa,
+                        Alasan: (this.reanalisisForm.alasan || "").trim(),
                     }
                 );
                 if (res.data.success) {
@@ -2295,6 +2336,7 @@ export default {
                 selectedOption: null,
                 noPo: null,
                 idJenisAnalisa: null,
+                alasan: "",
             };
             this.reanalisisOptions = [];
         },

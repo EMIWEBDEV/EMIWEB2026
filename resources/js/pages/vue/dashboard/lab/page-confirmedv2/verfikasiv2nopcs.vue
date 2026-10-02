@@ -674,6 +674,22 @@
                         </div>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label" for="alasanReanalisis">
+                            Alasan resampling <span class="text-danger">*</span>
+                        </label>
+                        <textarea
+                            id="alasanReanalisis"
+                            v-model="alasanReanalisis"
+                            rows="3"
+                            maxlength="500"
+                            class="form-control"
+                            placeholder="Contoh: hasil di luar spesifikasi, duplo konsisten, dugaan sampel tidak homogen."
+                        ></textarea>
+                        <div class="form-text small">
+                            Wajib diisi (min. 5 karakter). Tercatat di riwayat sampel sebagai alasan resampling.
+                        </div>
+                    </div>
                     <div class="border-top pt-3">
                         <div class="text-danger small d-flex">
                             <i class="fas fa-shield-alt me-2 mt-1"></i>
@@ -700,7 +716,7 @@
                         type="button"
                         class="btn btn-warning text-white px-4 shadow-sm"
                         @click="submitReanalisisSingle"
-                        :disabled="loading.reanalisisAnalisa"
+                        :disabled="loading.reanalisisAnalisa || !alasanReanalisisValid"
                     >
                         <span v-if="loading.reanalisisAnalisa">
                             <span
@@ -765,6 +781,7 @@ export default {
                 reanalisisAnalisa: false,
             },
             NoUjiSampelSebelumnya: null,
+            alasanReanalisis: "",
             selectedOptionReanalisis: null,
             form: {
                 No_Po_Sampel: "",
@@ -773,6 +790,10 @@ export default {
         };
     },
     computed: {
+        /** Alasan resampling wajib diisi (min. 5 karakter) sebelum dikirim. */
+        alasanReanalisisValid() {
+            return (this.alasanReanalisis || "").trim().length >= 5;
+        },
         timelineChartSeries() {
             if (!this.listData || this.listData.length === 0) {
                 return [];
@@ -1548,6 +1569,7 @@ export default {
                     No_Po_Sampel: this.form.No_Po_Sampel,
                     No_Sampel: this.NoUjiSampelSebelumnya,
                     Id_Jenis_Analisa: this.Id_Jenis_Analisa,
+                    Alasan: (this.alasanReanalisis || "").trim(),
                 };
 
                 const response = await axios.post(
@@ -1577,12 +1599,14 @@ export default {
 
         openModalReanalisa() {
             this.NoUjiSampelSebelumnya = this.No_Sampel;
+            this.alasanReanalisis = "";
             this.form = {
                 No_Po_Sampel: this.No_Sampel,
             };
         },
         resetForm() {
             this.NoUjiSampelSebelumnya = "";
+            this.alasanReanalisis = "";
             this.form = {
                 No_Po_Sampel: "",
                 No_Sampel_Resampling_Origin: "",

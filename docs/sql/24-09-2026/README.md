@@ -79,6 +79,20 @@ Versi & collation **identik** di kedua server: SQL Server 2016 (v16),
 
 ---
 
+## Revisi 26-09-2026
+
+`02-BACKFILL.sql` bagian C dan D direvisi. Versi awal mengisi `Id_User` hasil backfill
+dengan `N_EMI_LAB_Uji_Sampel.Id_User` — itu **penginput** hasil, bukan validator.
+Versi sekarang mengambil validator dari `N_EMI_LAB_Log_Aksi` (dan `Detail_Final`
+pra-migrasi untuk approval); yang tidak tercatat dibiarkan kosong (Detail_Final) atau
+tidak dibuatkan approval. Database yang sudah menjalankan versi awal diluruskan oleh
+`docs/sql/26-09-2026-lifecycle/02-KOREKSI-JEJAK-BACKFILL.sql`.
+
+Urutan lengkap production kini ada di `docs/sql/26-09-2026-lifecycle/README.md`
+(`26-09-2026-lifecycle/01` dijalankan sesudah `01-STRUKTUR.sql` di bawah).
+
+---
+
 ## Urutan eksekusi
 
 | # | Berkas | Perlu izin | Sifat |
