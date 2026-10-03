@@ -281,11 +281,19 @@ class BarangAnalisaController extends Controller
         }
     }
 
-    public function getDataJenisAnalisa()
+    public function getDataJenisAnalisa(Request $request)
     {
         try {
+            $kodeRoles = collect(Session::get('User_Roles', []))->pluck('Kode_Role')->toArray();
+            $kodeRole  = $request->input('kode_role');
+
+            if (!$kodeRole || !in_array($kodeRole, $kodeRoles, true)) {
+                return ResponseHelper::error('Role tidak valid.', 403);
+            }
+
             $jenisAnalisa = DB::table('N_EMI_LAB_Jenis_Analisa')
                 ->select('id', 'Jenis_Analisa', 'Kode_Analisa')
+                ->where('Kode_Role', $kodeRole)
                 ->get();
 
             foreach ($jenisAnalisa as $item) {

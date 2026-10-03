@@ -12,7 +12,11 @@
 //   3. periksaCatatan — menilai mutu catatan. Yang dihitung hanya "karakter
 //                      bermakna", sehingga syarat minimal tidak bisa dipenuhi
 //                      dengan "haaaaaaaa", "asdfgh", "tes tes tes", atau
-//                      sekadar menyalin nama keputusan.
+//                      sekadar menyalin nama keputusan. Bila kamus bahasa
+//                      Indonesia sudah dimuat (kamus.js), kata yang tidak ada
+//                      di kamus ikut dinilai.
+
+import { kataDikenal } from "./kamus";
 
 /* ------------------------------------------------------------------ */
 /* HTML                                                                */
@@ -268,12 +272,14 @@ const angka = (n) => Number(n).toLocaleString("id-ID");
  * Catatan WAJIB ditolak bila: ada ketikan asal, isinya hanya nama
  * keputusan, didominasi kata yang diulang-ulang, kurang dari minimal, kurang
  * dari 2 kata, atau melewati maksimal.
- * Catatan OPSIONAL bebas — boleh kosong atau diisi apa saja, hanya dibatasi
- * panjang maksimal.
+ * Catatan OPSIONAL — boleh kosong dan tanpa minimal; bila diisi tetap ditolak
+ * jika berisi ketikan asal / banyak kata di luar kamus, dan dibatasi panjang
+ * maksimal.
  *
  * @param {string} teks
- * @param {{min?:number, maks?:number, wajib?:boolean, label?:string}} opsi
+ * @param {{min?:number, maks?:number, wajib?:boolean, label?:string, istilah?:string[]}} opsi
  *        label: nama keputusan — catatan wajib yang hanya mengulangnya ditolak.
+ *        istilah: kata kunci nama analisa (istilahAnalisa) — tidak diperiksa kamus.
  */
 export function periksaCatatan(teks, opsi = {}) {
     const min = Math.max(0, Number(opsi.min) || 0);
@@ -289,13 +295,9 @@ export function periksaCatatan(teks, opsi = {}) {
         return hasil;
     }
 
-    // Catatan opsional bebas diisi: tanpa minimal dan tanpa penilaian mutu,
-    // hanya dibatasi panjang maksimal.
-    if (!opsi.wajib) {
-        if (hasil.panjang > maks) hasil.pesan.push(terlaluPanjang());
-        hasil.ok = hasil.pesan.length === 0;
-        return hasil;
-    }
+    // Catatan opsional: tanpa minimal dan tanpa syarat isi, tetapi bila diisi
+    // tidak boleh ketikan asal / kata di luar kamus (cek di bawah).
+    const ketat = !!opsi.wajib;
 
     const label = new Set((String(opsi.label || "").toLowerCase().match(/[\p{L}\p{N}]+/gu)) || []);
     const token = polos.match(/[\p{L}\p{N}]+/gu) || [];
@@ -332,9 +334,24 @@ export function periksaCatatan(teks, opsi = {}) {
 
     const kata = hitung.filter((h) => h.kata);
     const kataUnik = new Set(kata.map((h) => h.t.toLowerCase()));
-    const hanyaLabel = label.size > 0 && kata.length > 0 && [...kataUnik].every((k) => label.has(k));
+    const hanyaLabel = ketat && label.size > 0 && kata.length > 0 && [...kataUnik].every((k) => label.has(k));
     // Didominasi segelintir kata yang diulang-ulang ("warna aroma warna aroma …").
-    const monoton = token.length >= 6 && new Set(token.map((t) => t.toLowerCase())).size / token.length < 0.5;
+    const monoton = ketat && token.length >= 6 && new Set(token.map((t) => t.toLowerCase())).size / token.length < 0.5;
+    // Kata di luar kamus: dilewati bila kamus belum siap, singkatan (≥3 huruf
+    // kapital semua), kata berangka, dan istilah analisa sampel. Satu-dua salah
+    // ketik atau nama orang ditoleransi; ditolak bila lebih dari 30% kata.
+    const istilah = new Set(opsi.istilah || []);
+    const asing = [];
+    let dicek = 0;
+    new Map(kata.map((h) => [h.t.toLowerCase(), h.t])).forEach((t, k) => {
+        if (t.length < 3 || /\d/.test(t) || t === t.toUpperCase() || istilah.has(k)) return;
+        const ok = kataDikenal(t);
+        if (ok === null) return;
+        dicek++;
+        if (!ok) asing.push(t);
+    });
+    const banyakAsing = dicek > 0 && asing.length / dicek > 0.3;
+
     hasil.kata = hanyaLabel ? 0 : kataUnik.size;
     hasil.jumlah = hanyaLabel ? 0 : hitung.map((h) => h.t).join(" ").length;
     if (pengisi) hasil.tidakDihitung.push("kata pengisi (tes, ok, …)");
@@ -348,7 +365,12 @@ export function periksaCatatan(teks, opsi = {}) {
     }
     if (hanyaLabel) hasil.pesan.push("Jelaskan dasar keputusannya — jangan hanya menulis nama keputusan.");
     else if (monoton) hasil.pesan.push("Terlalu banyak pengulangan kata — tuliskan penjelasan yang lebih beragam.");
-    if (hasil.jumlah < min) hasil.pesan.push(`Kurang ${angka(min - hasil.jumlah)} karakter bermakna lagi.`);
+    if (banyakAsing) {
+        const contoh = asing.slice(0, 3).map((t) => "“" + potong(t) + "”").join(", ");
+        hasil.pesan.push(`Banyak kata tidak dikenali (${contoh}${asing.length > 3 ? ", …" : ""}) — periksa ejaannya.`);
+    }
+    if (!ketat) { /* opsional: tidak ada syarat minimal */ }
+    else if (hasil.jumlah < min) hasil.pesan.push(`Kurang ${angka(min - hasil.jumlah)} karakter bermakna lagi.`);
     else if (min > 0 && hasil.kata < 2) hasil.pesan.push("Tulis minimal 2 kata penjelasan, bukan hanya angka atau kode.");
     if (hasil.panjang > maks) hasil.pesan.push(terlaluPanjang());
 

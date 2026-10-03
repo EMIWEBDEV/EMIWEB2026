@@ -733,7 +733,7 @@
                         <i :class="aturan.jenis === 'justifikasi' ? 'ri-file-shield-2-line' : aturan.jenis === 'kondisi' ? 'ri-error-warning-line' : 'ri-chat-3-line'"></i>
                         <span>{{ aturan.bantuan }}</span>
                     </p>
-                    <EditorCatatan ref="edCatatan" v-model="kep.catatan" :min="aturan.min" :maks="aturan.maks" :wajib="aturan.wajib"
+                    <EditorCatatan ref="edCatatan" v-model="kep.catatan" :nonaktif="!kepAktif" :min="aturan.min" :maks="aturan.maks" :wajib="aturan.wajib"
                                    :jenis="aturan.jenis" :istilah="istilahCatatan" :label="kepAktif ? kepAktif.Nama_Keputusan : ''"
                                    :placeholder="aturan.contoh || 'Pilih tingkat keputusan terlebih dahulu.'" />
                 </div>
@@ -1130,7 +1130,7 @@ export default {
         /** Penilaian yang sama dengan yang tampil di bawah editor. */
         statusCatatan() {
             return periksaCatatanHtml(this.kep.catatan, { min: this.aturan.min, maks: this.aturan.maks, wajib: this.aturan.wajib,
-                label: this.kepAktif ? this.kepAktif.Nama_Keputusan : "" });
+                label: this.kepAktif ? this.kepAktif.Nama_Keputusan : "", istilah: this.istilahCatatan });
         },
         catatanCukup() { return this.statusCatatan.ok; },
     },
