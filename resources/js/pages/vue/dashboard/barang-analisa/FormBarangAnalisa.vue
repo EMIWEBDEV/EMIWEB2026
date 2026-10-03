@@ -25,7 +25,8 @@
                                     <span class="text-danger">*</span>
                                 </label>
                                 <el-select
-                                    v-model="selectedRole"
+                                    :model-value="selectedRole"
+                                    @update:model-value="onRoleChange"
                                     placeholder="-- Pilih Role Penempatan --"
                                     filterable
                                     size="large"
@@ -81,7 +82,13 @@
                                             </label>
                                             <el-select
                                                 v-model="row.Id_Jenis_Analisa"
-                                                placeholder="-- Pilih Jenis Analisa --"
+                                                :placeholder="
+                                                    activeRole
+                                                        ? '-- Pilih Jenis Analisa --'
+                                                        : 'Pilih Role terlebih dahulu'
+                                                "
+                                                :disabled="!activeRole"
+                                                :loading="loading.jenis"
                                                 class="w-100"
                                                 filterable
                                                 clearable
@@ -253,7 +260,7 @@
 
 <script>
 import axios from "axios";
-import { ElMessage, ElSelect, ElOption } from "element-plus";
+import { ElMessage, ElMessageBox, ElSelect, ElOption } from "element-plus";
 
 export default {
     components: { ElSelect, ElOption },
@@ -275,23 +282,73 @@ export default {
             loading: {
                 init: true,
                 save: false,
+                jenis: false,
             },
         };
+    },
+    computed: {
+        // Role satu: otomatis; role banyak: harus dipilih dulu.
+        activeRole() {
+            return this.roles.length === 1
+                ? this.roles[0].Kode_Role
+                : this.selectedRole;
+        },
     },
     mounted() {
         this.fetchAllOptions();
         this.addRow();
+        if (this.roles.length === 1) this.fetchJenisAnalisa();
     },
     methods: {
+        async fetchJenisAnalisa() {
+            this.loading.jenis = true;
+            try {
+                const { data } = await axios.get(
+                    "/api/v1/barang-analisa/option/jenis-analisa",
+                    { params: { kode_role: this.activeRole } }
+                );
+                this.options.jenisAnalisa = data.result;
+            } catch (error) {
+                this.options.jenisAnalisa = [];
+                ElMessage.error("Gagal memuat Jenis Analisa.");
+            } finally {
+                this.loading.jenis = false;
+            }
+        },
+
+        async onRoleChange(val) {
+            const terisi = this.formRows.some(
+                (r) =>
+                    r.Id_Jenis_Analisa ||
+                    r.Id_Master_Mesin.length ||
+                    r.Kode_Barang.length ||
+                    r.Id_User.length
+            );
+            if (terisi && this.selectedRole) {
+                try {
+                    await ElMessageBox.confirm(
+                        "Mengganti role akan mengosongkan semua konfigurasi. Lanjutkan?",
+                        "Ganti Role",
+                        { type: "warning" }
+                    );
+                } catch {
+                    return;
+                }
+            }
+            this.selectedRole = val;
+            this.formRows = [];
+            this.addRow();
+            this.options.jenisAnalisa = [];
+            this.fetchJenisAnalisa();
+        },
+
         async fetchAllOptions() {
             this.loading.init = true;
             try {
-                const [resJenis, resMesin, resUser] = await Promise.all([
-                    axios.get("/api/v1/barang-analisa/option/jenis-analisa"),
+                const [resMesin, resUser] = await Promise.all([
                     axios.get("/api/v1/barang-analisa/option/mesin"),
                     axios.get("/api/v1/barang-analisa/option/user"),
                 ]);
-                this.options.jenisAnalisa = resJenis.data.result;
                 this.options.mesin = resMesin.data.result;
                 this.options.user = resUser.data.result;
             } catch (error) {

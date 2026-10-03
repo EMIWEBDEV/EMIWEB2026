@@ -13,7 +13,7 @@
         kondisi, atau justifikasi — tinggi area tulis dan poin panduannya
         menyesuaikan. Poin panduan hanya membantu, tidak menghalangi simpan.
     -->
-    <div class="ec" :class="['is-' + jenis, { 'is-fokus': fokus, 'is-salah': tampilSalah, 'is-ok': tampilOk }]">
+    <div class="ec" :class="['is-' + jenis, { 'is-nonaktif': nonaktif, 'is-fokus': fokus, 'is-salah': tampilSalah, 'is-ok': tampilOk }]">
         <div class="ec-q"><div ref="wadah"></div></div>
         <div class="ec-bar" aria-hidden="true"><span :style="{ width: persen + '%' }"></span></div>
         <div class="ec-f" aria-live="polite">
@@ -51,6 +51,7 @@ import { markRaw } from "vue";
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import { adalahHtml, bersihkanHtml, deltaKeHtml, htmlKeTeks, komponenCatatan, periksaCatatanHtml } from "./catatan";
+import { muatKamus } from "./kamus";
 
 const JUDUL = {
     bold: "Tebal (Ctrl+B)", italic: "Miring (Ctrl+I)", underline: "Garis bawah (Ctrl+U)",
@@ -69,6 +70,8 @@ export default {
         label: { type: String, default: "" },
         // 'ringkas' | 'kondisi' | 'justifikasi' (aturanCatatan).
         jenis: { type: String, default: "ringkas" },
+        // Terkunci (mis. keputusan belum dipilih).
+        nonaktif: { type: Boolean, default: false },
         // Kata kunci nama analisa sampel, untuk mengenali temuan (istilahAnalisa).
         istilah: { type: Array, default: () => [] },
     },
@@ -78,13 +81,13 @@ export default {
     },
     computed: {
         status() {
-            return periksaCatatanHtml(this.html, { min: this.min, maks: this.maks, wajib: this.wajib, label: this.label });
+            return periksaCatatanHtml(this.html, { min: this.min, maks: this.maks, wajib: this.wajib, label: this.label, istilah: this.istilah });
         },
         komponen() {
             return this.wajib ? komponenCatatan(htmlKeTeks(this.html), this.jenis, this.istilah) : [];
         },
         belumTermuat() { return this.komponen.filter((k) => !k.ada).map((k) => k.label); },
-        tampilSalah() { return !this.status.ok && (this.disentuh || !this.status.kosong); },
+        tampilSalah() { return !this.nonaktif && !this.status.ok && (this.disentuh || !this.status.kosong); },
         // Catatan opsional tidak dinilai, jadi tidak ada tanda "memenuhi syarat".
         tampilOk() { return this.wajib && this.status.ok && !this.status.kosong; },
         dekatMaks() { return this.status.panjang >= this.status.maks * 0.8; },
@@ -96,8 +99,9 @@ export default {
         },
         pesan() {
             const s = this.status;
+            if (this.nonaktif) return "Pilih tingkat keputusan terlebih dahulu.";
             if (this.tampilSalah) return s.pesan[0];
-            if (!this.wajib) return s.kosong ? "Opsional · boleh dikosongkan." : "Opsional · bebas diisi, tanpa minimal karakter.";
+            if (!this.wajib) return s.kosong ? "Opsional · boleh dikosongkan." : "Opsional · tanpa minimal karakter, tetapi tidak boleh asal ketik.";
             if (this.tampilOk) return "Catatan memenuhi syarat.";
             return `Wajib diisi · minimal ${this.angka(s.min)} karakter bermakna.`;
         },
@@ -112,11 +116,15 @@ export default {
         modelValue(v) {
             if ((v || "") !== this.html) this.muat(v);
         },
+        nonaktif(v) {
+            if (this.q) this.q.enable(!v);
+        },
         placeholder(v) {
             if (this.q) this.q.root.setAttribute("data-placeholder", v || "");
         },
     },
     mounted() {
+        muatKamus();
         this.q = markRaw(new Quill(this.$refs.wadah, {
             theme: "snow",
             placeholder: this.placeholder,
@@ -136,6 +144,7 @@ export default {
         root.setAttribute("aria-label", "Catatan");
         this.judulTombol();
         this.muat(this.modelValue);
+        this.q.enable(!this.nonaktif);
         this.q.on("text-change", this.ubah);
         this.q.on("selection-change", this.ubahFokus);
     },
@@ -224,6 +233,11 @@ export default {
 .ec :deep(.ql-editor.ql-blank::before) { left: 11px; right: 11px; font-style: normal; color: #adb5bd; }
 .ec :deep(.ql-editor li[data-list="checked"] > .ql-ui),
 .ec :deep(.ql-editor li[data-list="unchecked"] > .ql-ui) { color: #405189; }
+
+/* Terkunci sampai keputusan dipilih */
+.ec.is-nonaktif { background: #f8f9fa; }
+.ec.is-nonaktif :deep(.ql-toolbar) { opacity: .5; pointer-events: none; }
+.ec.is-nonaktif :deep(.ql-editor) { cursor: not-allowed; background: #f8f9fa; }
 
 /* Penilaian */
 .ec-bar { height: 2px; background: #eef0f4; }
